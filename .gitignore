@@ -1,0 +1,33 @@
+# Secrets / environment
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+credentials.json
+serviceAccount*.json
+
+# Spec Kit: catalogs are re-downloadable caches
+.specify/extensions/.cache/
+.specify/presets/.cache/
+.specify/bundles/.cache/
+
+# Coding agent local state (may contain auth tokens)
+.cursor/mcp.json
+.cursor/*.local.json
+
+# OS / editor
+Thumbs.db
+desktop.ini
+.DS_Store
+*.swp
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+
+# Logs
+*.log
+npm-debug.log*
+yarn-error.log*
+pnpm-debug.log*
