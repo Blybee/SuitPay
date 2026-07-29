@@ -38,5 +38,16 @@ export default defineConfig({
     url: 'http://localhost:3000',
     reuseExistingServer: !process.env.CI,
     timeout: 120_000,
+    env: {
+      // El servidor de desarrollo emite de verdad —transacción, correlativo y
+      // comprobante en Firestore— pero contra el proveedor simulado. Sin esto la
+      // prueba llamaría a Factpro y fallaría por razones ajenas a lo que prueba.
+      //
+      // Se declara aquí y no en el guion de npm para no arrastrar `cross-env`:
+      // Playwright pasa esto al proceso del servidor en cualquier sistema, y las
+      // dos formas de escribir variables de entorno de Windows y de Unix dejan de
+      // ser un problema.
+      PROVEEDOR_SIMULADO: 'true',
+    },
   },
 })

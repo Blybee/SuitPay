@@ -1,21 +1,18 @@
-import {
-  exito,
-  fallo,
-  RASTRO_VACIO
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+import { exito, fallo, RASTRO_VACIO } from './interfaz.ts'
+import type {
+  Contribuyente,
+  DocumentoAnulado,
+  DocumentoConsultado,
+  DocumentoEmitido,
+  EstadoNormalizado,
+  PeticionDeAnulacion,
+  PeticionDeConsulta,
+  PeticionDeContribuyente,
+  PeticionDeEmision,
+  PeticionDeNotaDeCredito,
+  ProveedorDeEmision,
+  Resultado,
 } from './interfaz.ts'
-import type {Contribuyente, DocumentoAnulado, DocumentoConsultado, DocumentoEmitido, EstadoNormalizado, PeticionDeAnulacion, PeticionDeConsulta, PeticionDeContribuyente, PeticionDeEmision, PeticionDeNotaDeCredito, ProveedorDeEmision, Resultado} from './interfaz.ts';
 
 /**
  * Proveedor simulado.

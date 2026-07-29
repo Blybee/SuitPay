@@ -6,11 +6,12 @@ import {
   guardarParametros,
   leerCatalogo,
   leerIndiceDeClientes,
-  leerParametros
-  
-  
+  leerParametros,
 } from '../../infra/local/catalogo.ts'
-import type {ClienteEnIndice, ProductoEnCatalogo} from '../../infra/local/catalogo.ts';
+import type {
+  ClienteEnIndice,
+  ProductoEnCatalogo,
+} from '../../infra/local/catalogo.ts'
 
 /**
  * El arranque de sesión.

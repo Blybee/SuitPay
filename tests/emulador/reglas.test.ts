@@ -28,6 +28,43 @@ import { afterAll, beforeAll, beforeEach, describe, it } from 'vitest'
  * abiertas bastaría para inventar un comprobante.
  */
 
+const EMULADOR = { host: '127.0.0.1', puerto: 8080 }
+
+/**
+ * ¿Está el emulador escuchando?
+ *
+ * El emulador necesita Java, que no está instalado en todas las máquinas donde se
+ * trabaja este proyecto (T022). Sin esta comprobación, la suite entera se cae con
+ * un `ECONNREFUSED` y deja la salida de las pruebas en rojo permanente; y una
+ * salida que siempre está en rojo es una salida que se deja de leer, así que una
+ * regresión de verdad en el dominio pasaría desapercibida.
+ *
+ * Saltar sí, callar no: el aviso de abajo tiene que salir por consola, porque
+ * estas son las pruebas que sostienen que un comprobante no se puede escribir
+ * desde un navegador, y no verificarlas es un riesgo que merece ser dicho en voz
+ * alta y no un silencio cómodo.
+ */
+async function emuladorEscuchando(): Promise<boolean> {
+  try {
+    await fetch(`http://${EMULADOR.host}:${EMULADOR.puerto}/`)
+    return true
+  } catch {
+    return false
+  }
+}
+
+const hayEmulador = await emuladorEscuchando()
+
+if (!hayEmulador) {
+  console.warn(
+    '\n  AVISO: las reglas de seguridad NO se verificaron.\n' +
+      `  No hay emulador de Firestore en ${EMULADOR.host}:${EMULADOR.puerto}.\n` +
+      '  Requiere Java. Arráncalo con: npm run emuladores\n',
+  )
+}
+
+const describeConEmulador = describe.skipIf(!hayEmulador)
+
 let entorno: RulesTestEnvironment
 
 const VENDEDOR = { rol: 'vendedor', activo: true }
@@ -49,21 +86,24 @@ function comprobanteDeEjemplo() {
 }
 
 beforeAll(async () => {
+  if (!hayEmulador) return
   entorno = await initializeTestEnvironment({
     projectId: 'demo-suitpay',
     firestore: {
       rules: readFileSync('firestore.rules', 'utf8'),
-      host: '127.0.0.1',
-      port: 8080,
+      host: EMULADOR.host,
+      port: EMULADOR.puerto,
     },
   })
 })
 
 afterAll(async () => {
+  if (!hayEmulador) return
   await entorno.cleanup()
 })
 
 beforeEach(async () => {
+  if (!hayEmulador) return
   await entorno.clearFirestore()
 
   // Se siembra con las reglas desactivadas: es el papel del backend, que
@@ -130,7 +170,7 @@ function comoDesactivado() {
 
 // ---------------------------------------------------------------------------
 
-describe('comprobantes: la restricción más importante del sistema', () => {
+describeConEmulador('comprobantes: la restricción más importante del sistema', () => {
   it('un vendedor NO puede crear un comprobante', async () => {
     await assertFails(
       setDoc(doc(comoVendedor(), 'comprobantes/inventado'), comprobanteDeEjemplo()),
@@ -186,7 +226,7 @@ describe('comprobantes: la restricción más importante del sistema', () => {
   })
 })
 
-describe('series: el contador no lo toca nadie desde el cliente', () => {
+describeConEmulador('series: el contador no lo toca nadie desde el cliente', () => {
   it('un vendedor NO puede incrementar el contador de su serie', async () => {
     await assertFails(
       updateDoc(doc(comoVendedor(), 'series/serie-1'), { ultimoNumero: 8 }),
@@ -215,7 +255,7 @@ describe('series: el contador no lo toca nadie desde el cliente', () => {
   })
 })
 
-describe('cotizaciones', () => {
+describeConEmulador('cotizaciones', () => {
   it('un vendedor NO puede marcar una cotización como convertida', async () => {
     // Sería la forma de burlar la protección contra la doble conversión: marcar
     // la cotización sin que haya nacido ningún comprobante.
@@ -280,7 +320,7 @@ describe('cotizaciones', () => {
   })
 })
 
-describe('usuarios', () => {
+describeConEmulador('usuarios', () => {
   it('un vendedor NO puede ascenderse a administrador', async () => {
     await assertFails(
       updateDoc(doc(comoVendedor(), 'usuarios/vendedor-1'), {
@@ -304,7 +344,7 @@ describe('usuarios', () => {
   })
 })
 
-describe('un vendedor desactivado no puede escribir nada (FR-003)', () => {
+describeConEmulador('un vendedor desactivado no puede escribir nada (FR-003)', () => {
   it('ni crear un cliente', async () => {
     await assertFails(
       setDoc(doc(comoDesactivado(), 'clientes/20123456789'), {
@@ -334,7 +374,7 @@ describe('un vendedor desactivado no puede escribir nada (FR-003)', () => {
   })
 })
 
-describe('clientes', () => {
+describeConEmulador('clientes', () => {
   it('un vendedor crea un cliente con forma válida', async () => {
     await assertSucceeds(
       setDoc(doc(comoVendedor(), 'clientes/20123456789'), {
@@ -395,7 +435,7 @@ describe('clientes', () => {
   })
 })
 
-describe('instantáneas de solo lectura', () => {
+describeConEmulador('instantáneas de solo lectura', () => {
   it('un vendedor lee el catálogo, el índice de clientes y los parámetros', async () => {
     const bd = comoVendedor()
     await assertSucceeds(getDoc(doc(bd, 'catalogo/actual')))
@@ -415,7 +455,7 @@ describe('instantáneas de solo lectura', () => {
   })
 })
 
-describe('la regla por defecto niega', () => {
+describeConEmulador('la regla por defecto niega', () => {
   it('una colección no prevista es inaccesible', async () => {
     await assertFails(getDoc(doc(comoVendedor(), 'coleccion-inventada/algo')))
     await assertFails(

@@ -3,18 +3,20 @@ import {
   calcularLineas,
   calcularTotal,
   normalizarCantidad,
-  pedidoEsEmitible
-  
-  
-  
+  pedidoEsEmitible,
 } from '../../domain/totales/calculo.ts'
-import type {Centimos, LineaCalculada, LineaDePedido} from '../../domain/totales/calculo.ts';
+import type {
+  Centimos,
+  LineaCalculada,
+  LineaDePedido,
+} from '../../domain/totales/calculo.ts'
 import type { TipoElegible } from '../../domain/documentos/tipos.ts'
 import {
   guardarPedido,
   leerPedido,
   olvidarPedido,
 } from '../../infra/local/pedido.ts'
+import { generarClaveDeIdempotencia } from '../emision/clave.ts'
 
 /**
  * El almacén del pedido en curso.
@@ -87,9 +89,6 @@ const ESTADO_INICIAL: EstadoDelPedido = {
   restaurando: true,
 }
 
-function generarClave(): string {
-  return crypto.randomUUID()
-}
 
 export const usarPedido = create<AlmacenDelPedido>((set, get) => {
   function persistir(): void {
@@ -170,7 +169,7 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
     reclamarClaveDeIdempotencia() {
       const yaReclamada = get().claveIdempotencia
       if (yaReclamada !== null) return yaReclamada
-      const clave = generarClave()
+      const clave = generarClaveDeIdempotencia()
       set({ claveIdempotencia: clave })
       persistir()
       return clave

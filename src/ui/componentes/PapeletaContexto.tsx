@@ -31,6 +31,7 @@ export function PapeletaContexto({
   descripcion,
   children,
   pie,
+  noSeCierraSola = false,
 }: {
   readonly abierta: boolean
   readonly alCambiar: (abierta: boolean) => void
@@ -38,6 +39,13 @@ export function PapeletaContexto({
   readonly descripcion?: string
   readonly children: ReactNode
   readonly pie?: ReactNode
+  /**
+   * Impide cerrarla con Escape o pulsando fuera. Se usa en un solo sitio y por un
+   * motivo concreto: cuando la emisión queda sin confirmar, un vendedor con prisa
+   * pulsa Escape por reflejo y se perdería la única indicación de que **no debe
+   * volver a emitir**. Para todo lo demás, cerrar por reflejo es lo deseable.
+   */
+  readonly noSeCierraSola?: boolean
 }) {
   return (
     <Dialog.Root open={abierta} onOpenChange={alCambiar}>
@@ -47,6 +55,12 @@ export function PapeletaContexto({
             que poder consultarlo mientras resuelve la papeleta. */}
         <Dialog.Overlay className="fixed inset-0 bg-tinta/25" />
         <Dialog.Content
+          onEscapeKeyDown={(evento) => {
+            if (noSeCierraSola) evento.preventDefault()
+          }}
+          onPointerDownOutside={(evento) => {
+            if (noSeCierraSola) evento.preventDefault()
+          }}
           className={[
             'fixed left-1/2 top-1/2 w-[min(34rem,calc(100vw-2rem))]',
             '-translate-x-1/2 -translate-y-1/2 rotate-[-1.2deg]',

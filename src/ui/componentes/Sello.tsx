@@ -59,6 +59,12 @@ export function MarcaEstado({ children }: { readonly children: string }) {
 }
 
 const TEXTOS: Partial<Record<EstadoDeComprobante, string>> = {
+  // `enviado` lleva sello igual que `aceptado`, y esto no es laxitud. Significa
+  // que el proveedor tiene el documento, lo firmó y lo está tramitando: el papel
+  // existe y el vendedor puede entregarlo. Además es la respuesta inmediata más
+  // frecuente, así que dejarlo sin sello habría hecho que el vendedor creyera que
+  // no pasó nada en la mayoría de las ventas.
+  enviado: 'EMITIDO',
   aceptado: 'EMITIDO',
   anulado: 'ANULADO',
   rechazado: 'RECHAZADO',
@@ -68,9 +74,9 @@ const TEXTOS: Partial<Record<EstadoDeComprobante, string>> = {
 }
 
 /**
- * La marca que corresponde a un estado. Los estados intermedios —`reclamado`,
- * `enviado`— no llevan ninguna: un comprobante en vuelo no es todavía nada, y
- * estamparle una marca sería afirmar algo que aún no se sabe.
+ * La marca que corresponde a un estado. `reclamado` no lleva ninguna: es el
+ * instante en que el correlativo está consumido y el proveedor aún no ha
+ * contestado, y estampar algo ahí sería afirmar lo que todavía no se sabe.
  */
 export function MarcaDeEstado({
   estado,
@@ -80,6 +86,6 @@ export function MarcaDeEstado({
   const texto = TEXTOS[estado]
   if (texto === undefined) return null
 
-  if (estado === 'aceptado') return <Sello>{texto}</Sello>
+  if (estado === 'aceptado' || estado === 'enviado') return <Sello>{texto}</Sello>
   return <MarcaEstado>{texto}</MarcaEstado>
 }

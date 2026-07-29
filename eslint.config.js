@@ -31,7 +31,13 @@ const config = [
   {
     name: 'suitpay/frontera-del-servidor',
     files: ['src/**/*.{ts,tsx}'],
-    ignores: ['src/server/**'],
+    // `src/routes/api/**` son manejadores de servidor: no tienen componente y
+    // nunca entran en el paquete del navegador, así que importar `src/server/`
+    // desde ahí es correcto. La excepción es estrecha y tiene una condición que
+    // hay que respetar al escribir en esa carpeta: **un archivo de `routes/api/`
+    // no puede exportar un `component`**. Si lo hiciera, pasaría a construirse
+    // para el cliente y arrastraría el Admin SDK con él.
+    ignores: ['src/server/**', 'src/routes/api/**'],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',

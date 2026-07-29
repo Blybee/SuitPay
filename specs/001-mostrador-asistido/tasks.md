@@ -128,44 +128,52 @@ De modo que las fases US1, US4, US5 y US8 llevan pruebas obligatorias. El resto 
 
 > Estas pruebas son exigidas por la constitución, no por preferencia. Escríbelas antes de la implementación y comprueba que fallan.
 
-- [ ] T042 [P] [US1] Prueba de idempotencia en `tests/unit/server/emitir-idempotencia.test.ts`: **dos invocaciones con la misma clave producen un solo comprobante** y la segunda devuelve `yaExistia` verdadero (FR-028, principio II)
-- [ ] T043 [P] [US1] Prueba de respuesta ausente en `tests/unit/server/emitir-indeterminado.test.ts`: cuando el proveedor no responde tras haber recibido la petición, el comprobante queda en `indeterminado` y **una nueva invocación no vuelve a emitir** (FR-029)
-- [ ] T044 [P] [US1] Prueba de fallo del proveedor en `tests/unit/server/emitir-proveedor-caido.test.ts`: la venta queda en `pendiente` con los datos de contacto conservados y se ofrece el documento interno (FR-050, FR-050a)
-- [ ] T045 [P] [US1] Prueba de rechazo definitivo en `tests/unit/server/emitir-rechazo.test.ts`: el comprobante queda `rechazado` con el motivo en su traza y **el correlativo consumido queda registrado como consumido** (FR-030)
-- [ ] T046 [P] [US1] Prueba de serie no configurada en `tests/unit/server/emitir-sin-serie.test.ts`: se rechaza con `serie_no_configurada` **antes** de tocar la serie o el proveedor (FR-031)
-- [ ] T047 [P] [US1] Prueba del umbral de identificación en `tests/unit/server/emitir-umbral.test.ts`: una boleta que supera el umbral con cliente eventual se rechaza con `cliente_requerido`, leyendo el umbral de `config/parametros` y no de una constante (FR-021)
-- [ ] T048 [P] [US1] Prueba de discrepancia de total en `tests/unit/server/emitir-total-servidor.test.ts`: cuando el total que envía el cliente difiere del recalculado, **manda el servidor**
-- [ ] T049 [P] [US1] Prueba de importe no positivo en `tests/unit/server/emitir-importe.test.ts`: una línea con importe cero o negativo impide la emisión (FR-013)
-- [ ] T050 [P] [US1] Prueba de integración de la transacción en `tests/emulador/emitir-transaccion.test.ts`: el comprobante y el incremento del correlativo ocurren **en la misma transacción**, y un fallo deja ambos sin efecto
-- [ ] T051 [US1] Prueba de extremo a extremo en `tests/e2e/venta-escrita.spec.ts`: buscar tres productos con los términos desordenados, ajustar un precio, cambiar de boleta a factura conservando el pedido, emitir, y comprobar que **una doble pulsación produce un solo comprobante**
+- [x] T042 [P] [US1] Prueba de idempotencia en `tests/unit/server/emitir-idempotencia.test.ts`: **dos invocaciones con la misma clave producen un solo comprobante** y la segunda devuelve `yaExistia` verdadero (FR-028, principio II)
+- [x] T043 [P] [US1] Prueba de respuesta ausente en `tests/unit/server/emitir-indeterminado.test.ts`: cuando el proveedor no responde tras haber recibido la petición, el comprobante queda en `indeterminado` y **una nueva invocación no vuelve a emitir** (FR-029)
+- [x] T044 [P] [US1] Prueba de fallo del proveedor en `tests/unit/server/emitir-proveedor-caido.test.ts`: la venta queda en `pendiente` con los datos de contacto conservados y se ofrece el documento interno (FR-050, FR-050a)
+- [x] T045 [P] [US1] Prueba de rechazo definitivo en `tests/unit/server/emitir-rechazo.test.ts`: el comprobante queda `rechazado` con el motivo en su traza y **el correlativo consumido queda registrado como consumido** (FR-030)
+- [x] T046 [P] [US1] Prueba de serie no configurada en `tests/unit/server/emitir-sin-serie.test.ts`: se rechaza con `serie_no_configurada` **antes** de tocar la serie o el proveedor (FR-031)
+- [x] T047 [P] [US1] Prueba del umbral de identificación en `tests/unit/server/emitir-umbral.test.ts`: una boleta que supera el umbral con cliente eventual se rechaza con `cliente_requerido`, leyendo el umbral de `config/parametros` y no de una constante (FR-021)
+- [x] T048 [P] [US1] Prueba de discrepancia de total en `tests/unit/server/emitir-total-servidor.test.ts`: cuando el total que envía el cliente difiere del recalculado, **manda el servidor**
+- [x] T049 [P] [US1] Prueba de importe no positivo en `tests/unit/server/emitir-importe.test.ts`: una línea con importe cero o negativo impide la emisión (FR-013)
+- [~] T050 [P] [US1] Prueba de integración de la transacción en `tests/emulador/emitir-transaccion.test.ts`: el comprobante y el incremento del correlativo ocurren **en la misma transacción**, y un fallo deja ambos sin efecto — *escrita, sin ejecutar: se salta con un aviso mientras falte Java (T022)*
+- [~] T051 [US1] Prueba de extremo a extremo en `tests/e2e/venta-escrita.spec.ts`: buscar tres productos con los términos desordenados, ajustar un precio, cambiar de boleta a factura conservando el pedido, emitir, y comprobar que **una doble pulsación produce un solo comprobante** — *partida en dos: la del pedido pasa hoy en escritorio y móvil; la de la doble pulsación se salta hasta que haya emuladores (T022)*
 
 ### Implementación de User Story 1
 
-- [ ] T052 [P] [US1] Implementar el espejo local del catálogo y la búsqueda en `src/features/catalogo/`, sobre el catálogo en caché y **sin depender de ningún servicio externo** (FR-007)
-- [ ] T053 [US1] Implementar el componente `Entrada` en `src/ui/componentes/Entrada.tsx`: campo único fijo arriba, a casi todo el ancho de la ventana, con foco al abrir, que sugiere productos del catálogo en caché sin latencia
-- [ ] T054 [P] [US1] Implementar `LineaPedido` en `src/ui/componentes/LineaPedido.tsx`: descripción a la izquierda; cantidad, precio e importe a la derecha en cifras tabulares, con **edición del precio en el sitio y sin validación**, mostrando el precio de catálogo tachado al lado (FR-012)
-- [ ] T055 [P] [US1] Implementar `CabeceraDocumento` en `src/ui/componentes/CabeceraDocumento.tsx`: tipo de documento, serie y cliente, fija y **sin destruir el pedido al cambiar de tipo** (FR-014)
-- [ ] T056 [P] [US1] Implementar la etiqueta **SIN VALOR TRIBUTARIO** en `src/ui/componentes/EtiquetaSinValor.tsx`, perfilada en rojo junto al tipo de documento, presente en nota de venta y documento interno y **ausente en los comprobantes regulados** (FR-036)
-- [ ] T057 [US1] Implementar `PieTotal` en `src/ui/componentes/PieTotal.tsx`: barra anclada al pie con recuento de líneas, medio de pago, total al mayor tamaño de la pantalla y botón de emitir en la esquina. El botón **se deshabilita en el instante de la pulsación**; cuando no se puede emitir, queda inhabilitado con el motivo dicho en rojo debajo
-- [ ] T058 [US1] Implementar la pantalla única de venta en `src/routes/index.tsx`, ensamblando entrada, cabecera, pedido y pie, **sin ninguna métrica, gráfico ni contador del día**
-- [ ] T059 [P] [US1] Implementar la generación de la clave de idempotencia en `src/features/emision/clave.ts`, que **identifica la intención de venta y no la petición**: un reintento del mismo gesto reutiliza la misma clave
-- [ ] T060 [US1] Implementar el consumo transaccional del correlativo en `src/server/emision/series.ts`, incrementando `ultimoNumero` y registrando todo consumo, incluidos los que acaben en fallo (FR-030)
-- [ ] T061 [US1] Implementar la función de servidor `emitirComprobante` en `src/server/emision/emitir.ts` según `contracts/functions.md`, con el orden que la constitución exige: validar, recalcular, comprobar umbral, **abrir transacción y crear el comprobante en estado `reclamado`, y solo entonces invocar al proveedor**
-- [ ] T062 [US1] Implementar `emitir` en el adaptador de Factpro en `src/server/proveedor/factpro/emitir.ts`, con la clasificación de su respuesta en los tres modos de fallo
-- [ ] T063 [US1] Implementar la máquina de estados del comprobante en `src/server/emision/estados.ts` según `data-model.md`, **prohibiendo explícitamente la transición de `indeterminado` a una nueva emisión**
-- [ ] T064 [US1] Implementar el flujo de confirmación en el cliente en `src/features/emision/`, distinguiendo en la interfaz "emitido ahora" de "ya estaba emitido" mediante `yaExistia`
-- [ ] T065 [US1] Implementar los estados de emisión en la interfaz en `src/features/emision/estados.tsx`: en vuelo, emitido, rechazado, pendiente, **indeterminado sin ofrecer reintentar**, y requiere intervención sin cerrarse solo
-- [ ] T066 [US1] Implementar la recogida de datos de contacto y el documento interno de contingencia en `src/features/emision/contingencia.tsx`, marcado de forma inequívoca como sin valor tributario y pendiente de comprobante (FR-050a)
-- [ ] T067 [US1] Implementar la tarea programada `procesarPendientes` en `src/routes/api/procesar-pendientes.ts`, que completa la emisión de las ventas en espera y mueve a `requiere_intervencion` las que resulten rechazadas, **porque el cliente ya se fue con mercadería** (FR-050b)
-- [ ] T068 [US1] Implementar la tarea programada `reconciliarEmisiones` en `src/routes/api/reconciliar.ts`, que consulta al proveedor por los comprobantes `indeterminado` y adopta su estado real, con el sondeo acotado de la decisión 4 de `research.md`. **Nunca emite.** Es la contrapartida obligatoria de prohibir el reintento a ciegas
-- [ ] T069 [US1] Proteger las dos rutas programadas en `src/server/auth/programadas.ts` con un secreto compartido, y configurar Cloud Scheduler para invocarlas periódicamente
-- [ ] T070 [P] [US1] Implementar la salida impresa en A4 en `src/features/emision/impresion.tsx` desde los puestos de escritorio (FR-053)
-- [ ] T071 [P] [US1] Implementar la obtención del comprobante como archivo compartible en `src/features/emision/compartir.ts`, pensada para el móvil (FR-054)
-- [ ] T072 [US1] Implementar la reimpresión de un comprobante ya emitido en `src/features/emision/reimprimir.ts`, de forma que **un fallo de impresión no invalide ni repita la emisión** (FR-055)
-- [ ] T073 [US1] Implementar la sesión persistente entre jornadas en `src/features/sesion/`, con revalidación en segundo plano y **bloqueo de la emisión cuando la sesión ya no sea válida o el vendedor esté desactivado** (FR-002, FR-003)
-- [ ] T074 [P] [US1] Implementar el estado de pedido vacío en `src/routes/index.tsx`: columna con sus cabeceras de columna y la entrada enfocada, **sin ilustración ni mensaje de bienvenida**
+- [x] T052 [P] [US1] Implementar el espejo local del catálogo y la búsqueda en `src/features/catalogo/`, sobre el catálogo en caché y **sin depender de ningún servicio externo** (FR-007)
+- [x] T053 [US1] Implementar el componente `Entrada` en `src/ui/componentes/Entrada.tsx`: campo único fijo arriba, a casi todo el ancho de la ventana, con foco al abrir, que sugiere productos del catálogo en caché sin latencia
+- [x] T054 [P] [US1] Implementar `LineaPedido` en `src/ui/componentes/LineaPedido.tsx`: descripción a la izquierda; cantidad, precio e importe a la derecha en cifras tabulares, con **edición del precio en el sitio y sin validación**, mostrando el precio de catálogo tachado al lado (FR-012)
+- [x] T055 [P] [US1] Implementar `CabeceraDocumento` en `src/ui/componentes/CabeceraDocumento.tsx`: tipo de documento, serie y cliente, fija y **sin destruir el pedido al cambiar de tipo** (FR-014)
+- [x] T056 [P] [US1] Implementar la etiqueta **SIN VALOR TRIBUTARIO** en `src/ui/componentes/EtiquetaSinValor.tsx`, perfilada en rojo junto al tipo de documento, presente en nota de venta y documento interno y **ausente en los comprobantes regulados** (FR-036)
+- [x] T057 [US1] Implementar `PieTotal` en `src/ui/componentes/PieTotal.tsx`: barra anclada al pie con recuento de líneas, medio de pago, total al mayor tamaño de la pantalla y botón de emitir en la esquina. El botón **se deshabilita en el instante de la pulsación**; cuando no se puede emitir, queda inhabilitado con el motivo dicho en rojo debajo
+- [x] T058 [US1] Implementar la pantalla única de venta en `src/routes/index.tsx`, ensamblando entrada, cabecera, pedido y pie, **sin ninguna métrica, gráfico ni contador del día**
+- [x] T059 [P] [US1] Implementar la generación de la clave de idempotencia en `src/features/emision/clave.ts`, que **identifica la intención de venta y no la petición**: un reintento del mismo gesto reutiliza la misma clave
+- [x] T060 [US1] Implementar el consumo transaccional del correlativo en `src/server/emision/series.ts`, incrementando `ultimoNumero` y registrando todo consumo, incluidos los que acaben en fallo (FR-030)
+- [x] T061 [US1] Implementar la función de servidor `emitirComprobante` en `src/server/emision/emitir.ts` según `contracts/functions.md`, con el orden que la constitución exige: validar, recalcular, comprobar umbral, **abrir transacción y crear el comprobante en estado `reclamado`, y solo entonces invocar al proveedor**
+- [x] T062 [US1] Implementar `emitir` en el adaptador de Factpro en `src/server/proveedor/factpro/emitir.ts`, con la clasificación de su respuesta en los tres modos de fallo
+- [x] T063 [US1] Implementar la máquina de estados del comprobante en `src/server/emision/estados.ts` según `data-model.md`, **prohibiendo explícitamente la transición de `indeterminado` a una nueva emisión**
+- [x] T064 [US1] Implementar el flujo de confirmación en el cliente en `src/features/emision/`, distinguiendo en la interfaz "emitido ahora" de "ya estaba emitido" mediante `yaExistia`
+- [x] T065 [US1] Implementar los estados de emisión en la interfaz en `src/features/emision/estados.tsx`: en vuelo, emitido, rechazado, pendiente, **indeterminado sin ofrecer reintentar**, y requiere intervención sin cerrarse solo
+- [x] T066 [US1] Implementar la recogida de datos de contacto y el documento interno de contingencia en `src/features/emision/contingencia.tsx`, marcado de forma inequívoca como sin valor tributario y pendiente de comprobante (FR-050a)
+- [x] T067 [US1] Implementar la tarea programada `procesarPendientes` en `src/routes/api/procesar-pendientes.ts`, que completa la emisión de las ventas en espera y mueve a `requiere_intervencion` las que resulten rechazadas, **porque el cliente ya se fue con mercadería** (FR-050b)
+- [x] T068 [US1] Implementar la tarea programada `reconciliarEmisiones` en `src/routes/api/reconciliar.ts`, que consulta al proveedor por los comprobantes `indeterminado` y adopta su estado real, con el sondeo acotado de la decisión 4 de `research.md`. **Nunca emite.** Es la contrapartida obligatoria de prohibir el reintento a ciegas
+- [~] T069 [US1] Proteger las dos rutas programadas en `src/server/auth/programadas.ts` con un secreto compartido, y configurar Cloud Scheduler para invocarlas periódicamente — *el secreto está puesto; Cloud Scheduler necesita el proyecto real (T010)*
+- [x] T070 [P] [US1] Implementar la salida impresa en A4 en `src/features/emision/impresion.ts` desde los puestos de escritorio (FR-053) — *`.ts` y no `.tsx`: se imprime el PDF del proveedor, así que no hay plantilla que maquetar*
+- [x] T071 [P] [US1] Implementar la obtención del comprobante como archivo compartible en `src/features/emision/compartir.ts`, pensada para el móvil (FR-054)
+- [x] T072 [US1] Implementar la reimpresión de un comprobante ya emitido en `src/features/emision/reimprimir.ts`, de forma que **un fallo de impresión no invalide ni repita la emisión** (FR-055)
+- [x] T073 [US1] Implementar la sesión persistente entre jornadas en `src/features/sesion/`, con revalidación en segundo plano y **bloqueo de la emisión cuando la sesión ya no sea válida o el vendedor esté desactivado** (FR-002, FR-003)
+- [x] T074 [P] [US1] Implementar el estado de pedido vacío en `src/routes/index.tsx`: columna con sus cabeceras de columna y la entrada enfocada, **sin ilustración ni mensaje de bienvenida**
 
-**Checkpoint**: User Story 1 funciona de extremo a extremo. La empresa puede vender. Es el MVP.
+**Checkpoint**: User Story 1 está implementada y su lógica verificada con 128 pruebas que pasan. La marca `[~]` señala lo que está escrito pero **no ejecutado todavía**, y conviene no confundirlo con hecho.
+
+Lo que falta para poder decir que la empresa vende, y en este orden:
+
+1. **Java** (T022), que desbloquea de golpe las reglas de seguridad, la transacción contra Firestore de T050 y la mitad de emisión de T051. Es el paso con mejor relación entre esfuerzo y certeza que se gana.
+2. **El proyecto real de Firebase** (T010), para salir del emulador.
+3. **El entorno de demostración del proveedor** (T027), que es la única forma de confirmar que Factpro respeta un número explícito. De eso depende que la reconciliación sepa a qué comprobante se refiere una respuesta, así que la asunción sigue viva hasta comprobarla.
+
+No hay pantalla de acceso: la sesión persiste y bloquea la emisión cuando no es válida (T073), pero entrar por primera vez todavía no tiene interfaz. La prueba de extremo a extremo lo sortea sembrando la sesión, y eso está anotado en `tests/e2e/ayudas-sesion.ts` para que se borre cuando la pantalla exista.
 
 ---
 

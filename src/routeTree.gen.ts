@@ -10,33 +10,53 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiProcesarPendientesRouteImport } from './routes/api/procesar-pendientes'
+import { Route as ApiReconciliarRouteImport } from './routes/api/reconciliar'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiProcesarPendientesRoute = ApiProcesarPendientesRouteImport.update({
+  id: '/api/procesar-pendientes',
+  path: '/api/procesar-pendientes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReconciliarRoute = ApiReconciliarRouteImport.update({
+  id: '/api/reconciliar',
+  path: '/api/reconciliar',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/api/procesar-pendientes': typeof ApiProcesarPendientesRoute
+  '/api/reconciliar': typeof ApiReconciliarRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/api/procesar-pendientes': typeof ApiProcesarPendientesRoute
+  '/api/reconciliar': typeof ApiReconciliarRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/api/procesar-pendientes': typeof ApiProcesarPendientesRoute
+  '/api/reconciliar': typeof ApiReconciliarRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/api/procesar-pendientes' | '/api/reconciliar'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/api/procesar-pendientes' | '/api/reconciliar'
+  id: '__root__' | '/' | '/api/procesar-pendientes' | '/api/reconciliar'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApiProcesarPendientesRoute: typeof ApiProcesarPendientesRoute
+  ApiReconciliarRoute: typeof ApiReconciliarRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +68,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/procesar-pendientes': {
+      id: '/api/procesar-pendientes'
+      path: '/api/procesar-pendientes'
+      fullPath: '/api/procesar-pendientes'
+      preLoaderRoute: typeof ApiProcesarPendientesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/reconciliar': {
+      id: '/api/reconciliar'
+      path: '/api/reconciliar'
+      fullPath: '/api/reconciliar'
+      preLoaderRoute: typeof ApiReconciliarRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApiProcesarPendientesRoute: ApiProcesarPendientesRoute,
+  ApiReconciliarRoute: ApiReconciliarRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

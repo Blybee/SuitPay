@@ -70,6 +70,12 @@
   --text-aviso: 1.125rem;
   --text-aviso--line-height: 1.5rem;
 
+  /* La entrada y el botón de emitir: los dos elementos que más se manipulan y
+     los únicos que se tocan de pie con el cliente delante. Grandes por la
+     escena, no por énfasis. */
+  --text-entrada: 1.375rem;
+  --text-entrada--line-height: 2rem;
+
   /* El único elemento legible desde otro puesto. */
   --text-total: 3.25rem;
   --text-total--line-height: 1;
