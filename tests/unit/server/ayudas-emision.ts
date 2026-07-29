@@ -43,13 +43,16 @@ export function montarEscenario(
   for (const tipo of opciones.series ?? ['boleta', 'factura']) {
     const serie = prefijos[tipo]
     if (serie === undefined) continue
+    const ultimoNumero = opciones.ultimoNumero ?? 0
     almacen.sembrarSerie({
       id: idDeSerie(VENDEDOR, tipo),
       serie,
       tipoDocumento: tipo,
       vendedorId: VENDEDOR,
-      ultimoNumero: opciones.ultimoNumero ?? 0,
-      ultimoNumeroConfirmado: opciones.ultimoNumero ?? 0,
+      // Por omisión: origen 1 con ultimoNumero 0 (primer reclamado = 1).
+      numeroInicial: ultimoNumero + 1,
+      ultimoNumero,
+      ultimoNumeroConfirmado: ultimoNumero,
       activa: true,
     })
   }

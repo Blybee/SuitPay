@@ -45,8 +45,9 @@ import { necesitaCorrelativoRegulado, reclamarCorrelativo } from './series.ts'
  * 2. **Comprobar el umbral.** Antes de tocar la serie, porque es un rechazo que
  *    el vendedor puede resolver pidiendo el documento al cliente, y sería absurdo
  *    quemar un correlativo por ello.
- * 3. **Transacción**: buscar la clave; si el comprobante ya existe, devolver su
- *    estado sin emitir; si no, consumir el correlativo y crear el documento en
+ * 3. **Transacción**: buscar la clave; si el comprobante ya existe y no está
+ *    `pendiente`, devolver su estado sin emitir; si está `pendiente`, permitir
+ *    reintento manual; si no existe, consumir el correlativo y crear en
  *    `reclamado`.
  * 4. **Solo entonces**, invocar al proveedor.
  * 5. Actualizar el estado y anotar el intento en la traza.
@@ -174,11 +175,19 @@ export async function emitirComprobante(
     momento: ahora(),
   })
 
-  // Un comprobante que ya existía se devuelve tal cual. **No se vuelve a
-  // invocar al proveedor**, ni siquiera si quedó en un estado desde el que
-  // parecería razonable reintentar: decidir eso aquí sería saltarse la máquina
-  // de estados.
+  // Comprobante ya existente con la misma clave.
+  //
+  // Solo `pendiente` autoriza reinvocar al proveedor (decisión 10): consta que
+  // no hay documento. `reclamado` NO: es el caso del doble clic / petición en
+  // vuelo; reemitir duplicaría. Un `reclamado` huérfano se aclara con
+  // `consultarEstadoEmision` (si no existe → `pendiente` → reintento seguro).
   if (reclamo.yaExistia) {
+    if (reclamo.comprobante.estado === 'pendiente') {
+      return invocarProveedorYRegistrar(contexto, reclamo.comprobante, {
+        totalCorregido,
+        momento: ahora(),
+      })
+    }
     return respuestaDe(reclamo.comprobante, { yaExistia: true, totalCorregido })
   }
 
@@ -401,8 +410,7 @@ async function invocarProveedorYRegistrar(
 
   // El correlativo se confirma en cuanto consta que el proveedor tiene el
   // documento, sin esperar la constancia de la autoridad. Si se esperase a
-  // `aceptado`, todos los números en tránsito quedarían marcados como dudosos y
-  // el sondeo de la reconciliación tendría que revisar la jornada entera.
+  // `aceptado`, todos los números en tránsito quedarían marcados como dudosos.
   if (ventaEstaCerrada(estado) && comprobante.serie !== '') {
     await contexto.almacen.confirmarCorrelativo(
       idDeSerie(contexto.vendedorId, comprobante.tipoDocumento),

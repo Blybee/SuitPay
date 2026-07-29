@@ -8,6 +8,12 @@ credentials.json
 serviceAccount*.json
 
 # Dependencias y salidas de construcción
+#
+# `node_modules/` NO se versiona. Lo que sí se versiona es `package-lock.json`:
+# en su interior aparecen claves con el prefijo "node_modules/...", y eso es
+# normal. Sirve para que `npm ci` instale las mismas versiones en otro equipo
+# o en CI. Si en la UI de commit ves miles de rutas "node_modules/@…", estás
+# mirando el diff de package-lock.json, no la carpeta instalada.
 node_modules/
 dist/
 dist-ssr/
@@ -16,8 +22,13 @@ dist-ssr/
 .tanstack/
 .vinxi/
 .wrangler/
+.vite/
 *.local
+*.tsbuildinfo
 __unconfig*
+
+# Estado local de herramientas (no es código del producto)
+.impeccable/
 
 # Pruebas
 coverage/

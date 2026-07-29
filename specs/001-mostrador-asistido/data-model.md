@@ -27,7 +27,7 @@ Documento único con el catálogo completo. Escrito solo por el backend.
 | `publicadoEn` | marca de tiempo | |
 | `publicadoPor` | cadena | Identificador del administrador. |
 | `totalProductos` | número | Para mostrar en la administración sin recorrer el arreglo. |
-| `productos` | arreglo de objetos | El catálogo. Cada elemento: `codigo`, `descripcion`, `unidad`, `precio` (con impuesto incluido), `activo`. |
+| `productos` | arreglo de objetos | El catálogo. Cada elemento: `codigo`, `descripcion` (`{marca} {nombre} [{variante}]`), `unidad` (p. ej. `NIU`), `precio` mayorista en céntimos con impuesto incluido, `activo`. La marca no es un campo aparte: va en la descripción (decisión 11). |
 
 **Acceso**: una lectura por sesión y dispositivo. El cliente espeja el documento en IndexedDB con su `version` y busca localmente.
 
@@ -79,8 +79,8 @@ El documento central del sistema. **Su identificador es la clave de idempotencia
 | Campo | Tipo | Notas |
 |-------|------|-------|
 | `estado` | cadena | Ver la máquina de estados abajo. |
-| `tipoDocumento` | cadena | Boleta, factura, nota de venta o documento interno de contingencia. |
-| `serie` | cadena | Vacía en los documentos internos. |
+| `tipoDocumento` | cadena | Boleta, factura o nota de venta. |
+| `serie` | cadena | Serie reclamada al emitir. |
 | `numero` | número | Correlativo consumido. Nulo mientras no se haya reclamado. |
 | `cliente` | objeto | Instantánea al emitir: tipo y número de documento, denominación, dirección. Nulo o marcado como eventual si no se identificó. |
 | `lineas` | arreglo de objetos | Cada línea: `codigo`, `descripcion`, `unidad`, `cantidad`, `precio` con impuesto incluido, `importe`. Instantánea, no referencia. |
@@ -92,41 +92,41 @@ El documento central del sistema. **Su identificador es la clave de idempotencia
 | `anulacion` | objeto | `motivo`, `autor`, `momento`, `estado`. Embebido. Nulo si no se anuló. |
 | `cotizacionId` | cadena | Origen, si vino de una cotización. |
 | `capturaId` | cadena | Origen, si vino de un dictado o una fotografía. |
-| `contacto` | objeto | Teléfono y tipo de documento deseado, recogidos cuando la emisión queda pendiente por indisponibilidad del proveedor (FR-050). |
 | `intentos` | arreglo de objetos | Cada invocación al proveedor con su momento y su resultado. Es la traza que exige el principio de trazabilidad, incluidos los intentos fallidos. |
 
 #### Máquina de estados
 
 ```text
-                     ┌──────────────┐
-                     │  reclamado   │  creado en transacción, correlativo consumido,
-                     └──────┬───────┘  proveedor aún no invocado
-                            │
-                 ┌──────────┴──────────┐
-                 ▼                     ▼
-         ┌──────────────┐      ┌────────────────┐
-         │   enviado    │      │ indeterminado  │  respuesta ausente:
-         └──────┬───────┘      └───────┬────────┘  NO se reintenta a ciegas
-                │                      │
-      ┌─────────┼─────────┐            │ reconciliación
-      ▼         ▼         ▼            │
-┌──────────┐ ┌────────┐ ┌──────────┐   │
-│ aceptado │ │rechazado│ │ pendiente│◄──┘
-└────┬─────┘ └────────┘ └────┬─────┘   (o → requiere_intervencion)
-     │                       │
-     ▼                       └──► reintento programado ──► enviado
-┌──────────┐
-│ anulado  │  solo el mismo día (FR-037)
-└──────────┘
+                     +--------------+
+                     |  reclamado   |  creado en transacción, correlativo consumido,
+                     +------+-------+  proveedor aún no invocado
+                            |
+          +-----------------+-----------------+
+          v                 v                 v
+  +--------------+  +----------------+  +----------+
+  |   enviado    |  | indeterminado  |  | pendiente|  proveedor caído:
+  +------+-------+  +-------+--------+  +----+-----+  consta que no hay doc
+         |                  |                |
+         |                  | consulta       | reintento manual
+         |                  | bajo demanda   | (misma clave)
+         |                  v                v
+      +--+---+--------+  (adopta estado   enviado / ...
+      v      v        v   real o vuelve
+ aceptado rechazado  ...  a pendiente)
+      |
+      v
++----------+
+| anulado  |  solo el mismo día (FR-037)
++----------+
 ```
 
 **Reglas de transición que el diseño garantiza:**
 
 - El documento **se crea antes** de invocar al proveedor. Nunca después. Es la condición que hace imposible el duplicado por reintento en vuelo.
-- Una segunda petición con la misma clave encuentra el documento y devuelve su estado. No emite.
-- Desde `indeterminado` **está prohibido** volver a invocar la emisión. Solo se sale por reconciliación, que consulta al proveedor.
-- `pendiente` es el estado de la venta cuando el proveedor no responde: se entregó un documento interno y el comprobante real se emitirá al restablecerse el servicio.
-- `requiere_intervencion` es el destino de una reconciliación que no pudo determinar qué ocurrió, y de un pendiente que resultó rechazado con el cliente ya ido. No se cierra en silencio.
+- Una segunda petición con la misma clave encuentra el documento: solo si está `pendiente` reintenta emitir; en cualquier otro estado (incluido `reclamado` en vuelo) devuelve el estado sin emitir de nuevo.
+- Desde `indeterminado` **está prohibido** volver a invocar la emisión. Solo se sale por **consulta bajo demanda** (`consultarEstadoEmision`), que pregunta al proveedor y nunca emite.
+- `pendiente` es el estado cuando el proveedor está caído y **consta** que no se emitió. El vendedor reintenta a mano con la misma clave (decisión 10 / FR-050).
+- `requiere_intervencion` es el destino de una consulta que no pudo determinar qué ocurrió. No se cierra en silencio.
 - `anulado` solo es alcanzable el mismo día de la emisión. Después, la corrección es un documento nuevo.
 - Ninguna transición borra el documento. La anulación es un cambio de estado.
 
@@ -141,9 +141,12 @@ Una serie por vendedor y tipo de documento. Documentos pequeños con el contador
 | `serie` | cadena | Máximo 4 caracteres, con el prefijo que exige el tipo de documento. |
 | `tipoDocumento` | cadena | |
 | `vendedorId` | cadena | |
-| `ultimoNumero` | número | Último correlativo reclamado. Se incrementa en la misma transacción que crea el comprobante. |
-| `ultimoNumeroConfirmado` | número | Último correlativo con emisión confirmada. Es el punto de partida del sondeo de reconciliación. |
+| `numeroInicial` | número | Origen configurado al dar de alta la serie (ej. `0` o `100`). Debe coincidir con el número de arranque registrado en el panel del proveedor. Inmutable tras la primera emisión, o solo editable con procedimiento administrativo explícito. |
+| `ultimoNumero` | número | Último correlativo reclamado. Al crear la serie sin emisiones: `numeroInicial - 1` (el siguiente reclamado es `numeroInicial`). Se incrementa en la misma transacción que crea el comprobante. |
+| `ultimoNumeroConfirmado` | número | Último correlativo con emisión confirmada. Traza operativa. Al crear la serie: igual que `ultimoNumero`. |
 | `activa` | booleano | |
+
+**Origen del contador (volcado 5 / FR-031a)**: no se asume que toda serie empiece en cero. Ejemplos: `numeroInicial = 0` → primer comprobante `F001-0`; `numeroInicial = 100` → `F002-100`.
 
 **Hotspotting**: cada serie pertenece a un solo vendedor, así que su contador recibe como máximo una escritura por venta de esa persona — muy por debajo del límite de una escritura por segundo por documento. Es precisamente el patrón distribuido que la regla de hotspotting recomienda, obtenido gratis por el hecho de que cada vendedor tiene serie propia.
 
@@ -213,7 +216,7 @@ Con la edición Standard los índices de campo único se crean automáticamente;
 |-----------|--------|------|
 | `comprobantes` | `cliente.numeroDocumento` asc, `emitidoEn` desc | Últimos comprobantes de un cliente (US9). |
 | `comprobantes` | `vendedorId` asc, `emitidoEn` desc | Comprobantes del día de un vendedor, para localizar el que se va a anular. |
-| `comprobantes` | `estado` asc, `emitidoEn` asc | Barrido de pendientes e indeterminados por las tareas programadas. |
+| `comprobantes` | `estado` asc, `emitidoEn` asc | Consultas administrativas por estado (no hay barrido programado; decisión 10). |
 | `comprobantes` | `cliente.numeroDocumento` asc, `condicionPago.estadoCobro` asc | Ventas a crédito pendientes de un cliente (FR-035). |
 | `cotizaciones` | `estado` asc, `creadoEn` desc | Cotizaciones pendientes. |
 

@@ -122,6 +122,7 @@ beforeEach(async () => {
       serie: 'B001',
       tipoDocumento: 'boleta',
       vendedorId: 'vendedor-1',
+      numeroInicial: 1,
       ultimoNumero: 7,
       ultimoNumeroConfirmado: 7,
       activa: true,

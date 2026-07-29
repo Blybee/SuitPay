@@ -29,7 +29,11 @@ export const esquemaDeProducto = z.object({
   codigo: z.string().trim().min(1).max(40),
   descripcion: z.string().trim().min(1).max(300),
   unidad: z.string().trim().min(1).max(20),
-  precio: importeEnCentimos.positive('El precio del catálogo debe ser positivo'),
+  // 0 se admite en importación cuando la tienda no trae wholesale (decisión
+  // US2); el vendedor no podrá emitir esa línea sin poner precio (FR-013).
+  precio: importeEnCentimos.nonnegative(
+    'El precio del catálogo no puede ser negativo',
+  ),
   activo: z.boolean(),
 })
 
@@ -155,8 +159,14 @@ export const esquemaDeSerie = z.object({
   serie: z.string().trim().min(1).max(4),
   tipoDocumento: z.enum(TIPOS_DE_DOCUMENTO),
   vendedorId: z.string().trim().min(1),
-  ultimoNumero: z.number().int().nonnegative(),
-  ultimoNumeroConfirmado: z.number().int().nonnegative(),
+  /** Origen del correlativo (ej. 0 → primer doc `serie-0`; 100 → `serie-100`). */
+  numeroInicial: z.number().int().nonnegative(),
+  /**
+   * Último reclamado. Al crear la serie sin emisiones: `numeroInicial - 1`
+   * (puede ser -1 si el origen es 0).
+   */
+  ultimoNumero: z.number().int().min(-1),
+  ultimoNumeroConfirmado: z.number().int().min(-1),
   activa: z.boolean(),
 })
 

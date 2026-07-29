@@ -5,8 +5,8 @@
 # Las variables con `availability: [BUILD, RUNTIME]` y valor literal son
 # públicas: acaban dentro del paquete que se descarga el navegador. Ahí solo
 # puede haber configuración del cliente de Firebase, que es pública por diseño
-# porque lo que protege los datos son las reglas de seguridad y App Check, no el
-# secreto de un identificador de proyecto.
+# porque lo que protege los datos son las reglas de seguridad y la sesión en el
+# servidor, no el secreto de un identificador de proyecto.
 #
 # Las variables con `secret:` se resuelven contra Secret Manager y llevan
 # `availability: [RUNTIME]` únicamente. Nunca BUILD: una variable disponible en
@@ -25,30 +25,27 @@ runConfig:
 env:
   # --- Configuración pública del cliente de Firebase ---------------------
 
+  # Valores públicos del cliente web (proyecto blayblocklabs-antrax).
+  # No son secretos: la protección real son las reglas de Firestore + Auth.
+  # App Check queda fuera de alcance de esta entrega.
   - variable: VITE_FIREBASE_API_KEY
-    value: POR_DEFINIR
+    value: AIzaSyAE70aXoC2NyIXBjn5EOV75-8WissmTvM0
     availability: [BUILD, RUNTIME]
 
   - variable: VITE_FIREBASE_AUTH_DOMAIN
-    value: POR_DEFINIR
+    value: blayblocklabs-antrax.firebaseapp.com
     availability: [BUILD, RUNTIME]
 
   - variable: VITE_FIREBASE_PROJECT_ID
-    value: POR_DEFINIR
+    value: blayblocklabs-antrax
     availability: [BUILD, RUNTIME]
 
   - variable: VITE_FIREBASE_STORAGE_BUCKET
-    value: POR_DEFINIR
+    value: blayblocklabs-antrax.firebasestorage.app
     availability: [BUILD, RUNTIME]
 
   - variable: VITE_FIREBASE_APP_ID
-    value: POR_DEFINIR
-    availability: [BUILD, RUNTIME]
-
-  # Clave pública del proveedor de reCAPTCHA que usa App Check. Es pública por
-  # diseño; lo que la hace útil es que el dominio esté registrado.
-  - variable: VITE_APP_CHECK_CLAVE_SITIO
-    value: POR_DEFINIR
+    value: 1:930183430226:web:c0f4d1d9ac8f84a2651f8b
     availability: [BUILD, RUNTIME]
 
   # --- Configuración del servidor, no secreta ----------------------------
@@ -64,7 +61,7 @@ env:
   # Punto de entrada del proveedor de emisión. Se cambia a su entorno de
   # demostración para las pruebas de integración sin tocar código.
   - variable: PROVEEDOR_URL_BASE
-    value: POR_DEFINIR
+    value: https://api.factpro.la
     availability: [RUNTIME]
 
   # --- Secretos -----------------------------------------------------------
@@ -84,11 +81,4 @@ env:
 
   - variable: ASISTENCIA_CLAVE_SECUNDARIA
     secret: suitpay-asistencia-clave-secundaria
-    availability: [RUNTIME]
-
-  # Las dos tareas periódicas se exponen como rutas de servidor y las dispara
-  # Cloud Scheduler. Este secreto compartido es lo que impide que cualquiera en
-  # internet ejecute una reconciliación.
-  - variable: TAREAS_SECRETO_COMPARTIDO
-    secret: suitpay-tareas-secreto-compartido
     availability: [RUNTIME]

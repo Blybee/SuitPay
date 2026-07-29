@@ -23,9 +23,8 @@ export function Sello({ children }: { readonly children: string }) {
   return (
     <span
       className={[
-        'inline-block -rotate-[7deg] border-4 border-sello px-3 py-1',
+        'inline-block -rotate-[7deg] rounded-full border-2 border-sello px-4 py-1',
         'font-mono text-cabecera font-bold uppercase tracking-widest text-sello',
-        // Tinta desigual: un sello real nunca entinta parejo.
         'opacity-80',
       ].join(' ')}
     >
@@ -48,7 +47,7 @@ export function MarcaEstado({ children }: { readonly children: string }) {
   return (
     <span
       className={[
-        'inline-block -rotate-[3deg] border-4 border-aviso px-3 py-1',
+        'inline-block -rotate-[3deg] rounded-full border-2 border-aviso px-4 py-1',
         'font-mono text-cabecera font-bold uppercase tracking-widest text-aviso',
         'opacity-85',
       ].join(' ')}

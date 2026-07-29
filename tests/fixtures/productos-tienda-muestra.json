@@ -1,0 +1,376 @@
+[
+  {
+    "id": "dgx2LBlzoDHnW3ib9E6e",
+    "material": "Vara de bronce y manija cromada",
+    "category": "baño",
+    "sku": "",
+    "brand": "Fipalsa",
+    "stock": true,
+    "tiers": [],
+    "createdBy": "Dg9IndABnafrHf17FPxJWpGTaiI3",
+    "keywords": [
+      "palanca"
+    ],
+    "categories": [
+      "baño"
+    ],
+    "variants": [],
+    "createdAt": "2026-01-17T22:39:35.662Z",
+    "updatedBy": "Dg9IndABnafrHf17FPxJWpGTaiI3",
+    "isOffer": false,
+    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2Fdgx2LBlzoDHnW3ib9E6e%2F1769717428747_AnyConv.com__manubrio-metalica-para-inodoro-cromada.webp?alt=media&token=857b8f7e-788c-4de0-8ffa-e611759659a2",
+    "imageUrls": [
+      "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2Fdgx2LBlzoDHnW3ib9E6e%2F1769717428747_AnyConv.com__manubrio-metalica-para-inodoro-cromada.webp?alt=media&token=857b8f7e-788c-4de0-8ffa-e611759659a2"
+    ],
+    "name": " MANUBRIO CROMADO CON VARA DE BRONCE ",
+    "unitConfig": {
+      "baseUnit": "unit",
+      "unitPrices": {
+        "physical": 10,
+        "virtual": 8,
+        "wholesale": 6.5
+      },
+      "packages": [],
+      "boxes": []
+    },
+    "baseName": null,
+    "updatedAt": "2026-01-29T20:10:30.450Z"
+  },
+  {
+    "id": "ZC2AAxqj2eY7agleMpwM",
+    "material": "Bronce cromado",
+    "category": "general",
+    "sku": "",
+    "brand": "Valmax",
+    "stock": true,
+    "tiers": [],
+    "createdBy": "Dg9IndABnafrHf17FPxJWpGTaiI3",
+    "createdAt": "2026-01-25T23:51:18.712Z",
+    "updatedBy": "Dg9IndABnafrHf17FPxJWpGTaiI3",
+    "isOffer": false,
+    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2FZC2AAxqj2eY7agleMpwM%2F1769444984236_AnyConv.com__Screenshot_1.webp?alt=media&token=f9c40d84-5a18-475d-a905-888eae2cb84d",
+    "keywords": [
+      "valvula de bola",
+      "llave de paso",
+      "esfericas",
+      "valvula esferica"
+    ],
+    "categories": [
+      "general",
+      "griferías",
+      "jardín"
+    ],
+    "variants": [
+      {
+        "id": "1769446296930-0",
+        "name": "1/2\"",
+        "sku": "",
+        "attributes": {
+          "Medida": "1/2\""
+        },
+        "unitPrices": {
+          "physical": 12,
+          "virtual": 10,
+          "wholesale": 8.5
+        },
+        "stock": true
+      },
+      {
+        "id": "1769384938506-1",
+        "name": "3/4\"",
+        "sku": "",
+        "attributes": {
+          "Medida": "3/4\""
+        },
+        "unitPrices": {
+          "physical": 18,
+          "virtual": 14,
+          "wholesale": 12
+        },
+        "stock": true
+      },
+      {
+        "id": "1769384938506-2",
+        "name": "1\"",
+        "sku": "",
+        "attributes": {
+          "Medida": "1\""
+        },
+        "unitPrices": {
+          "physical": 24,
+          "virtual": 20,
+          "wholesale": 18
+        },
+        "stock": true
+      }
+    ],
+    "imageUrls": [
+      "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2FZC2AAxqj2eY7agleMpwM%2F1769444984236_AnyConv.com__Screenshot_1.webp?alt=media&token=f9c40d84-5a18-475d-a905-888eae2cb84d",
+      "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2FZC2AAxqj2eY7agleMpwM%2F1769451075797_AnyConv.com__Screenshot_1%20(1).webp?alt=media&token=9b5ee724-a307-4bda-a817-d6a9c1260c9e",
+      "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2FZC2AAxqj2eY7agleMpwM%2F1769451076622_AnyConv.com__Screenshot_1%20(1).webp?alt=media&token=f34c83d7-619a-434a-a2d9-1e1a2ba2b593"
+    ],
+    "name": " VALVULA ESFER. BRC. P/ ROJA    ",
+    "updatedAt": "2026-01-26T18:32:51.613Z"
+  },
+  {
+    "id": "3EBbyxNQU2doBMVy19Bg",
+    "material": "Plástico",
+    "category": "conexiones",
+    "sku": "",
+    "brand": "PCP",
+    "stock": true,
+    "tiers": [],
+    "createdBy": "Dg9IndABnafrHf17FPxJWpGTaiI3",
+    "keywords": [
+      "paso",
+      "bola"
+    ],
+    "categories": [
+      "conexiones",
+      "cocina",
+      "baño"
+    ],
+    "createdAt": "2026-01-15T17:33:21.917Z",
+    "isOffer": false,
+    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2F3EBbyxNQU2doBMVy19Bg%2F1768665284895_v-lvula-pcp-esferica-1-2-azul-pesada-c-rosca_1200x1200.webp?alt=media&token=dc377702-5648-4fe2-9b6f-c4e382eb9d66",
+    "imageUrls": [
+      "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2F3EBbyxNQU2doBMVy19Bg%2F1768665284895_v-lvula-pcp-esferica-1-2-azul-pesada-c-rosca_1200x1200.webp?alt=media&token=dc377702-5648-4fe2-9b6f-c4e382eb9d66"
+    ],
+    "name": " VALVULA ESFER. PVC PES. P/AZUL C/R    ",
+    "updatedBy": "D0YoI85GvTbaiTcpVToZWPZII4B2",
+    "variants": [
+      {
+        "id": "1768496497305-0",
+        "name": "1/2 · con rosca · azul",
+        "sku": "",
+        "attributes": {
+          "Medida": "1/2",
+          "Tipo": "con rosca",
+          "Calidad": "azul"
+        },
+        "unitPrices": {
+          "physical": 12,
+          "virtual": 10,
+          "wholesale": 8.5
+        },
+        "stock": true
+      },
+      {
+        "id": "1768496497305-4",
+        "name": "3/4 · con rosca · azul",
+        "sku": "",
+        "attributes": {
+          "Medida": "3/4",
+          "Tipo": "con rosca",
+          "Calidad": "azul"
+        },
+        "unitPrices": {
+          "physical": 20,
+          "virtual": 17,
+          "wholesale": 13.8
+        },
+        "stock": true
+      },
+      {
+        "id": "1768496497305-8",
+        "name": "1 · con rosca · azul",
+        "sku": "",
+        "attributes": {
+          "Medida": "1",
+          "Tipo": "con rosca",
+          "Calidad": "azul"
+        },
+        "unitPrices": {
+          "physical": 22,
+          "virtual": 20,
+          "wholesale": 16
+        },
+        "stock": true
+      },
+      {
+        "id": "1770060914447-6",
+        "name": "1 1/2\" · con rosca · azul",
+        "sku": "",
+        "attributes": {
+          "Medida": "1 1/2\"",
+          "Tipo": "con rosca",
+          "Calidad": "azul"
+        },
+        "unitPrices": {
+          "physical": 45,
+          "virtual": 40,
+          "wholesale": 35
+        },
+        "stock": true
+      },
+      {
+        "id": "1770060914447-8",
+        "name": "2\" · con rosca · azul",
+        "sku": "",
+        "attributes": {
+          "Medida": "2\"",
+          "Tipo": "con rosca",
+          "Calidad": "azul"
+        },
+        "unitPrices": {
+          "physical": 65.5,
+          "virtual": 60.5,
+          "wholesale": 55
+        },
+        "stock": true
+      }
+    ],
+    "updatedAt": "2026-04-28T17:52:31.162Z"
+  },
+  {
+    "id": "InzGpzNohscrMPBvVNM3",
+    "name": "ADAPTADOR 1/2\" BRONCE CORTO",
+    "material": "",
+    "category": "general",
+    "sku": "",
+    "brand": "Ayron",
+    "stock": true,
+    "tiers": [],
+    "createdBy": "Dg9IndABnafrHf17FPxJWpGTaiI3",
+    "unitConfig": {
+      "baseUnit": "unit",
+      "unitPrices": {
+        "physical": 8,
+        "virtual": 5,
+        "wholesale": 3
+      },
+      "packages": [],
+      "boxes": []
+    },
+    "variants": [],
+    "createdAt": "2026-02-05T19:25:09.263Z",
+    "updatedBy": "D0YoI85GvTbaiTcpVToZWPZII4B2",
+    "isOffer": false,
+    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2FInzGpzNohscrMPBvVNM3%2F1770596067950_AnyConv.com__45.webp?alt=media&token=04801ff3-f019-4777-a13c-b578db8b0d92",
+    "imageUrls": [
+      "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2FInzGpzNohscrMPBvVNM3%2F1770596067950_AnyConv.com__45.webp?alt=media&token=04801ff3-f019-4777-a13c-b578db8b0d92"
+    ],
+    "categories": [
+      "general"
+    ],
+    "baseName": null,
+    "updatedAt": "2026-02-09T00:14:29.472Z"
+  },
+  {
+    "id": "Uc3K9mpXCVvPKfgcikTP",
+    "name": "ADAPTADOR 1/2\" BRONCE CORTO",
+    "category": "general",
+    "sku": "",
+    "brand": "AYRON",
+    "stock": true,
+    "tiers": [],
+    "createdBy": "Dg9IndABnafrHf17FPxJWpGTaiI3",
+    "createdAt": "2026-02-05T19:24:30.497Z",
+    "updatedBy": "D0YoI85GvTbaiTcpVToZWPZII4B2",
+    "keywords": [
+      "adaptador corto"
+    ],
+    "material": "bronce",
+    "isOffer": false,
+    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2FUc3K9mpXCVvPKfgcikTP%2F1770755424056_Screenshot_1.png?alt=media&token=0e2a4b4b-0791-48b2-bc48-b2f66caeab3a",
+    "imageUrls": [
+      "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2FUc3K9mpXCVvPKfgcikTP%2F1770755424056_Screenshot_1.png?alt=media&token=0e2a4b4b-0791-48b2-bc48-b2f66caeab3a"
+    ],
+    "variants": [
+      {
+        "id": "1770755411214-0",
+        "name": "1/2\"",
+        "sku": "",
+        "attributes": {
+          "medida": "1/2\""
+        },
+        "unitPrices": {
+          "physical": 10,
+          "virtual": 6,
+          "wholesale": 3
+        },
+        "stock": true
+      }
+    ],
+    "categories": [
+      "general"
+    ],
+    "unitConfig": {
+      "baseUnit": "unit",
+      "unitPrices": {
+        "physical": 0,
+        "virtual": 0,
+        "wholesale": 0
+      },
+      "packages": [],
+      "boxes": []
+    },
+    "updatedAt": "2026-02-10T20:30:26.044Z"
+  },
+  {
+    "id": "mL2tjpK2f89fJG3g7DVO",
+    "name": "ADAPTADOR DE TUBO PVC",
+    "material": "Plástico",
+    "category": "conexiones",
+    "sku": "",
+    "brand": "Nicoll",
+    "stock": false,
+    "tiers": [],
+    "createdBy": "Dg9IndABnafrHf17FPxJWpGTaiI3",
+    "categories": [
+      "conexiones"
+    ],
+    "variants": [
+      {
+        "id": "1770156746289-0",
+        "name": "1/2\"",
+        "sku": "",
+        "attributes": {
+          "Medida": "1/2\""
+        },
+        "unitPrices": {
+          "physical": 2,
+          "virtual": 1.5,
+          "wholesale": 0.8
+        },
+        "stock": true
+      },
+      {
+        "id": "1770156746289-1",
+        "name": "3/4\"",
+        "sku": "",
+        "attributes": {
+          "Medida": "3/4\""
+        },
+        "unitPrices": {
+          "physical": 3,
+          "virtual": 2.5,
+          "wholesale": 1.2
+        },
+        "stock": true
+      },
+      {
+        "id": "1770156746289-2",
+        "name": "1\"",
+        "sku": "",
+        "attributes": {
+          "Medida": "1\""
+        },
+        "unitPrices": {
+          "physical": 4,
+          "virtual": 3,
+          "wholesale": 1.8
+        },
+        "stock": true
+      }
+    ],
+    "createdAt": "2026-02-03T22:13:23.994Z",
+    "updatedBy": "Dg9IndABnafrHf17FPxJWpGTaiI3",
+    "isOffer": false,
+    "imageUrl": "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2FmL2tjpK2f89fJG3g7DVO%2F1770158246843_Sintitulo_fa5ae037-ffbd-44d9-971b-32c0269967b0_1024x1024.webp?alt=media&token=90583b43-d626-4c1a-9eb5-c306edf15d29",
+    "imageUrls": [
+      "https://firebasestorage.googleapis.com/v0/b/saloshop-c1a93.firebasestorage.app/o/products%2FmL2tjpK2f89fJG3g7DVO%2F1770158246843_Sintitulo_fa5ae037-ffbd-44d9-971b-32c0269967b0_1024x1024.webp?alt=media&token=90583b43-d626-4c1a-9eb5-c306edf15d29"
+    ],
+    "updatedAt": "2026-02-03T22:37:28.358Z"
+  }
+]

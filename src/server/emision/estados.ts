@@ -16,7 +16,7 @@ import type { EstadoNormalizado, ClaseDeFallo  } from '../proveedor/interfaz.ts'
  * el documento existe". Volver a emitir desde ahí es apostar a que no existe, y
  * si la apuesta sale mal el resultado es un comprobante fiscal duplicado que hay
  * que anular. La única salida legítima es preguntarle al proveedor, que es lo que
- * hace la reconciliación.
+ * hace la consulta bajo demanda.
  *
  * ## Qué significa exactamente `enviado`, que no es lo que parece
  *
@@ -44,18 +44,18 @@ import type { EstadoNormalizado, ClaseDeFallo  } from '../proveedor/interfaz.ts'
  * venta**, y solo compraría distinguir un proceso que murió antes de llamar de
  * uno que murió después.
  *
- * Esa distinción sale más barata por otro lado: la reconciliación barre también
- * los `reclamado` **envejecidos** (ver `exigeVerificacion`). Un comprobante que
- * sigue en `reclamado` pasados unos minutos significa que el proceso se cayó en
- * algún punto alrededor de la llamada, y no se puede saber de qué lado. Tratarlo
- * como verificable cuesta una consulta; darlo por no emitido costaría un duplicado.
+ * Esa distinción sale más barata por otro lado: la consulta bajo demanda cubre
+ * también los `reclamado` **envejecidos** (ver `exigeVerificacion`). Un
+ * comprobante que sigue en `reclamado` pasados unos minutos significa que el
+ * proceso se cayó alrededor de la llamada. Tratarlo como verificable cuesta una
+ * consulta; darlo por no emitido costaría un duplicado.
  */
 
 /**
  * Lo permitido, por estado de origen. Todo lo ausente está prohibido.
  *
- * Nótese lo que **no** sale de `indeterminado`: no puede ir a `reclamado` ni a
- * `enviado`. Solo a los estados que la reconciliación puede constatar, o a
+ * Nótese lo que **no** sale de `indeterminado` por emisión: no puede ir a
+ * `reclamado`. Solo a los estados que la consulta bajo demanda constata, o a
  * `requiere_intervencion` cuando no consigue constatar nada.
  */
 const TRANSICIONES: Record<
@@ -63,9 +63,8 @@ const TRANSICIONES: Record<
   readonly EstadoDeComprobante[]
 > = {
   // Va directo al desenlace. Ver más abajo por qué `enviado` no se persiste en
-  // el camino de la emisión. `requiere_intervencion` está porque la
-  // reconciliación barre los `reclamado` envejecidos y alguno no se podrá
-  // esclarecer.
+  // el camino de la emisión. `requiere_intervencion` cubre un `reclamado` que
+  // quedó huérfano y una consulta no pudo esclarecer.
   reclamado: [
     'enviado',
     'aceptado',
@@ -79,17 +78,11 @@ const TRANSICIONES: Record<
   // constancia de la autoridad.
   enviado: ['aceptado', 'rechazado', 'indeterminado', 'pendiente', 'anulado'],
 
-  // Solo la reconciliación sale de aquí, y solo tras consultar al proveedor.
+  // Solo la consulta bajo demanda sale de aquí, tras preguntar al proveedor.
   //
-  // `enviado` **sí** está permitido, y es importante entender por qué no
-  // contradice la prohibición: llegar a `enviado` desde aquí es lo que ocurre
-  // cuando la reconciliación **descubre** que el proveedor tenía el documento
-  // todo el tiempo. Es adoptar un hecho, no producirlo.
-  //
-  // La prohibición de reintentar no vive en esta tabla: vive en
-  // `sePuedeInvocarEmision`, que es lo que decide si se puede *llamar* al
-  // proveedor. Confundir "a qué estado puede pasar" con "qué acción se permite"
-  // fue un error de la primera versión de este archivo.
+  // `enviado` **sí** está permitido: es adoptar el hecho de que el proveedor ya
+  // tenía el documento. La prohibición de reintentar vive en
+  // `sePuedeInvocarEmision`, no en esta tabla.
   indeterminado: [
     'enviado',
     'aceptado',
@@ -99,14 +92,9 @@ const TRANSICIONES: Record<
     'requiere_intervencion',
   ],
 
-  // La venta esperó porque el proveedor no respondía. La tarea programada
-  // completa la emisión, y de ahí sí se puede volver a `enviado`: en este estado
-  // sabemos con certeza que **no** se emitió nada.
-  //
-  // `indeterminado` está aquí porque el reintento programado puede recibir a su
-  // vez una respuesta ambigua. Sin esta transición, esa venta se quedaría en
-  // `pendiente` y el barrido la reintentaría en cada pasada, creando un documento
-  // nuevo cada vez. Es decir: su ausencia era un generador de duplicados.
+  // Proveedor caído: consta que no se emitió. El vendedor reintenta a mano
+  // (decisión 10). `indeterminado` está por si ese reintento vuelve a ser
+  // ambiguo.
   pendiente: [
     'enviado',
     'aceptado',
@@ -140,7 +128,7 @@ export function transicionPermitida(
  * **Ésta es la función que impide el duplicado**, no la tabla de transiciones. La
  * distinción es la lección que costó dos fallos encontrados por las pruebas: la
  * tabla dice a qué estados puede *pasar* un comprobante, incluidos los que la
- * reconciliación descubre; esta función dice cuándo se puede *llamar* al
+ * consulta bajo demanda descubre; esta función dice cuándo se puede *llamar* al
  * proveedor, que es la acción peligrosa.
  *
  * Solo `reclamado` y `pendiente`, y en los dos consta que no hay documento del

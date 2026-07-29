@@ -10,53 +10,69 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ApiProcesarPendientesRouteImport } from './routes/api/procesar-pendientes'
-import { Route as ApiReconciliarRouteImport } from './routes/api/reconciliar'
+import { Route as ConfiguracionRouteImport } from './routes/configuracion'
+import { Route as AdministracionIndexRouteImport } from './routes/administracion/index'
+import { Route as AdministracionCatalogoRouteImport } from './routes/administracion/catalogo'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiProcesarPendientesRoute = ApiProcesarPendientesRouteImport.update({
-  id: '/api/procesar-pendientes',
-  path: '/api/procesar-pendientes',
+const ConfiguracionRoute = ConfiguracionRouteImport.update({
+  id: '/configuracion',
+  path: '/configuracion',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiReconciliarRoute = ApiReconciliarRouteImport.update({
-  id: '/api/reconciliar',
-  path: '/api/reconciliar',
+const AdministracionIndexRoute = AdministracionIndexRouteImport.update({
+  id: '/administracion/',
+  path: '/administracion/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdministracionCatalogoRoute = AdministracionCatalogoRouteImport.update({
+  id: '/administracion/catalogo',
+  path: '/administracion/catalogo',
   getParentRoute: () => rootRouteImport,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/api/procesar-pendientes': typeof ApiProcesarPendientesRoute
-  '/api/reconciliar': typeof ApiReconciliarRoute
+  '/configuracion': typeof ConfiguracionRoute
+  '/administracion/catalogo': typeof AdministracionCatalogoRoute
+  '/administracion/': typeof AdministracionIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/api/procesar-pendientes': typeof ApiProcesarPendientesRoute
-  '/api/reconciliar': typeof ApiReconciliarRoute
+  '/configuracion': typeof ConfiguracionRoute
+  '/administracion/catalogo': typeof AdministracionCatalogoRoute
+  '/administracion': typeof AdministracionIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/api/procesar-pendientes': typeof ApiProcesarPendientesRoute
-  '/api/reconciliar': typeof ApiReconciliarRoute
+  '/configuracion': typeof ConfiguracionRoute
+  '/administracion/catalogo': typeof AdministracionCatalogoRoute
+  '/administracion/': typeof AdministracionIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/api/procesar-pendientes' | '/api/reconciliar'
+  fullPaths:
+    '/' | '/configuracion' | '/administracion/catalogo' | '/administracion/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/api/procesar-pendientes' | '/api/reconciliar'
-  id: '__root__' | '/' | '/api/procesar-pendientes' | '/api/reconciliar'
+  to: '/' | '/configuracion' | '/administracion/catalogo' | '/administracion'
+  id:
+    | '__root__'
+    | '/'
+    | '/configuracion'
+    | '/administracion/catalogo'
+    | '/administracion/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  ApiProcesarPendientesRoute: typeof ApiProcesarPendientesRoute
-  ApiReconciliarRoute: typeof ApiReconciliarRoute
+  ConfiguracionRoute: typeof ConfiguracionRoute
+  AdministracionCatalogoRoute: typeof AdministracionCatalogoRoute
+  AdministracionIndexRoute: typeof AdministracionIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -68,18 +84,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/procesar-pendientes': {
-      id: '/api/procesar-pendientes'
-      path: '/api/procesar-pendientes'
-      fullPath: '/api/procesar-pendientes'
-      preLoaderRoute: typeof ApiProcesarPendientesRouteImport
+    '/configuracion': {
+      id: '/configuracion'
+      path: '/configuracion'
+      fullPath: '/configuracion'
+      preLoaderRoute: typeof ConfiguracionRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/reconciliar': {
-      id: '/api/reconciliar'
-      path: '/api/reconciliar'
-      fullPath: '/api/reconciliar'
-      preLoaderRoute: typeof ApiReconciliarRouteImport
+    '/administracion/': {
+      id: '/administracion/'
+      path: '/administracion'
+      fullPath: '/administracion/'
+      preLoaderRoute: typeof AdministracionIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/administracion/catalogo': {
+      id: '/administracion/catalogo'
+      path: '/administracion/catalogo'
+      fullPath: '/administracion/catalogo'
+      preLoaderRoute: typeof AdministracionCatalogoRouteImport
       parentRoute: typeof rootRouteImport
     }
   }
@@ -87,8 +110,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  ApiProcesarPendientesRoute: ApiProcesarPendientesRoute,
-  ApiReconciliarRoute: ApiReconciliarRoute,
+  ConfiguracionRoute: ConfiguracionRoute,
+  AdministracionCatalogoRoute: AdministracionCatalogoRoute,
+  AdministracionIndexRoute: AdministracionIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

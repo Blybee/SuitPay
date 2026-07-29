@@ -3,8 +3,7 @@
  *
  * `src/ui/tokens/tema.css` es la fuente de verdad y esto la refleja para el
  * puñado de sitios donde el color hace falta en JavaScript y no en una clase:
- * la etiqueta `theme-color` del documento y la salida impresa. Una prueba
- * comprueba que los dos archivos no se separen.
+ * la etiqueta `theme-color` del documento y la salida impresa.
  */
 
 export const COLORES = {
@@ -14,12 +13,14 @@ export const COLORES = {
   aviso: '#c2321c',
   /** Dice qué quedó validado. Solo sobre documentos ya emitidos. */
   sello: '#4c3f91',
-  /** El fondo de la hoja de trabajo. Blanco cálido, nunca blanco puro. */
-  papel: '#f7f4ec',
-  /** El kraft del entorno, que hace legible la hoja como región de contenido. */
-  mesa: '#ded7c7',
-  /** Tinta gastada: etiquetas, reglas y el texto tachado de una corrección. */
-  desvaida: '#8a8378',
+  /** Superficie blanca de paneles (Soft-Pill). */
+  papel: '#ffffff',
+  /** Lienzo de la aplicación (gray-50). */
+  mesa: '#f9fafb',
+  /** Borde sutil (gray-200). */
+  borde: '#e5e7eb',
+  /** Texto secundario (gray-500). */
+  desvaida: '#6b7280',
 } as const
 
 export type PapelDeColor = keyof typeof COLORES

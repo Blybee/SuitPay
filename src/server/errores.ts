@@ -20,7 +20,6 @@ export const CODIGOS_DE_ERROR = {
   // --- Sesión y permisos ---------------------------------------------------
   sesion_ausente: 'sesion_ausente',
   sesion_invalida: 'sesion_invalida',
-  atestacion_invalida: 'atestacion_invalida',
   usuario_desactivado: 'usuario_desactivado',
   rol_insuficiente: 'rol_insuficiente',
 
@@ -67,8 +66,6 @@ export type CodigoDeError =
 const MENSAJES: Record<CodigoDeError, string> = {
   sesion_ausente: 'Tu sesión no está activa. Vuelve a entrar.',
   sesion_invalida: 'Tu sesión caducó. Vuelve a entrar.',
-  atestacion_invalida:
-    'No se pudo verificar la aplicación. Recarga la página e inténtalo otra vez.',
   usuario_desactivado:
     'Tu usuario está desactivado. Habla con el administrador.',
   rol_insuficiente: 'Tu usuario no tiene permiso para esta operación.',
@@ -83,9 +80,9 @@ const MENSAJES: Record<CodigoDeError, string> = {
   cotizacion_ya_convertida:
     'Esta cotización ya se convirtió en un comprobante desde otro dispositivo. Búscalo antes de volver a emitir.',
   emision_indeterminada:
-    'No se pudo confirmar si el comprobante se emitió. NO vuelvas a emitir: el sistema lo está verificando y te avisará.',
+    'No se pudo confirmar si el comprobante se emitió. NO vuelvas a emitir a ciegas: usa «Consultar estado».',
   proveedor_no_disponible:
-    'El servicio de emisión no responde. La venta queda en espera: toma los datos de contacto del cliente y entrégale el documento interno.',
+    'El servicio de emisión no responde. El pedido se conserva: inténtalo de nuevo en unos minutos.',
   emision_rechazada:
     'El comprobante fue rechazado. Revisa el motivo en su detalle antes de volver a intentarlo.',
 
@@ -124,7 +121,6 @@ const MENSAJES: Record<CodigoDeError, string> = {
 const REINTENTABLE: Record<CodigoDeError, boolean> = {
   sesion_ausente: false,
   sesion_invalida: false,
-  atestacion_invalida: true,
   usuario_desactivado: false,
   rol_insuficiente: false,
 
@@ -134,7 +130,7 @@ const REINTENTABLE: Record<CodigoDeError, boolean> = {
   importe_no_positivo: false,
   cotizacion_ya_convertida: false,
   emision_indeterminada: false,
-  proveedor_no_disponible: false,
+  proveedor_no_disponible: true,
   emision_rechazada: false,
 
   fuera_de_ventana_anulacion: false,

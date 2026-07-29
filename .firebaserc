@@ -1,5 +1,13 @@
 {
   "projects": {
+    "default": "blayblocklabs-antrax",
     "emulador": "demo-suitpay"
+  },
+  "targets": {
+    "blayblocklabs-antrax": {
+      "hosting": {
+        "suitpay": ["suitpay"]
+      }
+    }
   }
 }

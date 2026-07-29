@@ -1,48 +1,53 @@
 /*
- * Tokens del sistema de diseño de SuitPay. Fuente de verdad de la paleta.
- * Ver DESIGN.md; `src/ui/tokens/colores.ts` refleja estos valores y una prueba
- * comprueba que no se separen.
+ * Tokens Modern Soft-Pill (DESIGN.md, volcado 5).
  *
- * Tres espacios de nombres se vacían a propósito con `initial`. No es una
- * limpieza estética: convierte tres reglas de DESIGN.md en imposibilidades.
- *
- *   --color-*   Al borrar la paleta de Tailwind, "No existe el verde" deja de
- *               ser una advertencia y pasa a ser un hecho: no hay ninguna clase
- *               verde que escribir. Tampoco hay azul primario ni grises de
- *               interfaz que erosionen la Regla de las Tres Tintas.
- *   --radius-*  "Radio cero en todo": `rounded-lg` no existe.
- *   --shadow-*  "La Regla de la Sombra Única": la única sombra disponible es la
- *               de la papeleta de contexto, que es lo único que flota de verdad.
+ * --color-* se vacía para que no existan verdes/azules de Tailwind por omisión
+ * (Regla de las Tres Tintas + sin verde). Radios y sombras suaves SÍ existen:
+ * cápsulas (rounded-full), paneles (rounded-2xl/3xl), elevación shadow-sm/md.
  */
 
 @theme {
   --color-*: initial;
-  --shadow-*: initial;
-  --radius-*: initial;
   --font-*: initial;
   --text-*: initial;
 
   /* --- Las tres tintas ------------------------------------------------- */
 
-  /* Dice QUÉ HAY. Negro cálido: el negro puro sobre papel cálido vibra. */
   --color-tinta: #1a1714;
-
-  /* Dice QUÉ NO ES DEFINITIVO O QUÉ ESTÁ MAL. Nunca para algo que está bien. */
   --color-aviso: #c2321c;
-
-  /* Dice QUÉ QUEDÓ VALIDADO. Solo sobre documentos ya emitidos. */
   --color-sello: #4c3f91;
 
-  /* --- El papel y la mesa ---------------------------------------------- */
+  /* --- Lienzo Soft-Pill (nombres históricos papel/mesa, valores nuevos) -- */
 
-  --color-papel: #f7f4ec;
-  --color-mesa: #ded7c7;
-
-  /* Tinta gastada, no gris de interfaz: etiquetas, reglas y lo tachado. */
-  --color-desvaida: #8a8378;
+  /* Superficie blanca de paneles, sidebar y campos. */
+  --color-papel: #ffffff;
+  /* Lienzo de la aplicación (gray-50). */
+  --color-mesa: #f9fafb;
+  /* Borde sutil (gray-200). */
+  --color-borde: #e5e7eb;
+  /* Etiquetas y texto secundario (gray-500). */
+  --color-desvaida: #6b7280;
 
   --color-transparent: transparent;
   --color-current: currentColor;
+  --color-white: #ffffff;
+  --color-black: #1a1714;
+
+  /* --- Radios Soft-Pill ------------------------------------------------ */
+
+  --radius-sm: 0.5rem;
+  --radius-md: 0.75rem;
+  --radius-lg: 1rem;
+  --radius-xl: 1.25rem;
+  --radius-2xl: 1rem;
+  --radius-3xl: 1.5rem;
+  --radius-full: 9999px;
+
+  /* --- Sombras naturales ----------------------------------------------- */
+
+  --shadow-sm: 0 1px 2px 0 rgb(26 23 20 / 0.05);
+  --shadow-md: 0 4px 12px -2px rgb(26 23 20 / 0.1);
+  --shadow-papeleta: 0 8px 24px -4px rgb(26 23 20 / 0.14);
 
   /* --- Tipografía ------------------------------------------------------ */
 
@@ -52,8 +57,6 @@
   --font-mono:
     'Atkinson Hyperlegible Mono Variable', ui-monospace, monospace;
 
-  /* Escala de tamaños con los cinco papeles de DESIGN.md y nada más. Un
-     tamaño sin papel asignado es un tamaño que alguien elegirá al azar. */
   --text-etiqueta: 0.75rem;
   --text-etiqueta--line-height: 1rem;
   --text-etiqueta--letter-spacing: 0.12em;
@@ -70,37 +73,20 @@
   --text-aviso: 1.125rem;
   --text-aviso--line-height: 1.5rem;
 
-  /* La entrada y el botón de emitir: los dos elementos que más se manipulan y
-     los únicos que se tocan de pie con el cliente delante. Grandes por la
-     escena, no por énfasis. */
   --text-entrada: 1.375rem;
   --text-entrada--line-height: 2rem;
 
-  /* El único elemento legible desde otro puesto. */
   --text-total: 3.25rem;
   --text-total--line-height: 1;
 
-  /* --- Ritmo y medida -------------------------------------------------- */
-
-  /* Un único ritmo de espaciado en todo el sistema. */
   --spacing: 0.25rem;
-
-  /* La sombra única: la papeleta de contexto, una hoja dejada encima. */
-  --shadow-papeleta: 0 6px 20px -4px rgb(26 23 20 / 0.28);
 }
 
 :root {
-  /* La medida de trabajo. Cabe una descripción de producto completa con sus
-     columnas de cantidad, precio e importe sin partirse, y no se estira para
-     llenar el monitor: el ancho sobrante es entorno, no contenido. */
-  --ancho-columna: 52rem;
-
-  /* La altura de un renglón de pedido. Está calculada para que catorce quepan
-     a la vez en un monitor de escritorio, que es un requisito de densidad de
-     DESIGN.md y no una preferencia. */
+  --ancho-columna: 100%;
   --alto-renglon: 2.75rem;
-
-  /* Altura de las dos barras fijas, para que el contenido reserve su sitio. */
   --alto-barra-entrada: 5rem;
   --alto-barra-total: 6.5rem;
+  --ancho-sidebar: 15rem;
+  --ancho-sidebar-colapsada: 4.5rem;
 }

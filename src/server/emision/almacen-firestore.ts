@@ -124,13 +124,19 @@ export class AlmacenFirestore implements AlmacenDeEmision {
           const instantanea = await tx.get(referencia)
           if (!instantanea.exists) return undefined
           const datos = instantanea.data() ?? {}
+          const numeroInicial =
+            typeof datos['numeroInicial'] === 'number'
+              ? datos['numeroInicial']
+              : 1
           return {
             id: serieId,
             serie: datos['serie'],
             tipoDocumento: datos['tipoDocumento'],
             vendedorId: datos['vendedorId'],
-            ultimoNumero: datos['ultimoNumero'] ?? 0,
-            ultimoNumeroConfirmado: datos['ultimoNumeroConfirmado'] ?? 0,
+            numeroInicial,
+            ultimoNumero: datos['ultimoNumero'] ?? numeroInicial - 1,
+            ultimoNumeroConfirmado:
+              datos['ultimoNumeroConfirmado'] ?? numeroInicial - 1,
             activa: datos['activa'] ?? false,
           } satisfies Serie
         },
@@ -228,8 +234,7 @@ export class AlmacenFirestore implements AlmacenDeEmision {
     estado: EstadoDeComprobante,
     limite: number,
   ): Promise<readonly Comprobante[]> {
-    // Usa el índice compuesto `estado asc, emitidoEn asc` de data-model.md, que
-    // existe precisamente para este barrido.
+    // Usa el índice compuesto `estado asc, emitidoEn asc` de data-model.md.
     const consulta = await this.base
       .collection(COLECCIONES.comprobantes)
       .where('estado', '==', estado)
@@ -249,13 +254,17 @@ export class AlmacenFirestore implements AlmacenDeEmision {
       .get()
     if (!instantanea.exists) return undefined
     const datos = instantanea.data() ?? {}
+    const numeroInicial =
+      typeof datos['numeroInicial'] === 'number' ? datos['numeroInicial'] : 1
     return {
       id: serieId,
       serie: datos['serie'],
       tipoDocumento: datos['tipoDocumento'],
       vendedorId: datos['vendedorId'],
-      ultimoNumero: datos['ultimoNumero'] ?? 0,
-      ultimoNumeroConfirmado: datos['ultimoNumeroConfirmado'] ?? 0,
+      numeroInicial,
+      ultimoNumero: datos['ultimoNumero'] ?? numeroInicial - 1,
+      ultimoNumeroConfirmado:
+        datos['ultimoNumeroConfirmado'] ?? numeroInicial - 1,
       activa: datos['activa'] ?? false,
     }
   }

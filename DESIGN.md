@@ -1,158 +1,152 @@
 ---
 name: SuitPay
-description: La hoja de trabajo del vendedor: papel cálido, tinta precisa, todo legible de pie y a distancia. El comprobante es lo que sale de aquí, no lo que se ve aquí.
+description: Mostrador moderno y suave — superficies blancas sobre gris claro, controles en cápsula, el comprobante es lo que sale de aquí, no lo que se ve aquí.
 ---
 
-<!-- SEED: acordado con el usuario antes de implementar. Los valores exactos se fijan en la primera construcción; vuelve a ejecutar /impeccable document cuando haya código para recoger los tokens y componentes reales. -->
+<!-- SEED: pivote Modern Soft-Pill acordado en volcado 5 (2026-07-29). Sustituye por completo el norte brutalista / papel cálido / radio cero. -->
 
 # Design System: SuitPay
 
 ## Overview
 
-**Creative North Star: "La hoja de trabajo"**
+**Creative North Star: "Modern Soft-Pill"**
 
-La pantalla es el papel de trabajo del vendedor, no el comprobante. Es la hoja donde se anota el pedido, se negocia el precio, se corrige lo mal leído y se decide qué documento emitir. El comprobante es lo que **sale** de esta hoja: lo compone el proveedor de emisión con el formato que exige SUNAT y se imprime en A4, o en rollo cuando la empresa migre. Son dos objetos distintos y el sistema nunca los confunde.
+La pantalla es la herramienta de trabajo del vendedor, no el comprobante. Ahí se anota el pedido, se negocia el precio, se corrige lo mal leído y se decide qué documento emitir. El comprobante es lo que **sale** de esta superficie: lo compone el proveedor de emisión con el formato que exige SUNAT. Son dos objetos distintos y el sistema nunca los confunde.
 
-Esa distinción es la decisión de diseño más importante del sistema, y se aprendió por evidencia. Una primera dirección hizo que la pantalla entera pareciese una cinta de comprobante impresa; al verla renderizada, alguien que conoce el proyecto de memoria preguntó si era la interfaz o el documento. Si esa duda aparece ahí, aparece en el mostrador. Y en facturación es peligrosa: la especificación exige que una nota de venta y el documento interno de contingencia se distingan **sin margen de duda** de una factura real, y esa distinción se pierde si todo ya parece un comprobante.
+Esa distinción sigue siendo la decisión de diseño más importante. Una dirección previa hizo que la pantalla pareciese un documento impreso; en facturación es peligrosa: una nota de venta y el documento interno de contingencia deben distinguirse **sin margen de duda** de una factura real.
 
-De modo que el material se queda y el disfraz se va. El papel cálido, la tinta negra, los importes tabulares y la tipografía diseñada para vista cansada estaban justificados por la escena de uso, no por la metáfora: una fachada abierta de centro mayorista con luz de día entrando, un monitor a distancia, un vendedor de pie con prisa y con la vista gastada. Lo que se va es la cinta, la perforación, el gesto de arrancar y la simulación de una impresión térmica.
+El material visual cambia respecto del seed brutalista. Se abandona el papel cálido, la mesa kraft, el radio cero y las sombras sólidas. El sistema adopta superficies suaves: blanco sobre gris claro, controles en cápsula, tarjetas con radios amplios, separación por contraste de color y elevación natural solo cuando aporta.
 
-Queda un solo guiño, y precisamente donde no engaña: **el sello**. Un comprobante ya emitido lleva su sello de validación, porque ahí sí es un documento. La hoja de trabajo nunca lo lleva. La regla es literal: si tiene sello, existe ante SUNAT.
-
-Lo que este mundo rechaza es el tablero de punto de venta genérico —barra lateral oscura, tarjetas redondeadas, filas alternas, botón azul primario, verde de éxito— y también la terminal retro de fósforo verde. No es una pantalla de fósforo ni un rollo de papel: es una herramienta de trabajo bien hecha, en papel y tinta.
+Lo que se conserva del mundo anterior es la semántica de estado (qué hay / qué no es definitivo / qué quedó validado), la tipografía pensada para vista cansada, la densidad del pedido y la regla del sello: **si tiene sello, existe ante SUNAT**.
 
 **Key Characteristics:**
 
-- Una columna de trabajo centrada, densa y a gran escala; nunca un tablero de widgets.
-- Tres tintas con significado fijo sobre fondo de papel cálido; ningún color decorativo y **nunca verde**.
-- Radio cero en todo. La precisión se lee en las esquinas rectas y en la alineación.
-- Superficie plana. Solo lo que flota de verdad proyecta sombra.
-- El sello violeta aparece únicamente sobre lo ya emitido.
+- Shell con sidebar (marca, navegación, perfil al pie) y área de trabajo a todo el ancho.
+- Controles interactivos en cápsula (`rounded-full`); contenedores mayores con radios amplios (`rounded-2xl` / `rounded-3xl`).
+- Fondos en capas de gris claro y blanco; sin papel amarillento.
+- Bordes sutiles o ninguno; sombras solo `shadow-sm` / `shadow-md`.
+- Tres tintas semánticas escasas; **nunca verde**.
 - Claro siempre. No hay modo oscuro.
 
 ## Colors
 
-Paleta completa de tres tintas con roles nombrados sobre un fondo de papel. En cualquier pantalla, la abrumadora mayoría de la superficie es papel y tinta negra; el rojo y el violeta son escasos por diseño.
+Paleta de trabajo sobre neutros fríos. La mayoría de la superficie es gris de aplicación y blanco de panel; el rojo y el violeta siguen siendo escasos.
 
 ### Primary
 
-- **Tinta** (`#1A1714`): negro cálido, nunca negro puro, porque el negro puro sobre papel cálido vibra. Todo el contenido: descripciones, cantidades, importes, etiquetas. Es la tinta que dice **qué hay**.
+- **Tinta** (`#1A1714`): negro cálido para contenido. Dice **qué hay**.
 
 ### Secondary
 
-- **Rojo de aviso** (`#C2321C`): dice **qué no es definitivo o qué está mal**. El texto extraído de un dictado o una fotografía que espera ser reemplazado, un renglón sin resolver, una venta en espera, la marca de ANULADO, la banda de degradación, y el motivo por el que no se puede emitir. Nunca se usa para llamar la atención sobre algo que está bien.
+- **Rojo de aviso** (`#C2321C`): dice **qué no es definitivo o qué está mal**. Texto pendiente de revisión, venta en espera, ANULADO, degradación, motivo de bloqueo. Nunca para celebrar un éxito.
 
 ### Tertiary
 
-- **Violeta de sello** (`#4C3F91`): dice **qué quedó validado ante SUNAT o ante el cliente**. Emitido, aceptado, pagado, cobrado. Es la única marca celebratoria del sistema y solo aparece sobre documentos ya emitidos, nunca sobre el pedido en curso.
+- **Violeta de sello** (`#4C3F91`): dice **qué quedó validado**. Solo sobre documentos ya emitidos.
 
 ### Neutral
 
-- **Papel** (`#F7F4EC`): el fondo de la hoja de trabajo. Blanco cálido, nunca blanco puro.
-- **Mesa** (`#DED7C7`): el tono kraft del entorno alrededor de la hoja, que la hace legible como una región de contenido y no como el fondo de la página.
-- **Tinta desvaída** (`#8A8378`): etiquetas secundarias, reglas separadoras, y el texto tachado de una corrección. Es tinta gastada, no gris de interfaz.
+- **Lienzo** (`#F9FAFB` / `gray-50`): fondo de la aplicación.
+- **Lienzo profundo** (`#F3F4F6` / `gray-100`): capas o regiones secundarias.
+- **Superficie** (`#FFFFFF`): paneles, tarjetas, sidebar, campos sobre el lienzo.
+- **Borde sutil** (`#E5E7EB` / `gray-200`): cuando hace falta contorno.
+- **Tinta desvaída** (`#6B7280` / `gray-500`): etiquetas secundarias, texto tachado, hints.
 
 ### Named Rules
 
-**La Regla de las Tres Tintas.** El sistema tiene exactamente tres tintas y cada una tiene un significado fijo: negro dice qué hay, rojo dice qué no es definitivo o qué está mal, violeta dice qué quedó validado. Un color usado porque quedaba bien es un error.
+**La Regla de las Tres Tintas.** Negro dice qué hay, rojo qué no es definitivo o qué está mal, violeta qué quedó validado. Un color decorativo es un error.
 
-**No existe el verde.** No porque el papel no lo tenga, sino por dos razones que siguen en pie sin la metáfora: rojo y verde es el peor par posible para el porcentaje nada pequeño de hombres con deficiencia rojo-verde, y este es un sistema donde "no definitivo" y "validado" no pueden confundirse nunca. Un estado positivo se marca con el sello.
+**No existe el verde.** Rojo/verde es un mal par para deficiencia rojo-verde; “no definitivo” y “validado” no pueden confundirse. Un estado positivo se marca con el sello.
 
-**La Regla del Color Escaso.** Rojo y violeta juntos no ocupan más del 10% de ninguna pantalla. Si una pantalla se ve colorida, algo se está marcando que no lo merece.
+**La Regla del Color Escaso.** Rojo y violeta juntos no ocupan más del 10% de ninguna pantalla.
 
-**La Regla de la Redundancia.** Ningún estado se distingue únicamente por color. Tachado, peso, sangrado, sello o etiqueta acompañan siempre. Hay vendedores con la vista cansada y el color solo no basta.
+**La Regla de la Redundancia.** Ningún estado se distingue únicamente por color.
+
+**La Regla del Contraste Suave.** La separación de regiones se da por contraste de color (blanco sobre gris), no por bordes gruesos ni sombras brutales.
 
 ## Typography
 
-**Body Font:** Atkinson Hyperlegible (con fallback a la pila del sistema)
-**Números y códigos:** el compañero monoespaciado de Atkinson Hyperlegible; si no estuviera disponible, Martian Mono. `[verificar disponibilidad al andamiar]`
+**Body Font:** Atkinson Hyperlegible (fallback a la pila del sistema)  
+**Números y códigos:** compañero monoespaciado de Atkinson Hyperlegible (o Martian Mono si no estuviera disponible).
 
-**Character:** Atkinson Hyperlegible no se elige por gusto: la diseñó el Braille Institute para baja visión, diferenciando expresamente los caracteres que se confunden entre sí, y una verdad de producto confirmada es que parte de los vendedores tiene la vista cansada y lee a distancia. El compañero monoespaciado sostiene la columna de importes y los códigos de producto, que se leen carácter a carácter. No hay tipografía de display: el registro es de trabajo, y el papel de "display" lo cumple el total, impreso a gran tamaño en la misma familia.
+Diseñada para baja visión; el mostrador se lee de pie y a distancia. Sin tipografía de display: el “display” lo cumple el total.
 
 ### Hierarchy
 
-- **Total** (peso alto, el mayor tamaño de la pantalla): el importe a cobrar. Es el único elemento legible desde otro puesto.
-- **Línea de pedido** (monoespaciada para los números, tamaño generoso): descripción, cantidad, precio e importe. Es el contenido que más se lee del sistema y por eso es lo segundo más grande.
-- **Cabecera de documento** (peso alto, tamaño medio): tipo de documento, serie y cliente. Fija, nunca se desplaza fuera de vista.
-- **Etiqueta** (monoespaciada, pequeña, tracking abierto, mayúsculas): los nombres de campo y de columna. Tinta desvaída.
-- **Aviso** (peso alto, tamaño medio): degradación y marcas de estado. Siempre en rojo de aviso.
+- **Total** (peso alto, mayor tamaño): importe a cobrar.
+- **Línea de pedido** (números monoespaciados, tamaño generoso).
+- **Cabecera de documento / tabs** (peso alto, tamaño medio).
+- **Etiqueta** (pequeña, tracking abierto): campos y columnas; tinta desvaída.
+- **Aviso** (peso alto): degradación y estados; rojo de aviso.
 
 ### Named Rules
 
-**La Regla de la Medida de Trabajo.** La columna se mantiene en una medida cómoda de lectura y no se estira para llenar el monitor. El ancho sobrante es entorno, no espacio de contenido. Pero es una medida de trabajo, no de comprobante: cabe una descripción de producto completa con sus columnas de cantidad, precio e importe sin partirse.
+**La Regla de los Dígitos Tabulares.** Todo número comparable va en cifras tabulares y alineado a la derecha.
 
-**La Regla de los Dígitos Tabulares.** Todo número que pueda compararse con otro va en cifras tabulares y alineado a la derecha. Un importe que baila entre filas obliga a leerlo en lugar de verlo.
+**La Regla del Ancho Útil.** El área de trabajo usa el espacio disponible junto al sidebar; no se centra una columna estrecha sobre un “marco” decorativo.
 
 ## Layout
 
-**La columna.** Una sola columna de trabajo centrada, de medida cómoda y fija, sobre la mesa kraft. Crece hacia abajo y las líneas nuevas aparecen **al final**, donde el ojo ya está esperando lo último añadido.
+**Shell.** Sidebar a la izquierda: marca **SuitPay** arriba; ítems de navegación (Inicio, Configuración por ahora); perfil de usuario + logout al **pie**. El contenido principal ocupa el resto del viewport a todo el ancho.
 
-**Dos barras y una columna.** La entrada y el total viven en barras que cruzan **toda la ventana**; la columna de papel es solo para el contenido. Es una asimetría deliberada: el campo de entrada es el control más usado del sistema y merece ser el más ancho de la pantalla, y el botón de emitir gana la esquina, que es el objetivo más fácil de acertar sin apuntar.
+**Mostrador.** Tabs internos: Pedido | Cotizaciones | Vecinos | Lista. Bajo los tabs, la entrada (escribir / dictar / fotografiar) y el pedido; el total y emitir anclados al pie del área de trabajo.
 
-**La entrada, arriba.** El punto de entrada único —escribir, dictar o fotografiar— está fijo en la **parte superior**. Es lo primero que se ve al abrir y lo primero que recibe el foco, de modo que un vendedor que llega a su puesto puede teclear el primer producto sin haber tocado nada.
+**Densidad.** Catorce líneas de pedido deben caber en un monitor de escritorio. La suavidad de forma no justifica aire vacío que empuje el pedido fuera de vista.
 
-Esa posición, además, resuelve un problema de seguridad sin gastar nada: la entrada y el botón de emitir quedan separados por toda la altura de la pantalla, y no hay forma de que una pulsación destinada a una caiga en el otro.
+**Cabecera de documento.** Tipo (default Nota de Venta), serie y cliente permanecen visibles.
 
-**El pie del total.** El total y el compromiso viven anclados al **borde inferior** de la pantalla, no al final del contenido. Un pedido de catorce líneas no puede empujar el total fuera de vista: es el dato que no puede desaparecer nunca, y esa es una lección aprendida viendo la alternativa renderizada.
-
-**La densidad es una virtud.** Catorce líneas de pedido deben caber a la vez en un monitor de escritorio, con la última recortada para que se entienda que hay más. El interlineado cómodo de una página de lectura aquí es un lujo que cuesta desplazamientos.
-
-**La cabecera fija.** El tipo de documento, la serie y el cliente permanecen visibles bajo la entrada y nunca se desplazan fuera de vista. Confundir una boleta con una factura es el error más caro que se comete sin darse cuenta.
-
-**Nada de barra lateral.** La navegación no vive en un rail permanente. Las demás superficies se alcanzan desde la propia entrada, que es también donde viven los comandos. En una herramienta que pasa el 90% del tiempo en una sola pantalla, un rail permanente gasta ancho en algo que casi no se usa.
-
-**Comportamiento adaptable.** En móvil la columna ocupa todo el ancho y la mesa desaparece; la jerarquía no cambia porque ya era vertical. La entrada arriba y el total abajo se mantienen fijos, que es exactamente el patrón que un teléfono espera. En escritorio la columna no crece de ancho, crece de alto.
-
-**Ritmo.** Un único ritmo de espaciado en todo el sistema, con más aire encima de una cabecera que debajo. Las secciones se separan con reglas finas en tinta desvaída, no con espacio en blanco generoso: la densidad es una virtud cuando hay que ver catorce líneas a la vez.
-
-`[Valores exactos de la escala de espaciado y del ancho de la columna: a resolver en la implementación.]`
+**Comportamiento adaptable.** En móvil el sidebar puede colapsar a un patrón compacto; la jerarquía vertical (entrada arriba, total abajo) se mantiene.
 
 ## Elevation & Depth
 
-El sistema es plano. La columna de trabajo se distingue de la mesa por su color de papel, no por una sombra.
+Los componentes deben parecer **suaves**. Separación por contraste: `bg-white` sobre `bg-gray-50` / `bg-gray-100`.
 
-La única excepción son las superposiciones que de verdad flotan: la papeleta de contexto, que es una hoja dejada encima. Proyecta una sombra corta y suave. Nada más en el sistema tiene sombra.
-
-No hay elevación tonal, ni niveles de superficie, ni tarjetas flotantes. Los botones, los campos y las etiquetas están impresos sobre el papel, y lo impreso no flota.
+- Si se requiere borde: `border border-gray-200` únicamente. **Prohibido** `border-2`, `border-4`, `border-black`.
+- Si se requiere sombra: `shadow-sm` o `shadow-md` con opacidad baja. **Prohibido** sombras sólidas brutales (`shadow-[4px_4px_0px_0px_rgba(0,0,0,1)]` y equivalentes).
+- La papeleta de contexto puede usar `shadow-md` por flotar de verdad; no introduce un segundo lenguaje de elevación.
 
 ### Named Rules
 
-**La Regla de la Sombra Única.** Solo lo que está literalmente encima de otra cosa proyecta sombra. Si algo tiene sombra y no es una superposición, es un error.
+**La Regla de la Elevación Natural.** Solo flota lo que está encima (modales / papeleta). El resto es plano sobre capas de color.
 
 ## Shapes
 
-**Radio cero en todo.** Campos, botones, bandas, superposiciones y sellos: ninguna esquina redondeada en ningún sitio. No es una cita al papel, es una decisión de carácter: en una herramienta densa y tabular las esquinas rectas leen como precisión y permiten que las filas se asienten juntas sin que el ojo tropiece con curvas repetidas.
+**PURGAR:** cualquier uso de `rounded-none`, `rounded-sm`, o esquinas afiladas como carácter del sistema.
 
-Las reglas separadoras son líneas finas en tinta desvaída.
+**NUEVA REGLA — Cápsulas:** todos los botones, badges y controles interactivos son tipo píldora: `rounded-full` (radio 9999px).
 
-La única forma no rectilínea del sistema es **el sello**, y solo por su ligera rotación y su tinta desigual. Aparece únicamente sobre documentos ya emitidos y en ningún otro lugar.
+**NUEVA REGLA — Contenedores:** tarjetas y contenedores mayores usan radios amplios pero no completos: `rounded-2xl` o `rounded-3xl`.
+
+Campos de texto e inputs siguen la misma familia suave (cápsula o radio amplio coherente con el control); nunca esquinas a cero.
+
+El sello sobre lo emitido puede conservar carácter propio (ligera rotación); no justifica volver al radio cero del resto de la UI.
 
 ## Do's and Don'ts
 
 ### Do:
 
-- **Do** mantener la hoja de trabajo visiblemente distinta de un comprobante: si alguien duda de qué está mirando, el diseño falló.
-- **Do** poner la entrada arriba y el total anclado abajo, siempre visibles ambos.
-- **Do** hacer crecer la lista hacia abajo, con lo último añadido al final.
+- **Do** mantener la herramienta visiblemente distinta de un comprobante.
+- **Do** usar sidebar con marca arriba y perfil+logout abajo.
+- **Do** llenar el área de trabajo a todo el ancho útil; capas gris/blanco.
+- **Do** poner controles interactivos en `rounded-full` y paneles en `rounded-2xl` / `rounded-3xl`.
+- **Do** separar regiones con contraste de color; bordes solo `border-gray-200` si hacen falta.
 - **Do** alinear a la derecha y en cifras tabulares todo número comparable.
-- **Do** expresar una corrección como el papel la expresa: la lectura original tachada en tinta desvaída y, debajo y sangrada, la propuesta limpia.
-- **Do** reservar el sello violeta para lo ya emitido, ligeramente rotado y con tinta desigual.
-- **Do** declarar en rojo, con una etiqueta al lado del tipo de documento, todo documento que no tenga valor tributario.
-- **Do** acompañar todo estado con una segunda señal además del color: tachado, peso, sangrado, sello o etiqueta.
-- **Do** mostrar los avisos de degradación como una banda persistente y fijada, no como una notificación que se desvanece.
-- **Do** dejar que las acciones frecuentes sean rápidas: un botón que se deshabilita al pulsarse y cambia de estado, sin ceremonia.
+- **Do** expresar una corrección con original tachado y propuesta limpia debajo.
+- **Do** reservar el sello violeta para lo ya emitido.
+- **Do** declarar en rojo, junto al tipo de documento, todo documento sin valor tributario.
+- **Do** acompañar todo estado con una segunda señal además del color.
+- **Do** mostrar degradación como banda persistente, no como toast que desaparece.
 
 ### Don't:
 
-- **Don't** hacer que la pantalla parezca un comprobante impreso: nada de perforaciones, dentados, bordes rasgados, cintas ni simulación de impresión térmica.
-- **Don't** usar verde. Un estado positivo se marca con el sello.
-- **Don't** redondear ninguna esquina.
-- **Don't** poner sombra a nada que no sea una superposición real.
-- **Don't** estirar la columna para llenar la pantalla, ni convertirla en un tablero de widgets o métricas.
-- **Don't** introducir una barra lateral de navegación permanente.
-- **Don't** usar fósforo verde sobre negro, ni monoespaciada de terminal, ni ningún guiño a la estética de terminal retro.
-- **Don't** ofrecer modo oscuro. La escena es una fachada abierta de centro mayorista con luz de día entrando.
-- **Don't** pedir gestos elaborados —arrastres, mantener pulsado, confirmaciones en varios pasos— para una operación que se repite cien veces al día.
-- **Don't** esconder tras un paso del ratón por encima, un menú o un gesto nada que sea necesario para completar una venta.
-- **Don't** comunicar nada importante solo con sonido. El local es ruidoso.
-- **Don't** usar la palabra "eliminar" referida a un comprobante emitido, en ninguna etiqueta, mensaje ni tooltip.
+- **Don't** hacer que la pantalla parezca un comprobante impreso.
+- **Don't** usar verde.
+- **Don't** usar `rounded-none`, `rounded-sm`, ni esquinas afiladas como lenguaje visual.
+- **Don't** usar `border-2`, `border-4`, `border-black`, ni sombras sólidas brutales.
+- **Don't** volver al fondo papel/mesa amarillento (`#F7F4EC` / `#DED7C7`) como lienzo de la app.
+- **Don't** centrar el contenido en una columna estrecha decorativa dejando “mesa” a los lados.
+- **Don't** poner el perfil/logout arriba del sidebar (queda al pie).
+- **Don't** ofrecer modo oscuro.
+- **Don't** pedir gestos elaborados para operaciones que se repiten cien veces al día.
+- **Don't** comunicar nada importante solo con sonido.
+- **Don't** usar la palabra "eliminar" referida a un comprobante emitido.

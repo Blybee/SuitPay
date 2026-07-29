@@ -19,23 +19,20 @@ import type {ClaseDeFallo, RastroDelProveedor, Resultado} from '../interfaz.ts';
  * - `indisponible`: se sabe con certeza que **no llegó a procesar**.
  * - `indeterminado`: no se puede saber. **Prohibido reintentar.**
  *
- * ## La incógnita que T027 tiene que cerrar
+ * ## Hallazgos T027 (2026-07-29, entorno de demostración)
  *
- * La respuesta de error documentada del proveedor es `{"exito": false, "mensaje":
- * null}`, **sin código de error**. Sin un código estable, distinguir un rechazo
- * definitivo de una indisponibilidad tiene que apoyarse en el código de estado
- * HTTP y en la diferencia entre "se agotó la espera" y "contestó", que es más
- * frágil. Ésa es hoy la incógnita más valiosa del proyecto y se resuelve
- * provocando fallos en su entorno de demostración y observando qué llega.
+ * Observado en vivo:
+ * - Número explícito **respetado** (`data.numero` = `F001-900001` al enviar `900001`).
+ * - Errores llegan como HTTP **404** con
+ *   `{"exito":false,"errors":[{"message":"…"}]}` — **sin código numérico**.
+ * - Mensajes vistos: `"Documento no encontrado."` (consulta) y
+ *   `"El documento ya está registrado."` (reemisión del mismo número).
  *
- * Mientras no esté resuelta, la clasificación de aquí es **deliberadamente
- * conservadora**, y eso no es una suposición temporal: es lo que el contrato de
- * frontera manda. Ante la duda, `indeterminado`. Cuesta una consulta de
- * reconciliación, mientras que equivocarse al contrario cuesta un documento
- * fiscal de más y su anulación.
- *
- * Los bloques marcados con `PENDIENTE DE T027` son los que hay que revisar
- * cuando haya observaciones reales, no reescribir de cero.
+ * Clasificación: 404 → `rechazo_definitivo` (no se emitió de más / no reintentar
+ * como si fuera indisponible). El matiz entre "no existe" y "ya registrado" vive
+ * en `errors[].message` y lo consume quien llama (p. ej. consulta → `existe: false`).
+ * Ante `exito: false` en un 200 sin mensaje reconocible, se mantiene
+ * `indeterminado` (conservador).
  */
 
 /**
@@ -80,6 +77,17 @@ function recortar(texto: string, maximo = 2_000): string {
   return texto.length <= maximo ? texto : `${texto.slice(0, maximo)}…[recortado]`
 }
 
+function mensajeDeErrors(objeto: Record<string, unknown> | undefined): string | undefined {
+  const errors = objeto?.['errors']
+  if (!Array.isArray(errors) || errors.length === 0) return undefined
+  const primero = errors[0]
+  if (typeof primero === 'object' && primero !== null) {
+    const message = (primero as Record<string, unknown>)['message']
+    if (typeof message === 'string') return message
+  }
+  return undefined
+}
+
 function rastroDe(respuesta: RespuestaCruda): RastroDelProveedor {
   const json = respuesta.json
   const objeto =
@@ -88,7 +96,11 @@ function rastroDe(respuesta: RespuestaCruda): RastroDelProveedor {
       : undefined
 
   const codigo = objeto?.['codigo'] ?? objeto?.['code'] ?? objeto?.['sunat_code']
-  const mensaje = objeto?.['mensaje'] ?? objeto?.['message'] ?? objeto?.['error']
+  const mensaje =
+    mensajeDeErrors(objeto) ??
+    objeto?.['mensaje'] ??
+    objeto?.['message'] ??
+    objeto?.['error']
 
   return {
     codigoOriginal: typeof codigo === 'string' ? codigo : undefined,
@@ -101,19 +113,25 @@ function rastroDe(respuesta: RespuestaCruda): RastroDelProveedor {
 /**
  * Clasifica una respuesta que **sí llegó** pero que no indica éxito.
  *
- * PENDIENTE DE T027: la separación se apoya hoy en el código de estado HTTP
- * porque no hay código de error propio del proveedor en el que apoyarse.
+ * T027: los rechazos de negocio observados usan HTTP 404 + `errors[].message`,
+ * sin código propio. 404 se trata como rechazo definitivo.
  */
 function clasificarRespuestaFallida(respuesta: RespuestaCruda): {
   clase: ClaseDeFallo
   razon: string
 } {
   const codigo = respuesta.estadoHttp
+  const mensaje = rastroDe(respuesta).mensajeOriginal?.toLowerCase() ?? ''
 
   // Autenticación o autorización: es un fallo nuestro de configuración y desde
   // luego no se emitió nada. No se reintenta, se arregla.
   if (codigo === 401 || codigo === 403) {
     return { clase: 'rechazo_definitivo', razon: `credenciales_rechazadas_${codigo}` }
+  }
+
+  // Número ya usado (T027): rechazo definitivo — no reintentar con el mismo número.
+  if (mensaje.includes('ya está registrado')) {
+    return { clase: 'rechazo_definitivo', razon: 'numero_ya_registrado' }
   }
 
   // El proveedor entendió la petición y la considera inválida. No se emitió.
@@ -178,6 +196,12 @@ export interface RespuestaDelProveedor {
   readonly rastro: RastroDelProveedor
 }
 
+export interface OpcionesDePeticion {
+  readonly metodo?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  /** Si es `undefined` y el método no es GET, se envía `{}`. GET no lleva cuerpo. */
+  readonly cuerpo?: unknown
+}
+
 /**
  * Hace una petición al proveedor. **No reintenta.** Reintentar es una decisión de
  * la lógica de emisión, que es la única que conoce el estado del comprobante.
@@ -185,21 +209,32 @@ export interface RespuestaDelProveedor {
 export async function pedirAlProveedor(
   configuracion: ConfiguracionDelProveedor,
   ruta: string,
-  cuerpo: unknown,
+  cuerpoOOpciones: unknown = {},
 ): Promise<Resultado<RespuestaDelProveedor>> {
   const espera = configuracion.esperaMs ?? ESPERA_POR_OMISION_MS
+  const opciones = esOpcionesDePeticion(cuerpoOOpciones)
+    ? cuerpoOOpciones
+    : { metodo: 'POST' as const, cuerpo: cuerpoOOpciones }
+  const metodo = opciones.metodo ?? 'POST'
+  const cuerpo = opciones.cuerpo
 
   let respuesta: Response
   try {
     respuesta = await fetch(`${configuracion.urlBase}${ruta}`, {
-      method: 'POST',
+      method: metodo,
       headers: {
         // El token no aparece en ningún rastro ni en ningún resultado.
         Authorization: `Bearer ${configuracion.token}`,
-        'Content-Type': 'application/json',
-        Accept: 'application/json',
+        ...(metodo === 'GET'
+          ? { Accept: 'application/json' }
+          : {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+            }),
       },
-      body: JSON.stringify(cuerpo),
+      ...(metodo === 'GET' || metodo === 'DELETE'
+        ? {}
+        : { body: JSON.stringify(cuerpo ?? {}) }),
       signal: AbortSignal.timeout(espera),
     })
   } catch (error) {
@@ -238,22 +273,32 @@ export async function pedirAlProveedor(
     return fallo('indeterminado', 'respuesta_no_es_json', rastro)
   }
 
-  // Su convenio: `exito: false` dentro de un 200. Sin código de error, así que
-  // no hay forma de distinguir un rechazo de una indisponibilidad.
-  //
-  // PENDIENTE DE T027: aquí es donde más se nota la falta del código. Se
-  // clasifica como indeterminado por ser la opción conservadora, aunque en la
-  // práctica la mayoría de estos casos serán rechazos. Cuando T027 aporte
-  // observaciones reales, esta rama se podrá afinar y muchos de estos fallos
-  // pasarán a `rechazo_definitivo`, que es más útil porque permite corregir y
-  // volver a emitir en el momento.
+  // `exito: false` dentro de un 200 (poco visto en T027; los rechazos fueron 404).
   const objeto =
     typeof json === 'object' && json !== null
       ? (json as Record<string, unknown>)
       : undefined
   if (objeto?.['exito'] === false) {
+    const mensaje = (rastro.mensajeOriginal ?? '').toLowerCase()
+    if (
+      mensaje.includes('ya está registrado') ||
+      mensaje.includes('no encontrado')
+    ) {
+      return fallo('rechazo_definitivo', 'exito_falso_con_mensaje', rastro)
+    }
     return fallo('indeterminado', 'exito_falso_sin_codigo', rastro)
   }
 
   return { ok: true, valor: { json, rastro } }
+}
+
+function esOpcionesDePeticion(valor: unknown): valor is OpcionesDePeticion {
+  if (valor === null || typeof valor !== 'object') return false
+  const metodo = (valor as Record<string, unknown>)['metodo']
+  return (
+    metodo === 'GET' ||
+    metodo === 'POST' ||
+    metodo === 'PUT' ||
+    metodo === 'DELETE'
+  )
 }

@@ -260,6 +260,43 @@ export interface PeticionDeNotaDeCredito {
 }
 
 // ---------------------------------------------------------------------------
+// Administración (establecimientos y series) — T083
+// ---------------------------------------------------------------------------
+
+/** Establecimiento / sede del emisor ante el proveedor. */
+export interface Establecimiento {
+  readonly id: string
+  readonly nombre: string
+  readonly codigoAnexo: string
+  readonly direccion: string
+  readonly ubigeoId: string
+  readonly correo: string | undefined
+}
+
+export interface PeticionDeCrearEstablecimiento {
+  readonly nombre?: string
+  readonly codigoAnexo: string
+  readonly direccion: string
+  readonly ubigeoId: string
+  readonly correo?: string
+}
+
+export interface SerieEnProveedor {
+  readonly id: string
+  readonly serie: string
+  readonly tipoDocumento: TipoDeDocumento
+  readonly numeroInicial: number
+  readonly establecimientoId: string
+}
+
+export interface PeticionDeCrearSerieEnProveedor {
+  readonly tipoDocumento: TipoDeDocumento
+  readonly serie: string
+  readonly numeroInicial: number
+  readonly establecimientoId: string
+}
+
+// ---------------------------------------------------------------------------
 // La interfaz
 // ---------------------------------------------------------------------------
 
@@ -293,6 +330,24 @@ export interface ProveedorDeEmision {
   emitirNotaCredito: (
     peticion: PeticionDeNotaDeCredito,
   ) => Promise<Resultado<DocumentoEmitido>>
+
+  crearEstablecimiento: (
+    peticion: PeticionDeCrearEstablecimiento,
+  ) => Promise<Resultado<Establecimiento>>
+
+  listarEstablecimientos: () => Promise<Resultado<readonly Establecimiento[]>>
+
+  eliminarEstablecimiento: (
+    establecimientoId: string,
+  ) => Promise<Resultado<{ readonly eliminado: true }>>
+
+  crearSerie: (
+    peticion: PeticionDeCrearSerieEnProveedor,
+  ) => Promise<Resultado<SerieEnProveedor>>
+
+  eliminarSerie: (
+    serieIdEnProveedor: string,
+  ) => Promise<Resultado<{ readonly eliminado: true }>>
 }
 
 // ---------------------------------------------------------------------------

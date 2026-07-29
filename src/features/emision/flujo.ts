@@ -4,32 +4,10 @@ import { usarDegradacion } from '../degradacion/estado.ts'
 import { usarPedido } from '../pedido/almacen.ts'
 
 /**
- * El flujo de emisión visto desde el cliente.
+ * El flujo de emisión visto desde el cliente (decisión 10).
  *
- * ## La distinción que este módulo existe para hacer visible
- *
- * `yaExistia` separa **"emitido ahora"** de **"ya estaba emitido"**, y no es un
- * matiz. Si un reintento dijera "Emitido" sin más, el vendedor no sabría si acaba
- * de generar un segundo documento, y su reacción natural sería ir a buscarlo para
- * anularlo. Decirle que ese comprobante ya existía y es el mismo le ahorra una
- * anulación que no hace falta y una llamada al administrador.
- *
- * ## Por qué el estado indeterminado no ofrece reintentar
- *
- * Es el estado más delicado del sistema: hay un cliente delante, no se sabe si el
- * comprobante existe, y la única acción incorrecta —volver a emitir— es también la
- * que el vendedor querrá hacer. La interfaz **no ofrece el botón**. No lo pone
- * deshabilitado con un aviso: no lo pone.
- *
- * Y esa decisión no depende de que quien escriba la pantalla se acuerde: el
- * servidor devuelve `reintentable: false` en el propio error, así que la
- * prohibición viaja con el dato.
- *
- * ## Por qué el pedido no se vacía hasta que la venta está cerrada
- *
- * Si se vaciara al pulsar emitir y la respuesta fuera indeterminada, el vendedor
- * se quedaría sin el pedido y sin comprobante, con el cliente delante. El pedido
- * se conserva hasta que consta que el documento existe.
+ * - `proveedor_no_disponible`: reintento manual; el pedido no se vacía.
+ * - `emision_indeterminada`: sin reemitir; solo «Consultar estado».
  */
 
 export type FaseDeEmision =
@@ -38,13 +16,7 @@ export type FaseDeEmision =
   | {
       readonly nombre: 'emitida'
       readonly comprobante: RespuestaDeEmitir
-      /** Si la llamada fue un reintento que no produjo nada nuevo. */
       readonly yaExistia: boolean
-    }
-  | {
-      readonly nombre: 'en_espera'
-      readonly comprobanteId: string
-      readonly mensaje: string
     }
   | {
       readonly nombre: 'en_verificacion'
@@ -76,15 +48,11 @@ export interface RespuestaDelServidor {
 
 interface AlmacenDeEmision {
   readonly fase: FaseDeEmision
-  /**
-   * Marca la emisión en vuelo. Se llama **antes** de cualquier espera, de modo
-   * que la segunda pulsación de un doble clic ya encuentra el botón inerte. Es la
-   * primera de las dos defensas; la segunda es la clave de idempotencia, y hacen
-   * falta las dos porque ésta no cubre dos dispositivos ni una recarga.
-   */
   comenzar: () => boolean
   resolver: (respuesta: RespuestaDelServidor) => void
   falloDeRed: () => void
+  adoptarConsulta: (comprobante: RespuestaDeEmitir) => void
+  marcarReintentableTrasConsulta: (mensaje: string) => void
   cerrar: () => void
 }
 
@@ -107,8 +75,6 @@ export const usarEmision = create<AlmacenDeEmision>((set, get) => ({
           yaExistia: comprobante.yaExistia,
         },
       })
-      // Solo ahora. Vaciar antes habría dejado al vendedor sin pedido y sin
-      // comprobante si la respuesta no hubiera llegado.
       usarPedido.getState().vaciar()
       usarDegradacion.getState().resolver('proveedor')
       return
@@ -129,8 +95,6 @@ export const usarEmision = create<AlmacenDeEmision>((set, get) => ({
 
     switch (error.codigo) {
       case 'emision_indeterminada':
-        // El pedido NO se vacía y NO se ofrece reintentar. La venta queda a cargo
-        // de la reconciliación, que preguntará al proveedor.
         set({
           fase: {
             nombre: 'en_verificacion',
@@ -146,12 +110,10 @@ export const usarEmision = create<AlmacenDeEmision>((set, get) => ({
       case 'proveedor_no_disponible':
         set({
           fase: {
-            nombre: 'en_espera',
-            comprobanteId:
-              typeof error.detalle?.['comprobanteId'] === 'string'
-                ? error.detalle['comprobanteId']
-                : '',
+            nombre: 'no_se_pudo',
             mensaje: error.mensaje,
+            codigo: error.codigo,
+            reintentable: true,
           },
         })
         usarDegradacion.getState().declarar('proveedor')
@@ -173,8 +135,6 @@ export const usarEmision = create<AlmacenDeEmision>((set, get) => ({
             nombre: 'no_se_pudo',
             mensaje: error.mensaje,
             codigo: error.codigo,
-            // Se respeta lo que dice el servidor. La interfaz no decide esto por
-            // su cuenta, porque decidirlo mal produce comprobantes duplicados.
             reintentable: error.reintentable,
           },
         })
@@ -182,21 +142,39 @@ export const usarEmision = create<AlmacenDeEmision>((set, get) => ({
   },
 
   falloDeRed() {
-    // Un fallo de red desde el cliente es indistinguible de una respuesta que se
-    // perdió: la petición pudo llegar y emitirse. Se trata como verificación
-    // pendiente y **no se ofrece reintentar**, aunque la clave de idempotencia
-    // haría seguro el reintento. La razón de ser tan conservador es que la clave
-    // se conserva en IndexedDB pero un vendedor puede recargar en otro navegador,
-    // y el coste de equivocarse aquí es un documento fiscal de más.
     set({
       fase: {
         nombre: 'en_verificacion',
         comprobanteId: usarPedido.getState().claveIdempotencia,
         mensaje:
-          'No se pudo confirmar si el comprobante se emitió. NO vuelvas a emitir: se está verificando.',
+          'No se pudo confirmar si el comprobante se emitió. NO vuelvas a emitir a ciegas: usa «Consultar estado».',
       },
     })
     usarDegradacion.getState().declarar('red')
+  },
+
+  adoptarConsulta(comprobante) {
+    set({
+      fase: {
+        nombre: 'emitida',
+        comprobante,
+        yaExistia: true,
+      },
+    })
+    usarPedido.getState().vaciar()
+    usarDegradacion.getState().resolver('proveedor')
+    usarDegradacion.getState().resolver('red')
+  },
+
+  marcarReintentableTrasConsulta(mensaje) {
+    set({
+      fase: {
+        nombre: 'no_se_pudo',
+        mensaje,
+        codigo: 'proveedor_no_disponible',
+        reintentable: true,
+      },
+    })
   },
 
   cerrar() {
@@ -204,13 +182,7 @@ export const usarEmision = create<AlmacenDeEmision>((set, get) => ({
   },
 }))
 
-/**
- * Si la interfaz puede ofrecer un botón de reintentar. Deliberadamente
- * pesimista: solo cuando consta que no se emitió nada.
- */
 export function sePuedeReintentar(fase: FaseDeEmision): boolean {
   if (fase.nombre === 'no_se_pudo') return fase.reintentable
-  // `en_verificacion` nunca, `en_espera` tampoco: la venta ya está registrada y
-  // la completará la tarea programada.
   return false
 }

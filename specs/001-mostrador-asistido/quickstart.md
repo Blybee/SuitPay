@@ -7,8 +7,8 @@ Cómo comprobar que la entrega funciona de verdad. No es documentación de insta
 ## Prerrequisitos
 
 **Cuentas y proyectos**
-- Un proyecto de Firebase nuevo e independiente del de la tienda virtual, con Firestore en edición Standard, Authentication, Cloud Storage y App Hosting habilitados. App Hosting exige el plan de facturación Blaze.
-- Una cuenta en el entorno de **demostración** del proveedor de emisión, con al menos una serie de facturas y una de boletas creadas. La constitución prohíbe estrenar la integración en producción.
+- Proyecto Firebase **`blayblocklabs-antrax`** (independiente de la tienda virtual), con Firestore edición Standard, Authentication, Cloud Storage y App Hosting. Site Hosting: **`suitpay`**. App Hosting exige plan Blaze. Variables públicas en `.env.local` (ver `.env.example`); secretos del proveedor en Secret Manager / env de servidor.
+- Una cuenta en el entorno de **demostración** del proveedor de emisión, con al menos una serie de facturas y una de boletas creadas. La constitución prohíbe estrenar la integración en producción. **T027 cerrado** (2026-07-29): el número explícito se respeta; ver `research.md`.
 - Credenciales del servicio de asistencia multimodal. Dos, para poder ejercitar la conmutación.
 
 **Datos mínimos**
@@ -96,9 +96,9 @@ Con una venta en curso, escribir un RUC no registrado.
 
 ### V13 — Carga del catálogo (US2)
 
-Como administrador, cargar el catálogo en modo validación y luego publicarlo. Cargar después una versión con un precio cambiado, un producto nuevo, uno desaparecido y dos códigos repetidos.
+Como administrador, en Configuración → Catálogo, cargar el JSON de la tienda (`tmp/productos.js` o export equivalente) en modo validación y luego publicarlo. Comprobar que un producto con variantes (p. ej. válvula esférica) aparece como **varios ítems** con precios mayoristas distintos, descripción `{marca} {nombre} {variante}` y **sin** el precio en el texto. Cargar después una versión con un precio cambiado, un producto nuevo, uno desaparecido y dos códigos repetidos.
 
-**Observar**: el resumen previo muestra las diferencias antes de aplicar nada; los códigos duplicados se señalan **sin resolverse automáticamente**; tras publicar, los vendedores ven el catálogo nuevo al refrescar. Contar las escrituras de la publicación: **debe ser una sola**, no una por producto.
+**Observar**: el resumen previo muestra las diferencias antes de aplicar nada; los códigos duplicados se señalan **sin resolverse automáticamente**; tras publicar, los vendedores ven el catálogo nuevo al refrescar. Contar las escrituras de la publicación: **debe ser una sola**, no una por producto. Esperado del export actual: ~737 ítems a partir de ~465 productos de tienda.
 
 ### V14 — Los comandos no escriben (FR-048, principio I)
 

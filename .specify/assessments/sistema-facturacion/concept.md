@@ -2,6 +2,7 @@
 
 - **Slug**: sistema-facturacion
 - **Created**: 2026-07-28
+- **Updated**: 2026-07-29 (enmienda volcado 5)
 - **Recommended option**: Option D — Mostrador asistido acotado
 - **Nota de revisión**: la primera versión de este documento recomendaba la Opción B y asignaba apetito `large` a la Opción C. Ese apetito estaba inflado porque no contemplaba que las herramientas de captura por audio y foto ya existen en la tienda virtual de la empresa. Tras discutirlo con el autor se añadió la Opción D y se trasladó la recomendación a ella. Las opciones A, B y C se conservan como registro del espacio de compensaciones evaluado.
 
@@ -73,3 +74,14 @@ Hereda todos los no-objetivos de `problem.md` —contabilidad, cobranzas como m�
 - **Que el reacoplamiento de las herramientas de captura sea contenido.** El autor confirmó que funcionan pero están acopladas a la tienda virtual y que habría que rehacer parte, sin haber medido cuánta. **Es la asunción que más puede mover el apetito de la opción recomendada**, y la única que se despeja gratis: basta revisar el código existente antes de comprometer alcance. Si el acoplamiento resulta profundo, la recomendación debería replegarse hacia la Opción B.
 - **Que el volumen del canal de los vecinos justifique la captura por fotografía en la primera entrega.** Se describe como frecuente porque la empresa está bien posicionada, pero no está cuantificado. Es parte de la medición de líneas base recomendada.
 - **Que el emparejamiento entre el texto capturado y el catálogo alcance una calidad utilizable** sobre unos 500 productos con nombres estructurados por material, medida y marca. La estructura de los nombres juega a favor, pero no se ha probado con guías manuales reales.
+
+## Enmienda volcado 5 (2026-07-29)
+
+No cambia la opción recomendada (sigue D). Ajusta la superficie de la opción y el modelo mental de numeración:
+
+- **Shell**: la aplicación tiene sidebar permanente con, al menos, Inicio (mostrador) y Configuración. Marca SuitPay en el sidebar; perfil de usuario + logout al **pie**.
+- **Mostrador**: contenido a todo el ancho (no columna centrada sobre “mesa”); tabs internos Pedido | Cotizaciones | Vecinos | Lista; fondo en capas de gris/blanco.
+- **Dirección visual**: Modern Soft-Pill sustituye el propio-mundo “papel cálido / radio cero / sin barra lateral” que había quedado implícito en la exploración posterior al assessment.
+- **Default de documento**: Nota de Venta.
+- **Correlativo**: SuitPay sigue siendo el árbitro que reclama y envía el número; el **origen** del contador lo fija el número inicial configurado en la serie (alineado con el panel del proveedor). La asunción cara sigue siendo que el proveedor respete el número explícito (demo / T027).
+- **Ticket PDF**: la documentación del proveedor admite `formato_pdf: ticket`, lo que debilita la asunción de que el rollo era inalcanzable por API.

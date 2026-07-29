@@ -37,7 +37,7 @@ export function EtiquetaSinValor({
       // que acaba de ocurrir. Un `alert` lo anunciaría cada vez que se repinta.
       role="status"
       className={[
-        'inline-block shrink-0 border-2 border-aviso px-2 py-1',
+        'inline-block shrink-0 rounded-full border border-aviso px-3 py-1',
         'font-mono text-etiqueta font-bold uppercase tracking-wide text-aviso',
       ].join(' ')}
     >

@@ -3,39 +3,29 @@ import { emitirComprobante } from '../../../src/server/emision/emitir.ts'
 import { montarEscenario, peticion } from './ayudas-emision.ts'
 
 /**
- * El proveedor no responde (FR-050, FR-050a).
- *
- * A diferencia del caso indeterminado, aquí **se sabe con certeza que no se
- * emitió**: la petición no llegó a salir. Eso cambia todo lo que se puede hacer:
- * la venta queda en espera, se cobra, se entrega mercadería con un documento
- * interno y el comprobante real se emite al restablecerse el servicio.
- *
- * La diferencia entre este caso y el indeterminado es la razón de que la
- * clasificación de fallos exista, y confundirlos es lo que produce duplicados.
+ * Proveedor caído (FR-050 enmendado, decisión 10).
  */
 describe('emisión con el proveedor caído', () => {
   it('deja la venta pendiente, no indeterminada', async () => {
     const { almacen, contexto, proveedor } = montarEscenario()
+    const p = peticion({ claveIdempotencia: 'caido-1' })
     proveedor.configurarEmision({ tipo: 'indisponible' })
 
-    await expect(emitirComprobante(contexto, peticion())).rejects.toMatchObject({
+    await expect(emitirComprobante(contexto, p)).rejects.toMatchObject({
       codigo: 'proveedor_no_disponible',
     })
 
     const [comprobante] = almacen.todosLosComprobantes()
     expect(comprobante?.estado).toBe('pendiente')
-    // Nada quedó registrado del otro lado: es lo que hace segura la espera.
     expect(proveedor.documentosEmitidos).toBe(0)
   })
 
   it('conserva el pedido completo para poder emitirlo después', async () => {
-    // El vendedor ya cobró y el cliente se fue con la mercadería. Si el pedido no
-    // quedara guardado íntegro, la tarea programada no tendría qué emitir y habría
-    // que reconstruirlo de memoria.
     const { almacen, contexto, proveedor } = montarEscenario()
+    const p = peticion({ claveIdempotencia: 'caido-2' })
     proveedor.configurarEmision({ tipo: 'indisponible' })
 
-    await expect(emitirComprobante(contexto, peticion())).rejects.toThrow()
+    await expect(emitirComprobante(contexto, p)).rejects.toThrow()
 
     const [comprobante] = almacen.todosLosComprobantes()
     expect(comprobante?.lineas).toHaveLength(1)
@@ -44,26 +34,31 @@ describe('emisión con el proveedor caído', () => {
     expect(comprobante?.numero).toBe(1)
   })
 
-  it('el mensaje al vendedor le dice qué hacer, no qué falló', async () => {
-    // Se lee de pie y con el cliente delante: tiene que decir la acción.
+  it('el mensaje pide reintentar, no datos de contacto ni documento interno', async () => {
     const { contexto, proveedor } = montarEscenario()
+    const p = peticion({ claveIdempotencia: 'caido-3' })
     proveedor.configurarEmision({ tipo: 'indisponible' })
 
-    await expect(emitirComprobante(contexto, peticion())).rejects.toMatchObject({
-      mensajeParaVendedor: expect.stringContaining('datos de contacto'),
-    })
+    try {
+      await emitirComprobante(contexto, p)
+      expect.unreachable()
+    } catch (error) {
+      const mensaje = (error as { mensajeParaVendedor: string })
+        .mensajeParaVendedor
+      expect(mensaje).toMatch(/inténtalo de nuevo/i)
+      expect(mensaje).not.toMatch(/contacto/i)
+      expect(mensaje).not.toMatch(/documento interno/i)
+    }
   })
 
   it('no propaga el mensaje crudo del proveedor', async () => {
-    // FR-039 y principio III: el texto del proveedor se guarda en la traza para
-    // diagnosticar, y no sale de ahí. Si llegara a la pantalla, cambiar de
-    // proveedor cambiaría lo que lee el vendedor.
     const { almacen, contexto, proveedor } = montarEscenario()
+    const p = peticion({ claveIdempotencia: 'caido-4' })
     proveedor.configurarEmision({ tipo: 'indisponible' })
 
     let mensajeMostrado = ''
     try {
-      await emitirComprobante(contexto, peticion())
+      await emitirComprobante(contexto, p)
     } catch (error) {
       mensajeMostrado = (error as { mensajeParaVendedor: string })
         .mensajeParaVendedor
@@ -71,26 +66,25 @@ describe('emisión con el proveedor caído', () => {
 
     expect(mensajeMostrado).not.toContain('fetch failed')
 
-    // Pero sí está en la traza, donde sirve.
     const [comprobante] = almacen.todosLosComprobantes()
     expect(comprobante?.intentos[0]?.rastro?.mensajeOriginal).toBe(
       'fetch failed',
     )
   })
 
-  it('el reintento programado puede volver a enviar desde pendiente', async () => {
-    // La diferencia práctica con indeterminado: desde `pendiente` sí se puede
-    // volver a invocar, porque consta que no se emitió nada.
+  it('el reintento manual con la misma clave vuelve a invocar al proveedor', async () => {
     const { almacen, contexto, proveedor } = montarEscenario()
+    const p = peticion({ claveIdempotencia: 'caido-reintento' })
     proveedor.configurarEmision({ tipo: 'indisponible' })
 
-    await expect(emitirComprobante(contexto, peticion())).rejects.toThrow()
+    await expect(emitirComprobante(contexto, p)).rejects.toThrow()
+    expect(proveedor.documentosEmitidos).toBe(0)
 
-    const [comprobante] = almacen.todosLosComprobantes()
-    const { sePuedeInvocarEmision } = await import(
-      '../../../src/server/emision/estados.ts'
-    )
+    proveedor.configurarEmision({ tipo: 'exito' })
+    const segunda = await emitirComprobante(contexto, p)
 
-    expect(sePuedeInvocarEmision(comprobante?.estado ?? 'reclamado')).toBe(true)
+    expect(segunda.estado).toMatch(/enviado|aceptado/)
+    expect(proveedor.documentosEmitidos).toBe(1)
+    expect(almacen.todosLosComprobantes()[0]?.estado).toMatch(/enviado|aceptado/)
   })
 })

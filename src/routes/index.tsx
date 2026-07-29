@@ -24,35 +24,25 @@ import {
   CabecerasDeColumna,
   LineaPedido,
 } from '../ui/componentes/LineaPedido.tsx'
-import { PieTotal  } from '../ui/componentes/PieTotal.tsx'
-import type {EstadoDeEmision as FaseDelBoton} from '../ui/componentes/PieTotal.tsx';
+import { PestanasMostrador } from '../ui/componentes/PestanasMostrador.tsx'
+import type { PestanaMostrador } from '../ui/componentes/PestanasMostrador.tsx'
+import { PieTotal } from '../ui/componentes/PieTotal.tsx'
+import type { EstadoDeEmision as FaseDelBoton } from '../ui/componentes/PieTotal.tsx'
 
 /**
- * El mostrador. La pantalla única de venta.
+ * Mostrador Soft-Pill (FR-005b).
  *
- * ## Lo que deliberadamente no está aquí
- *
- * Ninguna métrica, ningún gráfico, ningún contador de ventas del día, ningún
- * avatar, ninguna navegación permanente. No es minimalismo: el vendedor tiene un
- * cliente delante y cada elemento que compite por su atención es un elemento que
- * alarga la venta. Un contador de ventas del día es exactamente la clase de cosa
- * que se pide en una reunión y que nadie mira en el mostrador.
- *
- * ## El orden de las tres barras
- *
- * Entrada arriba a todo el ancho, columna de papel en medio, total anclado al pie.
- * El total no puede viajar con el contenido: con catorce líneas se iría fuera de
- * pantalla, y el total es lo que se comprueba antes de cobrar.
- *
- * Hay además un beneficio no buscado: con la entrada arriba y el botón de emitir
- * abajo, los separa toda la altura de la pantalla. La protección contra la pulsación
- * accidental que se quiso sacar de un gesto elaborado la da gratis la posición.
+ * Orden fijo en Inicio:
+ * 1. Cinta de herramientas (`Entrada`) — siempre arriba, persiste entre tabs.
+ * 2. Tabs internos (Pedido | Cotizaciones | Vecinos | Lista).
+ * 3. Contenido del tab (en Pedido: cabecera, líneas, pie de total).
  */
 export const Route = createFileRoute('/')({
   component: Mostrador,
 })
 
 function Mostrador() {
+  const [pestana, setPestana] = useState<PestanaMostrador>('pedido')
   const [termino, setTermino] = useState('')
   const [medioPago, setMedioPago] = useState('efectivo')
 
@@ -102,15 +92,8 @@ function Mostrador() {
   }
 
   async function lanzarEmision(): Promise<void> {
-    // Se marca en vuelo **antes** de cualquier espera. La segunda pulsación de un
-    // doble clic entra aquí, encuentra el estado ya ocupado y se va sin hacer
-    // nada. Es la primera de las dos defensas.
     if (!comenzarEmision()) return
 
-    // La clave se reclama una vez por intención de venta. Si esto es un reintento
-    // del mismo gesto, devuelve la misma clave y el servidor reconocerá el
-    // comprobante en lugar de emitir otro. Es la segunda defensa, y la que cubre
-    // lo que la primera no puede: dos dispositivos y una recarga de página.
     const clave = pedido.reclamarClaveDeIdempotencia()
 
     try {
@@ -135,7 +118,6 @@ function Mostrador() {
       })
       resolverEmision(respuesta)
     } catch {
-      // Indistinguible de una respuesta que se perdió: la petición pudo llegar.
       falloDeRed()
     }
   }
@@ -150,7 +132,8 @@ function Mostrador() {
           : 'listo'
 
   return (
-    <div className="flex min-h-svh flex-col">
+    <div className="flex min-h-full flex-col">
+      {/* Cinta de herramientas: siempre visible en Inicio, encima de los tabs. */}
       <Entrada
         termino={termino}
         onTerminoCambia={setTermino}
@@ -159,74 +142,109 @@ function Mostrador() {
         asistenciaDisponible={asistenciaDisponible}
       />
 
-      <CabeceraDocumento
-        tipo={pedido.tipoDocumento}
-        onCambiarTipo={pedido.fijarTipoDocumento}
-        serie={null}
-        cliente={pedido.cliente}
-        onElegirCliente={() => undefined}
-        onQuitarCliente={() => pedido.fijarCliente(null)}
-        total={total}
-        umbral={umbral}
-      />
+      <PestanasMostrador activa={pestana} onCambiar={setPestana} />
 
-      <div className="flex-1 overflow-y-auto pb-2">
-        <CabecerasDeColumna />
-        {/* El pedido vacío no lleva ilustración ni mensaje de bienvenida: la
-            columna con sus cabeceras y la entrada enfocada ya dicen que se puede
-            teclear. Un cartel de bienvenida se lee una vez y estorba las otras
-            noventa y nueve veces del día. */}
-        <ul>
-          {lineas.map((linea, indice) => (
-            <LineaPedido
-              key={`${linea.codigo}-${indice}`}
-              linea={linea}
-              indice={indice}
-              precioDeCatalogo={
-                catalogo.productoPorCodigo(linea.codigo)?.precio
-              }
-              onCambiarCantidad={(cantidad) =>
-                pedido.cambiarCantidad(indice, cantidad)
-              }
-              onCambiarPrecio={(precio) => pedido.cambiarPrecio(indice, precio)}
-              onQuitar={() => pedido.quitarLinea(indice)}
-            />
-          ))}
-        </ul>
-      </div>
+      {pestana === 'pedido' && (
+        <div className="flex min-h-0 flex-1 flex-col">
+          <CabeceraDocumento
+            tipo={pedido.tipoDocumento}
+            onCambiarTipo={pedido.fijarTipoDocumento}
+            serie={null}
+            cliente={pedido.cliente}
+            onElegirCliente={() => undefined}
+            onQuitarCliente={() => pedido.fijarCliente(null)}
+            total={total}
+            umbral={umbral}
+          />
 
-      <PieTotal
-        total={total}
-        numeroDeLineas={pedido.lineas.length}
-        medioPago={medioPago}
-        onCambiarMedioPago={setMedioPago}
-        estado={faseDelBoton}
-        motivoDeBloqueo={motivoDeBloqueo}
-        onEmitir={() => void lanzarEmision()}
-        proveedorCaido={proveedorCaido}
-      />
+          <div className="flex-1 overflow-y-auto pb-2">
+            <CabecerasDeColumna />
+            <ul>
+              {lineas.map((linea, indice) => (
+                <LineaPedido
+                  key={`${linea.codigo}-${indice}`}
+                  linea={linea}
+                  indice={indice}
+                  precioDeCatalogo={
+                    catalogo.productoPorCodigo(linea.codigo)?.precio
+                  }
+                  onCambiarCantidad={(cantidad) =>
+                    pedido.cambiarCantidad(indice, cantidad)
+                  }
+                  onCambiarPrecio={(precio) =>
+                    pedido.cambiarPrecio(indice, precio)
+                  }
+                  onQuitar={() => pedido.quitarLinea(indice)}
+                />
+              ))}
+            </ul>
+          </div>
 
-      <EstadoDeEmision
-        fase={fase}
-        onCerrar={cerrarEmision}
-        onReintentar={() => void lanzarEmision()}
-        onImprimir={(id) => void reimprimir(id)}
-        onCompartir={(id) => void compartirComprobante(id)}
-      />
+          <PieTotal
+            total={total}
+            numeroDeLineas={pedido.lineas.length}
+            medioPago={medioPago}
+            onCambiarMedioPago={setMedioPago}
+            estado={faseDelBoton}
+            motivoDeBloqueo={motivoDeBloqueo}
+            onEmitir={() => void lanzarEmision()}
+            proveedorCaido={proveedorCaido}
+          />
+
+          <EstadoDeEmision
+            fase={fase}
+            onCerrar={cerrarEmision}
+            onReintentar={() => void lanzarEmision()}
+            onImprimir={(id) => void reimprimir(id)}
+            onCompartir={(id) => void compartirComprobante(id)}
+          />
+        </div>
+      )}
+
+      {pestana === 'cotizaciones' && (
+        <PanelPlaceholder
+          titulo="Cotizaciones"
+          texto="Aquí aparecerán las cotizaciones del día para reabrirlas en el pedido."
+        />
+      )}
+
+      {pestana === 'vecinos' && (
+        <PanelPlaceholder
+          titulo="Vecinos"
+          texto="Búsqueda de clientes frecuentes del barrio / zona."
+        />
+      )}
+
+      {pestana === 'lista' && (
+        <PanelPlaceholder
+          titulo="Lista"
+          texto="Contenido por definir (clarify del intake). Placeholder hasta entonces."
+        />
+      )}
     </div>
   )
 }
 
-/**
- * El motivo por el que no se puede emitir, dicho con palabras.
- *
- * Se calcula en un solo sitio y se devuelve como texto, no como un booleano con
- * un mensaje aparte: así no puede ocurrir que el botón esté inhabilitado y el
- * motivo no aparezca, que es el fallo que convierte un bloqueo legítimo en la
- * sensación de que el sistema está roto.
- *
- * El orden es el de lo que el vendedor puede resolver primero.
- */
+function PanelPlaceholder({
+  titulo,
+  texto,
+}: {
+  readonly titulo: string
+  readonly texto: string
+}) {
+  return (
+    <div className="flex flex-1 flex-col px-6 py-10">
+      <h2 className="text-cabecera font-bold text-tinta">{titulo}</h2>
+      <p className="mt-2 max-w-lg text-cuerpo text-desvaida">{texto}</p>
+      <div className="mt-8 rounded-3xl border border-borde bg-papel p-6 shadow-sm">
+        <p className="font-mono text-etiqueta uppercase text-desvaida">
+          En construcción
+        </p>
+      </div>
+    </div>
+  )
+}
+
 function calcularMotivoDeBloqueo(datos: {
   readonly lineas: number
   readonly emitible: boolean
@@ -238,7 +256,7 @@ function calcularMotivoDeBloqueo(datos: {
 }): string | null {
   if (datos.motivoDeSesion !== null) return datos.motivoDeSesion
 
-  if (datos.lineas === 0) return null // No es un bloqueo: es una hoja en blanco.
+  if (datos.lineas === 0) return null
 
   if (!datos.emitible) {
     return 'Hay una línea con cantidad o precio en cero. Corrígela para poder emitir.'

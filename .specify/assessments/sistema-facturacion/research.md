@@ -2,8 +2,10 @@
 
 - **Slug**: sistema-facturacion
 - **Created**: 2026-07-28
+- **Updated**: 2026-07-29 (ronda volcado 5)
 - **Evidence confidence (overall)**: medium
-- **Foco de esta ronda**: la documentación pública de Factpro, el proveedor de emisión elegido como primera opción, para cerrar las incógnitas técnicas que bloqueaban el diseño (correlativo, idempotencia, GRE, anulación, IGV). La evidencia sobre usuarios y demanda sigue siendo débil y se señala como tal.
+- **Foco de la ronda inicial**: la documentación pública de Factpro, el proveedor de emisión elegido como primera opción, para cerrar las incógnitas técnicas que bloqueaban el diseño (correlativo, idempotencia, GRE, anulación, IGV). La evidencia sobre usuarios y demanda sigue siendo débil y se señala como tal.
+- **Foco de la ronda 2026-07-29**: número inicial al configurar series; estructuras de factura / NC / ND / GRE aportadas por el autor; implicaciones para el contador de SuitPay. No cierra la prueba en sandbox (T027).
 
 ## Users & Demand
 
@@ -36,10 +38,13 @@ Todo lo de esta sección proviene de la documentación pública de Factpro y tie
 
 ### Numeración y correlativo
 
-- Los ejemplos de creación de documentos envían `"numero": "#"`, y la respuesta devuelve el número ya asignado (`"numero": "F100-82"`). Es decir, **Factpro asigna el correlativo** — [source: https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-facturas/factura-simple]
+- Los ejemplos de creación de documentos envían `"numero": "#"`, y la respuesta devuelve el número ya asignado (`"numero": "F100-82"` / `"number": "F001-5"`). Con el comodín, **Factpro asigna el correlativo** — [source: https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-facturas] (confidence: high)
 - La documentación de carga masiva lo confirma de forma explícita: "El sistema Factpro asigna el correlativo de forma completamente automática" — [source: https://docs.factpro.la/importar-masivo-por-excel]
 - Las series se registran previamente en Factpro y admiten máximo 4 caracteres, con prefijo obligatorio según el tipo: `F` factura, `B` boleta, `FC`/`BC` nota de crédito, `FD`/`BD` nota de débito, `T` guía de remisión remitente — [source: https://docs.factpro.la/api-facturacion-v3/como-empezar/4-series]
+- **Número inicial de la serie (volcado 5)**: al configurar series, el panel pide también **desde qué número empezar** a generar documentos (ej. empezar en 0 → `F001-0`; empezar en 100 → `F002-100`). No es solo el código de serie: hay un origen numérico configurable — [source: intake.md, volcado 5; observación del autor en el panel del proveedor] (confidence: high sobre la afirmación del autor; medium sobre el detalle exacto del campo en la API, no verificado en esta ronda)
+- **Implicación para SuitPay**: el contador propio por serie (`ultimoNumero` o equivalente) **debe inicializarse alineado a ese número de arranque** al dar de alta la serie (p. ej. `ultimoNumero = numeroInicial - 1` si el siguiente reclamado es `numeroInicial`), no asumir siempre el cero. El equipo SuitPay sigue siendo el árbitro que envía el número concreto; el origen lo fija la configuración compartida con el proveedor — [ASSUMPTION de diseño derivada del volcado 5] (confidence: medium)
 - **Implicación no documentada por el proveedor**: si cada uno de los 5 vendedores tiene serie propia, hacen falta series paralelas por cada tipo de documento (facturas, boletas y notas de crédito como mínimo), todas creadas de antemano en el panel de Factpro — [ASSUMPTION derivada de las dos fuentes anteriores] (confidence: medium)
+- **T027 sigue abierta**: que el campo `numero` acepte un valor explícito (no solo `#`) y qué responde ante un número ya usado **no está cerrado** por el volcado 5; se resuelve en el entorno de demostración — [source: specs/001-mostrador-asistido/tasks.md T027] (confidence: high)
 
 ### Idempotencia
 
@@ -94,6 +99,36 @@ Todo lo de esta sección proviene de la documentación pública de Factpro y tie
 - La consulta por RUC devuelve razón social, estado, condición (habido/no habido), dirección desglosada y ubigeo. Existen además consulta de anexos por RUC y consulta de DNI — [source: https://docs.factpro.la/api-consulta-ruc-y-dni/busqueda-por-numero-de-ruc y https://docs.factpro.la/llms.txt]
 - El campo `condicion` (habido / no habido) es información con valor de negocio que el flujo actual de alta de cliente no contempla — (confidence: high)
 
+## Ronda 2026-07-29 — Estructuras de emisión (excerpt de sesión)
+
+Material aportado por el autor desde la documentación pública del proveedor (host: docs.factpro.la, policy: confirmed-by-user / excerpt de sesión). No se re-fetchó en esta ronda; se cita lo aportado.
+
+### Factura / boleta — `POST …/api/v3/documentos`
+
+- Campos obligatorios relevantes: `serie` (4 exacto; prefijo F/B), `numero`, `tipo_operacion` (default práctico `"1"` venta interna), cliente (`cliente_tipo_documento`, `cliente_numero_documento`, `cliente_denominacion`; dirección condicional), `items` (`unidad`, `descripcion`, `cantidad`, `precio`, `tipo_tax`), `formato_pdf` (`a4` o `ticket` — el excerpt de volcado 5 confirma `ticket` como valor admitido, lo que **cierra parcialmente** la duda de rollo de la ronda anterior) — [source: https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-facturas]
+- Ejemplo de cuerpo usa `"numero": "#"`; respuesta 200 incluye `data.number`, `external_id`, `links` (xml/pdf/cdr) y `response.code` — [mismo source]
+- `incluye_tax` opcional: si el precio ya incluye impuesto, `true` o omitir — [mismo source]
+
+### Nota de crédito — mismo endpoint de documentos
+
+- Campos adicionales: `tipo_nota`, `motivo_nota`, `documento_afectado` (`tipo_documento`, `serie`, `numero`) — [source: https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-nota-de-credito]
+- Ítems: el texto de atributos menciona `precio_unitario`; el ejemplo JSON usa `precio` — posible inconsistencia documental a verificar en demo — [mismo source] (confidence: medium)
+
+### Nota de débito — mismo endpoint
+
+- `tipo_nota` en catálogo de débito (14–18 en el excerpt); misma forma de `documento_afectado` e ítems — [source: https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-nota-de-debito]
+
+### Guía de remisión remitente — `POST …/api/v3/guias`
+
+- `tipo_documento` = 11 (GRE Remitente); serie con prefijo `T`; exige traslado (`fecha_de_traslado`, modo, motivo, peso, bultos), destinatario, partida/llegada con ubigeo, y transportista o conductor según modo 01/02 — [source: https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-guias-remitente]
+- Confirma el hallazgo previo: muchos más campos que el comando `/guia` de cuatro placeholders del intake.
+
+### Infra operativa citada (sin secretos)
+
+- Proyecto Firebase declarado: `blayblocklabs-antrax` — [source: intake.md, volcado 5]
+- Site Hosting: `suitpay` — [source: intake.md, volcado 5]
+- Credencial de API del proveedor: disponible para demo; **no almacenada en este artefacto** — [source: intake.md, volcado 5]
+
 ## Evidence Against the Idea
 
 Ninguna de estas invalida el proyecto, pero son las razones más fuertes para dudar y deben pesarse antes de decidir.
@@ -109,14 +144,15 @@ Ninguna de estas invalida el proyecto, pero son las razones más fuertes para du
 
 ## Gaps & Open Questions
 
-- [NEEDS CLARIFICATION: ¿acepta la API de Factpro un `numero` explícito en lugar de `#`? Es la pregunta que desbloquea la reconciliación tras un tiempo de espera agotado y, con ello, toda la estrategia de idempotencia. Requiere consulta directa al soporte del proveedor.]
-- [NEEDS CLARIFICATION: ¿existe un valor de `formato_pdf` para ticket o rollo, y de qué ancho? Condiciona el objetivo de migrar de A4 a impresoras pequeñas.]
+- ~~[NEEDS CLARIFICATION: ¿acepta la API un `numero` explícito?]~~ **Cerrado T027 (2026-07-29)**: sí respeta el número; duplicado → `"El documento ya está registrado."`; errores vía HTTP 404 + `errors[].message` sin código. Ver `specs/001-mostrador-asistido/research.md` § T027.
+- ~~[NEEDS CLARIFICATION: ¿existe un valor de `formato_pdf` para ticket o rollo?]~~ **Parcialmente cerrado (volcado 5)**: la página de facturas documenta `a4` o `ticket`. Queda el ancho físico de la impresora de rollo y la calidad de maquetación.
 - [NEEDS CLARIFICATION: ¿cómo se envían los resúmenes de boletas — los agrupa Factpro automáticamente o SuitPay debe disparar el resumen diario? La página de plazos describe la obligación pero no quién ejecuta el envío.]
 - [NEEDS CLARIFICATION: límites de uso de la API de Factpro — solicitudes por minuto, concurrencia y tiempos de respuesta típicos. Con 5 puestos emitiendo a la vez importa.]
-- [NEEDS CLARIFICATION: la respuesta de ejemplo del endpoint de guías devuelve un número de factura (`F100-82`) en lugar de una serie `T`, lo que parece un error de copia en la documentación. Conviene verificar la forma real de la respuesta antes de diseñar contra ella.]
+- [NEEDS CLARIFICATION: la respuesta de ejemplo del endpoint de guías a veces muestra números de factura en lugar de serie `T`; conviene verificar la forma real de la respuesta antes de diseñar contra ella.]
 - [NEEDS CLARIFICATION: no se investigaron proveedores alternativos ni sistemas comerciales del mercado peruano, así que la comparación entre construir y comprar sigue sin evidencia.]
 - [NEEDS CLARIFICATION: no existe evidencia directa de los usuarios finales. Cinco conversaciones cortas con los vendedores y un conteo de documentos por día cambiarían la calidad de todo este assessment.]
 - [NEEDS CLARIFICATION: qué umbral de importe obliga a identificar al comprador en una boleta, y si la validación debe vivir en SuitPay o la rechaza Factpro. Ninguna de las páginas revisadas lo menciona.]
+- [NEEDS CLARIFICATION: en ítems de NC/ND, ¿el campo de precio es `precio` o `precio_unitario`? El excerpt de atributos y el ejemplo JSON no coinciden.]
 
 ## Sources
 
@@ -125,8 +161,12 @@ Todas las fuentes web pertenecen al mismo host, cuya consulta fue solicitada exp
 - https://docs.factpro.la/ (host: docs.factpro.la, policy: confirmed-by-user)
 - https://docs.factpro.la/llms.txt (host: docs.factpro.la, policy: confirmed-by-user)
 - https://docs.factpro.la/api-facturacion-v3/como-empezar/4-series (host: docs.factpro.la, policy: confirmed-by-user)
+- https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-facturas (host: docs.factpro.la, policy: confirmed-by-user / excerpt sesión 2026-07-29)
 - https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-facturas/factura-simple (host: docs.factpro.la, policy: confirmed-by-user)
 - https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-facturas/factura-al-credito (host: docs.factpro.la, policy: confirmed-by-user)
+- https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-nota-de-credito (host: docs.factpro.la, policy: confirmed-by-user / excerpt sesión 2026-07-29)
+- https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-nota-de-debito (host: docs.factpro.la, policy: confirmed-by-user / excerpt sesión 2026-07-29)
+- https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-guias-remitente (host: docs.factpro.la, policy: confirmed-by-user / excerpt sesión 2026-07-29)
 - https://docs.factpro.la/api-facturacion-v3/estructura-para-generar-guias-remitente/guia-remision-remitente (host: docs.factpro.la, policy: confirmed-by-user)
 - https://docs.factpro.la/api-facturacion-v3/consultar-documentos (host: docs.factpro.la, policy: confirmed-by-user)
 - https://docs.factpro.la/api-facturacion-v3/anular-documento (host: docs.factpro.la, policy: confirmed-by-user)
@@ -136,4 +176,4 @@ Todas las fuentes web pertenecen al mismo host, cuya consulta fue solicitada exp
 - https://docs.factpro.la/faq/los-documentos-que-se-pueden-anular-son-facturas-boletas-notas-de-credito (host: docs.factpro.la, policy: confirmed-by-user)
 - https://docs.factpro.la/api-consulta-ruc-y-dni/busqueda-por-numero-de-ruc (host: docs.factpro.la, policy: confirmed-by-user)
 - https://docs.factpro.la/importar-masivo-por-excel (host: docs.factpro.la, policy: confirmed-by-user)
-- `.specify/assessments/sistema-facturacion/intake.md` (artefacto interno, volcados 1 a 4)
+- `.specify/assessments/sistema-facturacion/intake.md` (artefacto interno, volcados 1 a 5)

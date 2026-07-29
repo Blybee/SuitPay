@@ -8,7 +8,9 @@ Este documento resuelve las incógnitas técnicas del plan. No repite la investi
 
 ## Decisión 1 — Existe un backend, y no es opcional
 
-**Decisión**: el backend son las **funciones de servidor de TanStack Start**, no un servicio aparte. Toda emisión, anulación, consulta de contribuyentes, llamada al servicio de asistencia e importación de catálogo ocurre allí. Las dos tareas periódicas se exponen como rutas de servidor protegidas y las dispara Cloud Scheduler.
+**Decisión**: el backend son las **funciones de servidor de TanStack Start**, no un servicio aparte. Toda emisión, anulación, consulta de contribuyentes, llamada al servicio de asistencia e importación de catálogo ocurre allí.
+
+**Enmienda 2026-07-29**: **no hay tareas periódicas ni Cloud Scheduler.** Ver decisión 10.
 
 **Rationale**: tres restricciones lo hacen inevitable, ninguna de ellas estética.
 
@@ -22,13 +24,12 @@ El principio IV es mucho más fácil de cumplir y de demostrar con un único pun
 
 La documentación de Start es explícita en que las variables sin prefijo público solo existen en el servidor y que los secretos deben usarse dentro de `createServerFn`. Es exactamente la garantía que necesitamos para el token del proveedor y las claves del modelo.
 
-**Lo que sí queda fuera de la aplicación**: las dos tareas periódicas. Start no tiene planificador. Se exponen como rutas de servidor autenticadas y las invoca Cloud Scheduler. La alternativa —conservar un proyecto de Cloud Functions solo para dos tareas— reintroduce el segundo artefacto que esta decisión evita.
-
 **Alternatives considered**:
 - *Llamar al proveedor desde el navegador.* Descartada: expone el token. No hay mitigación posible.
 - *Cloud Functions for Firebase como backend separado.* Es la opción convencional en un proyecto Firebase y era la del plan inicial. Se descarta al fijar TanStack Start: duplicaría despliegues, secretos y dominio para obtener lo mismo. Sigue siendo la salida natural si algún día el servidor de la aplicación estorba.
 - *Firebase AI Logic para hablar con el modelo desde el cliente sin exponer la clave.* Es la opción nativa de Firebase y resolvería el problema del secreto, pero se descarta por dos razones: dificulta demostrar el cumplimiento del principio IV, porque la construcción del payload queda repartida por el cliente; y complica la contingencia de dos claves, que es lógica de servidor. Queda anotada como alternativa válida si algún día se relaja alguna de esas dos necesidades.
 - *Un servidor propio permanente.* Descartada: coste fijo y operación innecesarios para este volumen.
+- *Cloud Scheduler + rutas `/api/reconciliar` y `/api/procesar-pendientes`.* Descartada en la decisión 10: complejidad operativa que no justifica el volumen ni el producto deseado.
 
 ---
 
@@ -91,9 +92,9 @@ Registrar antes de invocar es lo que la constitución exige explícitamente. El 
 
 ## Decisión 4 — Quién asigna el correlativo, y cómo se averigua si una emisión ocurrió
 
-**Estado: resuelta con evidencia documental el 2026-07-28.** Era la asunción más cara de la especificación y el diseño la trataba como incógnita con contingencia. La documentación del proveedor la resuelve en lo esencial y reduce lo pendiente a una comprobación de una tarde.
+**Estado: resuelta con evidencia documental el 2026-07-28; enmendada el 2026-07-29 (origen del contador).** Era la asunción más cara de la especificación y el diseño la trataba como incógnita con contingencia. La documentación del proveedor la resuelve en lo esencial y reduce lo pendiente a una comprobación de una tarde.
 
-**Decisión**: SuitPay mantiene su propio correlativo por serie en un documento transaccional y lo envía explícitamente al proveedor. Ante una respuesta ausente, la reconciliación consulta ese par de serie y número y obtiene una respuesta binaria.
+**Decisión**: SuitPay mantiene su propio correlativo por serie en un documento transaccional y lo envía explícitamente al proveedor. Ante una respuesta ausente, la reconciliación consulta ese par de serie y número y obtiene una respuesta binaria. El **origen** del contador no es un supuesto implícito de cero: al configurar la serie se registra `numeroInicial` (alineado con el panel del proveedor) y `ultimoNumero` arranca en `numeroInicial - 1`.
 
 **Lo que la documentación confirma**
 
@@ -101,7 +102,9 @@ La consulta de documentos es `POST /api/v3/consulta` y **su cuerpo es exactament
 
 El cuerpo de la emisión, `POST /api/v3/documentos`, incluye los campos `serie` y `numero`, y el ejemplo pasa `"numero": "#"` documentando el `#` como el marcador de asignación automática. Que exista un comodín explícito para "asígnalo tú" implica que el campo admite también un valor concreto; de otro modo el comodín no tendría sentido.
 
-**Lo que queda por comprobar, y no preguntando sino probando**: que al enviar un número concreto el proveedor lo respete, y qué responde ante un número ya usado. Ninguna de las dos cosas está documentada, y las dos se resuelven en el entorno de demostración en una tarde. Es una prueba, no una consulta comercial.
+**Enmienda volcado 5 — número inicial**: el autor confirma que al configurar series el proveedor pide también desde qué número empezar (ej. `F001-0`, `F002-100`). SuitPay no inventa la secuencia sin origen: sincroniza `numeroInicial` con esa configuración. Ver assessment `research.md` ronda 2026-07-29 y FR-031a.
+
+**Lo que queda por comprobar, y no preguntando sino probando (T027)**: que al enviar un número concreto el proveedor lo respete, y qué responde ante un número ya usado. Ninguna de las dos cosas está documentada, y las dos se resuelven en el entorno de demostración en una tarde. El volcado 5 no cierra esta prueba.
 
 **Consecuencia si el número explícito funciona**, que es lo probable: el diseño queda hermético. Se reclama el correlativo en la transacción de Firestore, se envía explícito, y ante respuesta ausente se consulta ese par exacto. Sin sondeos, sin comparar contenidos, sin heurística. **El sondeo acotado que este documento describía como contingencia se puede borrar.**
 
@@ -146,7 +149,7 @@ El estado `01` avisa de que el comprobante **todavía se puede editar** en el pr
 
 **Rationale**: sin esta regla, todo lo anterior es decorativo. Si un cliente pudiera escribir un comprobante, podría inventarse un número, saltarse el correlativo, o crear un documento que dice `aceptado` sin que nada se haya emitido. La integridad del correlativo y de la clave de idempotencia solo es defendible si un único actor con autoridad escribe esos documentos.
 
-**Complementos**: los roles viven en las reivindicaciones personalizadas del token de autenticación, no en un documento consultable, para que las reglas puedan evaluarlos sin lecturas adicionales. App Check protege las funciones invocables frente a llamadas desde fuera de la aplicación. Los secretos del proveedor y del servicio de asistencia se guardan en el gestor de secretos de la plataforma.
+**Complementos**: los roles viven en las reivindicaciones personalizadas del token de autenticación, no en un documento consultable, para que las reglas puedan evaluarlos sin lecturas adicionales. **App Check queda fuera de alcance** de esta entrega: la frontera es sesión + rol en el token y reglas de Firestore. Los secretos del proveedor y del servicio de asistencia se guardan en el gestor de secretos de la plataforma.
 
 **Alternatives considered**:
 - *Validar en el cliente y confiar.* Descartada: un sistema con efectos tributarios no puede confiar en el cliente.
@@ -199,28 +202,165 @@ Sobre el principio IV hay un detalle que merece atención: cuando el vendedor di
 
 ## Decisión 9 — La salida impresa es el archivo del proveedor
 
-**Decisión**: la impresión y el archivo compartible se apoyan en el documento que genera el proveedor, en formato A4. SuitPay no compone el comprobante.
+**Decisión**: la impresión y el archivo compartible se apoyan en el documento que genera el proveedor. SuitPay no compone el comprobante regulado. Por defecto se solicita `formato_pdf: a4`; el proveedor también documenta `ticket`.
 
 **Rationale**: el proveedor ya genera el archivo con el logotipo y el color de la empresa, y ese archivo es el que corresponde al documento realmente emitido. Componer uno propio abriría la posibilidad de que lo impreso y lo emitido difieran.
 
-El formato de rollo queda pendiente: la documentación revisada solo confirma A4 como valor del parámetro de formato. Hasta confirmarlo, la primera entrega imprime A4, como declara la especificación.
+**Enmienda 2026-07-29**: la página de estructura de facturas admite `a4` o `ticket`. La primera entrega sigue priorizando A4; la validación de maquetación/ancho del ticket en impresora de rollo queda por probar en demo.
 
-**Excepción**: el documento interno de contingencia de FR-050a sí lo compone SuitPay, porque por definición no existe en el proveedor. Debe verse claramente distinto de un comprobante y decir que está pendiente.
+**Excepción (histórica)**: el documento interno de contingencia de FR-050a queda **fuera de alcance** con la decisión 10; si algún día se reabriera, lo compondría SuitPay porque no existe en el proveedor.
 
 **Alternatives considered**:
 - *Generar el comprobante en el cliente.* Descartada: riesgo de divergencia entre lo impreso y lo emitido.
 
 ---
 
+## Decisión 10 — Sin Cloud Scheduler: reintento manual y consulta bajo demanda
+
+**Fecha**: 2026-07-29 · **Supersede**: tareas programadas de la decisión 1; camino automático de FR-050 / FR-050a / FR-050b.
+
+**Decisión del producto**: no hay jobs en segundo plano. No se configura Cloud Scheduler. No existe “venta en espera” que el sistema complete solo, ni documento interno de contingencia como flujo de mostrador.
+
+### Qué hace cada fallo ahora
+
+| Situación | Qué ve el vendedor | Qué hace el sistema | Qué no hace |
+|-----------|-------------------|---------------------|-------------|
+| Proveedor caído / red al proveedor (`indisponible`) | Mensaje claro: no se pudo emitir; **reintenta más tarde** | El pedido sigue en el dispositivo (IndexedDB). La clave de idempotencia se reutiliza al pulsar Emitir otra vez. El servidor retoma el intento solo si está seguro de que no hubo emisión. | No crea cola de pendientes. No emite en background. No pide teléfono “para luego”. |
+| Respuesta perdida / timeout ambiguo (`indeterminado`) | Aviso: **no vuelvas a emitir a ciegas**; botón **Consultar estado** | Una función de servidor llama solo a `consultarDocumento` (serie+número ya reclamados) y adopta el estado real. | **Nunca** reemite. No hay cron que barre indeterminados. |
+| Emisión OK / rechazo definitivo | Igual que hoy | Sin cambios | — |
+
+### Por qué esto sigue cumpliendo el principio II
+
+El principio II prohíbe reintentar sin saber si la emisión ocurrió. Eso **no exige un planificador**: exige un camino de *consulta* antes de una nueva emisión cuando el resultado es ambiguo. Ese camino es el botón (o una acción equivalente) que solo consulta. El caso `indisponible` sí admite reintento manual porque, por definición de la clasificación, el proveedor no llegó a procesar.
+
+### Por qué se descarta el diseño anterior
+
+- Cloud Scheduler + secretos + dos rutas `/api/*` son operación extra para un volumen de mostrador bajo.
+- “Venta en espera + documento interno + completar luego” complica el mostrador (contacto, papel sin valor, intervención si el pendiente falla) para un escenario que con Factpro solo aparece si cae el proveedor o la red, no SUNAT.
+- El producto prefiere honestidad inmediata: *no salió; reintenta*, en lugar de un segundo flujo paralelo.
+
+### Consecuencias en el código y las tareas
+
+- T067 / T068 / T069 (Scheduler, `procesarPendientes`, `reconciliar` programada): **canceladas / supersedidas**.
+- Sustituir por: mensaje + reintento manual en `indisponible`; `consultarEstadoEmision` (o nombre equivalente) invocable por el vendedor en `indeterminado`.
+- Las rutas `/api/procesar-pendientes` y `/api/reconciliar` están retiradas (T172).
+- FR-050 / FR-050a / FR-050b se enmiendan en `spec.md` (ver decisión de producto arriba).
+
+**Alternatives considered**:
+- *Cloud Scheduler como en la decisión 1 original.* Descartada por el dueño del producto.
+- *Solo bloquear Emitir si el proveedor está caído, sin conservar clave.* Peor: obliga a rearmar el pedido y pierde la defensa de idempotencia.
+- *Reconciliación automática al abrir la app.* Descartada: sigue siendo un barrido implícito; se prefiere una acción explícita del vendedor solo cuando hace falta.
+
+---
+
+## Decisión 12 — Alta de establecimiento y series en el proveedor (insumo T083)
+
+**Fecha**: 2026-07-29 · **Contexto**: US2 / T083 · **Fuente**: documentación API del proveedor (v3).
+
+**Hecho observado en la API del proveedor** (solo vive en el módulo frontera; aquí se resume en vocabulario SuitPay):
+
+1. **Establecimiento (sucursal)** — `POST …/sucursal`  
+   - Obligatorios: código de anexo, dirección, ubigeo (6 dígitos INEI).  
+   - Opcionales: nombre, correo.  
+   - Autenticación: token de empresa (Bearer).  
+   - El alta de series **exige** el identificador de establecimiento que devuelve esta operación (o uno ya existente).
+
+2. **Serie** — `POST …/series`  
+   - Obligatorios: tipo de documento (código interno del proveedor), serie (máx. 4), número a comenzar, id de establecimiento.  
+   - Prefijos exigidos por tipo (alineados a SUNAT / FR-031): factura `F…`, boleta `B…`, nota de crédito `FC…`/`BC…`, etc.  
+   - Mapeo de tipo (columna “código proveedor”, no el código SUNAT): factura → `7`, boleta → `8`, nota de crédito → `9`, …  
+   - Respuesta incluye `id` de serie en el proveedor y confirma `numero_a_comenzar`.
+
+**Consecuencia para SuitPay (FR-031 / FR-031a)**:
+
+- Al dar de alta una serie regulada (boleta/factura) en administración, SuitPay debe:  
+  1) validar prefijo y longitud,  
+  2) registrar en Firestore `numeroInicial` / `ultimoNumero = numeroInicial - 1` / vendedor / tipo,  
+  3) **crear la misma serie en el proveedor** con ese `numero_a_comenzar`, para que el panel y SuitPay no diverjan.  
+- La nota de venta **no** se crea en el proveedor (sin valor tributario; no consume serie regulada).  
+- El establecimiento es un prerrequisito: o se configura una vez (parámetro/env) o la UI de admin lo crea antes de la primera serie.
+
+**Decisiones de producto (2026-07-29)**:
+
+1. En desarrollo, **todo se opera desde SuitPay** (crear/listar/eliminar establecimientos y series). El panel del proveedor no es parte del flujo del usuario final.
+2. Al crear una serie regulada en SuitPay se crea también en el proveedor (`numero_a_comenzar` = `numeroInicial`).
+3. Se mantiene **una serie por vendedor y tipo** (`{vendedorId}__{tipo}`).
+4. Nota de venta: solo SuitPay (sin alta en el proveedor).
+
+**Corrección observada en demo (2026-07-29)**: la documentación pública marca
+eliminar sucursal/serie como `PUT`; en el entorno de demostración ambas bajas
+responden a `DELETE …/{id}` con `{"message":"… eliminado."}`. El adaptador usa
+`DELETE`.
+
+---
+
+## Decisión 11 — Mapeo del JSON de la tienda virtual al catálogo SuitPay
+
+
+**Fecha**: 2026-07-29 · **Contexto**: US2 / T077.
+
+**Decisión**: el lector `json_tienda` aplana el export de la tienda así:
+
+| Origen tienda | SuitPay |
+|---------------|---------|
+| `brand` + `name` [+ `variant.name`] | `descripcion` |
+| `unitPrices.wholesale` (o el de la variante) | `precio` en céntimos |
+| `id` / `{id}__{variantId}` | `codigo` |
+| (fijo) | `unidad = NIU` |
+| `stock` | `activo` |
+
+Reglas confirmadas con el dueño del producto:
+
+1. Descripción **sin** precio embebido; el mayorista vive solo en `precio`.
+2. Cada variante es un ítem; con variantes se **ignora** el `unitConfig` del padre.
+3. Sin wholesale → precio `0` (no bloquea; el vendedor corrige al vender).
+4. Paquetes/cajas de la tienda fuera de alcance en esta importación.
+5. El PDF (`lector-documento`) queda pendiente; la migración operativa usa JSON.
+
+**Rationale**: el catálogo de mostrador no necesita imágenes, categorías ni precios físico/virtual. Expandir variantes evita que el vendedor busque un genérico sin medida.
+
+---
+
 ## Incógnitas que permanecen abiertas
+
 
 Ninguna bloquea el diseño, porque todas tienen una contingencia decidida. Se listan para que no se pierdan, en orden de valor.
 
-1. **¿Qué devuelve el proveedor cuando algo falla?** La respuesta de error documentada no lleva código. De ello depende poder distinguir un rechazo definitivo de una indisponibilidad, que es la pieza que impide el reintento a ciegas. **Es ahora la incógnita más valiosa**, y se resuelve provocando fallos en el entorno de demostración.
-2. **¿Respeta el proveedor un número de comprobante explícito, y qué contesta ante uno ya usado?** El campo existe y su comodín de asignación automática está documentado, así que lo probable es que sí. Se comprueba en el entorno de demostración. Ver decisión 4.
+1. ~~**¿Qué devuelve el proveedor cuando algo falla?**~~ **Cerrado T027**: HTTP 404 + `errors[].message` (sin código). Ver § T027.
+2. ~~**¿Respeta el proveedor un número de comprobante explícito?**~~ **Cerrado T027**: sí; duplicado → `"El documento ya está registrado."`.
 3. **¿Cuáles son los límites de uso de la API del proveedor?** Con 5 puestos emitiendo a la vez conviene saberlo, aunque el volumen esperado sea bajo.
-4. **¿Existe un formato de impresión de rollo?** El cuerpo de la emisión lleva un parámetro de formato con `a4` como valor documentado. Condiciona el objetivo de abandonar el A4, no esta entrega.
+4. ~~**¿Existe un formato de impresión de rollo?**~~ Parcialmente cerrado: `formato_pdf: ticket` está documentado. Queda validar maquetación/ancho en demo.
 5. **¿Quién agrupa y envía el resumen diario de boletas, el proveedor o SuitPay?** La documentación describe la obligación de enviar dentro de 7 días pero no quién ejecuta el envío. Afecta a una tarea programada, no a la estructura de datos.
 6. **¿Cuánto acoplamiento tienen las herramientas de captura de la tienda virtual?** Condiciona el esfuerzo de las historias 6 y 7, no su diseño. Es la tarea T113.
 
 **Cerrada el 2026-07-28**: *¿se puede verificar si una emisión concreta ocurrió?* Sí. `POST /api/v3/consulta` acepta `{ serie, numero }` y devuelve existencia, estado y traza de eventos. Era la asunción más cara de la especificación.
+
+**Enmienda operativa 2026-07-29 (sin secretos)**: proyecto Firebase `blayblocklabs-antrax`; site Hosting `suitpay`. Credenciales de API del proveedor y `firebaseConfig` se almacenan fuera del repositorio (Secret Manager / env local). Rotar cualquier token que haya quedado expuesto en chat.
+
+---
+
+## T027 — Sondeo en entorno de demostración (2026-07-29)
+
+**Estado: cerrado con evidencia observada.** Script: `scripts/t027-sondeo-proveedor.mjs` (token solo vía `.env.local`).
+
+### (a) Número de comprobante explícito
+
+| Prueba | Resultado |
+|--------|-----------|
+| Emitir serie `F001`, número `900001` | HTTP 200, `exito: true`, `data.numero` = `"F001-900001"` |
+| Reemitir el mismo par | HTTP 404, `exito: false`, `errors: [{ message: "El documento ya está registrado." }]` |
+
+**Conclusión**: el proveedor **respeta el número explícito**. SuitPay puede reclamar correlativo en Firestore, enviarlo, y reconciliar con `consulta` por ese par. El sondeo acotado queda como contingencia teórica, no como camino principal.
+
+### (b) Forma de los errores
+
+| Prueba | Resultado |
+|--------|-----------|
+| Consulta de documento inexistente | HTTP 404, `{"exito":false,"errors":[{"message":"Documento no encontrado."}]}` |
+| Código de error estable en el JSON | **No hay.** Solo `errors[].message` (texto). |
+
+**Conclusión**: la clasificación se apoya en HTTP + mensaje. 404 de negocio → `rechazo_definitivo`. `"Documento no encontrado."` en consulta → `existe: false` (no un fallo de transporte). `"El documento ya está registrado."` → `rechazo_definitivo` / `numero_ya_registrado`. Sin mensaje reconocible en `exito: false` con 200 → se mantiene `indeterminado`.
+
+### Cuerpo de emisión v3 observado
+
+El payload que funcionó coincide con la documentación pública (serie, numero, tipo_operacion, cliente anidado con `cliente_*`, items con `precio`/`tipo_tax`, `formato_pdf`). El adaptador se alineó a esa forma.

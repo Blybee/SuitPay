@@ -7,8 +7,12 @@ import { COLECCIONES, DOCUMENTOS, bd } from '../../server/firebase/admin.ts'
 import { ErrorDeSuitPay, esErrorDeSuitPay, fallar } from '../../server/errores.ts'
 import { proveedorActual } from '../../server/proveedor/actual.ts'
 import { AlmacenFirestore } from '../../server/emision/almacen-firestore.ts'
-import { emitirComprobante  } from '../../server/emision/emitir.ts'
-import type {RespuestaDeEmitir} from '../../server/emision/emitir.ts';
+import { emitirComprobante } from '../../server/emision/emitir.ts'
+import type { RespuestaDeEmitir } from '../../server/emision/emitir.ts'
+import {
+  consultarEstadoEmision,
+  type ResultadoDeConsultaDeEstado,
+} from '../../server/emision/consultar-estado.ts'
 
 /**
  * El punto de entrada de la emisión desde el cliente.
@@ -180,10 +184,52 @@ export const leerComprobante = createServerFn({ method: 'GET' })
       identidad.rol === 'vendedor' &&
       comprobante.vendedorId !== identidad.uid
     ) {
-      // Se responde "no encontrado" y no "sin permiso": decir que existe ya
-      // filtraría que hay una venta con esa clave.
       fallar('comprobante_no_encontrado')
     }
 
     return comprobante
+  })
+
+export interface RespuestaDeConsultaParaCliente {
+  readonly ok: boolean
+  readonly resultado?: ResultadoDeConsultaDeEstado
+  readonly error?: ReturnType<ErrorDeSuitPay['aRespuesta']>
+}
+
+/**
+ * Consulta bajo demanda (decisión 10). Nunca emite.
+ */
+export const consultarEstado = createServerFn({ method: 'POST' })
+  .validator(z.object({ comprobanteId: z.string().min(1) }))
+  .handler(async ({ data }): Promise<RespuestaDeConsultaParaCliente> => {
+    const identidad = await exigirIdentidad(getRequestHeaders(), [
+      'vendedor',
+      'administrador',
+    ])
+
+    const almacen = new AlmacenFirestore()
+    const previo = await almacen.leerComprobante(data.comprobanteId)
+    if (previo === undefined) {
+      fallar('comprobante_no_encontrado')
+    }
+    if (identidad.rol === 'vendedor' && previo.vendedorId !== identidad.uid) {
+      fallar('comprobante_no_encontrado')
+    }
+
+    try {
+      const resultado = await consultarEstadoEmision(
+        { almacen, proveedor: proveedorActual() },
+        data.comprobanteId,
+      )
+      return { ok: true, resultado }
+    } catch (error) {
+      if (esErrorDeSuitPay(error)) {
+        return { ok: false, error: error.aRespuesta() }
+      }
+      console.error('[SuitPay] fallo al consultar estado', error)
+      return {
+        ok: false,
+        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
+      }
+    }
   })

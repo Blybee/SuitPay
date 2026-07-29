@@ -16,6 +16,11 @@ El módulo que implementa esta interfaz es el **único** lugar del sistema que c
 | `consultarContribuyente` | tipo y número de documento de identidad | denominación, dirección, ubigeo, condición ante el registro |
 | `emitirNotaCredito` | documento de referencia, motivo, líneas | igual que `emitir` |
 | `emitirGuiaRemision` | datos del traslado | igual que `emitir`. **Fuera del alcance de esta entrega**, declarada aquí para que la frontera no haya que rediseñarla cuando entre. |
+| `crearEstablecimiento` | código de anexo, dirección, ubigeo, nombre y correo opcionales | identificador de establecimiento en el proveedor, o fallo clasificado. **Admin / T083.** |
+| `listarEstablecimientos` | — | lista de establecimientos |
+| `eliminarEstablecimiento` | identificador de establecimiento | confirmación de baja |
+| `crearSerie` | tipo de documento SuitPay, serie (máx. 4), número inicial, identificador de establecimiento | identificador de serie en el proveedor, o fallo clasificado. **Admin / T083.** El mapeo de tipo y los campos del proveedor quedan dentro del adaptador. |
+| `eliminarSerie` | identificador de serie en el proveedor | confirmación de baja |
 
 ## Normalización de estados
 

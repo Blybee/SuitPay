@@ -1,29 +1,42 @@
 import {
   exito,
   fallo,
-  propagarFallo
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
+  propagarFallo,
 } from '../interfaz.ts'
-import type {Contribuyente, DocumentoAnulado, DocumentoConsultado, DocumentoEmitido, PeticionDeAnulacion, PeticionDeConsulta, PeticionDeContribuyente, PeticionDeEmision, PeticionDeNotaDeCredito, ProveedorDeEmision, Resultado} from '../interfaz.ts';
+import type {
+  Contribuyente,
+  DocumentoAnulado,
+  DocumentoConsultado,
+  DocumentoEmitido,
+  Establecimiento,
+  PeticionDeAnulacion,
+  PeticionDeConsulta,
+  PeticionDeContribuyente,
+  PeticionDeCrearEstablecimiento,
+  PeticionDeCrearSerieEnProveedor,
+  PeticionDeEmision,
+  PeticionDeNotaDeCredito,
+  ProveedorDeEmision,
+  Resultado,
+  SerieEnProveedor,
+} from '../interfaz.ts'
 import { consultarDocumento } from './consultar.ts'
+import {
+  crearEstablecimiento as crearEstablecimientoEnApi,
+  eliminarEstablecimiento as eliminarEstablecimientoEnApi,
+  listarEstablecimientos as listarEstablecimientosEnApi,
+} from './establecimientos.ts'
 import { emitirDocumento } from './emitir.ts'
 import { traducirEstado } from './estados.ts'
 import {
+  crearSerie as crearSerieEnApi,
+  eliminarSerie as eliminarSerieEnApi,
+} from './series-config.ts'
+import {
   leerConfiguracion,
-  pedirAlProveedor
-  
+  pedirAlProveedor,
 } from './transporte.ts'
-import type {ConfiguracionDelProveedor} from './transporte.ts';
+import type { ConfiguracionDelProveedor } from './transporte.ts'
 
 /**
  * El adaptador del proveedor, ensamblado.
@@ -79,10 +92,6 @@ export class ProveedorFactpro implements ProveedorDeEmision {
 
     const traducido = traducirEstado(datos?.estado)
 
-    // La baja no es instantánea. Mientras esté en curso se informa el estado
-    // anterior a propósito, para que la interfaz **no la presente como cerrada**:
-    // decirle al vendedor que ya está anulado cuando todavía puede fallar es peor
-    // que hacerle esperar.
     if (traducido.anulacionEnCurso) {
       return exito({
         estado: 'aceptado',
@@ -137,8 +146,6 @@ export class ProveedorFactpro implements ProveedorDeEmision {
       denominacion: datos.nombre,
       direccion: datos.direccion,
       ubigeo: datos.ubigeo,
-      // Alimenta la advertencia de FR-024: hay que poder avisar de que el
-      // contribuyente está señalado como no habido **sin impedir facturarle**.
       condicion: datos.condicion,
       estadoRegistro: datos.estado,
     })
@@ -199,5 +206,33 @@ export class ProveedorFactpro implements ProveedorDeEmision {
       referenciaExterna: datos.external_id,
       rastro: respuesta.valor.rastro,
     })
+  }
+
+  crearEstablecimiento(
+    peticion: PeticionDeCrearEstablecimiento,
+  ): Promise<Resultado<Establecimiento>> {
+    return crearEstablecimientoEnApi(this.configuracion, peticion)
+  }
+
+  listarEstablecimientos(): Promise<Resultado<readonly Establecimiento[]>> {
+    return listarEstablecimientosEnApi(this.configuracion)
+  }
+
+  eliminarEstablecimiento(
+    establecimientoId: string,
+  ): Promise<Resultado<{ readonly eliminado: true }>> {
+    return eliminarEstablecimientoEnApi(this.configuracion, establecimientoId)
+  }
+
+  crearSerie(
+    peticion: PeticionDeCrearSerieEnProveedor,
+  ): Promise<Resultado<SerieEnProveedor>> {
+    return crearSerieEnApi(this.configuracion, peticion)
+  }
+
+  eliminarSerie(
+    serieIdEnProveedor: string,
+  ): Promise<Resultado<{ readonly eliminado: true }>> {
+    return eliminarSerieEnApi(this.configuracion, serieIdEnProveedor)
   }
 }

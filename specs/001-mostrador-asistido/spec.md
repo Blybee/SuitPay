@@ -4,9 +4,11 @@
 
 **Created**: 2026-07-28
 
+**Updated**: 2026-07-29 (enmienda volcado 5 — shell, Soft-Pill, tabs, default Nota de Venta, número inicial de serie)
+
 **Status**: Draft
 
-**Input**: Traspaso del assessment `sistema-facturacion` (veredicto `go`, Opción D — Mostrador asistido acotado). Ver `.specify/assessments/sistema-facturacion/decision.md`.
+**Input**: Traspaso del assessment `sistema-facturacion` (veredicto `go`, Opción D — Mostrador asistido acotado; enmienda volcado 5). Ver `.specify/assessments/sistema-facturacion/decision.md`.
 
 **Governance**: sujeta a la constitución de SuitPay v1.0.0 (`.specify/memory/constitution.md`). Los principios I, II y IV son no negociables y atraviesan varias historias.
 
@@ -14,7 +16,7 @@
 
 ### User Story 1 - Tomar el pedido y emitir el comprobante escribiendo (Priority: P1)
 
-Un vendedor abre el navegador en su puesto o en su teléfono y ya está dentro, sin pedir credenciales a nadie. Escribe lo que el cliente le pide, encontrando cada producto aunque teclee los términos en cualquier orden. Ajusta el precio si negoció uno distinto, elige si será boleta, factura o nota de venta, revisa el total y confirma. El comprobante sale impreso en el puesto, o como archivo para enviarle al cliente si está atendiendo desde el teléfono.
+Un vendedor abre el navegador en su puesto o en su teléfono y ya está dentro, sin pedir credenciales a nadie. Llega al mostrador (Inicio) con el tab Pedido y el tipo de documento **Nota de Venta** por defecto. Escribe lo que el cliente le pide, encontrando cada producto aunque teclee los términos en cualquier orden. Ajusta el precio si negoció uno distinto, cambia el tipo si hace falta (boleta, factura o nota de venta), revisa el total y confirma. El comprobante sale impreso en el puesto, o como archivo para enviarle al cliente si está atendiendo desde el teléfono.
 
 **Why this priority**: es el sistema. Sin esta historia no hay nada que reemplace al mostrador actual, y con ella sola la empresa ya puede vender. Contiene además la solución a la queja más concreta y verificada del sistema anterior: la búsqueda que no encuentra lo que existe.
 
@@ -22,7 +24,7 @@ Un vendedor abre el navegador en su puesto o en su teléfono y ya está dentro, 
 
 **Acceptance Scenarios**:
 
-1. **Given** un vendedor que ya inició sesión en este dispositivo alguna vez, **When** abre la aplicación al día siguiente, **Then** entra directamente a la pantalla de venta sin volver a escribir credenciales.
+1. **Given** un vendedor que ya inició sesión en este dispositivo alguna vez, **When** abre la aplicación al día siguiente, **Then** entra directamente al mostrador (Inicio, tab Pedido) sin volver a escribir credenciales, con tipo de documento Nota de Venta.
 2. **Given** un catálogo que contiene "CODO FG 1/2", **When** el vendedor escribe "1/2 codo fierro", **Then** el producto aparece entre los resultados.
 3. **Given** un pedido con tres productos, **When** el vendedor cambia el tipo de documento de boleta a factura, **Then** el pedido se conserva íntegro sin volver a capturarse.
 4. **Given** un producto con precio mayorista de referencia, **When** el vendedor escribe un precio distinto sobre ese valor, **Then** el sistema lo acepta sin validarlo y el total se recalcula.
@@ -30,7 +32,7 @@ Un vendedor abre el navegador en su puesto o en su teléfono y ya está dentro, 
 6. **Given** un pedido en curso, **When** el vendedor pierde la conexión y la recupera en el mismo dispositivo, **Then** el pedido sigue ahí sin pérdida de líneas.
 7. **Given** una emisión en curso, **When** el vendedor pulsa confirmar dos veces seguidas, **Then** se emite un único comprobante.
 8. **Given** una boleta cuyo importe supera los 700 soles y un cliente eventual, **When** el vendedor intenta emitirla, **Then** el sistema exige identificar al comprador antes de continuar.
-9. **Given** el proveedor de emisión sin responder, **When** el vendedor confirma la venta, **Then** la venta queda en espera, el cliente recibe un documento interno marcado como pendiente de comprobante, y el sistema conserva sus datos de contacto.
+9. **Given** el proveedor de emisión sin responder, **When** el vendedor confirma la venta, **Then** el sistema informa que no se pudo emitir, el pedido se conserva en el dispositivo y el vendedor puede reintentar más tarde (sin cola en segundo plano ni documento interno de contingencia).
 
 ---
 
@@ -174,8 +176,8 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 
 - **La emisión se confirma y la respuesta nunca llega.** El sistema no debe reintentar a ciegas: debe poder averiguar si el documento existe antes de volver a intentarlo, y mientras no lo sepa, no debe presentar la venta como emitida ni como fallida.
 - **El mismo pedido abierto en dos dispositivos.** Solo uno puede convertirlo en comprobante; el otro debe descubrir que ya se emitió.
-- **El proveedor de emisión no responde.** La venta se registra y queda en espera con los datos de contacto del cliente y el tipo de documento que pidió; se le entrega un documento interno marcado como pendiente de comprobante, y el comprobante real se emite y se le hace llegar al restablecerse el servicio.
-- **El comprobante pendiente se rechaza al restablecerse el servicio.** El cliente ya se fue con un documento interno y con mercadería. El sistema debe señalar esa venta como necesitada de intervención, no darla por cerrada.
+- **El proveedor de emisión no responde.** Se informa con claridad; el pedido permanece en el dispositivo; el vendedor reintenta manualmente más tarde con la misma intención de venta (idempotencia). No hay emisión automática en background ni documento interno de contingencia (decisión 10 de `research.md`).
+- **La respuesta de emisión se pierde (indeterminado).** El sistema MUST NOT ofrecer reemitir a ciegas. El vendedor (o un administrador) consulta el estado al proveedor bajo demanda; solo entonces se adopta el resultado.
 - **Corte de red con el pedido a medio armar.** El pedido sobrevive en el dispositivo; al recuperar la conexión continúa.
 - **Cambio de dispositivo con un pedido en curso.** Se acepta que el pedido en curso no viaje: el vendedor lo rehace. Las cotizaciones guardadas sí viajan.
 - **Producto que no existe en el catálogo.** La búsqueda no debe devolver un resultado aproximado como si fuera exacto; debe quedar claro que no hay coincidencia.
@@ -199,6 +201,8 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **FR-003**: El sistema MUST impedir emitir cuando la sesión ya no sea válida o el vendedor haya sido desactivado.
 - **FR-004**: El sistema MUST funcionar en navegador de escritorio y de móvil, con la misma capacidad de venta.
 - **FR-005**: El sistema MUST distinguir los roles de vendedor, administrador y jefe, y limitar a cada uno a lo que le corresponde.
+- **FR-005a**: El sistema MUST presentar un sidebar de navegación con la marca SuitPay, al menos los ítems Inicio y Configuración, y el perfil del usuario autenticado con acción de cerrar sesión al pie del sidebar.
+- **FR-005b**: El mostrador (Inicio) MUST ofrecer tabs internos Pedido, Cotizaciones, Vecinos y Lista, y MUST abrir por defecto en el tab Pedido.
 
 **Catálogo y búsqueda**
 
@@ -214,6 +218,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 **Pedido**
 
 - **FR-014**: El sistema MUST permitir armar un pedido único y convertirlo en boleta, factura o nota de venta sin volver a capturarlo.
+- **FR-014a**: Al iniciar un pedido nuevo (o al abrir el mostrador sin pedido en curso que fije otro tipo), el tipo de documento MUST ser Nota de Venta por defecto.
 - **FR-015**: El sistema MUST conservar el pedido en curso en el propio dispositivo, de forma que sobreviva a una pérdida de conexión y a un cambio de red.
 - **FR-016**: El sistema MUST permitir guardar un pedido como cotización identificada por un número.
 - **FR-017**: Las cotizaciones MUST quedar accesibles desde cualquier dispositivo y para cualquier vendedor autorizado.
@@ -237,6 +242,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **FR-029**: El sistema MUST registrar el intento de emisión antes de solicitarlo al proveedor, y MUST NOT reintentar sin haber determinado antes si la emisión ocurrió.
 - **FR-030**: El sistema MUST trazar toda emisión, anulación e intento fallido, con su autor, momento y resultado, incluidos los intentos que consumieron numeración.
 - **FR-031**: El sistema MUST impedir la venta cuando el vendedor no tenga serie configurada, indicando exactamente qué falta.
+- **FR-031a**: Al configurar una serie, el sistema MUST registrar un número inicial desde el cual empezará a emitir (ej. 0 → primer comprobante `serie-0`; 100 → `serie-100`), y MUST alinear el contador interno a ese origen. La serie y el número inicial MUST quedar coherentes con la configuración del proveedor de emisión.
 - **FR-032**: El sistema MUST NOT recalcular por su cuenta el desglose del impuesto: los precios del catálogo lo incluyen y el desglose corresponde al proveedor de emisión.
 - **FR-033**: El sistema MUST registrar el medio de pago y el monto recibido con carácter referencial, sin exigir conciliación.
 - **FR-034**: El sistema MUST permitir documentar una venta a crédito indicando la fecha de pago esperada, y registrar posteriormente su cobro.
@@ -267,9 +273,9 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 
 **Contingencia**
 
-- **FR-050**: Cuando el proveedor de emisión no responda, el sistema MUST registrar la venta en espera conservando el tipo de documento solicitado y los datos de contacto del cliente, y MUST completar la emisión en cuanto el servicio se restablezca.
-- **FR-050a**: En ese caso el sistema MUST poder entregar al cliente un documento interno sin valor tributario, marcado de forma inequívoca como tal y como pendiente de comprobante, que sirva de constancia de la operación en el momento.
-- **FR-050b**: Una vez emitido el comprobante pendiente, el sistema MUST permitir hacerlo llegar al cliente con los datos de contacto recogidos, y MUST reflejar que la venta dejó de estar en espera.
+- **FR-050**: Cuando el proveedor de emisión no responda (`indisponible`), el sistema MUST informarlo con claridad, MUST conservar el pedido en el dispositivo y MUST permitir al vendedor reintentar la misma emisión más tarde. MUST NOT completar la emisión en segundo plano ni exigir datos de contacto “para después”.
+- **FR-050a**: *(retirado — decisión 10 de `research.md`)* El documento interno de contingencia y la cola de ventas en espera dejan de ser requisitos de esta entrega.
+- **FR-050b**: *(retirado — decisión 10)* Sustituido por consulta bajo demanda: ante estado `indeterminado`, el sistema MUST ofrecer solo una acción que consulta al proveedor si la emisión ocurrió, y MUST NOT reemitir.
 - **FR-051**: El sistema MUST mostrar al vendedor, de forma visible, cuándo está operando de forma degradada y qué capacidad no está disponible.
 - **FR-052**: El sistema MUST NOT bloquear la toma de un pedido por la indisponibilidad de un servicio externo.
 
@@ -288,7 +294,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **Comprobante**: el documento resultante. Tipo, serie y número, cliente, líneas con precio, condición de pago, estado ante la autoridad, autor de la emisión y momento.
 - **Intento de emisión**: el registro de una emisión solicitada, con su resultado o su indeterminación. Es lo que permite no emitir dos veces la misma venta.
 - **Anulación**: la baja de un comprobante, con motivo, autor y momento.
-- **Serie**: la numeración asignada a un vendedor para un tipo de documento, con su correlativo consumido.
+- **Serie**: la numeración asignada a un vendedor para un tipo de documento, con número inicial configurado y correlativo consumido a partir de ese origen.
 - **Vendedor**: quien atiende y asume la responsabilidad de lo emitido. Tiene rol, credenciales y series asignadas.
 - **Captura asistida**: el contenido original —audio o imagen— y la propuesta derivada de él, con su estado de revisión.
 - **Venta a crédito**: el compromiso de pago asociado a un comprobante, con fecha esperada y estado de cobro.
@@ -317,8 +323,9 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **La emisión de comprobantes se delega en un proveedor externo** que firma y dialoga con la autoridad tributaria. SuitPay no asume la firma ni el certificado digital.
 - **El proveedor de emisión ofrece un entorno de demostración** y toda integración se ejercita allí antes de tocar el entorno real.
 - **El proveedor permite determinar si una emisión concreta ocurrió. Confirmado el 2026-07-28.** Su endpoint de consulta acepta exactamente serie y número y devuelve existencia, estado y traza de eventos, que es la primitiva de la que dependen FR-028 y FR-029. Era la asunción más cara de la especificación y ya no lo es. Queda por comprobar en el entorno de demostración que el proveedor respete un número explícito, lo que evitaría el sondeo de reconciliación; y, más importante, **qué forma tienen sus respuestas de error**, porque el ejemplo documentado no lleva código y de esa distinción depende no reintentar a ciegas. Ver `research.md`, decisiones 4 y 4b.
-- **Una caída de la autoridad tributaria no impide emitir.** El proveedor firma en sus propios servidores y mantiene su propia cola de reintentos hacia la autoridad, de modo que el comprobante se crea y se firma con su fecha correcta y la constancia llega después. La consecuencia es que el camino de venta en espera de FR-050 se activa solo cuando el proveedor mismo o la red están inalcanzables, no cuando lo está la autoridad: sigue siendo necesario, pero será poco frecuente.
-- **Cada vendedor opera con series propias**, creadas de antemano para cada tipo de documento que vaya a emitir.
+- **Una caída de la autoridad tributaria no impide emitir.** El proveedor firma en sus propios servidores y mantiene su propia cola hacia la autoridad. El fallo de FR-050 (mensaje + reintento manual) solo aplica cuando el proveedor mismo o la red están inalcanzables, no cuando lo está la autoridad (decisión 10).
+- **Cada vendedor opera con series propias**, creadas de antemano para cada tipo de documento que vaya a emitir, cada una con un **número inicial** configurado (alineado con el panel del proveedor).
+- **La dirección visual es Modern Soft-Pill** (`DESIGN.md` enmendado 2026-07-29): cápsulas, radios amplios, lienzo gris/blanco; no papel cálido ni radio cero.
 - **Los precios del catálogo incluyen el impuesto** y el desglose lo realiza el proveedor de emisión.
 - **El catálogo ronda los 500 productos** con nombres estructurados por material, medida y marca, lo que favorece tanto la búsqueda tolerante como el emparejamiento de las capturas.
 - **La empresa dispone de conexión estable** y, ante caída del router, los vendedores pueden usar la red de sus teléfonos.
@@ -326,8 +333,8 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **El inventario no forma parte de esta entrega.** Mientras SuitPay y el sistema anterior operen aislados, cualquier cifra de stock sería inconsistente por diseño. El momento en que SuitPay tome el control del inventario es una decisión posterior.
 - **La captura por voz y fotografía reutiliza herramientas ya existentes** en el proyecto de la tienda virtual de la empresa. Están funcionando pero acopladas a ese proyecto, y el grado de reelaboración necesario está sin evaluar. Si resultara profundo, las historias 6 y 7 deberían replantearse.
 - **El pedido en curso no viaja entre dispositivos.** Cambiar de dispositivo obliga a rehacerlo, y el negocio lo acepta.
-- **La impresión en formato de rollo queda pendiente**: esta entrega cubre A4 y archivo compartible. La disponibilidad de un formato de rollo en el proveedor está sin confirmar.
+- **La impresión en formato de rollo**: el proveedor documenta `formato_pdf: ticket` además de `a4`. Esta entrega sigue cubriendo A4 y archivo compartible; la validación de maquetación/ancho del ticket queda por probar en demo.
 - **El almacenero no usará el sistema.** Otra persona fotografía sus guías, por decisión explícita del negocio.
 - **El umbral de 700 soles de FR-021 es un valor de origen regulatorio**, no una preferencia del negocio. Puede cambiar por norma sin que cambie nada en SuitPay, así que no debe quedar enterrado como una constante intocable: modificarlo tiene que ser barato.
 - **Anular solo el mismo día es la regla de operación de la empresa**, y es más estricta que el máximo que la norma admite. Se adopta deliberadamente por prudencia: reduce la ventana en la que un comprobante puede desaparecer y empuja los errores tardíos hacia la nota de crédito, que deja mejor rastro.
-- **El documento interno de contingencia de FR-050a no sustituye al comprobante** ni tiene valor tributario. Su única función es dejar constancia de la operación ante el cliente mientras el comprobante real no exista.
+- **FR-050a (documento interno de contingencia) está retirado** en esta entrega (decisión 10). No hay papel sustituto automático mientras el proveedor no responde.

@@ -2,7 +2,8 @@
 
 - **Slug**: sistema-facturacion
 - **Decided**: 2026-07-28
-- **Verdict**: go (condicionado — ver las tres verificaciones previas)
+- **Updated**: 2026-07-29 (enmienda volcado 5 — veredicto sin cambio)
+- **Verdict**: go (condicionado — ver las tres verificaciones previas; la #3 se reformula abajo)
 - **Artifacts reviewed**: intake.md, research.md, problem.md, concept.md
 
 ## Scorecard
@@ -34,7 +35,7 @@ Ninguna bloquea empezar a especificar, pero las tres deben resolverse antes de c
 
 1. **Revisar el acoplamiento de las herramientas de captura ya construidas** en la tienda virtual de la empresa. Es la incógnita que más puede mover el alcance y la única que se despeja gratis, leyendo el código en lugar de especulando. Si el acoplamiento resulta profundo, la recomendación debe replegarse de la Opción D a la Opción B.
 2. **Medir las líneas base en el sistema actual**: minutos desde la apertura hasta la primera emisión, tiempo de una venta, comprobantes anulados al mes, pedidos en papel por semana, y volumen del canal de los vecinos. Son días de conteo y sin ellos el criterio de éxito del dueño no tiene contra qué compararse.
-3. **Preguntar al proveedor de emisión si acepta un número de comprobante explícito** en lugar de asignarlo él. De la respuesta depende poder garantizar que ninguna venta se emita dos veces, que es el único riesgo grave sin mitigación confirmada.
+3. **Comprobar en el entorno de demostración del proveedor** que acepta un número de comprobante explícito (no solo el comodín `#`) y qué responde ante un número ya usado. El volcado 5 aclara que las series se configuran con **número inicial** (origen del contador); no cierra esta prueba. De ella depende poder garantizar que ninguna venta se emita dos veces.
 
 ### Recomendación paralela, independiente del proyecto
 
@@ -48,23 +49,31 @@ No aplica. El veredicto es `go`. Las incógnitas se trasladan a la especificaci�
 
 - **Problem**: en una distribuidora mayorista de grifería y gasfitería en Perú, los 5 vendedores no pueden documentar una venta al ritmo del mostrador porque el sistema está atado a máquinas y a las credenciales de una sola persona, obliga a recorrer varias pantallas por documento y no encuentra productos cuando el nombre no se teclea en el orden exacto; el resultado son clientes sin atender y ventas tomadas en papel.
 
-- **Chosen approach**: Opción D — Mostrador asistido acotado. Aplicación web para navegador en escritorio y móvil, con sesión persistente por vendedor. Tres entradas equivalentes que construyen un mismo pedido —escribir, dictar o fotografiar una guía manual— y ese pedido se documenta como cualquier comprobante. La emisión se delega en un proveedor externo sustituible. Lo capturado automáticamente se muestra contrastado contra el producto propuesto y **siempre lo aprueba el vendedor**, que conserva la responsabilidad.
+- **Chosen approach**: Opción D — Mostrador asistido acotado. Aplicación web para navegador en escritorio y móvil, con sesión persistente por vendedor. Shell con sidebar (Inicio, Configuración; marca SuitPay; perfil+logout al pie). Tres entradas equivalentes que construyen un mismo pedido —escribir, dictar o fotografiar una guía manual— y ese pedido se documenta como cualquier comprobante (default: Nota de Venta). El mostrador usa todo el ancho con tabs Pedido | Cotizaciones | Vecinos | Lista y dirección visual Modern Soft-Pill. La emisión se delega en un proveedor externo sustituible. Lo capturado automáticamente se muestra contrastado contra el producto propuesto y **siempre lo aprueba el vendedor**, que conserva la responsabilidad.
 
-- **In scope**: pedido único convertible a boleta, factura o nota de venta; búsqueda de productos por atributos en cualquier orden; alta de cliente en contexto mediante consulta por RUC y DNI; cotizaciones numeradas, persistidas en servidor y recuperables desde cualquier dispositivo; precio mayorista editable en línea sin validación; captura por audio y por fotografía con revisión contrastada; comandos de **consulta** en el buscador; modal de contexto limitado a coincidencias de cliente y de producto; anulación dentro de plazo como operación explícita; registro referencial de medio de pago y monto; pedido en curso persistido localmente para sobrevivir a cortes de red; impresión en A4 desde escritorio y PDF compartible desde móvil; migración del catálogo de productos; facturación al crédito para el canal de los vecinos, emitida en el momento de la entrega.
+- **In scope**: pedido único convertible a boleta, factura o nota de venta (default Nota de Venta); shell con sidebar e ítem Configuración; tabs del mostrador; búsqueda de productos por atributos en cualquier orden; alta de cliente en contexto mediante consulta por RUC y DNI; cotizaciones numeradas, persistidas en servidor y recuperables desde cualquier dispositivo; precio mayorista editable en línea sin validación; captura por audio y por fotografía con revisión contrastada; comandos de **consulta** en el buscador; modal de contexto limitado a coincidencias de cliente y de producto; anulación dentro de plazo como operación explícita; registro referencial de medio de pago y monto; pedido en curso persistido localmente para sobrevivir a cortes de red; impresión en A4 (y PDF ticket si el proveedor lo admite) desde escritorio y PDF compartible desde móvil; migración del catálogo de productos; facturación al crédito para el canal de los vecinos, emitida en el momento de la entrega; configuración de series con número inicial alineado entre SuitPay y el proveedor.
 
 - **Out of scope**: contabilidad; cobranzas como módulo; aplicación nativa; impresión desde el móvil; asumir la firma y la emisión ante la autoridad tributaria; comandos u órdenes habladas que anulen o modifiquen comprobantes emitidos; modal de contexto genérico más allá de clientes y productos; guía de remisión; panel del jefe y alertas de mercadería por agotarse; sugerencias de compra de los vendedores; notas de crédito y anulación fuera de plazo como flujo completo; migración masiva de clientes; sincronización con el sistema actual; cambiar la forma de trabajar del almacenero; reemplazar la tienda virtual.
 
 - **Success metrics**: minutos desde la apertura hasta la primera emisión; tiempo desde que el cliente llega hasta que tiene su comprobante; porcentaje de búsquedas que aciertan al primer intento; pedidos en papel por semana que requieren transcripción completa; comprobantes anulados al mes; comprobantes rechazados u observados por la autoridad, que no debe empeorar; **comprobantes duplicados emitidos: cero**; ventas a vecinos documentadas el mismo día de la entrega; y, como señal cualitativa declarada por el dueño, que los 5 vendedores prefieran SuitPay al sistema actual. Todas las líneas base están sin medir salvo la de duplicados, que no aplica al sistema actual.
 
 - **Carried-forward open questions**:
-  - ¿Acepta el proveedor de emisión un número de comprobante explícito? Sin ello no hay forma de reconciliar una emisión interrumpida y el objetivo de cero duplicados no se puede garantizar.
+  - ¿Respeta el proveedor un número de comprobante explícito, y qué contesta ante uno ya usado? (demo / T027). El **origen** del contador sí está aclarado: número inicial de la serie.
   - ¿Cuánto acoplamiento tienen las herramientas de captura existentes con la tienda virtual? Condiciona el alcance de la primera entrega.
   - ¿Qué relación tendrán SuitPay y la tienda virtual una vez migrado el catálogo, si la tienda sigue vendiendo?
   - ¿Qué recibe el cliente en el instante en que paga y se lleva la mercadería si el servicio de emisión está caído?
-  - ¿Existe un formato de impresión de rollo en el proveedor, o el objetivo de abandonar el A4 es inalcanzable por esa vía?
+  - ~~¿Existe un formato de impresión de rollo?~~ Parcialmente cerrado: `formato_pdf: ticket` está documentado; queda validar maquetación/ancho.
   - ¿Qué postura tiene el contador sobre el desglose del impuesto a partir de precios que ya lo incluyen, la facturación al crédito de los vecinos y la anulación por error de impresión?
   - ¿Qué debe poder hacer el vendedor si la asistencia automática no responde en absoluto, y se acepta operar solo con búsqueda escrita como degradación válida?
   - ¿Respecto a qué base se calcula el porcentaje de la alerta de mercadería por agotarse?
   - ¿Qué umbral de importe obliga a identificar al comprador en una boleta, y quién valida esa regla?
   - ¿Caben 5 vendedores emitiendo simultáneamente en los límites de uso de la API del proveedor?
   - ¿En qué momento SuitPay toma el control del inventario, dado que durante la convivencia con el sistema actual el stock será inconsistente por diseño?
+  - ¿Qué contiene el tab **Lista** del mostrador?
+  - ¿La pantalla **Configuración** es solo administrador o también vendedor?
+
+## Enmienda volcado 5 (2026-07-29)
+
+**Veredicto: sin cambio (`go`).** Los deltas de UI (sidebar, Soft-Pill, tabs, full-bleed), el default Nota de Venta y el número inicial de serie se incorporan al handoff de arriba y se propagan a `specs/001-mostrador-asistido/` y `DESIGN.md`. No se reabre shape ni se mata la idea: es enmienda de superficie y de origen del correlativo sobre la Opción D ya aceptada.
+
+Infra operativa registrada sin secretos: proyecto Firebase `blayblocklabs-antrax`, site Hosting `suitpay`. Credenciales de API y `firebaseConfig` viven fuera del repositorio.

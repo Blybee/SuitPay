@@ -82,7 +82,7 @@ export type AlmacenDelPedido = EstadoDelPedido & AccionesDelPedido
 const ESTADO_INICIAL: EstadoDelPedido = {
   lineas: [],
   cliente: null,
-  tipoDocumento: 'boleta',
+  tipoDocumento: 'nota_venta',
   cotizacionId: null,
   capturaId: null,
   claveIdempotencia: null,

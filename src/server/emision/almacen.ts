@@ -107,6 +107,11 @@ export interface Serie {
   readonly serie: string
   readonly tipoDocumento: TipoDeDocumento
   readonly vendedorId: string
+  /**
+   * Origen configurado al dar de alta la serie (FR-031a). El primer correlativo
+   * reclamado es este valor. `ultimoNumero` arranca en `numeroInicial - 1`.
+   */
+  readonly numeroInicial: number
   readonly ultimoNumero: number
   /** Último correlativo con emisión confirmada. Punto de partida del sondeo. */
   readonly ultimoNumeroConfirmado: number

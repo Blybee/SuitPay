@@ -22,12 +22,13 @@ import type {Serie, TransaccionDeEmision} from './almacen.ts';
  *
  * De ahí FR-030: todo consumo se registra, incluidos los que acaban en fallo.
  *
- * ## Los dos contadores
+ * ## Los dos contadores y el origen
  *
+ * `numeroInicial` fija el primer correlativo (FR-031a; alineado al panel del
+ * proveedor). Al crear la serie, `ultimoNumero = numeroInicial - 1`.
  * `ultimoNumero` es lo reclamado y `ultimoNumeroConfirmado` es lo que se sabe
- * emitido. La distancia entre ambos es exactamente el conjunto de números cuya
- * suerte está por determinar, y es de donde arranca el sondeo de la
- * reconciliación cuando el proveedor no acepta números explícitos.
+ * emitido. La distancia entre ambos queda como traza operativa; T027 confirmó
+ * que el proveedor respeta el número explícito, así que no hace falta sondear.
  */
 
 export interface CorrelativoReclamado {

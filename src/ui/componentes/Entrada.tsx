@@ -7,36 +7,9 @@ import type {
 } from '../../domain/busqueda/productos.ts'
 
 /**
- * La entrada. Un campo, tres alimentaciones, fijo arriba.
- *
- * ## Por qué un solo campo
- *
- * No hay tres cajas —escribir, dictar, fotografiar— sino una boca de entrada con
- * tres formas de alimentarla. Tres campos obligarían al vendedor a elegir el
- * método antes de saber qué va a hacer, y el método correcto casi siempre es
- * teclear.
- *
- * ## La sugerencia no espera nada
- *
- * Se busca sobre el catálogo en memoria en el mismo gesto de teclear, sin
- * antirrebote y sin estado de carga. **No hay latencia que amortiguar**: la
- * búsqueda es local por diseño (FR-007), así que meter un retardo de 200 ms para
- * "no sobrecargar" sería añadir la única espera del recorrido y no ahorrar nada.
- *
- * ## Lo que se dice cuando no hay coincidencias, y por qué
- *
- * Un buscador que ante "codo fg 3/4" devuelve calladamente el codo de 1/2 porque
- * era lo más parecido es **peor** que uno que no devuelve nada: el vendedor teclea
- * rápido, ve una fila, la acepta y factura la pieza equivocada. De ahí que se
- * distinga con palabras la ausencia de coincidencias de la coincidencia
- * aproximada (FR-008).
- *
- * ## Los botones caídos se ven inertes y dicen por qué
- *
- * Cuando la asistencia no está disponible, el micrófono y la cámara quedan
- * visiblemente inutilizables con el motivo escrito. Lo que **no** se hace es
- * presentar escribir como plan B, porque no lo es: escribir es la vía principal y
- * el dictado es la ayuda.
+ * Cinta de herramientas del mostrador: un campo + dictado/foto.
+ * Persiste siempre en la página de Inicio, anclada arriba (sobre los tabs).
+ * Soft-Pill: cápsulas, borde sutil, full-bleed del área de trabajo.
  */
 
 export interface PropsDeEntrada {
@@ -47,7 +20,6 @@ export interface PropsDeEntrada {
   readonly asistenciaDisponible: boolean
   readonly onDictar?: () => void
   readonly onFotografiar?: () => void
-  /** Enfoca al montar. Es lo que permite teclear sin tocar nada al llegar. */
   readonly enfocarAlMontar?: boolean
 }
 
@@ -83,9 +55,6 @@ export function Entrada({
     campo.current?.focus()
   }
 
-  // Toda la venta tiene que poder hacerse solo con teclado, incluida la elección
-  // del producto: no se puede depender de la precisión del puntero cuando se
-  // trabaja de pie.
   function alPulsarTecla(evento: React.KeyboardEvent<HTMLInputElement>): void {
     if (coincidencias.length === 0) return
     if (evento.key === 'ArrowDown') {
@@ -105,11 +74,11 @@ export function Entrada({
   }
 
   return (
-    <div className="sticky top-0 z-20 w-full border-b-2 border-tinta bg-mesa">
-      <div className="mx-auto flex w-full max-w-5xl items-stretch gap-2 px-3 py-2">
+    <div className="sticky top-0 z-20 w-full border-b border-borde bg-papel">
+      <div className="flex w-full items-stretch gap-2 px-4 py-3">
         <div className="relative flex flex-1 items-center">
           <Search
-            className="pointer-events-none absolute left-3 size-5 text-desvaida"
+            className="pointer-events-none absolute left-4 size-5 text-desvaida"
             aria-hidden
           />
           <input
@@ -129,9 +98,9 @@ export function Entrada({
             }
             role="combobox"
             className={[
-              'min-h-14 w-full border-2 border-tinta bg-papel pl-11 pr-3',
-              'text-entrada text-tinta placeholder:text-desvaida',
-              'focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-tinta',
+              'min-h-14 w-full rounded-full border border-borde bg-mesa pl-12 pr-4',
+              'text-entrada text-tinta placeholder:text-desvaida shadow-sm',
+              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta',
             ].join(' ')}
           />
         </div>
@@ -154,7 +123,7 @@ export function Entrada({
       </div>
 
       {!asistenciaDisponible && (
-        <p className="mx-auto w-full max-w-5xl px-3 pb-2 font-mono text-etiqueta uppercase text-aviso">
+        <p className="w-full px-4 pb-2 font-mono text-etiqueta uppercase text-aviso">
           Dictado y fotografía no disponibles
         </p>
       )}
@@ -190,12 +159,11 @@ function BotonDeCaptura({
       disabled={!disponible}
       onClick={onClick}
       className={[
-        // Objetivos generosos: se pulsan de pie y con prisa.
-        'flex min-h-14 w-14 shrink-0 items-center justify-center border-2',
-        'focus-visible:outline-3 focus-visible:outline-offset-1 focus-visible:outline-tinta',
+        'flex min-h-14 w-14 shrink-0 items-center justify-center rounded-full border',
+        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta',
         disponible
-          ? 'border-tinta bg-papel text-tinta hover:bg-tinta hover:text-papel'
-          : 'cursor-not-allowed border-desvaida bg-mesa text-desvaida',
+          ? 'border-borde bg-papel text-tinta shadow-sm hover:bg-tinta hover:text-papel'
+          : 'cursor-not-allowed border-borde bg-mesa text-desvaida',
       ].join(' ')}
     >
       {children}
@@ -216,7 +184,7 @@ function Sugerencias({
 }) {
   if (resultado.sinCoincidencias) {
     return (
-      <div className="mx-auto w-full max-w-5xl border-t-2 border-desvaida bg-papel px-3 py-3">
+      <div className="w-full border-t border-borde bg-papel px-4 py-3">
         <p className="text-cuerpo font-bold text-aviso">
           No hay ningún producto que coincida con «{resultado.termino}»
         </p>
@@ -228,15 +196,17 @@ function Sugerencias({
   }
 
   return (
-    <div className="mx-auto w-full max-w-5xl border-t-2 border-desvaida bg-papel">
+    <div className="w-full border-t border-borde bg-papel">
       {resultado.soloAproximadas && (
-        // La advertencia que evita facturar la pieza equivocada. Dicha con
-        // palabras y no insinuada con un color más pálido.
-        <p className="border-b border-aviso px-3 py-1.5 font-mono text-etiqueta font-bold uppercase text-aviso">
+        <p className="border-b border-aviso px-4 py-1.5 font-mono text-etiqueta font-bold uppercase text-aviso">
           Nada coincide con exactitud. Comprueba antes de aceptar.
         </p>
       )}
-      <ul id="sugerencias-de-producto" role="listbox" className="max-h-80 overflow-y-auto">
+      <ul
+        id="sugerencias-de-producto"
+        role="listbox"
+        className="max-h-80 overflow-y-auto"
+      >
         {resultado.coincidencias.map((coincidencia, indice) => (
           <li
             key={coincidencia.elemento.codigo}
@@ -249,8 +219,10 @@ function Sugerencias({
               onMouseEnter={() => onResaltar(indice)}
               onClick={() => onElegir(indice)}
               className={[
-                'flex min-h-11 w-full items-baseline justify-between gap-3 px-3 py-2 text-left',
-                indice === resaltado ? 'bg-tinta text-papel' : 'text-tinta',
+                'flex min-h-11 w-full items-baseline justify-between gap-3 px-4 py-2 text-left',
+                indice === resaltado
+                  ? 'bg-tinta text-papel'
+                  : 'text-tinta hover:bg-mesa',
               ].join(' ')}
             >
               <span className="min-w-0 flex-1">

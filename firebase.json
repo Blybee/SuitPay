@@ -6,6 +6,17 @@
   "storage": {
     "rules": "storage.rules"
   },
+  "hosting": {
+    "site": "suitpay",
+    "public": "dist/client",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"],
+    "rewrites": [
+      {
+        "source": "**",
+        "destination": "/index.html"
+      }
+    ]
+  },
   "emulators": {
     "auth": { "port": 9099 },
     "firestore": { "port": 8080 },

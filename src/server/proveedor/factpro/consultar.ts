@@ -97,9 +97,17 @@ export async function consultarDocumento(
   })
 
   if (!respuesta.ok) {
-    // Una consulta que no se puede hacer NO significa que el documento no
-    // exista. Devolver `existe: false` aquí sería el error más caro posible:
-    // haría creer a la reconciliación que la venta se puede volver a emitir.
+    // T027: documento ausente → HTTP 404 + "Documento no encontrado.".
+    // Solo ese mensaje afirma ausencia; otros 404 no se interpretan a ciegas.
+    const mensaje = (respuesta.fallo.rastro?.mensajeOriginal ?? '').toLowerCase()
+    if (
+      respuesta.fallo.clase === 'rechazo_definitivo' &&
+      mensaje.includes('no encontrado') &&
+      respuesta.fallo.rastro
+    ) {
+      return exito(documentoAusente(peticion, respuesta.fallo.rastro))
+    }
+    // Cualquier otro fallo (red, 5xx, credenciales): NO afirmar ausencia.
     return propagarFallo(respuesta.fallo)
   }
 

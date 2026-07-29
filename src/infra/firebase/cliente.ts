@@ -1,31 +1,16 @@
-import { getApp, getApps, initializeApp  } from 'firebase/app'
-import type {FirebaseApp} from 'firebase/app';
-import {
-  ReCaptchaV3Provider,
-  initializeAppCheck
-  
-} from 'firebase/app-check'
-import type {AppCheck} from 'firebase/app-check';
+import { getApp, getApps, initializeApp } from 'firebase/app'
+import type { FirebaseApp } from 'firebase/app'
 import {
   connectAuthEmulator,
   getAuth,
   browserLocalPersistence,
-  setPersistence
-  
+  setPersistence,
 } from 'firebase/auth'
-import type {Auth} from 'firebase/auth';
-import {
-  connectFirestoreEmulator,
-  getFirestore
-  
-} from 'firebase/firestore'
-import type {Firestore} from 'firebase/firestore';
-import {
-  connectStorageEmulator,
-  getStorage
-  
-} from 'firebase/storage'
-import type {FirebaseStorage} from 'firebase/storage';
+import type { Auth } from 'firebase/auth'
+import { connectFirestoreEmulator, getFirestore } from 'firebase/firestore'
+import type { Firestore } from 'firebase/firestore'
+import { connectStorageEmulator, getStorage } from 'firebase/storage'
+import type { FirebaseStorage } from 'firebase/storage'
 
 /**
  * El cliente de Firebase en el navegador.
@@ -34,18 +19,17 @@ import type {FirebaseStorage} from 'firebase/storage';
  *
  * Todos estos valores llegan al navegador y eso es correcto: la configuración
  * del cliente de Firebase es pública por diseño. Lo que protege los datos son
- * las reglas de seguridad y App Check, no el secreto de un identificador de
- * proyecto. Lo que **no** puede estar aquí es el token del proveedor de emisión
- * ni las claves del servicio de asistencia, y de eso se encarga la frontera que
- * vigila el linter.
+ * las reglas de seguridad y la verificación de sesión en el servidor, no el
+ * secreto de un identificador de proyecto. Lo que **no** puede estar aquí es el
+ * token del proveedor de emisión ni las claves del servicio de asistencia.
+ *
+ * App Check queda fuera de alcance de esta entrega: la autenticación + roles en
+ * el token y las reglas de Firestore son la frontera activa.
  *
  * ## Sobre la sesión
  *
- * La persistencia es local a propósito. La primera queja del volcado inicial es
- * que el personal espera de pie a que llegue quien tiene las credenciales; una
- * sesión que sobrevive al cierre del navegador es parte de la respuesta a eso.
- * La revalidación ocurre por debajo, como en cualquier sitio moderno, en lugar
- * de pedir credenciales cada mañana.
+ * La persistencia es local a propósito. Una sesión que sobrevive al cierre del
+ * navegador evita que el personal espere de pie a quien tiene las credenciales.
  */
 
 interface Configuracion {
@@ -70,8 +54,6 @@ function leerConfiguracion(): Configuracion {
     .map(([nombre]) => nombre)
 
   if (ausentes.length > 0) {
-    // Falla al arrancar y con los nombres puestos. Una configuración a medias se
-    // manifestaría más tarde como un error de permisos incomprensible.
     throw new Error(
       `Falta configuración de Firebase: ${ausentes.join(', ')}. Ver .env.example.`,
     )
@@ -83,40 +65,12 @@ function leerConfiguracion(): Configuracion {
 const usarEmuladores = import.meta.env.VITE_USAR_EMULADORES === 'true'
 
 let aplicacion: FirebaseApp | undefined
-let atestacion: AppCheck | undefined
 
 export function obtenerAplicacion(): FirebaseApp {
   if (aplicacion !== undefined) return aplicacion
   aplicacion =
     getApps().length > 0 ? getApp() : initializeApp(leerConfiguracion())
   return aplicacion
-}
-
-/**
- * App Check atestigua que la petición viene de nuestra aplicación y no de un
- * guion cualquiera con la configuración copiada. Es la segunda mitad de la
- * verificación transversal de las funciones de servidor: la primera dice *quién*
- * llama y ésta dice *desde dónde*.
- *
- * En desarrollo con emuladores se omite: no hay dominio registrado y exigirla
- * solo produciría un fallo que no enseña nada.
- */
-export function activarAtestacion(): AppCheck | undefined {
-  if (usarEmuladores) return undefined
-  if (atestacion !== undefined) return atestacion
-
-  const claveDeSitio = import.meta.env.VITE_APP_CHECK_CLAVE_SITIO
-  if (claveDeSitio === undefined || claveDeSitio === '') {
-    throw new Error(
-      'Falta VITE_APP_CHECK_CLAVE_SITIO. Sin atestación, las funciones de servidor rechazarán todas las llamadas.',
-    )
-  }
-
-  atestacion = initializeAppCheck(obtenerAplicacion(), {
-    provider: new ReCaptchaV3Provider(claveDeSitio),
-    isTokenAutoRefreshEnabled: true,
-  })
-  return atestacion
 }
 
 let autenticacion: Auth | undefined

@@ -114,7 +114,7 @@ export function LineaPedido({
     <li
       className={[
         'grid grid-cols-[1fr_5rem_7rem_7rem_2.5rem] items-baseline gap-2',
-        'border-b border-desvaida px-3 py-1.5',
+        'border-b border-borde px-4 py-1.5',
         // El estado no se distingue solo por color: además del borde rojo, abajo
         // se escribe el motivo.
         !emitible && 'border-l-4 border-l-aviso bg-aviso/5',
@@ -149,10 +149,10 @@ export function LineaPedido({
           if (evento.key === 'Enter') evento.currentTarget.blur()
         }}
         className={[
-          'min-h-11 w-full border-2 border-transparent bg-transparent px-1',
+          'min-h-11 w-full rounded-full border border-transparent bg-transparent px-2',
           'font-mono tabular-nums text-right text-cuerpo text-tinta',
-          'hover:border-desvaida',
-          'focus-visible:border-tinta focus-visible:outline-none',
+          'hover:border-borde',
+          'focus-visible:border-borde focus-visible:bg-mesa focus-visible:outline-none',
         ].join(' ')}
       />
 
@@ -170,10 +170,10 @@ export function LineaPedido({
             if (evento.key === 'Enter') evento.currentTarget.blur()
           }}
           className={[
-            'min-h-11 w-full border-2 border-transparent bg-transparent px-1',
+            'min-h-11 w-full rounded-full border border-transparent bg-transparent px-2',
             'font-mono tabular-nums text-right text-cuerpo text-tinta',
-            'hover:border-desvaida',
-            'focus-visible:border-tinta focus-visible:outline-none',
+            'hover:border-borde',
+            'focus-visible:border-borde focus-visible:bg-mesa focus-visible:outline-none',
           ].join(' ')}
         />
         {precioAjustado && (
@@ -221,7 +221,7 @@ export function CabecerasDeColumna() {
     <div
       className={[
         'grid grid-cols-[1fr_5rem_7rem_7rem_2.5rem] gap-2',
-        'border-b-2 border-tinta px-3 pb-1',
+        'border-b border-borde px-4 pb-1',
         'font-mono text-etiqueta uppercase text-desvaida',
       ].join(' ')}
     >

@@ -2,10 +2,10 @@
 
 - **Slug**: sistema-facturacion
 - **Created**: 2026-07-28
-- **Source**: texto pegado (volcados de ideas 1 a 4, sesión interactiva)
+- **Source**: texto pegado (volcados de ideas 1 a 5, sesión interactiva)
 - **Type**: new-capability (reemplazo de un sistema existente en producción)
 - **Jurisdicción**: Perú — SUNAT (confirmado por el autor en la misma sesión)
-- **Estado de captura**: parcial — el autor numera sus volcados ("volcado de ideas 1", "volcado 2"), por lo que se esperan aportes adicionales antes de cerrar el intake.
+- **Estado de captura**: enmendado — el assessment ya tenía veredicto `go` y feature `001-mostrador-asistido`; el volcado 5 aporta deltas de shell, diseño visual, correlativo y operaciones. Pueden seguir llegando aportes.
 
 ## Idea (as captured) — Volcado 1
 
@@ -191,6 +191,42 @@ Registrados aquí sin evaluar, para que las etapas siguientes los pesen:
 - **Correlativo pendiente de investigación**: el autor delega la respuesta a la revisión de la documentación de Factpro.
 - **Idempotencia delegada**: el autor deja el análisis del mecanismo al criterio técnico, para resolver en la etapa de diseño.
 
+## Idea (as captured) — Volcado 5
+
+> - En términos de UI vamos a agregar un sidebar lateral entre las menus por ahora tendremos nuestra pagina de inicio (la que ya tenemos construida) y un item de configuración, moveremos el nombre de la plataforma del header al sidebar SuitPay, debajo agregaremos el perfil de usuario con un boton de logout (analizar si es conveniente dejar el perfil de usuario en la parte superior o en la parte inferior)
+> - En la sesión de ayer se estaba suponiendo que podiamos nosotros generar el numero del documento es decir seria-###, pero revisando ahora esto no es así, se pueden configurar las series pero tambien te pide el numero de accion desde el cual va a empezar generar los documentos, por ejemplo para que empiece desde el 0 o desde el 100 -> F001-0 O F002-100
+> - Tambien quiero un cambio en la UI, quiero cambiar el estilo brutalista de los componentes por componentes con bordes suaves: pivote de dirección de arte de "Brutalista" a "Modern Soft-Pill UI". Actualizar DESIGN.md con reglas absolutas: purgar rounded-none/rounded-sm y esquinas afiladas; botones/badges/controles interactivos en cápsula (rounded-full); tarjetas/contenedores mayores con radios amplios (rounded-2xl o rounded-3xl); purgar bordes gruesos (border-2, border-4, border-black) y sombras sólidas brutales; separación por contraste de color; fondos blancos (bg-white) sobre fondos de aplicación gris claro (bg-gray-50 o bg-gray-100); si borde, border border-gray-200; si sombra, shadow-sm o shadow-md con opacidad baja.
+> - Ahora para la pagina de inicio (la que tenemos construida) quiero hacer un cambio, ya no quiero que se concentre solo en el centro el contenido, quiero que use todo el espacio y quitar ese color medio amarillento del fondo, trabajaremos en capas/tonos de gris o blanco para el fondo.
+> - ademas quiero tabs internos: Pedido | Cotizaciones | Vecinos | Lista
+> - Ademas el tipo de documento por default que este configurado debe ser Nota de Venta.
+> - Ayer nos quedaron pendientes tareas porque faltaban algunos datos: API del proveedor de emisión [REDACTED — no persistir; rotar si quedó expuesto en chat]; rutas de documentación: estructura para generar facturas, nota de crédito, nota de débito, guías remitente (docs.factpro.la/api-facturacion-v3/…).
+> - Datos de configuración del proyecto de Firebase [REDACTED apiKey y demás secretos del cliente]: projectId blayblocklabs-antrax; authDomain blayblocklabs-antrax.firebaseapp.com; storageBucket blayblocklabs-antrax.firebasestorage.app; measurementId presente. Almacenar en env / consola, no en este artefacto.
+> - Dominio/site para despliegue Hosting: site "suitpay".
+>
+> Confirmaciones de la misma sesión: (1) proceder documentando por Speckit antes de codificar; (2) perfil de usuario + logout al **pie** del sidebar.
+
+**Nota del registro**: se redactaron el token de API del proveedor y el bloque completo de `firebaseConfig` (incl. `apiKey`). El autor debe rotar el token expuesto en el chat y colocar credenciales solo en Secret Manager / `.env.local` (fuera del repo).
+
+## Restated
+
+*(sin cambio de fondo; el volcado 5 no redefine el problema, enmienda shell, dirección visual, numeración de series y defaults de documento.)*
+
+## Origin & Context
+
+*(heredado de volcados 1–4; el volcado 5 lo aporta el mismo autor en sesión del 2026-07-29, tras el go del assessment y con implementación parcial de la feature 001.)*
+
+## Elementos capturados
+
+### Añadido en el volcado 5
+
+- **Shell con sidebar**: navegación lateral con, por ahora, Inicio (mostrador ya construido) y Configuración. La marca **SuitPay** pasa del header al sidebar. Perfil de usuario con logout: decisión confirmada **al pie** del sidebar (marca arriba, nav en medio, perfil abajo).
+- **Pivote de arte Modern Soft-Pill**: sustituye el estilo brutalista / papel cálido / radio cero. Cápsulas en controles interactivos; radios amplios en tarjetas; elevación suave; contraste blanco sobre gris claro.
+- **Mostrador full-bleed**: el contenido usa todo el espacio; se elimina el fondo amarillento/kraft; capas de gris o blanco.
+- **Tabs internos del mostrador**: Pedido | Cotizaciones | Vecinos | Lista.
+- **Tipo de documento por defecto**: Nota de Venta.
+- **Series con número inicial**: al configurar una serie se indica desde qué número empezar a emitir (ej. `F001` desde 0 → `F001-0`; `F002` desde 100 → `F002-100`). Corrige la suposición de que SuitPay inventaba el correlativo sin origen configurado.
+- **Infra operativa (sin secretos)**: proyecto Firebase `blayblocklabs-antrax`; site Hosting `suitpay`; documentación del proveedor de emisión para factura, nota de crédito, nota de débito y GRE remitente; credencial de API disponible para el entorno de demostración (almacenamiento fuera del repo).
+
 ## Resueltas durante el intake
 
 - **Jurisdicción**: Perú, autoridad tributaria SUNAT. Esto fija el marco de comprobantes de pago electrónicos (CPE) y hace que los cuatro documentos citados por el autor no sean equivalentes entre sí — factura, boleta de venta y guía de remisión son comprobantes regulados por SUNAT, mientras que la nota de venta es un documento interno sin valor tributario.
@@ -230,16 +266,22 @@ Registrados aquí sin evaluar, para que las etapas siguientes los pesen:
 - **Cliente eventual**: se exigirán los datos del cliente al superar el umbral que obliga a identificarlo.
 - **Cotizaciones**: persistidas en base de datos y accesibles desde cualquier dispositivo, a diferencia del pedido en curso.
 - **Práctica ante caída del servicio**: se recogen teléfono, RUC/DNI y tipo de documento deseado para enviar el comprobante al restablecerse.
+- **Shell**: sidebar con Inicio y Configuración; marca SuitPay en el sidebar; perfil + logout al pie.
+- **Dirección visual**: Modern Soft-Pill (cápsulas, radios amplios, grises/blancos, sombras suaves); se abandona el brutalismo / papel cálido como norte.
+- **Mostrador**: contenido a todo el ancho; tabs Pedido | Cotizaciones | Vecinos | Lista.
+- **Default de documento**: Nota de Venta.
+- **Origen del correlativo**: las series se configuran con un número de arranque (ej. 0 o 100); SuitPay debe alinear su contador a ese origen. Queda por comprobar en demo si el proveedor respeta un número explícito en la emisión (tarea T027 / research).
+- **Proyecto Firebase y Hosting**: `blayblocklabs-antrax`, site `suitpay`.
 
 ## First-Glance Unknowns
 
 Heredadas y aún abiertas:
 
 - [NEEDS CLARIFICATION: presupuesto y tolerancia a costos y latencia de las llamadas al modelo por cada pedido capturado.]
-- [NEEDS CLARIFICATION: cómo se desglosa el IGV y cómo se redondea. Los precios se manejan con IGV incluido, pero un comprobante electrónico exige valor unitario sin IGV, base imponible e IGV por línea y totales que cuadren; al partir del precio con impuesto incluido, el redondeo por línea puede desviar el total y provocar rechazos. **El autor lo dejó pendiente de consulta con el contador.**]
-- [NEEDS CLARIFICATION: el correlativo de cada comprobante, ¿lo asigna SuitPay o el proveedor? De esto depende cómo se comporta la cola de pendientes y qué número se muestra al vendedor antes de que el documento sea aceptado. **El autor lo remite a la documentación de Factpro; queda como tarea de investigación.**]
+- [NEEDS CLARIFICATION: cómo se desglosa el IGV y cómo se redondea. Los precios se manejan con IGV incluido, pero un comprobante electrónico exige valor unitario sin IGV, base imponible e IGV por línea y totales que cuadren; al partir del precio con impuesto incluido, el redondeo por línea puede desviar el total y provocar rechazos. **El autor lo dejó pendiente de consulta con el contador.** La API del proveedor acepta `incluye_tax: true` (research), lo que reduce el riesgo operativo, pero la postura del contador sigue abierta.]
+- ~~[NEEDS CLARIFICATION: el correlativo…]~~ **Enmendado en volcado 5**: el origen del contador es el número inicial configurado en la serie; SuitPay reclama y envía el siguiente número. Persiste la comprobación en demo de que el proveedor respete el número explícito y qué responde ante uno ya usado.
 - [NEEDS CLARIFICATION: qué se entrega al cliente en el momento cuando el proveedor de emisión está caído. La práctica actual —recoger sus datos y enviarle el comprobante después— resuelve el después, pero el cliente paga y se lleva la mercadería en ese instante. ¿Se va sin nada, con un documento interno, o se retiene la venta?]
-- [NEEDS CLARIFICATION: idempotencia. **El autor delega el análisis al criterio técnico.** El problema a resolver: evitar que una misma venta se emita dos veces por doble pulsación, por reintento tras un tiempo de espera agotado que en realidad tuvo éxito, o por tener la misma cotización abierta en dos dispositivos. Queda como decisión de diseño para la etapa de plan.]
+- ~~[NEEDS CLARIFICATION: idempotencia…]~~ **Delegada y resuelta en diseño** (clave de idempotencia = id del comprobante; ver `specs/001-mostrador-asistido/research.md`). Se mantiene como decisión de implementación, no como incógnita de intake.
 
 Nuevas, surgidas del volcado 4:
 
@@ -249,3 +291,8 @@ Nuevas, surgidas del volcado 4:
 - [NEEDS CLARIFICATION: el 10% de la alerta de stock, ¿porcentaje respecto a qué? Necesita una base de cálculo: el stock máximo histórico, la última compra, el promedio de rotación o un mínimo fijado por producto.]
 - [NEEDS CLARIFICATION: dos APIs de Gemini protegen contra el agotamiento de cuota o el límite de solicitudes, pero no contra una caída del servicio, que afectaría a ambas por igual. ¿Qué debe poder hacer el vendedor si la IA no responde en absoluto — bastaría con el buscador local, que no depende del modelo?]
 - [NEEDS CLARIFICATION: cuando se factura a un vecino al momento del pago, la fecha de emisión cae días después de la entrega de la mercadería. ¿Es así como opera hoy y el contador lo valida, o la venta y la entrega deben quedar documentadas en su momento con otro documento?]
+
+Nuevas, surgidas del volcado 5:
+
+- [NEEDS CLARIFICATION: qué contiene exactamente el tab **Lista** del mostrador — ¿lista de productos, historial de comprobantes del día, u otra cosa?]
+- [NEEDS CLARIFICATION: la pantalla **Configuración**, ¿es solo para administrador/contador (series, usuarios, parámetros) o el vendedor también entra a ajustar preferencias propias?]

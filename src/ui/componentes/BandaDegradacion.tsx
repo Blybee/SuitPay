@@ -31,7 +31,7 @@ export function BandaDegradacion({
     <div
       role="status"
       aria-live="polite"
-      className="flex w-full items-start gap-3 border-y-2 border-aviso bg-papel px-4 py-2 text-aviso"
+      className="flex w-full items-start gap-3 border-b border-aviso bg-papel px-4 py-2 text-aviso"
     >
       <AlertTriangle className="mt-0.5 size-6 shrink-0" aria-hidden />
       <div className="min-w-0">

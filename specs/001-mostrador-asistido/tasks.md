@@ -37,12 +37,13 @@ De modo que las fases US1, US4, US5 y US8 llevan pruebas obligatorias. El resto 
 - [x] T005 **Añadir la regla de frontera de importación** en `eslint.config.js`: ningún archivo fuera de `src/server/**` puede importar de `src/server/**`, y `src/domain/**` no puede importar de Firebase, React ni del framework. Es el guardián de las tres fronteras que `plan.md` declara deliberadas
 - [x] T006 [P] Configurar Tailwind CSS en `tailwind.config.ts` y `src/ui/tokens/`, con la paleta de `DESIGN.md`: tinta `#1A1714`, rojo `#C2321C`, violeta `#4C3F91`, papel `#F7F4EC`, mesa `#DED7C7`, tinta desvaída `#8A8378`, y radio cero como valor único
   - Hecho con configuración en CSS (Tailwind v4), en `src/ui/tokens/tema.css`, no en `tailwind.config.ts`: v4 ya no usa ese archivo. Los espacios de nombres `--radius-*`, `--shadow-*` y la paleta por omisión se **vacían**, de modo que `rounded-lg`, `shadow-md` y cualquier verde no existen como clases. Comprobado sobre el CSS compilado.
+  - **Superseded parcialmente por T160** (volcado 5): `DESIGN.md` pivota a Modern Soft-Pill; hay que reintroducir radios/sombras suaves y neutros gris/blanco.
 - [x] T007 [P] Instalar y autoalojar Atkinson Hyperlegible en `src/ui/tokens/tipografia.ts`, **verificando la disponibilidad de su compañero monoespaciado** y cayendo a Martian Mono si no existe; dejar constancia de cuál se usó
   - Constancia: el compañero monoespaciado **sí existe**. Se usa `@fontsource-variable/atkinson-hyperlegible-mono` junto a `atkinson-hyperlegible-next`. No hizo falta recurrir a Martian Mono.
 - [x] T008 [P] Configurar Vitest y Testing Library en `vitest.config.ts`
 - [x] T009 [P] Configurar Playwright en `playwright.config.ts` con proyectos de escritorio y móvil
-- [ ] T010 Crear el proyecto de Firebase independiente y escribir `firebase.json`, `firestore.rules`, `firestore.indexes.json` y `storage.rules` iniciales
-  - Los cuatro archivos están escritos. **Queda crear el proyecto real**, que necesita la cuenta del usuario. Mientras tanto, `.firebaserc` apunta a `demo-suitpay`, que es suficiente para los emuladores.
+- [x] T010 Crear el proyecto de Firebase independiente y escribir `firebase.json`, `firestore.rules`, `firestore.indexes.json` y `storage.rules` iniciales
+  - Enlazado: `.firebaserc` default `blayblocklabs-antrax`, alias `emulador` → `demo-suitpay`; `firebase.json` hosting site **`suitpay`**; `apphosting.yaml` con valores públicos del cliente; `.env.example` + `.env.local` (gitignored). **App Check fuera de alcance.** Queda habilitar Blaze/Scheduler en consola y desplegar.
 - [x] T011 Configurar la Firebase Emulator Suite en `firebase.json` para Firestore, Auth y Storage, con guiones de arranque en `package.json`
 - [x] T012 Escribir `apphosting.yaml` con las variables de entorno y los enlaces a Secret Manager para las credenciales del proveedor de emisión y las dos del servicio de asistencia
 
@@ -73,18 +74,19 @@ De modo que las fases US1, US4, US5 y US8 llevan pruebas obligatorias. El resto 
 - [x] T021 [P] Escribir `storage.rules` limitando la escritura de medios de captura al vendedor autenticado y su lectura al backend
 - [ ] T022 Pruebas de las reglas de seguridad contra el emulador en `tests/emulador/reglas.test.ts`, verificando explícitamente que un cliente con rol de administrador **tampoco** puede escribir un comprobante ni una serie
   - Las pruebas están escritas. **No se han podido ejecutar todavía**: el emulador de Firestore necesita Java y la máquina no lo tiene. Hasta que corran, las reglas están sin verificar.
-- [x] T023 [P] Inicializar el cliente de Firebase y App Check en `src/infra/firebase/`
+- [x] T023 [P] Inicializar el cliente de Firebase en `src/infra/firebase/` (**sin App Check**; decisión de alcance US1)
 - [x] T024 [P] Inicializar el Admin SDK en `src/server/firebase/`
-- [x] T025 Implementar la verificación transversal de las funciones de servidor en `src/server/auth/`: sesión válida, atestación de aplicación, usuario activo y rol suficiente, **tomando la identidad del token y nunca de la petición** (principio I, FR-003)
+- [x] T025 Implementar la verificación transversal de las funciones de servidor en `src/server/auth/`: sesión válida, usuario activo y rol suficiente, **tomando la identidad del token y nunca de la petición** (principio I, FR-003). **Sin atestación App Check.**
 - [x] T026 [P] Definir el catálogo de códigos de error estables en `src/server/errores.ts`, con mensajes aptos para mostrar al vendedor y **sin propagar nunca el mensaje crudo del proveedor**
 
 ### Frontera del proveedor
 
-- [ ] T027 **Comprobar en el entorno de demostración del proveedor, antes de escribir el adaptador, las dos cosas que su documentación no dice** y dejar el resultado en `research.md`, incógnitas 1 y 2: **(a)** que al enviar un número de comprobante explícito en lugar del comodín de asignación automática el proveedor lo respeta, y qué contesta ante un número ya usado; **(b)** qué forma tienen sus respuestas de error, porque el ejemplo documentado no lleva código. De (a) depende que la reconciliación sea una consulta directa en lugar de un sondeo; de (b) depende poder distinguir un rechazo definitivo de una indisponibilidad, que es lo que impide el reintento a ciegas. **Son las dos incógnitas más valiosas del proyecto y se resuelven en una tarde**
+- [x] T027 **Comprobar en el entorno de demostración del proveedor…** (a) número explícito; (b) forma de errores
+  - **Cerrado 2026-07-29**: número explícito respetado (`F001-900001`); reemisión → 404 `"El documento ya está registrado."`; consulta ausente → 404 `"Documento no encontrado."`; sin código en JSON, solo `errors[].message`. Ver `research.md` § T027. Adaptador y transporte actualizados. Script: `scripts/t027-sondeo-proveedor.mjs`. **Rotar el token** expuesto en chat.
 - [x] T028 Definir la interfaz del proveedor de emisión en `src/server/proveedor/interfaz.ts` según `contracts/proveedor-emision.md`: `emitir`, `anular`, `consultarDocumento`, `consultarContribuyente`, con la clasificación de fallos en `rechazo_definitivo`, `indisponible` e `indeterminado`, apoyada en lo que T027 haya averiguado
 - [x] T029 [P] Implementar el proveedor simulado en `src/server/proveedor/simulado.ts`, capaz de reproducir a voluntad los tres modos de fallo con la forma real que T027 haya observado. Es la pieza sin la cual las pruebas obligatorias de la constitución no se pueden escribir
 - [x] T030 Implementar el adaptador de Factpro en `src/server/proveedor/factpro/`, con la autenticación, la normalización de sus respuestas a la interfaz propia y la **traducción de sus estados a los nuestros según la tabla de la decisión 4b**, recordando que sus estados `03` y `19` de "sin respuesta de SUNAT" **no son fallos nuestros** y no deben derivar en `indeterminado`
-  - Hecha la traducción de estados y el transporte con su clasificación de fallos, ambos con pruebas. **`emitir` y `anular` quedan para la fase US1**, que es donde vive la transacción de la serie. La clasificación es hoy conservadora a la espera de T027: los bloques que hay que revisar están marcados `PENDIENTE DE T027`.
+  - Traducción de estados, transporte y `emitir` alineados a hallazgos T027 (payload v3, errores con `errors[].message`). Anular sigue en US4.
   - Hallazgo con consecuencias en la interfaz: como el proveedor firma en sus propios servidores y mantiene su cola hacia SUNAT, **una caída de SUNAT no impide emitir**. El camino de venta en espera de FR-050 se estrecha a que el proveedor mismo o nuestra red estén inalcanzables, así que será raro y no debe presentarse como el escenario habitual.
 - [x] T031 [P] Implementar `consultarDocumento` en `src/server/proveedor/factpro/consultar.ts` sobre `POST /api/v3/consulta` con `{ serie, numero }`. Es la primitiva de la que depende toda la reconciliación, así que va antes que la emisión y no después
 
@@ -113,6 +115,7 @@ De modo que las fases US1, US4, US5 y US8 llevan pruebas obligatorias. El resto 
 - [x] T041 Implementar la disposición de la aplicación en `src/routes/__root.tsx`: barra de entrada a todo el ancho arriba, columna de papel centrada sobre la mesa kraft, barra de total anclada al pie. **Ninguna barra lateral** (`design.md`, composición aprobada)
   - Puesta la disposición de una columna con la banda de degradación en la raíz. La barra de entrada y la de total llegan con la hoja de trabajo, que es donde viven.
   - Nota del modo SPA: la compilación prerrenderiza la raíz con el componente de espera del enrutador y la guarda como cáscara estática. O sea que `defaultPendingComponent` es literalmente lo primero que ve el vendedor al abrir el sistema, no solo un intermedio entre navegaciones.
+  - **Superseded por T161–T163** (volcado 5): `design.md` exige sidebar, full-bleed y tabs; los renders `comp-*.png` están obsoletos.
 
 **Checkpoint**: alcanzado con dos reservas. El dominio está probado (69 pruebas), el proveedor se puede simular, el sistema de diseño está impuesto por construcción y la aplicación compila. Las reservas: **las reglas de seguridad están escritas pero sin verificar** hasta que se instale Java y corran las pruebas de emulador (T022), y **la clasificación de fallos del proveedor sigue a la espera de T027**. Las historias pueden empezar; US1 no debería cerrarse sin resolver ambas.
 
@@ -155,10 +158,10 @@ De modo que las fases US1, US4, US5 y US8 llevan pruebas obligatorias. El resto 
 - [x] T063 [US1] Implementar la máquina de estados del comprobante en `src/server/emision/estados.ts` según `data-model.md`, **prohibiendo explícitamente la transición de `indeterminado` a una nueva emisión**
 - [x] T064 [US1] Implementar el flujo de confirmación en el cliente en `src/features/emision/`, distinguiendo en la interfaz "emitido ahora" de "ya estaba emitido" mediante `yaExistia`
 - [x] T065 [US1] Implementar los estados de emisión en la interfaz en `src/features/emision/estados.tsx`: en vuelo, emitido, rechazado, pendiente, **indeterminado sin ofrecer reintentar**, y requiere intervención sin cerrarse solo
-- [x] T066 [US1] Implementar la recogida de datos de contacto y el documento interno de contingencia en `src/features/emision/contingencia.tsx`, marcado de forma inequívoca como sin valor tributario y pendiente de comprobante (FR-050a)
-- [x] T067 [US1] Implementar la tarea programada `procesarPendientes` en `src/routes/api/procesar-pendientes.ts`, que completa la emisión de las ventas en espera y mueve a `requiere_intervencion` las que resulten rechazadas, **porque el cliente ya se fue con mercadería** (FR-050b)
-- [x] T068 [US1] Implementar la tarea programada `reconciliarEmisiones` en `src/routes/api/reconciliar.ts`, que consulta al proveedor por los comprobantes `indeterminado` y adopta su estado real, con el sondeo acotado de la decisión 4 de `research.md`. **Nunca emite.** Es la contrapartida obligatoria de prohibir el reintento a ciegas
-- [~] T069 [US1] Proteger las dos rutas programadas en `src/server/auth/programadas.ts` con un secreto compartido, y configurar Cloud Scheduler para invocarlas periódicamente — *el secreto está puesto; Cloud Scheduler necesita el proyecto real (T010)*
+- [x] T066 [US1] ~~Documento interno de contingencia~~ — **CANCELADA** (decisión 10): FR-050a retirado. `contingencia.tsx` retirado en T172.
+- [x] T067 [US1] ~~`procesarPendientes` + Scheduler~~ — **CANCELADA** (decisión 10): no hay cola en segundo plano.
+- [x] T068 [US1] ~~`reconciliarEmisiones` programada~~ — **CANCELADA** (decisión 10): la consulta pasa a ser bajo demanda (T171).
+- [x] T069 [US1] ~~Configurar Cloud Scheduler~~ — **CANCELADA** (decisión 10): no se usa.
 - [x] T070 [P] [US1] Implementar la salida impresa en A4 en `src/features/emision/impresion.ts` desde los puestos de escritorio (FR-053) — *`.ts` y no `.tsx`: se imprime el PDF del proveedor, así que no hay plantilla que maquetar*
 - [x] T071 [P] [US1] Implementar la obtención del comprobante como archivo compartible en `src/features/emision/compartir.ts`, pensada para el móvil (FR-054)
 - [x] T072 [US1] Implementar la reimpresión de un comprobante ya emitido en `src/features/emision/reimprimir.ts`, de forma que **un fallo de impresión no invalide ni repita la emisión** (FR-055)
@@ -169,9 +172,14 @@ De modo que las fases US1, US4, US5 y US8 llevan pruebas obligatorias. El resto 
 
 Lo que falta para poder decir que la empresa vende, y en este orden:
 
-1. **Java** (T022), que desbloquea de golpe las reglas de seguridad, la transacción contra Firestore de T050 y la mitad de emisión de T051. Es el paso con mejor relación entre esfuerzo y certeza que se gana.
-2. **El proyecto real de Firebase** (T010), para salir del emulador.
-3. **El entorno de demostración del proveedor** (T027), que es la única forma de confirmar que Factpro respeta un número explícito. De eso depende que la reconciliación sepa a qué comprobante se refiere una respuesta, así que la asunción sigue viva hasta comprobarla.
+1. **Java** (T022), que desbloquea de golpe las reglas de seguridad, la transacción contra Firestore de T050 y la mitad de emisión de T051.
+2. ~~**Firebase** (T010)~~ — enlazado. Falta desplegar. **Sin App Check. Sin Cloud Scheduler** (decisión 10).
+3. ~~**T027**~~ — cerrado.
+4. **Alinear código a la decisión 10** (T170–T172): reintento manual + consulta bajo demanda; retirar cola/contingencia/Scheduler.
+
+**Decisiones de alcance (US1)**:
+- No App Check.
+- No Cloud Scheduler ni venta en espera automática (decisión 10 de `research.md`).
 
 No hay pantalla de acceso: la sesión persiste y bloquea la emisión cuando no es válida (T073), pero entrar por primera vez todavía no tiene interfaz. La prueba de extremo a extremo lo sortea sembrando la sesión, y eso está anotado en `tests/e2e/ayudas-sesion.ts` para que se borre cuando la pantalla exista.
 
@@ -183,15 +191,15 @@ No hay pantalla de acceso: la sesión persiste y bloquea la emisión cuando no e
 
 **Independent Test**: el administrador carga un archivo con productos y comprueba que quedan disponibles en la búsqueda, con sus precios y unidades.
 
-- [ ] T075 [P] [US2] Prueba de códigos duplicados en `tests/unit/server/importar-duplicados.test.ts`: el conflicto se informa y **no se resuelve por cuenta del sistema** (FR-010)
-- [ ] T076 [P] [US2] Prueba de comparación en `tests/unit/server/importar-diferencias.test.ts`: sobre un catálogo ya publicado, la validación distingue productos nuevos, cambios de precio y desapariciones (FR-011)
-- [ ] T077 [P] [US2] Implementar la interpretación de archivos estructurados en `src/server/catalogo/lector-json.ts`
-- [ ] T078 [P] [US2] Implementar la interpretación de documentos en `src/server/catalogo/lector-documento.ts`, para los catálogos que llegan como PDF
-- [ ] T079 [US2] Implementar la detección de conflictos en `src/server/catalogo/conflictos.ts`: códigos repetidos, precios ausentes y unidades desconocidas
-- [ ] T080 [US2] Implementar la comparación contra el catálogo publicado en `src/server/catalogo/diferencias.ts`
-- [ ] T081 [US2] Implementar la función de servidor `importarCatalogo` en `src/server/catalogo/importar.ts` con sus modos `validar` y `publicar`, escribiendo el catálogo completo **en una sola escritura** e incrementando su versión
-- [ ] T082 [US2] Implementar la pantalla de importación en `src/routes/administracion/catalogo.tsx`, que muestra el resumen y las diferencias **antes de confirmar nada** (FR-009)
-- [ ] T083 [P] [US2] Implementar la gestión de series en `src/routes/administracion/series.tsx`, con el alta por vendedor y tipo de documento que FR-031 presupone
+- [x] T075 [P] [US2] Prueba de códigos duplicados en `tests/unit/server/importar-duplicados.test.ts`: el conflicto se informa y **no se resuelve por cuenta del sistema** (FR-010)
+- [x] T076 [P] [US2] Prueba de comparación en `tests/unit/server/importar-diferencias.test.ts`: sobre un catálogo ya publicado, la validación distingue productos nuevos, cambios de precio y desapariciones (FR-011)
+- [x] T077 [P] [US2] Implementar la interpretación de archivos estructurados en `src/server/catalogo/lector-json.ts` — formato `json_tienda` (decisión 11 de `research.md`); fixture `tests/fixtures/productos-tienda-muestra.json`
+- [ ] T078 [P] [US2] Implementar la interpretación de documentos en `src/server/catalogo/lector-documento.ts`, para los catálogos que llegan como PDF — *stub: `archivo_no_interpretable`; la migración operativa usa JSON*
+- [x] T079 [US2] Implementar la detección de conflictos en `src/server/catalogo/conflictos.ts`: códigos repetidos y unidades desconocidas (precio ausente → 0, no bloquea; decisión 11)
+- [x] T080 [US2] Implementar la comparación contra el catálogo publicado en `src/server/catalogo/diferencias.ts`
+- [x] T081 [US2] Implementar la función de servidor `importarCatalogo` en `src/server/catalogo/importar.ts` con sus modos `validar` y `publicar`, escribiendo el catálogo completo **en una sola escritura** e incrementando su versión
+- [x] T082 [US2] Implementar la pantalla de importación en `src/routes/administracion/catalogo.tsx`, que muestra el resumen y las diferencias **antes de confirmar nada** (FR-009)
+- [ ] T083 [P] [US2] Implementar la gestión de series en `src/routes/administracion/series.tsx`, con el alta por vendedor y tipo de documento que FR-031 presupone. **Insumo API** (decisión 12): una serie por vendedor+tipo; sync al proveedor. **Hecho parcial**: frontera `crear/listar/eliminarEstablecimiento` + `crear/eliminarSerie` (adaptador + simulado); tests simulado y demo en vivo OK (`establecimientos-*.test.ts`). Pendiente: UI admin + escritura Firestore `{vendedorId}__{tipo}`.
 - [ ] T084 [P] [US2] Implementar la gestión de usuarios y roles en `src/routes/administracion/usuarios.tsx`, replicando el rol en las reivindicaciones del token para que las reglas lo evalúen sin lecturas (FR-005)
 - [ ] T085 [P] [US2] Implementar la edición de parámetros en `src/routes/administracion/parametros.tsx`, incluido el umbral de identificación, **que debe ser barato de cambiar porque es de origen regulatorio**
 
@@ -468,6 +476,47 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 
 ---
 
+## Phase C5: Converge — Enmienda volcado 5 (2026-07-29)
+
+**Propósito**: trabajo documentado en assessment + SDD tras el volcado 5, aún **sin implementar** hasta que el usuario pida `/speckit-implement` o tareas concretas. Origen: `.specify/assessments/sistema-facturacion/` (intake/research/concept/decision) y enmiendas a `DESIGN.md`, `design.md`, `spec.md`, `data-model.md`, `research.md`, `plan.md`.
+
+**Dependencias**: T010 y T027 siguen bloqueantes operativos; T160–T165 afectan UI ya construida (T006/T037/T041).
+
+- [x] T160 [P] **Pivote tokens Modern Soft-Pill** en `src/ui/tokens/tema.css` y `src/ui/tokens/colores.ts`: sustituir papel/mesa por lienzo `gray-50`/`gray-100` y superficie blanca; reintroducir `--radius-*` y `--shadow-*` para `rounded-full`, `rounded-2xl`/`3xl`, `shadow-sm`/`shadow-md`; purgar vaciado que bloqueaba Soft-Pill. Alinear con `DESIGN.md` enmendado. Mantener prohibición de verde.
+  - `papel` = blanco, `mesa` = `#f9fafb`, `borde` = `#e5e7eb`; radios y sombras Soft-Pill activos; sin verde.
+- [x] T161 [P] **Shell con sidebar** en `src/routes/__root.tsx` (+ componente `src/ui/componentes/BarraLateral.tsx`): marca SuitPay arriba; nav Inicio y Configuración; perfil + logout al pie (FR-005a). Quitar marca del header si aún vive ahí.
+  - Sidebar desktop + barra compacta móvil; área de trabajo full-bleed.
+- [x] T162 [P] **Ruta Configuración** en `src/routes/configuracion/` (placeholder o panel mínimo según rol). Enlazar desde el sidebar.
+  - `src/routes/configuracion.tsx` placeholder.
+- [x] T163 [US1] **Tabs del mostrador** Pedido | Cotizaciones | Vecinos | Lista en `src/routes/index.tsx` (o feature dedicada): default tab Pedido; contenido a todo el ancho del área de trabajo (FR-005b). Tab Lista: contenido TBD hasta clarify.
+  - `PestanasMostrador.tsx`; placeholders Cotizaciones/Vecinos/Lista.
+- [x] T164 [US1] **Default Nota de Venta** en el almacén del pedido / `CabeceraDocumento` (FR-014a): todo pedido nuevo arranca con ese tipo.
+  - `src/features/pedido/almacen.ts`: `ESTADO_INICIAL.tipoDocumento = 'nota_venta'`.
+- [x] T165 [P] **Migrar primitivas UI a Soft-Pill** en `src/ui/componentes/`: botones/badges/controles `rounded-full`; paneles `rounded-2xl`/`3xl`; bordes solo `border-gray-200`; sin `border-2`/`border-black` ni sombras brutales. Incluye `PapeletaContexto`, `PieTotal`, `CabeceraDocumento`, `EtiquetaSinValor`, etc.
+  - Primitivas + Entrada/PieTotal/Cabecera/Papeleta/Etiqueta/Linea/Banda/Sello + estados de emisión.
+- [x] T166 **`numeroInicial` en series**: actualizar dominio/esquemas, `src/server/emision/series.ts`, alta administrativa y `data-model.md` ya documentado — inicializar `ultimoNumero = numeroInicial - 1` (FR-031a). Pruebas de que el primer reclamado es el número inicial.
+  - Campo en `Serie` + esquema Zod + lectura Firestore; pruebas en `tests/unit/server/series-numero-inicial.test.ts` (origen 0 y 100). Alta administrativa (T083) aún debe exponer el campo en UI.
+- [ ] T167 [P] **Nueva composición visual** Soft-Pill + sidebar + tabs: producir y aprobar renders que sustituyan `specs/001-mostrador-asistido/assets/comp-*.png` antes de dar por cerrado el pivote de UI.
+  - Renders listos: `assets/comp-softpill-mostrador.png` y `assets/comp-softpill-configuracion.png`. **Pendiente aprobación del usuario.**
+- [x] T168 Completar **T010** apuntando `.firebaserc` / hosting al proyecto `blayblocklabs-antrax` y site `suitpay`; variables públicas de Firebase solo vía env; documentar en quickstart el site.
+- [x] T169 Ejecutar **T027** en demo con la API del proveedor (secreto fuera de repo); registrar hallazgos en `specs/001-mostrador-asistido/research.md` y quitar marcas `PENDIENTE DE T027` del adaptador.
+
+**Checkpoint C5**: Soft-Pill/shell/tabs/`numeroInicial`/T027 hechos en código. T167 pendiente de aprobación visual de los renders Soft-Pill.
+
+---
+
+## Phase C6: Converge — Sin Scheduler; reintento manual (2026-07-29)
+
+**Propósito**: materializar la **decisión 10** de `research.md` (producto: sin Cloud Scheduler, sin cola de pendientes, sin documento interno de contingencia).
+
+- [x] T170 [US1] **Proveedor `indisponible`**: en emitir + UI, informar fallo, conservar pedido, permitir **reintento manual** con la misma clave de idempotencia. Retirar flujo de “venta en espera” / recogida de contacto (FR-050 enmendado). Actualizar pruebas T044 y mensajes de `PieTotal`/`estados.tsx`.
+- [x] T171 [US1] **`consultarEstadoEmision` bajo demanda**: función de servidor (+ botón en UI de `indeterminado`) que solo llama a `consultarDocumento` y adopta estado. **Nunca emite.** Sustituye T068 programada. Prueba: indeterminado → consultar → aceptado/no encontrado/`requiere_intervencion`.
+- [x] T172 [P] [US1] **Retirar artefactos Scheduler/contingencia**: rutas `/api/procesar-pendientes` y `/api/reconciliar`, `TAREAS_SECRETO_*` de env/apphosting si ya no se usan, y dejar de enlazar `contingencia.tsx` en el flujo de emisión. Actualizar `contracts/functions.md` y `data-model.md` (estados `pendiente` de contingencia / índice de barrido programado).
+
+**Checkpoint C6**: US1 ya no depende de Cloud Scheduler; el principio II se sostiene con idempotencia + consulta explícita.
+
+---
+
 ## Notas
 
 - Las tareas marcadas [P] tocan archivos distintos y no tienen dependencias pendientes.
@@ -475,3 +524,4 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 - Cada historia debe poder completarse y probarse de forma independiente.
 - Verifica que las pruebas fallan antes de implementar.
 - Confirma en cada punto de control antes de seguir.
+- **Volcado 5**: no se tocó `src/` en la enmienda documental; T160–T169 son el backlog de converge.

@@ -4,14 +4,18 @@ import type {
   DocumentoAnulado,
   DocumentoConsultado,
   DocumentoEmitido,
+  Establecimiento,
   EstadoNormalizado,
   PeticionDeAnulacion,
   PeticionDeConsulta,
   PeticionDeContribuyente,
+  PeticionDeCrearEstablecimiento,
+  PeticionDeCrearSerieEnProveedor,
   PeticionDeEmision,
   PeticionDeNotaDeCredito,
   ProveedorDeEmision,
   Resultado,
+  SerieEnProveedor,
 } from './interfaz.ts'
 
 /**
@@ -46,7 +50,17 @@ export type Comportamiento =
   | { readonly tipo: 'acepta_pero_no_contesta' }
 
 export interface RegistroDeLlamada {
-  readonly operacion: 'emitir' | 'anular' | 'consultar' | 'contribuyente' | 'nota_credito'
+  readonly operacion:
+    | 'emitir'
+    | 'anular'
+    | 'consultar'
+    | 'contribuyente'
+    | 'nota_credito'
+    | 'crear_establecimiento'
+    | 'listar_establecimientos'
+    | 'eliminar_establecimiento'
+    | 'crear_serie'
+    | 'eliminar_serie'
   readonly serie: string | undefined
   readonly numero: number | null | undefined
   readonly momento: Date
@@ -74,8 +88,12 @@ export class ProveedorSimulado implements ProveedorDeEmision {
   private colaDeEmision: Comportamiento[] = []
 
   private readonly emitidos = new Map<string, DocumentoDelSimulado>()
+  private readonly establecimientos = new Map<string, Establecimiento>()
+  private readonly series = new Map<string, SerieEnProveedor>()
   private readonly llamadas: RegistroDeLlamada[] = []
   private siguienteNumeroAsignado = 1
+  private siguienteIdEstablecimiento = 1
+  private siguienteIdSerie = 1
 
   // --- Configuración para las pruebas -------------------------------------
 
@@ -111,9 +129,18 @@ export class ProveedorSimulado implements ProveedorDeEmision {
     this.comportamientoDeContribuyente = { tipo: 'exito' }
     this.colaDeEmision = []
     this.emitidos.clear()
+    this.establecimientos.clear()
+    this.series.clear()
     this.llamadas.length = 0
     this.siguienteNumeroAsignado = 1
+    this.siguienteIdEstablecimiento = 1
+    this.siguienteIdSerie = 1
   }
+
+  get establecimientosRegistrados(): readonly Establecimiento[] {
+    return [...this.establecimientos.values()]
+  }
+
 
   // --- Observación --------------------------------------------------------
 
@@ -376,5 +403,112 @@ export class ProveedorSimulado implements ProveedorDeEmision {
       referenciaExterna: `sim-nc-${peticion.serie}-${numero}`,
       rastro: { ...RASTRO_VACIO, estadoHttp: 200 },
     })
+  }
+
+  async crearEstablecimiento(
+    peticion: PeticionDeCrearEstablecimiento,
+  ): Promise<Resultado<Establecimiento>> {
+    this.llamadas.push({
+      operacion: 'crear_establecimiento',
+      serie: undefined,
+      numero: undefined,
+      momento: new Date(),
+    })
+
+    const id = String(this.siguienteIdEstablecimiento)
+    this.siguienteIdEstablecimiento += 1
+    const creado: Establecimiento = {
+      id,
+      nombre: peticion.nombre ?? '',
+      codigoAnexo: peticion.codigoAnexo,
+      direccion: peticion.direccion,
+      ubigeoId: peticion.ubigeoId,
+      correo: peticion.correo,
+    }
+    this.establecimientos.set(id, creado)
+    return exito(creado)
+  }
+
+  async listarEstablecimientos(): Promise<
+    Resultado<readonly Establecimiento[]>
+  > {
+    this.llamadas.push({
+      operacion: 'listar_establecimientos',
+      serie: undefined,
+      numero: undefined,
+      momento: new Date(),
+    })
+    return exito([...this.establecimientos.values()])
+  }
+
+  async eliminarEstablecimiento(
+    establecimientoId: string,
+  ): Promise<Resultado<{ readonly eliminado: true }>> {
+    this.llamadas.push({
+      operacion: 'eliminar_establecimiento',
+      serie: undefined,
+      numero: undefined,
+      momento: new Date(),
+    })
+    if (!this.establecimientos.has(establecimientoId)) {
+      return fallo('rechazo_definitivo', 'establecimiento_no_encontrado', {
+        ...RASTRO_VACIO,
+        estadoHttp: 404,
+      })
+    }
+    this.establecimientos.delete(establecimientoId)
+    return exito({ eliminado: true })
+  }
+
+  async crearSerie(
+    peticion: PeticionDeCrearSerieEnProveedor,
+  ): Promise<Resultado<SerieEnProveedor>> {
+    this.llamadas.push({
+      operacion: 'crear_serie',
+      serie: peticion.serie,
+      numero: peticion.numeroInicial,
+      momento: new Date(),
+    })
+
+    if (
+      peticion.tipoDocumento !== 'boleta' &&
+      peticion.tipoDocumento !== 'factura'
+    ) {
+      return fallo('rechazo_definitivo', 'tipo_sin_serie_en_proveedor', RASTRO_VACIO)
+    }
+    if (!this.establecimientos.has(peticion.establecimientoId)) {
+      return fallo('rechazo_definitivo', 'establecimiento_inexistente', RASTRO_VACIO)
+    }
+
+    const id = String(this.siguienteIdSerie)
+    this.siguienteIdSerie += 1
+    const creada: SerieEnProveedor = {
+      id,
+      serie: peticion.serie,
+      tipoDocumento: peticion.tipoDocumento,
+      numeroInicial: peticion.numeroInicial,
+      establecimientoId: peticion.establecimientoId,
+    }
+    this.series.set(id, creada)
+    return exito(creada)
+  }
+
+  async eliminarSerie(
+    serieIdEnProveedor: string,
+  ): Promise<Resultado<{ readonly eliminado: true }>> {
+    this.llamadas.push({
+      operacion: 'eliminar_serie',
+      serie: undefined,
+      numero: undefined,
+      momento: new Date(),
+    })
+    if (!this.series.has(serieIdEnProveedor)) {
+      return fallo('rechazo_definitivo', 'serie_no_encontrada', {
+        ...RASTRO_VACIO,
+        estadoHttp: 404,
+      })
+    }
+    this.series.delete(serieIdEnProveedor)
+    return exito({ eliminado: true })
   }
 }
