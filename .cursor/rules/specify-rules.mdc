@@ -1,0 +1,35 @@
+---
+alwaysApply: true
+---
+
+<!-- SPECKIT START -->
+For additional context about technologies to be used, project structure,
+shell commands, and other important information, read the current plan
+at specs/001-mostrador-asistido/plan.md
+<!-- SPECKIT END -->
+
+Lo anterior lo mantiene la extension `agent-context` y se reescribe en cada
+actualizacion. Lo siguiente es propio del proyecto y sobrevive.
+
+## Reglas vinculantes de SuitPay
+
+`.specify/memory/constitution.md` prevalece sobre cualquier plan, tarea o
+preferencia de implementacion. Sus principios I, II y IV son NO NEGOCIABLES.
+Ante un conflicto entre la constitucion y cualquier otro documento, manda la
+constitucion. Leerla antes de tomar decisiones de diseno o de implementacion.
+
+Cuatro consecuencias que se violan con facilidad si no se tienen presentes:
+
+- **Ninguna emision sin confirmacion explicita** de un vendedor identificado.
+  Ninguna instruccion en lenguaje natural crea, modifica o anula un comprobante.
+- **Ninguna venta se documenta dos veces.** El comprobante se registra antes de
+  invocar al proveedor. Ante una respuesta que no llega, esta PROHIBIDO
+  reintentar sin haber determinado antes si la emision ocurrio.
+- **El proveedor de emision solo se conoce dentro de su modulo frontera.** Su
+  nombre no debe aparecer en ninguna otra parte del repositorio.
+- **Ningun dato de clientes sale hacia servicios de IA.** Solo productos y el
+  contenido que produce el vendedor.
+
+Toda tarea que emita, anule o modifique un documento con efecto tributario
+requiere pruebas que cubran el reintento, la respuesta ausente y el fallo del
+proveedor. No son opcionales.
