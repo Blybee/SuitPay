@@ -1,24 +1,15 @@
-# Coding Agent Context Extension Configuration
+{
+  "_comment": "Coding Agent Context Extension Configuration. Escrito como JSON, que es un subconjunto valido de YAML, para que el script de PowerShell pueda leerlo con ConvertFrom-Json sin necesidad de Python con PyYAML ni del modulo powershell-yaml. Si algun dia se instala cualquiera de los dos, este archivo puede volver a escribirse como YAML con comentarios.",
 
-# WHAT: The single agent context file relative to the project root (the directory containing .specify/). Absolute paths, backslash separators, and `..` path segments are rejected.
-# REQUIREMENT: OPTIONAL. Use this if you want to manually specify a single context file. If you leave this entry blank, it will use the default context file for the coding agent you picked when you set up Spec Kit. See `agent-context-defaults.json` for the defaults.
-# EXAMPLE: context_file: CLAUDE.md
-context_file: ""
+  "_comment_context_file": "QUE: el archivo de contexto del agente, relativo a la raiz del proyecto (la carpeta que contiene .specify/). Se rechazan rutas absolutas, separadores con barra invertida y segmentos '..'. REQUISITO: opcional; si se deja vacio se usa el valor por defecto de la integracion elegida al configurar Spec Kit, definido en agent-context-defaults.json. Aqui se fija de forma explicita el valor que corresponde a la integracion cursor-agent, para que el comportamiento no dependa de la deteccion automatica.",
+  "context_file": ".cursor/rules/specify-rules.mdc",
 
-# WHAT: List of agent context files relative to the project root (the directory containing .specify/). If you have both `context_file` and `context_files` filled, then this (`context_files`) takes precedence. Absolute paths, backslash separators, and `..` path segments are rejected.
-# REQUIREMENT: OPTIONAL. Use this if your project requires you to keep multiple agent context files in sync.
-# EXAMPLE:
-# context_files:
-#   - AGENTS.md
-#   - CLAUDE.md
-context_files: []
+  "_comment_context_files": "QUE: lista de archivos de contexto a mantener sincronizados, relativos a la raiz del proyecto. Si esta rellena, tiene prioridad sobre context_file. REQUISITO: opcional; util solo cuando el proyecto necesita varios archivos de contexto.",
+  "context_files": [],
 
-# WHAT: Markers (delimiters) for the managed Spec Kit section. This extension injects information only between these markers.
-# REQUIREMENT: OPTIONAL. Only change if you wish to have a custom marker name.
-# EXAMPLE:
-# context_markers:
-#   start: "<!-- AGENT SPEC KIT CONTEXT START -->"
-#   end: "<!-- AGENT SPEC KIT CONTEXT END -->"
-context_markers:
-  start: "<!-- SPECKIT START -->"
-  end: "<!-- SPECKIT END -->"
+  "_comment_context_markers": "QUE: delimitadores de la seccion gestionada por Spec Kit. La extension solo escribe entre estas marcas y no toca el resto del archivo. REQUISITO: opcional; cambiar solo si se quieren marcas propias.",
+  "context_markers": {
+    "start": "<!-- SPECKIT START -->",
+    "end": "<!-- SPECKIT END -->"
+  }
+}
