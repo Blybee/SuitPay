@@ -7,6 +7,34 @@
 credentials.json
 serviceAccount*.json
 
+# Dependencias y salidas de construcción
+node_modules/
+dist/
+dist-ssr/
+.output/
+.nitro/
+.tanstack/
+.vinxi/
+.wrangler/
+*.local
+__unconfig*
+
+# Pruebas
+coverage/
+playwright-report/
+test-results/
+blob-report/
+.playwright/
+
+# Emuladores de Firebase
+.firebase/
+firebase-debug.log
+firestore-debug.log
+ui-debug.log
+database-debug.log
+pubsub-debug.log
+firebase-export-*/
+
 # Spec Kit: catalogs are re-downloadable caches
 .specify/extensions/.cache/
 .specify/presets/.cache/

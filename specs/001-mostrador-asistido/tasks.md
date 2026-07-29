@@ -30,20 +30,23 @@ De modo que las fases US1, US4, US5 y US8 llevan pruebas obligatorias. El resto 
 
 **Propósito**: dejar el proyecto en pie, con las fronteras que el plan declara ya vigiladas por herramientas y no por buena voluntad.
 
-- [ ] T001 Andamiar la aplicación TanStack Start con Vite y TypeScript en la raíz del repositorio, fijando las versiones estables vigentes en `package.json`
-- [ ] T002 Crear el árbol de directorios de `src/` según la estructura de `plan.md`: `routes/`, `server/`, `domain/`, `features/`, `ui/`, `infra/`
-- [ ] T003 [P] Configurar TypeScript en modo estricto en `tsconfig.json`, con alias de rutas para `src/domain`, `src/server`, `src/features` y `src/ui`
-- [ ] T004 [P] Configurar ESLint y Prettier en `eslint.config.js`, con las reglas de accesibilidad de JSX activadas
-- [ ] T005 **Añadir la regla de frontera de importación** en `eslint.config.js`: ningún archivo fuera de `src/server/**` puede importar de `src/server/**`, y `src/domain/**` no puede importar de Firebase, React ni del framework. Es el guardián de las tres fronteras que `plan.md` declara deliberadas
-- [ ] T006 [P] Configurar Tailwind CSS en `tailwind.config.ts` y `src/ui/tokens/`, con la paleta de `DESIGN.md`: tinta `#1A1714`, rojo `#C2321C`, violeta `#4C3F91`, papel `#F7F4EC`, mesa `#DED7C7`, tinta desvaída `#8A8378`, y radio cero como valor único
-- [ ] T007 [P] Instalar y autoalojar Atkinson Hyperlegible en `src/ui/tokens/tipografia.ts`, **verificando la disponibilidad de su compañero monoespaciado** y cayendo a Martian Mono si no existe; dejar constancia de cuál se usó
-- [ ] T008 [P] Configurar Vitest y Testing Library en `vitest.config.ts`
-- [ ] T009 [P] Configurar Playwright en `playwright.config.ts` con proyectos de escritorio y móvil
+- [x] T001 Andamiar la aplicación TanStack Start con Vite y TypeScript en la raíz del repositorio, fijando las versiones estables vigentes en `package.json`
+- [x] T002 Crear el árbol de directorios de `src/` según la estructura de `plan.md`: `routes/`, `server/`, `domain/`, `features/`, `ui/`, `infra/`
+- [x] T003 [P] Configurar TypeScript en modo estricto en `tsconfig.json`, con alias de rutas para `src/domain`, `src/server`, `src/features` y `src/ui`
+- [x] T004 [P] Configurar ESLint y Prettier en `eslint.config.js`, con las reglas de accesibilidad de JSX activadas
+- [x] T005 **Añadir la regla de frontera de importación** en `eslint.config.js`: ningún archivo fuera de `src/server/**` puede importar de `src/server/**`, y `src/domain/**` no puede importar de Firebase, React ni del framework. Es el guardián de las tres fronteras que `plan.md` declara deliberadas
+- [x] T006 [P] Configurar Tailwind CSS en `tailwind.config.ts` y `src/ui/tokens/`, con la paleta de `DESIGN.md`: tinta `#1A1714`, rojo `#C2321C`, violeta `#4C3F91`, papel `#F7F4EC`, mesa `#DED7C7`, tinta desvaída `#8A8378`, y radio cero como valor único
+  - Hecho con configuración en CSS (Tailwind v4), en `src/ui/tokens/tema.css`, no en `tailwind.config.ts`: v4 ya no usa ese archivo. Los espacios de nombres `--radius-*`, `--shadow-*` y la paleta por omisión se **vacían**, de modo que `rounded-lg`, `shadow-md` y cualquier verde no existen como clases. Comprobado sobre el CSS compilado.
+- [x] T007 [P] Instalar y autoalojar Atkinson Hyperlegible en `src/ui/tokens/tipografia.ts`, **verificando la disponibilidad de su compañero monoespaciado** y cayendo a Martian Mono si no existe; dejar constancia de cuál se usó
+  - Constancia: el compañero monoespaciado **sí existe**. Se usa `@fontsource-variable/atkinson-hyperlegible-mono` junto a `atkinson-hyperlegible-next`. No hizo falta recurrir a Martian Mono.
+- [x] T008 [P] Configurar Vitest y Testing Library en `vitest.config.ts`
+- [x] T009 [P] Configurar Playwright en `playwright.config.ts` con proyectos de escritorio y móvil
 - [ ] T010 Crear el proyecto de Firebase independiente y escribir `firebase.json`, `firestore.rules`, `firestore.indexes.json` y `storage.rules` iniciales
-- [ ] T011 Configurar la Firebase Emulator Suite en `firebase.json` para Firestore, Auth y Storage, con guiones de arranque en `package.json`
-- [ ] T012 Escribir `apphosting.yaml` con las variables de entorno y los enlaces a Secret Manager para las credenciales del proveedor de emisión y las dos del servicio de asistencia
+  - Los cuatro archivos están escritos. **Queda crear el proyecto real**, que necesita la cuenta del usuario. Mientras tanto, `.firebaserc` apunta a `demo-suitpay`, que es suficiente para los emuladores.
+- [x] T011 Configurar la Firebase Emulator Suite en `firebase.json` para Firestore, Auth y Storage, con guiones de arranque en `package.json`
+- [x] T012 Escribir `apphosting.yaml` con las variables de entorno y los enlaces a Secret Manager para las credenciales del proveedor de emisión y las dos del servicio de asistencia
 
-**Checkpoint**: el proyecto compila, las pruebas corren en vacío y las fronteras del plan están vigiladas por el linter.
+**Checkpoint**: alcanzado. `npm run tipos`, `npm run lint` y `npm run build` pasan, y las fronteras del plan las vigila el linter.
 
 ---
 
@@ -55,49 +58,63 @@ De modo que las fases US1, US4, US5 y US8 llevan pruebas obligatorias. El resto 
 
 ### Dominio puro (sin dependencias, compartido por cliente y servidor)
 
-- [ ] T013 [P] Definir los esquemas de validación compartidos con Zod en `src/domain/esquemas/`: producto, cliente, línea de pedido, petición de emisión, petición de anulación
-- [ ] T014 [P] Implementar el cálculo de importes y totales en `src/domain/totales/`, con el impuesto ya incluido en el precio y **sin recalcular su desglose** (FR-032)
-- [ ] T015 [P] Implementar los tipos de documento y sus reglas en `src/domain/documentos/`: boleta, factura, nota de venta y documento interno de contingencia, con la distinción de cuáles tienen valor tributario y cuáles consumen serie regulada
-- [ ] T016 [P] Implementar la utilidad de fecha y zona horaria en `src/domain/anulacion/`, **fijada a `America/Lima`** sobre `Intl`, con la función que decide si un comprobante se emitió el mismo día. Calcularla en UTC volvería inanulable una venta de las siete de la tarde a los pocos minutos
-- [ ] T017 [P] Configurar la coincidencia aproximada con Fuse.js en `src/domain/busqueda/`, tolerante al orden de los términos y a errores menores, **distinguiendo la ausencia de coincidencias de una coincidencia aproximada** (FR-008)
-- [ ] T018 [P] Pruebas unitarias del dominio en `tests/unit/domain/`: totales, importe no positivo, umbral de identificación, ventana de anulación en horario de Lima incluido el caso de las 19:00, y búsqueda con términos desordenados
+- [x] T013 [P] Definir los esquemas de validación compartidos con Zod en `src/domain/esquemas/`: producto, cliente, línea de pedido, petición de emisión, petición de anulación
+- [x] T014 [P] Implementar el cálculo de importes y totales en `src/domain/totales/`, con el impuesto ya incluido en el precio y **sin recalcular su desglose** (FR-032)
+- [x] T015 [P] Implementar los tipos de documento y sus reglas en `src/domain/documentos/`: boleta, factura, nota de venta y documento interno de contingencia, con la distinción de cuáles tienen valor tributario y cuáles consumen serie regulada
+- [x] T016 [P] Implementar la utilidad de fecha y zona horaria en `src/domain/anulacion/`, **fijada a `America/Lima`** sobre `Intl`, con la función que decide si un comprobante se emitió el mismo día. Calcularla en UTC volvería inanulable una venta de las siete de la tarde a los pocos minutos
+- [x] T017 [P] Configurar la coincidencia aproximada con Fuse.js en `src/domain/busqueda/`, tolerante al orden de los términos y a errores menores, **distinguiendo la ausencia de coincidencias de una coincidencia aproximada** (FR-008)
+  - La tolerancia al orden no la da Fuse.js por sí sola: `ignoreLocation` no basta. Se resolvió partiendo la consulta en términos, buscando cada uno por separado y exigiendo que **todos** encuentren el producto, promediando distancias para ordenar.
+- [x] T018 [P] Pruebas unitarias del dominio en `tests/unit/domain/`: totales, importe no positivo, umbral de identificación, ventana de anulación en horario de Lima incluido el caso de las 19:00, y búsqueda con términos desordenados
 
 ### Datos y seguridad
 
-- [ ] T019 Escribir las reglas de seguridad completas en `firestore.rules` según `contracts/firestore-rules.md`: **el cliente no puede escribir `comprobantes`, `series` ni `config` bajo ningún rol**, y las demás colecciones según su regla
-- [ ] T020 [P] Escribir los cinco índices compuestos en `firestore.indexes.json` según `data-model.md`
-- [ ] T021 [P] Escribir `storage.rules` limitando la escritura de medios de captura al vendedor autenticado y su lectura al backend
+- [x] T019 Escribir las reglas de seguridad completas en `firestore.rules` según `contracts/firestore-rules.md`: **el cliente no puede escribir `comprobantes`, `series` ni `config` bajo ningún rol**, y las demás colecciones según su regla
+- [x] T020 [P] Escribir los cinco índices compuestos en `firestore.indexes.json` según `data-model.md`
+- [x] T021 [P] Escribir `storage.rules` limitando la escritura de medios de captura al vendedor autenticado y su lectura al backend
 - [ ] T022 Pruebas de las reglas de seguridad contra el emulador en `tests/emulador/reglas.test.ts`, verificando explícitamente que un cliente con rol de administrador **tampoco** puede escribir un comprobante ni una serie
-- [ ] T023 [P] Inicializar el cliente de Firebase y App Check en `src/infra/firebase/`
-- [ ] T024 [P] Inicializar el Admin SDK en `src/server/firebase/`
-- [ ] T025 Implementar la verificación transversal de las funciones de servidor en `src/server/auth/`: sesión válida, atestación de aplicación, usuario activo y rol suficiente, **tomando la identidad del token y nunca de la petición** (principio I, FR-003)
-- [ ] T026 [P] Definir el catálogo de códigos de error estables en `src/server/errores.ts`, con mensajes aptos para mostrar al vendedor y **sin propagar nunca el mensaje crudo del proveedor**
+  - Las pruebas están escritas. **No se han podido ejecutar todavía**: el emulador de Firestore necesita Java y la máquina no lo tiene. Hasta que corran, las reglas están sin verificar.
+- [x] T023 [P] Inicializar el cliente de Firebase y App Check en `src/infra/firebase/`
+- [x] T024 [P] Inicializar el Admin SDK en `src/server/firebase/`
+- [x] T025 Implementar la verificación transversal de las funciones de servidor en `src/server/auth/`: sesión válida, atestación de aplicación, usuario activo y rol suficiente, **tomando la identidad del token y nunca de la petición** (principio I, FR-003)
+- [x] T026 [P] Definir el catálogo de códigos de error estables en `src/server/errores.ts`, con mensajes aptos para mostrar al vendedor y **sin propagar nunca el mensaje crudo del proveedor**
 
 ### Frontera del proveedor
 
 - [ ] T027 **Comprobar en el entorno de demostración del proveedor, antes de escribir el adaptador, las dos cosas que su documentación no dice** y dejar el resultado en `research.md`, incógnitas 1 y 2: **(a)** que al enviar un número de comprobante explícito en lugar del comodín de asignación automática el proveedor lo respeta, y qué contesta ante un número ya usado; **(b)** qué forma tienen sus respuestas de error, porque el ejemplo documentado no lleva código. De (a) depende que la reconciliación sea una consulta directa en lugar de un sondeo; de (b) depende poder distinguir un rechazo definitivo de una indisponibilidad, que es lo que impide el reintento a ciegas. **Son las dos incógnitas más valiosas del proyecto y se resuelven en una tarde**
-- [ ] T028 Definir la interfaz del proveedor de emisión en `src/server/proveedor/interfaz.ts` según `contracts/proveedor-emision.md`: `emitir`, `anular`, `consultarDocumento`, `consultarContribuyente`, con la clasificación de fallos en `rechazo_definitivo`, `indisponible` e `indeterminado`, apoyada en lo que T027 haya averiguado
-- [ ] T029 [P] Implementar el proveedor simulado en `src/server/proveedor/simulado.ts`, capaz de reproducir a voluntad los tres modos de fallo con la forma real que T027 haya observado. Es la pieza sin la cual las pruebas obligatorias de la constitución no se pueden escribir
-- [ ] T030 Implementar el adaptador de Factpro en `src/server/proveedor/factpro/`, con la autenticación, la normalización de sus respuestas a la interfaz propia y la **traducción de sus estados a los nuestros según la tabla de la decisión 4b**, recordando que sus estados `03` y `19` de "sin respuesta de SUNAT" **no son fallos nuestros** y no deben derivar en `indeterminado`
-- [ ] T031 [P] Implementar `consultarDocumento` en `src/server/proveedor/factpro/consultar.ts` sobre `POST /api/v3/consulta` con `{ serie, numero }`. Es la primitiva de la que depende toda la reconciliación, así que va antes que la emisión y no después
+- [x] T028 Definir la interfaz del proveedor de emisión en `src/server/proveedor/interfaz.ts` según `contracts/proveedor-emision.md`: `emitir`, `anular`, `consultarDocumento`, `consultarContribuyente`, con la clasificación de fallos en `rechazo_definitivo`, `indisponible` e `indeterminado`, apoyada en lo que T027 haya averiguado
+- [x] T029 [P] Implementar el proveedor simulado en `src/server/proveedor/simulado.ts`, capaz de reproducir a voluntad los tres modos de fallo con la forma real que T027 haya observado. Es la pieza sin la cual las pruebas obligatorias de la constitución no se pueden escribir
+- [x] T030 Implementar el adaptador de Factpro en `src/server/proveedor/factpro/`, con la autenticación, la normalización de sus respuestas a la interfaz propia y la **traducción de sus estados a los nuestros según la tabla de la decisión 4b**, recordando que sus estados `03` y `19` de "sin respuesta de SUNAT" **no son fallos nuestros** y no deben derivar en `indeterminado`
+  - Hecha la traducción de estados y el transporte con su clasificación de fallos, ambos con pruebas. **`emitir` y `anular` quedan para la fase US1**, que es donde vive la transacción de la serie. La clasificación es hoy conservadora a la espera de T027: los bloques que hay que revisar están marcados `PENDIENTE DE T027`.
+  - Hallazgo con consecuencias en la interfaz: como el proveedor firma en sus propios servidores y mantiene su cola hacia SUNAT, **una caída de SUNAT no impide emitir**. El camino de venta en espera de FR-050 se estrecha a que el proveedor mismo o nuestra red estén inalcanzables, así que será raro y no debe presentarse como el escenario habitual.
+- [x] T031 [P] Implementar `consultarDocumento` en `src/server/proveedor/factpro/consultar.ts` sobre `POST /api/v3/consulta` con `{ serie, numero }`. Es la primitiva de la que depende toda la reconciliación, así que va antes que la emisión y no después
 
 ### Cliente: estado, caché y arranque
 
-- [ ] T032 [P] Implementar los almacenes de IndexedDB con `idb` en `src/infra/local/`: uno para el pedido en curso, otro para el espejo del catálogo y sus índices
-- [ ] T033 [P] Implementar el almacén del pedido en curso con Zustand en `src/features/pedido/almacen.ts`, persistido en IndexedDB, de forma que **sobreviva a la pérdida de conexión y al cambio de red** (FR-015)
-- [ ] T034 Configurar TanStack Query en `src/infra/consultas/` con caché por sesión: primera lectura del servidor y navegaciones posteriores desde la caché local
-- [ ] T035 Implementar el arranque de sesión en `src/features/catalogo/arranque.ts` con **exactamente tres lecturas** —`catalogo/actual`, `indices/clientes`, `config/parametros`— comparando la versión en caché para no volver a descargar lo que no cambió
-- [ ] T036 [P] Implementar la detección y exposición del estado degradado en `src/features/degradacion/`, distinguiendo red caída, asistencia caída y proveedor caído
+- [x] T032 [P] Implementar los almacenes de IndexedDB con `idb` en `src/infra/local/`: uno para el pedido en curso, otro para el espejo del catálogo y sus índices
+- [x] T033 [P] Implementar el almacén del pedido en curso con Zustand en `src/features/pedido/almacen.ts`, persistido en IndexedDB, de forma que **sobreviva a la pérdida de conexión y al cambio de red** (FR-015)
+  - La persistencia se hace a mano en lugar de con el middleware de Zustand: su almacenamiento es sincrónico por diseño e IndexedDB no lo es.
+  - Decisión que conviene recordar en US1: la clave de idempotencia se **reclama al confirmar** y cualquier cambio posterior en el contenido de la venta la invalida. Sin eso, cambiar una cantidad y volver a emitir devolvería el comprobante anterior y el vendedor cobraría un total que no coincide con lo emitido.
+- [x] T034 Configurar TanStack Query en `src/infra/consultas/` con caché por sesión: primera lectura del servidor y navegaciones posteriores desde la caché local
+  - Revalidación al recuperar el foco **desactivada**: en un mostrador la ventana pierde el foco decenas de veces por hora y cada una habría sido una tanda de lecturas facturadas. Las mutaciones no se reintentan solas, porque un reintento automático de una emisión es justo lo que el principio II prohíbe.
+- [x] T035 Implementar el arranque de sesión en `src/features/catalogo/arranque.ts` con **exactamente tres lecturas** —`catalogo/actual`, `indices/clientes`, `config/parametros`— comparando la versión en caché para no volver a descargar lo que no cambió
+  - Salvedad honesta: comprobar la versión **ya cuesta la lectura**, porque Firestore factura por documento y no por bytes. Lo que ahorra la comparación es transferir y reindexar el catálogo en un teléfono. El ahorro de lecturas viene de que esto ocurre una vez por sesión y no una por búsqueda.
+- [x] T036 [P] Implementar la detección y exposición del estado degradado en `src/features/degradacion/`, distinguiendo red caída, asistencia caída y proveedor caído
+  - Cada causa declara también **qué sí funciona**. La degradación más frecuente será la de la asistencia, con la que se puede vender con normalidad escribiendo; un aviso que solo enumere lo perdido haría que el vendedor se detuviera sin motivo.
 
 ### Sistema de diseño
 
-- [ ] T037 [P] Implementar las primitivas base en `src/ui/componentes/`: botón, campo, etiqueta, casilla, regla separadora y diálogo sobre primitivas de Radix, **con radio cero y sin sombra** salvo en superposiciones
-- [ ] T038 [P] Implementar `BandaDegradacion` en `src/ui/componentes/BandaDegradacion.tsx`: roja, fijada bajo la entrada, **persistente hasta que la causa se resuelva** y nunca una notificación que se desvanece (FR-051)
-- [ ] T039 [P] Implementar `PapeletaContexto` en `src/ui/componentes/PapeletaContexto.tsx` sobre el diálogo de Radix: hoja rotada un par de grados, **única sombra del sistema**, que devuelve el foco al sitio exacto donde estaba el vendedor
-- [ ] T040 [P] Implementar `Sello` y `MarcaEstado` en `src/ui/componentes/`: sello violeta ligeramente rotado con tinta desigual **solo para documentos ya emitidos**, y marca roja para ANULADO y PENDIENTE DE COMPROBANTE
-- [ ] T041 Implementar la disposición de la aplicación en `src/routes/__root.tsx`: barra de entrada a todo el ancho arriba, columna de papel centrada sobre la mesa kraft, barra de total anclada al pie. **Ninguna barra lateral** (`design.md`, composición aprobada)
+- [x] T037 [P] Implementar las primitivas base en `src/ui/componentes/`: botón, campo, etiqueta, casilla, regla separadora y diálogo sobre primitivas de Radix, **con radio cero y sin sombra** salvo en superposiciones
+  - El radio cero y la ausencia de sombra no dependen de la disciplina de quien escriba: los espacios de nombres de Tailwind están vaciados, así que `rounded-lg` y `shadow-md` no existen como clases. La única sombra que existe es la de la papeleta.
+- [x] T038 [P] Implementar `BandaDegradacion` en `src/ui/componentes/BandaDegradacion.tsx`: roja, fijada bajo la entrada, **persistente hasta que la causa se resuelva** y nunca una notificación que se desvanece (FR-051)
+  - Sin botón de descartar, a propósito: descartar el aviso no arregla la causa, solo oculta que sigue ahí.
+- [x] T039 [P] Implementar `PapeletaContexto` en `src/ui/componentes/PapeletaContexto.tsx` sobre el diálogo de Radix: hoja rotada un par de grados, **única sombra del sistema**, que devuelve el foco al sitio exacto donde estaba el vendedor
+- [x] T040 [P] Implementar `Sello` y `MarcaEstado` en `src/ui/componentes/`: sello violeta ligeramente rotado con tinta desigual **solo para documentos ya emitidos**, y marca roja para ANULADO y PENDIENTE DE COMPROBANTE
+  - Los estados en vuelo —`reclamado`, `enviado`— no llevan marca ninguna: estampar algo sobre un comprobante que aún no se sabe qué será equivaldría a afirmarlo.
+- [x] T041 Implementar la disposición de la aplicación en `src/routes/__root.tsx`: barra de entrada a todo el ancho arriba, columna de papel centrada sobre la mesa kraft, barra de total anclada al pie. **Ninguna barra lateral** (`design.md`, composición aprobada)
+  - Puesta la disposición de una columna con la banda de degradación en la raíz. La barra de entrada y la de total llegan con la hoja de trabajo, que es donde viven.
+  - Nota del modo SPA: la compilación prerrenderiza la raíz con el componente de espera del enrutador y la guarda como cáscara estática. O sea que `defaultPendingComponent` es literalmente lo primero que ve el vendedor al abrir el sistema, no solo un intermedio entre navegaciones.
 
-**Checkpoint**: el dominio está probado, las reglas de seguridad impiden lo que deben impedir, el proveedor se puede simular y la interfaz tiene su esqueleto. Las historias pueden empezar.
+**Checkpoint**: alcanzado con dos reservas. El dominio está probado (69 pruebas), el proveedor se puede simular, el sistema de diseño está impuesto por construcción y la aplicación compila. Las reservas: **las reglas de seguridad están escritas pero sin verificar** hasta que se instale Java y corran las pruebas de emulador (T022), y **la clasificación de fallos del proveedor sigue a la espera de T027**. Las historias pueden empezar; US1 no debería cerrarse sin resolver ambas.
 
 ---
 

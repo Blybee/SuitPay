@@ -1,0 +1,39 @@
+rules_version = '2';
+
+// Acceso a los medios originales de las capturas.
+//
+// Cada vendedor escribe solo bajo su propio prefijo y no lee los medios de
+// otros. Los originales de audio e imagen contienen la voz del vendedor y,
+// potencialmente, nombres de clientes escritos en papel: el audio de un dictado
+// y la fotografía de una guía manual no son datos anónimos.
+//
+// La lectura efectiva la hace el backend con privilegios administrativos, que no
+// está sujeto a estas reglas. Se concede lectura al propio autor únicamente para
+// que pueda revisar lo que acaba de subir.
+
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function activo() {
+      return request.auth != null && request.auth.token.activo == true;
+    }
+
+    match /capturas/{vendedorId}/{archivo} {
+      allow read: if activo() && request.auth.uid == vendedorId;
+
+      allow write: if activo()
+                   && request.auth.uid == vendedorId
+                   && request.resource.size < 12 * 1024 * 1024
+                   && (request.resource.contentType.matches('image/.*')
+                       || request.resource.contentType.matches('audio/.*'));
+
+      // Un medio que ya alimentó una propuesta es parte de la traza de cómo se
+      // armó un pedido. No se sobrescribe ni se borra desde el cliente.
+      allow delete: if false;
+    }
+
+    match /{rutaCualquiera=**} {
+      allow read, write: if false;
+    }
+  }
+}

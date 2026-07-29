@@ -1,0 +1,45 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "comprobantes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cliente.numeroDocumento", "order": "ASCENDING" },
+        { "fieldPath": "emitidoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "comprobantes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "vendedorId", "order": "ASCENDING" },
+        { "fieldPath": "emitidoEn", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "comprobantes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "emitidoEn", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "comprobantes",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "cliente.numeroDocumento", "order": "ASCENDING" },
+        { "fieldPath": "condicionPago.estadoCobro", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "cotizaciones",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "estado", "order": "ASCENDING" },
+        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

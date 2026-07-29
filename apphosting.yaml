@@ -1,0 +1,94 @@
+# Despliegue en Firebase App Hosting. Ver research.md, decisión 1b.
+#
+# Lo que hay que entender de este archivo es la línea que separa las dos mitades.
+#
+# Las variables con `availability: [BUILD, RUNTIME]` y valor literal son
+# públicas: acaban dentro del paquete que se descarga el navegador. Ahí solo
+# puede haber configuración del cliente de Firebase, que es pública por diseño
+# porque lo que protege los datos son las reglas de seguridad y App Check, no el
+# secreto de un identificador de proyecto.
+#
+# Las variables con `secret:` se resuelven contra Secret Manager y llevan
+# `availability: [RUNTIME]` únicamente. Nunca BUILD: una variable disponible en
+# la construcción puede quedar incrustada en el paquete del cliente si alguien
+# la referencia desde código de cliente, y el token del proveedor autoriza a
+# emitir comprobantes fiscales bajo el RUC de la empresa. Es exactamente la fuga
+# que la decisión 1 de research.md existe para evitar.
+
+runConfig:
+  minInstances: 0
+  maxInstances: 2
+  concurrency: 80
+  cpu: 1
+  memoryMiB: 512
+
+env:
+  # --- Configuración pública del cliente de Firebase ---------------------
+
+  - variable: VITE_FIREBASE_API_KEY
+    value: POR_DEFINIR
+    availability: [BUILD, RUNTIME]
+
+  - variable: VITE_FIREBASE_AUTH_DOMAIN
+    value: POR_DEFINIR
+    availability: [BUILD, RUNTIME]
+
+  - variable: VITE_FIREBASE_PROJECT_ID
+    value: POR_DEFINIR
+    availability: [BUILD, RUNTIME]
+
+  - variable: VITE_FIREBASE_STORAGE_BUCKET
+    value: POR_DEFINIR
+    availability: [BUILD, RUNTIME]
+
+  - variable: VITE_FIREBASE_APP_ID
+    value: POR_DEFINIR
+    availability: [BUILD, RUNTIME]
+
+  # Clave pública del proveedor de reCAPTCHA que usa App Check. Es pública por
+  # diseño; lo que la hace útil es que el dominio esté registrado.
+  - variable: VITE_APP_CHECK_CLAVE_SITIO
+    value: POR_DEFINIR
+    availability: [BUILD, RUNTIME]
+
+  # --- Configuración del servidor, no secreta ----------------------------
+
+  # La ventana de anulación es "el mismo día", y ese día es el de Lima.
+  # Calcularlo en UTC volvería inanulable una venta de las siete de la tarde a
+  # los pocos minutos, así que la zona es configuración explícita y no una
+  # suposición del entorno de ejecución.
+  - variable: ZONA_HORARIA
+    value: America/Lima
+    availability: [RUNTIME]
+
+  # Punto de entrada del proveedor de emisión. Se cambia a su entorno de
+  # demostración para las pruebas de integración sin tocar código.
+  - variable: PROVEEDOR_URL_BASE
+    value: POR_DEFINIR
+    availability: [RUNTIME]
+
+  # --- Secretos -----------------------------------------------------------
+
+  # Autoriza a emitir comprobantes bajo el RUC de la empresa. El secreto más
+  # sensible del sistema.
+  - variable: PROVEEDOR_TOKEN
+    secret: suitpay-proveedor-token
+    availability: [RUNTIME]
+
+  # Dos credenciales del servicio de asistencia, no una: la segunda es la
+  # contingencia ante error de cuota o límite de solicitudes, que es lógica de
+  # servidor (contracts/functions.md, interpretarCaptura).
+  - variable: ASISTENCIA_CLAVE_PRIMARIA
+    secret: suitpay-asistencia-clave-primaria
+    availability: [RUNTIME]
+
+  - variable: ASISTENCIA_CLAVE_SECUNDARIA
+    secret: suitpay-asistencia-clave-secundaria
+    availability: [RUNTIME]
+
+  # Las dos tareas periódicas se exponen como rutas de servidor y las dispara
+  # Cloud Scheduler. Este secreto compartido es lo que impide que cualquiera en
+  # internet ejecute una reconciliación.
+  - variable: TAREAS_SECRETO_COMPARTIDO
+    secret: suitpay-tareas-secreto-compartido
+    availability: [RUNTIME]

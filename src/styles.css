@@ -1,0 +1,58 @@
+/*
+ * Hoja base de SuitPay. Ver DESIGN.md.
+ *
+ * Las tipografías se autoalojan desde node_modules: ninguna petición sale hacia
+ * un servicio de terceros, porque el mostrador tiene que arrancar sin depender
+ * de una red ajena.
+ */
+
+@import 'tailwindcss';
+
+@import '@fontsource-variable/atkinson-hyperlegible-next';
+@import '@fontsource-variable/atkinson-hyperlegible-mono';
+
+@import './ui/tokens/tema.css';
+
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    /* La escena es una fachada abierta de centro mayorista con luz de día
+       entrando. No hay modo oscuro, y se lo decimos al navegador para que no
+       intente uno por su cuenta. */
+    color-scheme: light;
+  }
+
+  html,
+  body {
+    height: 100%;
+  }
+
+  body {
+    margin: 0;
+    background-color: var(--color-mesa);
+    color: var(--color-tinta);
+    font-family: var(--font-sans);
+    font-size: var(--text-renglon);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Todo número comparable va en cifras tabulares. Un importe que baila entre
+     filas obliga a leerlo en lugar de verlo. */
+  [class*='tabular'],
+  input[type='number'] {
+    font-variant-numeric: tabular-nums;
+  }
+
+  /* El foco tiene que verse a distancia y de pie: el sistema se opera con
+     teclado y un anillo tenue es un anillo inútil. */
+  :focus-visible {
+    outline: 3px solid var(--color-tinta);
+    outline-offset: 1px;
+  }
+}

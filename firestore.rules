@@ -1,0 +1,216 @@
+rules_version = '2';
+
+// Reglas de acceso de SuitPay.
+// Contrato: specs/001-mostrador-asistido/contracts/firestore-rules.md
+//
+// Dos premisas para leer esto:
+//
+// El rol y el estado de actividad viven en las reivindicaciones del token, no en
+// un documento consultable. Así las reglas los evalúan sin lecturas
+// adicionales, lo que además evita que cada comprobación de permiso se facture.
+//
+// El backend escribe con privilegios administrativos y no está sujeto a estas
+// reglas. Eso es precisamente lo que las hace útiles: todo lo que aquí se
+// prohíbe al cliente solo puede ocurrir a través de una función, donde hay
+// validación, transacción y traza.
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- Identidad y rol -------------------------------------------------
+
+    function autenticado() {
+      return request.auth != null;
+    }
+
+    function uid() {
+      return request.auth.uid;
+    }
+
+    function rol() {
+      return request.auth.token.rol;
+    }
+
+    // Desactivar a alguien tiene que ser efectivo de inmediato (FR-003), así
+    // que la actividad se comprueba en toda escritura y no solo al entrar.
+    function activo() {
+      return autenticado() && request.auth.token.activo == true;
+    }
+
+    function esVendedor() { return activo() && rol() == 'vendedor'; }
+    function esAdministrador() { return activo() && rol() == 'administrador'; }
+    function esJefe() { return activo() && rol() == 'jefe'; }
+
+    function personalDeLaEmpresa() {
+      return autenticado() && rol() in ['vendedor', 'administrador', 'jefe'];
+    }
+
+    function soloEstosCampos(campos) {
+      return request.resource.data.keys().hasOnly(campos);
+    }
+
+    function sinCambiar(campo) {
+      return !(campo in request.resource.data.diff(resource.data).affectedKeys());
+    }
+
+    // --- Instantáneas de solo lectura ------------------------------------
+    // Las escribe el backend al publicar. Una lectura por sesión.
+
+    match /catalogo/{documento} {
+      allow read: if personalDeLaEmpresa();
+      allow write: if false;
+    }
+
+    match /indices/{documento} {
+      allow read: if personalDeLaEmpresa();
+      allow write: if false;
+    }
+
+    match /config/{documento} {
+      allow read: if personalDeLaEmpresa();
+      allow write: if false;
+    }
+
+    // --- Comprobantes ----------------------------------------------------
+    //
+    // La restricción más importante del sistema: NINGÚN rol escribe aquí,
+    // nunca, ni el administrador. Si un cliente pudiera escribir un
+    // comprobante podría inventar un número, declarar aceptado un documento
+    // que nunca se emitió, o saltarse el correlativo, y toda la máquina de
+    // estados perdería sentido.
+    //
+    // Tampoco existe borrado. La anulación es un cambio de estado con motivo y
+    // autor, y la ejecuta el backend.
+
+    match /comprobantes/{claveIdempotencia} {
+      allow read: if personalDeLaEmpresa();
+      allow create, update, delete: if false;
+    }
+
+    // --- Series ----------------------------------------------------------
+    //
+    // El cliente lee su serie para saber si la tiene configurada. El contador
+    // no lo toca nadie desde aquí: escribirlo permitiría reservar o repetir
+    // numeración. El administrador puede activar o desactivar una serie, pero
+    // los dos contadores quedan fuera de su alcance.
+
+    match /series/{serieId} {
+      allow read: if esAdministrador()
+                  || esJefe()
+                  || (esVendedor() && resource.data.vendedorId == uid());
+
+      allow create: if false;
+      allow delete: if false;
+      allow update: if esAdministrador()
+                    && sinCambiar('ultimoNumero')
+                    && sinCambiar('ultimoNumeroConfirmado')
+                    && sinCambiar('serie')
+                    && sinCambiar('tipoDocumento');
+    }
+
+    // --- Clientes --------------------------------------------------------
+    //
+    // El vendedor crea pero no edita: corregir los datos de un cliente ya
+    // registrado es una operación administrativa.
+
+    match /clientes/{numeroDocumento} {
+      function clienteBienFormado() {
+        return request.resource.data.numeroDocumento == numeroDocumento
+               && request.resource.data.creadoPor == uid()
+               && request.resource.data.tipoDocumento is string
+               && request.resource.data.denominacion is string
+               && request.resource.data.denominacion.size() > 0
+               && soloEstosCampos([
+                    'tipoDocumento', 'numeroDocumento', 'denominacion',
+                    'direccion', 'ubigeo', 'telefono', 'correo', 'condicion',
+                    'consultadoEn', 'creadoPor', 'creadoEn'
+                  ]);
+      }
+
+      allow read: if personalDeLaEmpresa();
+      allow create: if (esVendedor() || esAdministrador()) && clienteBienFormado();
+      allow update: if esAdministrador()
+                    && sinCambiar('numeroDocumento')
+                    && sinCambiar('creadoPor');
+      allow delete: if false;
+    }
+
+    // --- Cotizaciones ----------------------------------------------------
+    //
+    // Un vendedor puede recuperar la cotización de otro, que es lo que FR-017
+    // exige. Puede editarla mientras esté pendiente, pero no puede escribir el
+    // estado ni el comprobante resultante: marcar una cotización como
+    // convertida sin que haya nacido un comprobante sería la forma de burlar la
+    // protección contra la doble conversión. Ese paso lo da el backend en la
+    // misma transacción que crea el comprobante.
+
+    match /cotizaciones/{cotizacionId} {
+      function cotizacionBienFormada() {
+        return soloEstosCampos([
+                 'numero', 'estado', 'cliente', 'lineas', 'total',
+                 'creadoPor', 'creadoEn', 'comprobanteId', 'convertidaEn'
+               ]);
+      }
+
+      allow read: if personalDeLaEmpresa();
+
+      allow create: if (esVendedor() || esAdministrador())
+                    && request.resource.data.creadoPor == uid()
+                    && request.resource.data.estado == 'pendiente'
+                    && request.resource.data.comprobanteId == null
+                    && cotizacionBienFormada();
+
+      allow update: if (esVendedor() || esAdministrador())
+                    && resource.data.estado == 'pendiente'
+                    && request.resource.data.estado == 'pendiente'
+                    && sinCambiar('creadoPor')
+                    && sinCambiar('numero')
+                    && sinCambiar('comprobanteId')
+                    && sinCambiar('convertidaEn')
+                    && cotizacionBienFormada();
+
+      allow delete: if false;
+    }
+
+    // --- Capturas --------------------------------------------------------
+    //
+    // El vendedor crea la captura; el estado y las propuestas los escribe el
+    // backend, porque son el resultado de la asistencia y no una afirmación
+    // del cliente.
+
+    match /capturas/{capturaId} {
+      allow read: if esAdministrador()
+                  || (esVendedor() && resource.data.vendedorId == uid());
+
+      allow create: if esVendedor()
+                    && request.resource.data.vendedorId == uid()
+                    && request.resource.data.estado == 'procesando'
+                    && soloEstosCampos([
+                         'tipo', 'medioUrl', 'estado', 'lineas',
+                         'vendedorId', 'creadoEn'
+                       ]);
+
+      allow update, delete: if false;
+    }
+
+    // --- Usuarios --------------------------------------------------------
+    //
+    // Un vendedor solo lee su propio documento y no puede modificar su rol ni
+    // reactivarse.
+
+    match /usuarios/{usuarioId} {
+      allow read: if esAdministrador()
+                  || esJefe()
+                  || (autenticado() && usuarioId == uid());
+
+      allow create, update: if esAdministrador();
+      allow delete: if false;
+    }
+
+    // --- Regla por defecto: negar ----------------------------------------
+
+    match /{documento=**} {
+      allow read, write: if false;
+    }
+  }
+}
