@@ -89,20 +89,54 @@ Registrar antes de invocar es lo que la constitución exige explícitamente. El 
 
 ---
 
-## Decisión 4 — Quién asigna el correlativo, y qué hacer si no lo controlamos
+## Decisión 4 — Quién asigna el correlativo, y cómo se averigua si una emisión ocurrió
 
-**Decisión**: SuitPay mantiene su propio correlativo por serie en un documento transaccional y lo envía explícitamente al proveedor **si el proveedor lo acepta**. Si no lo acepta, se adopta la estrategia de sondeo descrita abajo. El diseño funciona en ambos casos.
+**Estado: resuelta con evidencia documental el 2026-07-28.** Era la asunción más cara de la especificación y el diseño la trataba como incógnita con contingencia. La documentación del proveedor la resuelve en lo esencial y reduce lo pendiente a una comprobación de una tarde.
 
-**Rationale**: la investigación del assessment estableció que el proveedor asigna el correlativo automáticamente cuando se le envía el marcador correspondiente, que la consulta de documentos se hace por serie y número, y que no existe ningún campo de referencia externa. De ahí se sigue el problema: si no conocemos el número, una llamada que se corta sin respuesta nos deja sin forma de preguntar si el documento existe.
+**Decisión**: SuitPay mantiene su propio correlativo por serie en un documento transaccional y lo envía explícitamente al proveedor. Ante una respuesta ausente, la reconciliación consulta ese par de serie y número y obtiene una respuesta binaria.
 
-Con número propio el problema desaparece: conocemos serie y número desde antes de invocar, así que ante una respuesta ausente basta consultar ese par para saber qué ocurrió. **Está pendiente de confirmar con el proveedor si acepta un número explícito**; es la pregunta abierta más importante del proyecto.
+**Lo que la documentación confirma**
 
-**Contingencia si no lo acepta** (sondeo acotado): se mantiene por serie el último número confirmado. Ante un estado `indeterminado`, un proceso de reconciliación consulta los siguientes números de esa serie, en una ventana pequeña, y compara el contenido de cada documento encontrado —cliente, total, fecha— con la venta indeterminada. Si coincide, se adopta ese número y la venta pasa a confirmada; si la ventana se agota sin coincidencia, la venta se marca como necesitada de intervención humana. Es menos elegante y requiere unas pocas consultas adicionales por incidente, pero es determinista y nunca emite dos veces, que es lo que la constitución exige.
+La consulta de documentos es `POST /api/v3/consulta` y **su cuerpo es exactamente `{ serie, numero }`**. Devuelve `exito`, el estado del documento con su descripción, los enlaces a los archivos generados y la traza de eventos con sus fechas. Es literalmente la primitiva que FR-029 necesita: dado un par de serie y número, se puede saber si el documento existe y en qué estado está, sin ambigüedad y sin emitir nada.
+
+El cuerpo de la emisión, `POST /api/v3/documentos`, incluye los campos `serie` y `numero`, y el ejemplo pasa `"numero": "#"` documentando el `#` como el marcador de asignación automática. Que exista un comodín explícito para "asígnalo tú" implica que el campo admite también un valor concreto; de otro modo el comodín no tendría sentido.
+
+**Lo que queda por comprobar, y no preguntando sino probando**: que al enviar un número concreto el proveedor lo respete, y qué responde ante un número ya usado. Ninguna de las dos cosas está documentada, y las dos se resuelven en el entorno de demostración en una tarde. Es una prueba, no una consulta comercial.
+
+**Consecuencia si el número explícito funciona**, que es lo probable: el diseño queda hermético. Se reclama el correlativo en la transacción de Firestore, se envía explícito, y ante respuesta ausente se consulta ese par exacto. Sin sondeos, sin comparar contenidos, sin heurística. **El sondeo acotado que este documento describía como contingencia se puede borrar.**
+
+**Contingencia si no lo respetase** (sondeo acotado): se mantiene por serie el último número confirmado. Ante un estado `indeterminado`, la reconciliación consulta los siguientes números de esa serie en una ventana pequeña y compara cliente, total y fecha con la venta indeterminada. Si coincide, adopta ese número; si la ventana se agota, la venta pasa a requerir intervención. Es determinista y nunca emite dos veces, pero es notablemente peor y conviene no necesitarla.
 
 **Alternatives considered**:
 - *Reintentar sin verificar.* Prohibido por el principio II. Es exactamente el mecanismo que produce duplicados.
 - *Asumir que el fallo significa que no se emitió.* Descartada: es falso con frecuencia; un tiempo de espera agotado a menudo acompaña a una operación que sí tuvo éxito.
 - *Dos proveedores como contingencia mutua.* Ya descartada en el assessment: alternar entre proveedores rompe la correlatividad de la serie.
+
+---
+
+## Decisión 4b — Los estados del proveedor y los nuestros miden cosas distintas
+
+**Decisión**: los estados que informa el proveedor se traducen a los nuestros según la tabla de abajo, y **`indeterminado` nunca se deriva de un estado del proveedor**: solo lo produce nuestra propia incertidumbre sobre si la petición llegó.
+
+**Por qué merece una decisión propia**: es una confusión fácil de cometer y caría lógica de reconciliación equivocada. El proveedor tiene dos estados que dicen "sin respuesta de SUNAT", y la tentación es tratarlos como nuestro `indeterminado`. No lo son. Que SUNAT no haya respondido al proveedor es una situación **normal y ya gestionada por él**; nuestro `indeterminado` es que *nosotros* no sabemos si el proveedor recibió la petición. Son dos ejes distintos.
+
+| Estado del proveedor | Nuestro estado | Nota |
+|---|---|---|
+| `01` registrado en su servidor | `enviado` | El documento existe, está firmado y su envío está en marcha. |
+| `03` y `19` enviado o sin respuesta de SUNAT | `enviado` | **No es un fallo.** El proveedor reintenta por su cuenta. No requiere nada de nosotros. |
+| `05` aceptado | `aceptado` | |
+| `09` rechazado | `rechazado` | Rechazo definitivo: la corrección es un documento nuevo. |
+| `11` anulado | `anulado` | |
+| `13` por anular | Transición intermedia de la anulación | La anulación no es instantánea y la interfaz no debe presentarla como cerrada hasta llegar a `11`. |
+| — | `indeterminado` | **Sin equivalente.** Solo lo produce una respuesta ausente a nuestra petición. |
+
+**Dos consecuencias que cambian el diseño para mejor**
+
+El proveedor **firma en sus propios servidores** y mantiene una cola de reintentos hacia SUNAT cada cinco minutos. Eso significa que una caída de SUNAT **no impide emitir**: el documento se crea, se firma con su fecha y hora correctas, y la constancia llega cuando SUNAT se recupera. La consecuencia práctica es que el camino de venta en espera con documento interno de FR-050 se estrecha mucho: solo se activa cuando **el proveedor mismo** o nuestra red están inalcanzables, no cuando SUNAT lo está. Sigue siendo necesario, pero será raro, y conviene que la interfaz no lo trate como el escenario habitual.
+
+El estado `01` avisa de que el comprobante **todavía se puede editar** en el proveedor. SuitPay nunca lo editará —un comprobante emitido no se modifica—, pero conviene saber que existe esa ventana, porque implica que `01` no es aún un compromiso irreversible ante SUNAT.
+
+**Riesgo que sustituye al del correlativo**: la respuesta de error documentada es `{"exito": false, "mensaje": null}`, **sin código de error**. Nuestro contrato de frontera clasifica los fallos en rechazo definitivo, indisponible e indeterminado, y esa clasificación es la pieza que impide el reintento a ciegas. Si el proveedor no entrega un código estable, la clasificación tendrá que apoyarse en el código de estado HTTP y en la distinción entre tiempo de espera agotado y respuesta recibida, que es más frágil. **Esta es ahora la incógnita más valiosa del proyecto**, y se resuelve provocando fallos en el entorno de demostración y observando qué llega.
 
 ---
 
@@ -180,10 +214,13 @@ El formato de rollo queda pendiente: la documentación revisada solo confirma A4
 
 ## Incógnitas que permanecen abiertas
 
-Ninguna bloquea el diseño, porque todas tienen una contingencia decidida. Se listan para que no se pierdan.
+Ninguna bloquea el diseño, porque todas tienen una contingencia decidida. Se listan para que no se pierdan, en orden de valor.
 
-1. **¿Acepta el proveedor un número de comprobante explícito?** Si sí, la reconciliación es directa; si no, se aplica el sondeo acotado de la decisión 4. Es la pregunta más valiosa que se puede hacer hoy.
-2. **¿Existe un formato de impresión de rollo?** Condiciona el objetivo de abandonar el A4, no esta entrega.
-3. **¿Quién agrupa y envía el resumen diario de boletas, el proveedor o SuitPay?** La documentación describe la obligación de enviar dentro de 7 días pero no quién ejecuta el envío. Afecta a una tarea programada, no a la estructura de datos.
-4. **¿Cuáles son los límites de uso de la API del proveedor?** Con 5 puestos emitiendo a la vez conviene saberlo, aunque el volumen esperado sea bajo.
-5. **¿Cuánto acoplamiento tienen las herramientas de captura de la tienda virtual?** Condiciona el esfuerzo de las historias 6 y 7, no su diseño.
+1. **¿Qué devuelve el proveedor cuando algo falla?** La respuesta de error documentada no lleva código. De ello depende poder distinguir un rechazo definitivo de una indisponibilidad, que es la pieza que impide el reintento a ciegas. **Es ahora la incógnita más valiosa**, y se resuelve provocando fallos en el entorno de demostración.
+2. **¿Respeta el proveedor un número de comprobante explícito, y qué contesta ante uno ya usado?** El campo existe y su comodín de asignación automática está documentado, así que lo probable es que sí. Se comprueba en el entorno de demostración. Ver decisión 4.
+3. **¿Cuáles son los límites de uso de la API del proveedor?** Con 5 puestos emitiendo a la vez conviene saberlo, aunque el volumen esperado sea bajo.
+4. **¿Existe un formato de impresión de rollo?** El cuerpo de la emisión lleva un parámetro de formato con `a4` como valor documentado. Condiciona el objetivo de abandonar el A4, no esta entrega.
+5. **¿Quién agrupa y envía el resumen diario de boletas, el proveedor o SuitPay?** La documentación describe la obligación de enviar dentro de 7 días pero no quién ejecuta el envío. Afecta a una tarea programada, no a la estructura de datos.
+6. **¿Cuánto acoplamiento tienen las herramientas de captura de la tienda virtual?** Condiciona el esfuerzo de las historias 6 y 7, no su diseño. Es la tarea T113.
+
+**Cerrada el 2026-07-28**: *¿se puede verificar si una emisión concreta ocurrió?* Sí. `POST /api/v3/consulta` acepta `{ serie, numero }` y devuelve existencia, estado y traza de eventos. Era la asunción más cara de la especificación.
