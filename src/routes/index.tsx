@@ -17,7 +17,9 @@ import {
   usarPedido,
 } from '../features/pedido/almacen.ts'
 import { puedeEmitir, usarSesion } from '../features/sesion/almacen.ts'
+import { GuardaSesion } from '../features/sesion/GuardaSesion.tsx'
 import { emitir } from '../features/emision/emitir.funciones.ts'
+import { leerMiSerieFn } from '../features/series/series.funciones.ts'
 import { CabeceraDocumento } from '../ui/componentes/CabeceraDocumento.tsx'
 import { Entrada } from '../ui/componentes/Entrada.tsx'
 import {
@@ -38,13 +40,22 @@ import type { EstadoDeEmision as FaseDelBoton } from '../ui/componentes/PieTotal
  * 3. Contenido del tab (en Pedido: cabecera, líneas, pie de total).
  */
 export const Route = createFileRoute('/')({
-  component: Mostrador,
+  component: MostradorConGuarda,
 })
+
+function MostradorConGuarda() {
+  return (
+    <GuardaSesion>
+      <Mostrador />
+    </GuardaSesion>
+  )
+}
 
 function Mostrador() {
   const [pestana, setPestana] = useState<PestanaMostrador>('pedido')
   const [termino, setTermino] = useState('')
   const [medioPago, setMedioPago] = useState('efectivo')
+  const [serieAsignada, setSerieAsignada] = useState<string | null>(null)
 
   const catalogo = usarCatalogo()
   const sesion = usarSesion()
@@ -56,10 +67,29 @@ function Mostrador() {
   const cerrarEmision = usarEmision((estado) => estado.cerrar)
   const degradaciones = usarDegradacion((estado) => estado.activas)
 
-  useEffect(() => usarSesion.getState().vigilar(), [])
   useEffect(() => {
     void usarCatalogo.getState().cargar()
   }, [])
+
+  useEffect(() => {
+    if (!REGLAS[pedido.tipoDocumento].consumeSerieRegulada) {
+      setSerieAsignada(null)
+      return
+    }
+
+    const estado = { vivo: true }
+    void (async () => {
+      const respuesta = await leerMiSerieFn({
+        data: { tipoDocumento: pedido.tipoDocumento },
+      })
+      if (!estado.vivo) return
+      const serie = respuesta.ok ? (respuesta.serie ?? null) : null
+      setSerieAsignada(serie !== null && serie.activa ? serie.serie : null)
+    })()
+    return () => {
+      estado.vivo = false
+    }
+  }, [pedido.tipoDocumento, sesion.uid])
 
   const lineas = lineasCalculadas(pedido)
   const total = totalDelPedido(pedido)
@@ -149,7 +179,7 @@ function Mostrador() {
           <CabeceraDocumento
             tipo={pedido.tipoDocumento}
             onCambiarTipo={pedido.fijarTipoDocumento}
-            serie={null}
+            serie={serieAsignada}
             cliente={pedido.cliente}
             onElegirCliente={() => undefined}
             onQuitarCliente={() => pedido.fijarCliente(null)}

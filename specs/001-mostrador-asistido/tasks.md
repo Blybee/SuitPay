@@ -167,21 +167,23 @@ De modo que las fases US1, US4, US5 y US8 llevan pruebas obligatorias. El resto 
 - [x] T072 [US1] Implementar la reimpresión de un comprobante ya emitido en `src/features/emision/reimprimir.ts`, de forma que **un fallo de impresión no invalide ni repita la emisión** (FR-055)
 - [x] T073 [US1] Implementar la sesión persistente entre jornadas en `src/features/sesion/`, con revalidación en segundo plano y **bloqueo de la emisión cuando la sesión ya no sea válida o el vendedor esté desactivado** (FR-002, FR-003)
 - [x] T074 [P] [US1] Implementar el estado de pedido vacío en `src/routes/index.tsx`: columna con sus cabeceras de columna y la entrada enfocada, **sin ilustración ni mensaje de bienvenida**
+- [x] T173 [US1] Implementar la pantalla de acceso en `src/routes/acceso.tsx`: correo/contraseña vía `usarSesion.entrar`, redirección al mostrador o a administración según rol, y guarda de rutas sin sesión → `/acceso` (FR-002 complemento; el logout ya está en el sidebar)
+- [x] T174 [US1] Implementar el puente de identidad a las server functions: middleware cliente que adjunta `Authorization: Bearer ${idToken}` registrado en `src/start.ts` (`functionMiddleware`), cubriendo **todas** las funciones que llaman `exigirIdentidad`
 
 **Checkpoint**: User Story 1 está implementada y su lógica verificada con 128 pruebas que pasan. La marca `[~]` señala lo que está escrito pero **no ejecutado todavía**, y conviene no confundirlo con hecho.
 
 Lo que falta para poder decir que la empresa vende, y en este orden:
 
-1. **Java** (T022), que desbloquea de golpe las reglas de seguridad, la transacción contra Firestore de T050 y la mitad de emisión de T051.
+1. **Java** (T022), que desbloquea de golpe las reglas de seguridad, la transacción contra Firestore de T050 y la mitad de emisión de T051. *Aplazado: el camino operativo de emisión UI usa Firebase cloud, no emuladores.*
 2. ~~**Firebase** (T010)~~ — enlazado. Falta desplegar. **Sin App Check. Sin Cloud Scheduler** (decisión 10).
 3. ~~**T027**~~ — cerrado.
-4. **Alinear código a la decisión 10** (T170–T172): reintento manual + consulta bajo demanda; retirar cola/contingencia/Scheduler.
+4. ~~**Alinear código a la decisión 10** (T170–T172)~~ — cerrado.
+5. **T173 + T174** (acceso + Bearer) y **T083–T085** (admin completo) para emitir desde la UI contra cloud + proveedor demo.
 
 **Decisiones de alcance (US1)**:
 - No App Check.
 - No Cloud Scheduler ni venta en espera automática (decisión 10 de `research.md`).
-
-No hay pantalla de acceso: la sesión persiste y bloquea la emisión cuando no es válida (T073), pero entrar por primera vez todavía no tiene interfaz. La prueba de extremo a extremo lo sortea sembrando la sesión, y eso está anotado en `tests/e2e/ayudas-sesion.ts` para que se borre cuando la pantalla exista.
+- Emisión UI operativa contra Firebase cloud (`VITE_USAR_EMULADORES=false`); emuladores no bloquean este camino.
 
 ---
 
@@ -199,9 +201,9 @@ No hay pantalla de acceso: la sesión persiste y bloquea la emisión cuando no e
 - [x] T080 [US2] Implementar la comparación contra el catálogo publicado en `src/server/catalogo/diferencias.ts`
 - [x] T081 [US2] Implementar la función de servidor `importarCatalogo` en `src/server/catalogo/importar.ts` con sus modos `validar` y `publicar`, escribiendo el catálogo completo **en una sola escritura** e incrementando su versión
 - [x] T082 [US2] Implementar la pantalla de importación en `src/routes/administracion/catalogo.tsx`, que muestra el resumen y las diferencias **antes de confirmar nada** (FR-009)
-- [ ] T083 [P] [US2] Implementar la gestión de series en `src/routes/administracion/series.tsx`, con el alta por vendedor y tipo de documento que FR-031 presupone. **Insumo API** (decisión 12): una serie por vendedor+tipo; sync al proveedor. **Hecho parcial**: frontera `crear/listar/eliminarEstablecimiento` + `crear/eliminarSerie` (adaptador + simulado); tests simulado y demo en vivo OK (`establecimientos-*.test.ts`). Pendiente: UI admin + escritura Firestore `{vendedorId}__{tipo}`.
-- [ ] T084 [P] [US2] Implementar la gestión de usuarios y roles en `src/routes/administracion/usuarios.tsx`, replicando el rol en las reivindicaciones del token para que las reglas lo evalúen sin lecturas (FR-005)
-- [ ] T085 [P] [US2] Implementar la edición de parámetros en `src/routes/administracion/parametros.tsx`, incluido el umbral de identificación, **que debe ser barato de cambiar porque es de origen regulatorio**
+- [x] T083 [P] [US2] Implementar la gestión de series en `src/routes/administracion/series.tsx`, con el alta por vendedor y tipo de documento que FR-031 presupone. **Insumo API** (decisión 12): una serie por vendedor+tipo; sync al proveedor. Frontera + UI admin + escritura Firestore `{vendedorId}__{tipo}` + cabecera del mostrador (`leerMiSerie`).
+- [x] T084 [P] [US2] Implementar la gestión de usuarios y roles en `src/routes/administracion/usuarios.tsx`, replicando el rol en las reivindicaciones del token para que las reglas lo evalúen sin lecturas (FR-005). Bootstrap del primer admin: `scripts/bootstrap-admin.mjs`.
+- [x] T085 [P] [US2] Implementar la edición de parámetros en `src/routes/administracion/parametros.tsx`, incluido el umbral de identificación, **que debe ser barato de cambiar porque es de origen regulatorio**
 
 **Checkpoint**: el catálogo real está en producción y la administración puede configurar series, usuarios y parámetros.
 

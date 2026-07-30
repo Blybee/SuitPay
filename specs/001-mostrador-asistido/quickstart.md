@@ -17,16 +17,29 @@ Cómo comprobar que la entrega funciona de verdad. No es documentación de insta
 - Una serie de facturas y una de boletas asignadas al vendedor.
 - Al menos una guía manual fotografiada de verdad, escrita a mano. Una imagen sintética no sirve para juzgar la calidad del reconocimiento.
 
-**Entorno local**
-- Firebase Emulator Suite para Firestore, Authentication, Functions y Storage. Las pruebas de reglas y de emisión corren aquí.
+**Entorno local (emisión UI contra cloud)**
+- `.env.local` con `VITE_USAR_EMULADORES=false`, variables `VITE_FIREBASE_*` del proyecto `blayblocklabs-antrax`, y `PROVEEDOR_*` de demo.
+- Admin SDK en el proceso de `npm run dev`: Application Default Credentials (`gcloud auth application-default login`) o `GOOGLE_APPLICATION_CREDENTIALS`.
+- Primer administrador (una vez): `node scripts/bootstrap-admin.mjs` con `BOOTSTRAP_CORREO` / `BOOTSTRAP_CONTRASENA` / `BOOTSTRAP_NOMBRE`.
+- Semilla de catálogo (opcional, misma lógica que T081): `npx tsx scripts/publicar-catalogo.ts tmp/productos.js`. En el día a día usar `/administracion/catalogo`.
+- Emulator Suite: solo para pruebas de reglas (T022) cuando haya Java; **no** es el camino de venta en UI.
 
 ## Escenarios de validación
 
+### V0 — Arranque administrativo (US2, cloud)
+
+1. Entrar en `/acceso` como administrador (tras `bootstrap-admin.mjs` si es la primera vez).
+2. **Usuarios**: crear un vendedor con rol y activo.
+3. **Series**: crear un establecimiento; asignar serie de boleta (y factura) al vendedor con `numeroInicial`.
+4. **Parámetros**: confirmar umbral (p. ej. 700 soles).
+5. **Catálogo**: cargar `tmp/productos.js` → validar → publicar (`catalogo/actual` en cloud).
+6. Cerrar sesión; entrar como vendedor.
+
 ### V1 — Venta escrita de principio a fin (US1)
 
-Iniciar sesión como vendedor, cerrar el navegador, volver a abrirlo. **Debe entrar sin pedir credenciales.** Escribir "1/2 codo fierro" y comprobar que aparece el codo de fierro galvanizado de media pulgada, aunque el catálogo lo nombre en otro orden. Añadir tres productos, cambiar el precio de uno, alternar el tipo de documento entre boleta y factura y confirmar que el pedido no se pierde. Emitir.
+Iniciar sesión en `/acceso` como vendedor, cerrar el navegador, volver a abrirlo. **Debe entrar sin pedir credenciales.** Escribir un producto del catálogo publicado, añadir líneas, alternar tipo de documento y confirmar que el pedido no se pierde. Emitir una **boleta bajo umbral** (o nota de venta para probar el camino local sin proveedor).
 
-**Observar**: el comprobante existe en el proveedor de demostración con la serie y el número que muestra la aplicación; el documento en la base de datos está atribuido al vendedor; el archivo imprimible se abre.
+**Observar**: con boleta/factura, el comprobante existe en el proveedor de demostración con la serie y el número que muestra la aplicación; el documento en Firestore está atribuido al vendedor; el archivo imprimible se abre. Con nota de venta, el comprobante queda aceptado en SuitPay sin llamar al proveedor.
 
 ### V2 — La doble pulsación no duplica (principio II)
 

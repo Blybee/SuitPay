@@ -83,10 +83,10 @@ async function leerDeUsuario(usuario: User): Promise<EstadoDeSesion> {
   const reivindicaciones = resultado.claims as Reivindicaciones
 
   const rol = reivindicaciones.rol ?? null
-  // Ausente se interpreta como activo: un usuario recién creado al que aún no se
-  // le fijó la reivindicación no debe quedar bloqueado. Desactivar es un acto
-  // explícito, y lo que importa es que `activo: false` bloquee de verdad.
-  const activo = reivindicaciones.activo !== false
+  // Alineado con el servidor (`activo === true` en `verificarIdentidad`): sin
+  // reivindicación explícita no se puede emitir. T084 fija `{ rol, activo }` al
+  // crear o editar el usuario.
+  const activo = reivindicaciones.activo === true
 
   return {
     cargando: false,

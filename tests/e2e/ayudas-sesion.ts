@@ -8,18 +8,12 @@ import type { Page } from '@playwright/test'
  * ## Por qué esto es necesario y por qué es incómodo
  *
  * La emisión está cerrada a quien no tenga rol y esté activo (FR-003), así que sin
- * sesión el botón de emitir queda inhabilitado y no hay venta que probar. Y todavía
- * no existe pantalla de acceso, de modo que la prueba no puede entrar como entraría
- * una persona.
+ * sesión el botón de emitir queda inhabilitado y no hay venta que probar.
  *
- * La consecuencia es que este archivo escribe **directamente** en el sitio donde el
- * SDK de Firebase guarda la sesión. Es un detalle interno del SDK y conviene decirlo
- * sin adornos: si Firebase cambia ese formato, esta ayuda deja de funcionar. No
- * fallará en silencio —la prueba dirá que no se puede emitir— pero el mensaje no
- * apuntará aquí, y por eso queda escrito.
- *
- * **Cuando exista la pantalla de acceso, esto se borra** y la prueba entra
- * escribiendo correo y contraseña, que además cubriría ese camino.
+ * Ya existe `/acceso` (T173). Esta ayuda sigue inyectando sesión en el emulador
+ * e2e porque Playwright aún depende de la Emulator Suite (T022). Cuando e2e
+ * pase a cloud o use la pantalla de acceso, **borrar este archivo** y entrar
+ * con correo/contraseña.
  *
  * ## Por qué un token a medida y no usuario con contraseña
  *

@@ -1,9 +1,8 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import {
-  importarCatalogoFn,
-  type ResumenDeImportacion,
-} from '../../features/catalogo/importar.funciones.ts'
+import { importarCatalogoFn } from '../../features/catalogo/importar.funciones.ts'
+import type { ResumenDeImportacion } from '../../features/catalogo/importar.funciones.ts'
+import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 
 /**
@@ -14,7 +13,11 @@ import { formatearImporte } from '../../domain/totales/calculo.ts'
  */
 
 export const Route = createFileRoute('/administracion/catalogo')({
-  component: PantallaDeCatalogo,
+  component: () => (
+    <GuardaSesion roles={['administrador']}>
+      <PantallaDeCatalogo />
+    </GuardaSesion>
+  ),
 })
 
 function PantallaDeCatalogo() {
@@ -82,12 +85,7 @@ function PantallaDeCatalogo() {
 
   const bloqueado =
     resumen !== null &&
-    resumen.conflictos.some(
-      (c) =>
-        c.tipo === 'codigo_duplicado' ||
-        c.tipo === 'descripcion_ausente' ||
-        c.tipo === 'unidad_desconocida',
-    )
+    resumen.conflictos.some((c) => c.tipo === 'codigo_duplicado')
 
   return (
     <div className="flex min-h-full flex-col gap-6 px-6 py-8">
@@ -233,22 +231,16 @@ function Resumen({ resumen }: { readonly resumen: ResumenDeImportacion }) {
 }
 
 function mensajeDeError(error: unknown): string {
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'mensajeParaVendedor' in error &&
-    typeof (error as { mensajeParaVendedor: unknown }).mensajeParaVendedor ===
-      'string'
-  ) {
-    return (error as { mensajeParaVendedor: string }).mensajeParaVendedor
-  }
-  if (
-    typeof error === 'object' &&
-    error !== null &&
-    'message' in error &&
-    typeof (error as { message: unknown }).message === 'string'
-  ) {
-    return (error as { message: string }).message
+  if (typeof error === 'object' && error !== null) {
+    if (
+      'mensajeParaVendedor' in error &&
+      typeof error.mensajeParaVendedor === 'string'
+    ) {
+      return error.mensajeParaVendedor
+    }
+    if ('message' in error && typeof error.message === 'string') {
+      return error.message
+    }
   }
   return 'No se pudo importar el catálogo.'
 }

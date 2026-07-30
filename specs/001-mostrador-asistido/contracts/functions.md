@@ -148,6 +148,40 @@ Sustituye a la antigua reconciliación programada. Es la contrapartida del princ
 
 ---
 
+## `listarUsuarios` / `crearUsuario` / `actualizarUsuario`
+
+**Rol**: administrador exclusivamente.
+
+**Comportamiento**: mantienen `usuarios/{uid}` y replican `{ rol, activo }` en las reivindicaciones personalizadas del token (FR-005). Crear exige correo, contraseña (≥ 8) y rol. Desactivar fija `activo: false` en claims y deshabilita la cuenta en Authentication.
+
+---
+
+## `listarEstablecimientos` / `crearEstablecimiento` / `eliminarEstablecimiento` / `listarSeries` / `crearSerie` / `desactivarSerie` / `leerMiSerie`
+
+**Rol**: administrador (excepto `leerMiSerie`: vendedor o administrador).
+
+**Comportamiento** (decisión 12 / FR-031 / FR-031a):
+
+- Establecimientos: se crean/listan/eliminan vía la frontera del proveedor.
+- Series: una por vendedor y tipo (`{vendedorId}__{tipo}`). Boleta/factura escriben Firestore (`numeroInicial`, `ultimoNumero = numeroInicial - 1`) **y** crean la serie en el proveedor. Nota de venta no se crea en el proveedor.
+- `leerMiSerie` alimenta la cabecera del mostrador.
+
+---
+
+## `leerParametros` / `guardarParametros`
+
+**Rol**: lectura vendedor/administrador/jefe; escritura solo administrador.
+
+**Comportamiento**: leen o escriben el documento único `config/parametros` (umbral de identificación en céntimos, ventana de anulación `mismo_dia`, formato de impresión). Una escritura basta para que la siguiente emisión use el umbral nuevo.
+
+---
+
+## Identidad en server functions
+
+Toda función que llama `exigirIdentidad` espera `Authorization: Bearer <idToken>` (middleware global T174). La identidad **nunca** se toma del cuerpo de la petición.
+
+---
+
 ## Lo que deliberadamente no existe
 
 Ausencias que son decisiones, no olvidos:

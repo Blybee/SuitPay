@@ -1,9 +1,11 @@
 /// <reference types="vite/client" />
 import {
   HeadContent,
+  Navigate,
   Outlet,
   Scripts,
   createRootRouteWithContext,
+  useRouterState,
 } from '@tanstack/react-router'
 import { QueryClientProvider } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
@@ -15,6 +17,7 @@ import {
   vigilarConectividad,
 } from '../features/degradacion/estado.ts'
 import { usarPedido } from '../features/pedido/almacen.ts'
+import { usarSesion } from '../features/sesion/almacen.ts'
 import { BandaDegradacion } from '../ui/componentes/BandaDegradacion.tsx'
 import { BarraLateral } from '../ui/componentes/BarraLateral.tsx'
 import hojaDeEstilos from '../styles.css?url'
@@ -65,7 +68,13 @@ function Mostrador() {
   const degradacion = usarDegradacion(degradacionPrincipal)
   const restaurarPedido = usarPedido((estado) => estado.restaurar)
   const clienteDeConsultas = Route.useRouteContext().clienteDeConsultas
+  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  const enAcceso = pathname === '/acceso'
+  const cargandoSesion = usarSesion((s) => s.cargando)
+  const uid = usarSesion((s) => s.uid)
+  const sinSesion = !cargandoSesion && uid === null
 
+  useEffect(() => usarSesion.getState().vigilar(), [])
   useEffect(() => vigilarConectividad(), [])
 
   useEffect(() => {
@@ -77,12 +86,22 @@ function Mostrador() {
       <div className="flex min-h-svh flex-col bg-mesa">
         <BandaDegradacion degradacion={degradacion} />
 
-        <div className="flex min-h-0 flex-1 flex-col md:flex-row">
-          <BarraLateral />
-          <main className="min-w-0 flex-1 overflow-auto bg-mesa">
-            <Outlet />
-          </main>
-        </div>
+        {enAcceso ? (
+          <Outlet />
+        ) : cargandoSesion ? (
+          <div className="flex min-h-full flex-1 items-center justify-center p-8">
+            <p className="text-cuerpo text-desvaida">Comprobando sesión…</p>
+          </div>
+        ) : sinSesion ? (
+          <Navigate to="/acceso" />
+        ) : (
+          <div className="flex min-h-0 flex-1 flex-col md:flex-row">
+            <BarraLateral />
+            <main className="min-w-0 flex-1 overflow-auto bg-mesa">
+              <Outlet />
+            </main>
+          </div>
+        )}
       </div>
     </QueryClientProvider>
   )

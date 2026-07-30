@@ -1,4 +1,4 @@
-import { Link, useRouterState } from '@tanstack/react-router'
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import {
   LayoutDashboard,
   LogOut,
@@ -6,8 +6,8 @@ import {
   PanelLeftOpen,
   Settings,
   Store,
-  type LucideIcon,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { usarSesion } from '../../features/sesion/almacen.ts'
 import type { Rol } from '../../features/sesion/almacen.ts'
@@ -23,7 +23,15 @@ import { Boton } from './primitivas.tsx'
 const CLAVE_COLAPSADA = 'suitpay.sidebar.colapsada'
 
 export interface ItemDeBarraLateral {
-  readonly to: '/' | '/configuracion' | '/administracion' | '/administracion/catalogo'
+  readonly to:
+    | '/'
+    | '/configuracion'
+    | '/administracion'
+    | '/administracion/catalogo'
+    | '/administracion/series'
+    | '/administracion/usuarios'
+    | '/administracion/parametros'
+    | '/acceso'
   readonly etiqueta: string
   readonly icono: LucideIcon
   readonly exacto?: boolean
@@ -82,6 +90,7 @@ export interface PropsDeBarraLateral {
 }
 
 export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
+  const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const nombre = usarSesion((s) => s.nombre)
   const correo = usarSesion((s) => s.correo)
@@ -89,6 +98,11 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
   const cargando = usarSesion((s) => s.cargando)
   const salir = usarSesion((s) => s.salir)
   const [colapsada, setColapsada] = useState(false)
+
+  async function cerrarSesion(): Promise<void> {
+    await salir()
+    await navigate({ to: '/acceso' })
+  }
 
   const enAdmin = pathname.startsWith('/administracion')
   const menu = items ?? (enAdmin ? ITEMS_ADMIN : itemsParaRol(rol))
@@ -139,7 +153,7 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
         <Boton
           variante="discreto"
           className="shrink-0 px-2"
-          onClick={() => void salir()}
+          onClick={() => void cerrarSesion()}
           disabled={cargando || nombre === null}
           aria-label="Cerrar sesión"
         >
@@ -248,7 +262,7 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
             className={unir(
               colapsada ? 'w-11 justify-center px-0' : 'w-full justify-start px-3',
             )}
-            onClick={() => void salir()}
+            onClick={() => void cerrarSesion()}
             disabled={cargando || nombre === null}
             aria-label="Cerrar sesión"
             title="Cerrar sesión"

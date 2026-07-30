@@ -10,13 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AccesoRouteImport } from './routes/acceso'
 import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as AdministracionIndexRouteImport } from './routes/administracion/index'
 import { Route as AdministracionCatalogoRouteImport } from './routes/administracion/catalogo'
+import { Route as AdministracionParametrosRouteImport } from './routes/administracion/parametros'
+import { Route as AdministracionSeriesRouteImport } from './routes/administracion/series'
+import { Route as AdministracionUsuariosRouteImport } from './routes/administracion/usuarios'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AccesoRoute = AccesoRouteImport.update({
+  id: '/acceso',
+  path: '/acceso',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfiguracionRoute = ConfiguracionRouteImport.update({
@@ -34,44 +43,95 @@ const AdministracionCatalogoRoute = AdministracionCatalogoRouteImport.update({
   path: '/administracion/catalogo',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdministracionParametrosRoute =
+  AdministracionParametrosRouteImport.update({
+    id: '/administracion/parametros',
+    path: '/administracion/parametros',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const AdministracionSeriesRoute = AdministracionSeriesRouteImport.update({
+  id: '/administracion/series',
+  path: '/administracion/series',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdministracionUsuariosRoute = AdministracionUsuariosRouteImport.update({
+  id: '/administracion/usuarios',
+  path: '/administracion/usuarios',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/acceso': typeof AccesoRoute
   '/configuracion': typeof ConfiguracionRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
+  '/administracion/parametros': typeof AdministracionParametrosRoute
+  '/administracion/series': typeof AdministracionSeriesRoute
+  '/administracion/usuarios': typeof AdministracionUsuariosRoute
   '/administracion/': typeof AdministracionIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/acceso': typeof AccesoRoute
   '/configuracion': typeof ConfiguracionRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
+  '/administracion/parametros': typeof AdministracionParametrosRoute
+  '/administracion/series': typeof AdministracionSeriesRoute
+  '/administracion/usuarios': typeof AdministracionUsuariosRoute
   '/administracion': typeof AdministracionIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/acceso': typeof AccesoRoute
   '/configuracion': typeof ConfiguracionRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
+  '/administracion/parametros': typeof AdministracionParametrosRoute
+  '/administracion/series': typeof AdministracionSeriesRoute
+  '/administracion/usuarios': typeof AdministracionUsuariosRoute
   '/administracion/': typeof AdministracionIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
-    '/' | '/configuracion' | '/administracion/catalogo' | '/administracion/'
+    | '/'
+    | '/acceso'
+    | '/configuracion'
+    | '/administracion/catalogo'
+    | '/administracion/parametros'
+    | '/administracion/series'
+    | '/administracion/usuarios'
+    | '/administracion/'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/configuracion' | '/administracion/catalogo' | '/administracion'
+  to:
+    | '/'
+    | '/acceso'
+    | '/configuracion'
+    | '/administracion/catalogo'
+    | '/administracion/parametros'
+    | '/administracion/series'
+    | '/administracion/usuarios'
+    | '/administracion'
   id:
     | '__root__'
     | '/'
+    | '/acceso'
     | '/configuracion'
     | '/administracion/catalogo'
+    | '/administracion/parametros'
+    | '/administracion/series'
+    | '/administracion/usuarios'
     | '/administracion/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AccesoRoute: typeof AccesoRoute
   ConfiguracionRoute: typeof ConfiguracionRoute
   AdministracionCatalogoRoute: typeof AdministracionCatalogoRoute
+  AdministracionParametrosRoute: typeof AdministracionParametrosRoute
+  AdministracionSeriesRoute: typeof AdministracionSeriesRoute
+  AdministracionUsuariosRoute: typeof AdministracionUsuariosRoute
   AdministracionIndexRoute: typeof AdministracionIndexRoute
 }
 
@@ -82,6 +142,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/acceso': {
+      id: '/acceso'
+      path: '/acceso'
+      fullPath: '/acceso'
+      preLoaderRoute: typeof AccesoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/configuracion': {
@@ -105,13 +172,38 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdministracionCatalogoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/administracion/parametros': {
+      id: '/administracion/parametros'
+      path: '/administracion/parametros'
+      fullPath: '/administracion/parametros'
+      preLoaderRoute: typeof AdministracionParametrosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/administracion/series': {
+      id: '/administracion/series'
+      path: '/administracion/series'
+      fullPath: '/administracion/series'
+      preLoaderRoute: typeof AdministracionSeriesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/administracion/usuarios': {
+      id: '/administracion/usuarios'
+      path: '/administracion/usuarios'
+      fullPath: '/administracion/usuarios'
+      preLoaderRoute: typeof AdministracionUsuariosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AccesoRoute: AccesoRoute,
   ConfiguracionRoute: ConfiguracionRoute,
   AdministracionCatalogoRoute: AdministracionCatalogoRoute,
+  AdministracionParametrosRoute: AdministracionParametrosRoute,
+  AdministracionSeriesRoute: AdministracionSeriesRoute,
+  AdministracionUsuariosRoute: AdministracionUsuariosRoute,
   AdministracionIndexRoute: AdministracionIndexRoute,
 }
 export const routeTree = rootRouteImport
@@ -119,10 +211,11 @@ export const routeTree = rootRouteImport
   ._addFileTypes<FileRouteTypes>()
 
 import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
+import type { startInstance } from './start.ts'
 declare module '@tanstack/react-start' {
   interface Register {
     ssr: true
     router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
   }
 }
