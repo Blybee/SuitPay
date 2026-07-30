@@ -1,19 +1,33 @@
 /**
- * TanStack Start SPA deja el HTML en `_shell.html`. Hosting clásico espera
- * `index.html` para el rewrite `** → /index.html`.
+ * Tras Nitro, los estáticos viven en `.output/public`. Si solo hay
+ * `_shell.html`, se copia a `index.html` para el rewrite de Hosting clásico.
  */
 import { copyFile, access } from 'node:fs/promises'
 import { resolve } from 'node:path'
 
-const shell = resolve('dist/client/_shell.html')
-const index = resolve('dist/client/index.html')
+const publicDir = resolve('.output/public')
+const shell = resolve(publicDir, '_shell.html')
+const index = resolve(publicDir, 'index.html')
 
 try {
-  await access(shell)
+  await access(publicDir)
 } catch {
-  console.warn('[postbuild-hosting] no hay dist/client/_shell.html; se omite')
+  console.warn('[postbuild-hosting] no hay .output/public; se omite')
   process.exit(0)
 }
 
-await copyFile(shell, index)
-console.log('[postbuild-hosting] index.html listo desde _shell.html')
+try {
+  await access(index)
+  console.log('[postbuild-hosting] index.html ya existe')
+  process.exit(0)
+} catch {
+  /* crear desde _shell si hace falta */
+}
+
+try {
+  await access(shell)
+  await copyFile(shell, index)
+  console.log('[postbuild-hosting] index.html desde _shell.html')
+} catch {
+  console.warn('[postbuild-hosting] ni index.html ni _shell.html')
+}

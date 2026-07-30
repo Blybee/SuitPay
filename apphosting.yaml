@@ -48,6 +48,11 @@ env:
     value: 1:930183430226:web:c0f4d1d9ac8f84a2651f8b
     availability: [BUILD, RUNTIME]
 
+  # Emisión y Auth contra Firebase cloud (nunca emuladores en producción).
+  - variable: VITE_USAR_EMULADORES
+    value: "false"
+    availability: [BUILD, RUNTIME]
+
   # --- Configuración del servidor, no secreta ----------------------------
 
   # La ventana de anulación es "el mismo día", y ese día es el de Lima.

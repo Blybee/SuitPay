@@ -2,6 +2,7 @@ import { defineConfig } from 'vite'
 import { devtools } from '@tanstack/devtools-vite'
 
 import { tanstackStart } from '@tanstack/react-start/plugin/vite'
+import { nitro } from 'nitro/vite'
 
 import viteReact from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
@@ -18,6 +19,8 @@ const config = defineConfig({
       // funciones; simplemente no renderiza páginas.
       spa: { enabled: true },
     }),
+    // Nitro produce `.output/server` que App Hosting/Cloud Run arrancan en PORT.
+    nitro(),
     viteReact(),
   ],
 })
