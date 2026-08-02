@@ -26,10 +26,36 @@ import type { Storage } from 'firebase-admin/storage'
 
 let aplicacion: App | undefined
 
+/**
+ * El projectId del Admin SDK **debe** ser el mismo que firma el ID token del
+ * cliente. Si `initializeApp()` toma el proyecto de gcloud ADC (p. ej. otra
+ * app), `verifyIdToken` falla y el mostrador muestra «sesión caducó» aunque
+ * el vendedor esté bien autenticado — y nunca llega al proveedor.
+ */
+function projectIdDelEntorno(): string | undefined {
+  return (
+    process.env['GOOGLE_CLOUD_PROJECT'] ??
+    process.env['GCLOUD_PROJECT'] ??
+    process.env['VITE_FIREBASE_PROJECT_ID'] ??
+    (typeof import.meta !== 'undefined'
+      ? (import.meta.env?.['VITE_FIREBASE_PROJECT_ID'] as string | undefined)
+      : undefined)
+  )
+}
+
 function obtenerAplicacion(): App {
   if (aplicacion !== undefined) return aplicacion
   const existentes = getApps()
-  aplicacion = existentes[0] ?? initializeApp()
+  if (existentes[0] !== undefined) {
+    aplicacion = existentes[0]
+    return aplicacion
+  }
+
+  const projectId = projectIdDelEntorno()
+  aplicacion =
+    projectId === undefined || projectId === ''
+      ? initializeApp()
+      : initializeApp({ projectId })
   return aplicacion
 }
 

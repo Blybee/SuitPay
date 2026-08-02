@@ -9,9 +9,10 @@ import type {
   Resultado,
 } from '../interfaz.ts'
 import {
-  pedirAlProveedor,
-  type ConfiguracionDelProveedor,
+  pedirAlProveedor
+  
 } from './transporte.ts'
+import type {ConfiguracionDelProveedor} from './transporte.ts';
 
 /**
  * Administración de establecimientos (sucursales) en el proveedor.
@@ -116,16 +117,16 @@ function extraerDocumento(json: unknown): DocDeSucursal {
   if (objeto['data'] !== undefined && typeof objeto['data'] === 'object') {
     return objeto['data'] as DocDeSucursal
   }
-  if (objeto['id'] !== undefined) return objeto as DocDeSucursal
+  if (objeto['id'] !== undefined) return objeto
   const docs = objeto['docs']
   if (Array.isArray(docs) && docs.length > 0) {
     return docs[0] as DocDeSucursal
   }
-  return objeto as DocDeSucursal
+  return objeto
 }
 
 function aEstablecimiento(doc: DocDeSucursal): Establecimiento | undefined {
-  if (doc.id === undefined || doc.id === null) return undefined
+  if (doc.id === undefined) return undefined
   return {
     id: String(doc.id),
     nombre: doc.nombre ?? '',

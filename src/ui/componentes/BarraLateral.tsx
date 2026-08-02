@@ -140,7 +140,7 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
                 to={item.to}
                 className={unir(
                   'min-h-11 rounded-full px-3 text-etiqueta font-bold uppercase',
-                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta',
+                  'focus-visible:outline-none focus-visible:border-tinta',
                   activo ? 'bg-tinta text-papel' : 'bg-mesa text-desvaida',
                 )}
                 aria-current={activo ? 'page' : undefined}
@@ -223,7 +223,7 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
                 title={item.etiqueta}
                 className={unir(
                   'flex min-h-11 items-center rounded-full font-bold transition-colors',
-                  'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta',
+                  'focus-visible:outline-none focus-visible:border-tinta',
                   colapsada
                     ? 'w-11 justify-center px-0'
                     : 'gap-3 px-4 text-cuerpo',

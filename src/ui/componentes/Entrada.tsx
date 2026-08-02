@@ -100,7 +100,7 @@ export function Entrada({
             className={[
               'min-h-14 w-full rounded-full border border-borde bg-mesa pl-12 pr-4',
               'text-entrada text-tinta placeholder:text-desvaida shadow-sm',
-              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta',
+              'focus-visible:outline-none focus-visible:border-tinta',
             ].join(' ')}
           />
         </div>
@@ -160,7 +160,7 @@ function BotonDeCaptura({
       onClick={onClick}
       className={[
         'flex min-h-14 w-14 shrink-0 items-center justify-center rounded-full border',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta',
+        'focus-visible:outline-none focus-visible:border-tinta',
         disponible
           ? 'border-borde bg-papel text-tinta shadow-sm hover:bg-tinta hover:text-papel'
           : 'cursor-not-allowed border-borde bg-mesa text-desvaida',

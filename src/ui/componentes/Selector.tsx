@@ -1,4 +1,5 @@
-import { useId, type ComponentPropsWithoutRef } from 'react'
+import { useId  } from 'react'
+import type {ComponentPropsWithoutRef} from 'react';
 
 /**
  * Select personalizado Soft-Pill (reutilizable).
@@ -51,15 +52,14 @@ export function Selector<T extends string>({
 
   return (
     <div className="flex items-center gap-2">
-      <label
-        htmlFor={idCampo}
-        className={unir(
-          'font-mono text-etiqueta uppercase text-desvaida',
-          ocultarEtiqueta && 'sr-only',
-        )}
-      >
-        {etiqueta}
-      </label>
+      {ocultarEtiqueta ? null : (
+        <label
+          htmlFor={idCampo}
+          className="font-mono text-etiqueta uppercase text-desvaida"
+        >
+          {etiqueta}
+        </label>
+      )}
       <select
         id={idCampo}
         value={valor}

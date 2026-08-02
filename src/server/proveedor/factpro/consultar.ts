@@ -99,11 +99,10 @@ export async function consultarDocumento(
   if (!respuesta.ok) {
     // T027: documento ausente → HTTP 404 + "Documento no encontrado.".
     // Solo ese mensaje afirma ausencia; otros 404 no se interpretan a ciegas.
-    const mensaje = (respuesta.fallo.rastro?.mensajeOriginal ?? '').toLowerCase()
+    const mensaje = (respuesta.fallo.rastro.mensajeOriginal ?? '').toLowerCase()
     if (
       respuesta.fallo.clase === 'rechazo_definitivo' &&
-      mensaje.includes('no encontrado') &&
-      respuesta.fallo.rastro
+      mensaje.includes('no encontrado')
     ) {
       return exito(documentoAusente(peticion, respuesta.fallo.rastro))
     }

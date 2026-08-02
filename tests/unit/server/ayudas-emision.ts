@@ -10,9 +10,16 @@ import type { TipoDeDocumento } from '../../../src/domain/documentos/tipos.ts'
 /**
  * Andamiaje compartido por las pruebas de emisión.
  *
- * Vive aparte para que cada prueba diga solo lo que le distingue. Cuando una
- * prueba de idempotencia empieza con treinta líneas de preparación, lo que la
- * prueba afirma queda enterrado y nadie la lee al cambiarla.
+ * ## Por qué sigue usando ProveedorSimulado
+ *
+ * La constitución exige cubrir reintento, respuesta ausente y fallo del
+ * proveedor. Esos modos **hay que inyectarlos**: el API real no ofrece un
+ * interruptor «acepta pero no contestes» ni «indeterminado a voluntad».
+ * Por eso estas pruebas de lógica de SuitPay usan el simulado; el contrato
+ * HTTP del proveedor se verifica aparte en `*-demo.test.ts` y scripts T027.
+ *
+ * No conviertas este andamiaje al proveedor real: dejarías de poder probar
+ * el principio II.
  */
 
 export const VENDEDOR = 'vendedor-1'

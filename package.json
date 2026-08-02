@@ -21,6 +21,7 @@
     "prueba": "vitest run --project dominio --project servidor --project interfaz",
     "prueba:ver": "vitest --project dominio --project servidor --project interfaz",
     "prueba:cobertura": "vitest run --coverage --project dominio --project servidor",
+    "prueba:proveedor": "vitest run --project servidor tests/unit/server/contribuyente-demo.test.ts tests/unit/server/establecimientos-demo.test.ts tests/unit/server/establecimientos-simulado.test.ts",
     "emuladores": "firebase emulators:start --project demo-suitpay --only firestore,auth,storage",
     "prueba:emulador": "firebase emulators:exec --project demo-suitpay --only firestore,auth,storage \"vitest run --project emulador\"",
     "prueba:e2e": "playwright test",

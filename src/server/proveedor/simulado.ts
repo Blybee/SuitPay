@@ -36,7 +36,12 @@ import type {
  */
 
 export type Comportamiento =
-  | { readonly tipo: 'exito'; readonly estado?: EstadoNormalizado }
+  | {
+      readonly tipo: 'exito'
+      readonly estado?: EstadoNormalizado
+      /** Solo consulta de contribuyente: condicion ante el registro oficial. */
+      readonly condicion?: string
+    }
   | { readonly tipo: 'rechazo_definitivo'; readonly motivo?: string }
   | { readonly tipo: 'indisponible' }
   | { readonly tipo: 'indeterminado' }
@@ -365,8 +370,13 @@ export class ProveedorSimulado implements ProveedorDeEmision {
       case 'acepta_pero_no_contesta':
         return fallo('indisponible', 'consulta_no_disponible', RASTRO_VACIO)
       case 'rechazo_definitivo':
-        return fallo('rechazo_definitivo', 'no_encontrado', RASTRO_VACIO)
-      case 'exito':
+        return fallo(
+          'rechazo_definitivo',
+          this.comportamientoDeContribuyente.motivo ?? 'no_encontrado',
+          RASTRO_VACIO,
+        )
+      case 'exito': {
+        const comportamiento = this.comportamientoDeContribuyente
         return exito({
           denominacion:
             peticion.tipoDocumento === 'RUC'
@@ -374,9 +384,10 @@ export class ProveedorSimulado implements ProveedorDeEmision {
               : 'PEREZ SIMULADO, JUAN',
           direccion: 'AV. SIMULADA 123, LIMA',
           ubigeo: '150101',
-          condicion: 'HABIDO',
+          condicion: comportamiento.condicion ?? 'HABIDO',
           estadoRegistro: 'ACTIVO',
         })
+      }
     }
   }
 

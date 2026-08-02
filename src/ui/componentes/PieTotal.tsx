@@ -98,7 +98,7 @@ export function PieTotal({
           }
           className={[
             'min-h-14 shrink-0 rounded-full px-8 text-entrada font-bold uppercase',
-            'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta',
+            'focus-visible:outline-none focus-visible:border-tinta',
             'disabled:cursor-not-allowed',
             bloqueado || enVuelo || estado === 'emitido'
               ? 'border border-borde bg-mesa text-desvaida'

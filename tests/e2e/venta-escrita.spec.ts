@@ -43,8 +43,9 @@ import { sembrarSesionDeVendedor } from './ayudas-sesion.ts'
  * puede comprobar; partirlas es lo que hace que tres cuartas partes de este
  * recorrido estén verificadas hoy en lugar de ninguna.
  *
- *     npm run prueba:e2e            solo la parte del cliente
- *     npm run prueba:e2e:completa   todo, con emuladores y proveedor simulado
+ *     npm run prueba:e2e            solo la parte del cliente (proveedor real por omisión)
+ *     npm run prueba:e2e:completa   todo, con emuladores
+ *     PROVEEDOR_SIMULADO=true       fuerza el doble local en el webServer
  *
  * Lo que falta **se salta y lo dice**. Un fallo por falta de entorno se confunde con
  * un fallo del sistema, y una prueba que siempre está roja deja de leerse.

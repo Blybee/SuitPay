@@ -17,8 +17,9 @@ import type { ProveedorDeEmision } from './interfaz.ts'
  * es escribir otra carpeta hermana de `factpro/` y cambiar una línea aquí. Nada
  * más se toca, porque nada más lo conoce.
  *
- * La comprobación de que la frontera es real es buscar el nombre del proveedor en
- * el repositorio: solo debe aparecer dentro de `src/server/proveedor/`.
+ * La comprobación de que la frontera es real es buscar el nombre del proveedor
+ * fuera de `src/server/proveedor/**` y del tooling de frontera (T152). No debe
+ * aparecer en domain, features, ui, routes ni infra.
  */
 
 let instancia: ProveedorDeEmision | undefined

@@ -26,7 +26,10 @@ export default defineConfig({
         test: {
           name: 'servidor',
           environment: 'node',
-          include: ['tests/unit/server/**/*.test.ts'],
+          include: [
+            'tests/unit/server/**/*.test.ts',
+            'tests/constitucion/**/*.test.ts',
+          ],
         },
       },
       {
@@ -50,6 +53,9 @@ export default defineConfig({
           name: 'emulador',
           environment: 'node',
           include: ['tests/emulador/**/*.test.ts'],
+          // reglas.test.ts hace clearFirestore(); si corre en paralelo con
+          // emitir-transaccion.test.ts se borran las series a mitad de prueba.
+          fileParallelism: false,
           testTimeout: 20_000,
           hookTimeout: 30_000,
         },

@@ -41,7 +41,7 @@ export function PestanasMostrador({
             onClick={() => onCambiar(cada.id)}
             className={unir(
               'min-h-11 rounded-full px-5 text-cuerpo font-bold transition-colors',
-              'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta',
+              'focus-visible:outline-none focus-visible:border-tinta',
               seleccionada
                 ? 'bg-tinta text-papel'
                 : 'bg-mesa text-desvaida hover:text-tinta',

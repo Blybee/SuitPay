@@ -11,9 +11,10 @@ import type {
   SerieEnProveedor,
 } from '../interfaz.ts'
 import {
-  pedirAlProveedor,
-  type ConfiguracionDelProveedor,
+  pedirAlProveedor
+  
 } from './transporte.ts'
+import type {ConfiguracionDelProveedor} from './transporte.ts';
 
 /**
  * Alta y baja de series en el proveedor.
@@ -120,10 +121,5 @@ function extraerSerie(json: unknown): {
       sucursal?: number | string
     }
   }
-  return objeto as {
-    id?: number | string
-    serie?: string
-    numero_a_comenzar?: number
-    sucursal?: number | string
-  }
+  return objeto
 }

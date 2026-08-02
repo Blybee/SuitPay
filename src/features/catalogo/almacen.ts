@@ -7,6 +7,7 @@ import {
   
 } from '../../domain/busqueda/productos.ts'
 import type {IndiceDeProductos, ProductoBuscable, ResultadoDeBusqueda} from '../../domain/busqueda/productos.ts';
+import type { ClienteEnIndice } from '../../infra/local/catalogo.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
 import { arrancar  } from './arranque.ts'
 import type {ResultadoDelArranque} from './arranque.ts';
@@ -50,9 +51,16 @@ interface EstadoDelCatalogo {
 }
 
 interface AccionesDelCatalogo {
-  cargar: () => Promise<void>
+  /**
+   * @param opciones.forzar — reintenta contra el servidor aunque ya haya
+   *   arrancado desde caché. Hace falta cuando el primer intento falló por
+   *   sesión aún no lista y dejó la banda de «sin conexión» pegada.
+   */
+  cargar: (opciones?: { readonly forzar?: boolean }) => Promise<void>
   buscar: (termino: string, limite?: number) => ResultadoDeBusqueda<ProductoBuscable>
   productoPorCodigo: (codigo: string) => ProductoBuscable | undefined
+  /** Actualiza el índice en memoria tras un alta (sin lectura extra). */
+  incorporarCliente: (entrada: ClienteEnIndice) => void
 }
 
 export type AlmacenDelCatalogo = EstadoDelCatalogo & AccionesDelCatalogo
@@ -73,10 +81,11 @@ export const usarCatalogo = create<AlmacenDelCatalogo>((set, get) => ({
   clientes: [],
   posiblementeDesactualizado: false,
 
-  async cargar() {
+  async cargar(opciones = {}) {
     // Dos montajes simultáneos no deben provocar dos arranques: serían tres
     // lecturas de más, y el arranque entero cuesta tres.
-    if (get().cargando || get().listo) return
+    if (get().cargando) return
+    if (get().listo && !opciones.forzar) return
     set({ cargando: true })
 
     try {
@@ -91,10 +100,13 @@ export const usarCatalogo = create<AlmacenDelCatalogo>((set, get) => ({
         listo: true,
       })
 
-      // Si se arrancó de la caché, el vendedor tiene que saberlo: puede vender,
-      // pero un producto nuevo del catálogo de esta mañana quizá no esté.
+      // `sinRed` no significa «el SO dice offline»: significa que Firestore no
+      // respondió y se usó IndexedDB. Si más tarde el servidor sí responde,
+      // hay que **resolver** la banda; si no, queda pegada con wifi bueno.
       if (resultado.sinRed) {
         usarDegradacion.getState().declarar('red')
+      } else {
+        usarDegradacion.getState().resolver('red')
       }
     } catch {
       // Sin catálogo no hay búsqueda, pero la aplicación no se cae: el vendedor
@@ -119,6 +131,14 @@ export const usarCatalogo = create<AlmacenDelCatalogo>((set, get) => ({
       if (producto.codigo === codigo) return producto
     }
     return undefined
+  },
+
+  incorporarCliente(entrada) {
+    const actuales = get().clientes
+    if (actuales.some((c) => c.numeroDocumento === entrada.numeroDocumento)) {
+      return
+    }
+    set({ clientes: [...actuales, entrada] })
   },
 }))
 

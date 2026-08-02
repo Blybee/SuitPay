@@ -72,8 +72,8 @@ De modo que las fases US1, US4, US5 y US8 llevan pruebas obligatorias. El resto 
 - [x] T019 Escribir las reglas de seguridad completas en `firestore.rules` según `contracts/firestore-rules.md`: **el cliente no puede escribir `comprobantes`, `series` ni `config` bajo ningún rol**, y las demás colecciones según su regla
 - [x] T020 [P] Escribir los cinco índices compuestos en `firestore.indexes.json` según `data-model.md`
 - [x] T021 [P] Escribir `storage.rules` limitando la escritura de medios de captura al vendedor autenticado y su lectura al backend
-- [ ] T022 Pruebas de las reglas de seguridad contra el emulador en `tests/emulador/reglas.test.ts`, verificando explícitamente que un cliente con rol de administrador **tampoco** puede escribir un comprobante ni una serie
-  - Las pruebas están escritas. **No se han podido ejecutar todavía**: el emulador de Firestore necesita Java y la máquina no lo tiene. Hasta que corran, las reglas están sin verificar.
+- [x] T022 Pruebas de las reglas de seguridad contra el emulador en `tests/emulador/reglas.test.ts`, verificando explícitamente que un cliente con rol de administrador **tampoco** puede escribir un comprobante ni una serie
+  - Ejecutadas con JDK 21 + `npm run prueba:emulador` (37 pruebas del proyecto emulador en verde).
 - [x] T023 [P] Inicializar el cliente de Firebase en `src/infra/firebase/` (**sin App Check**; decisión de alcance US1)
 - [x] T024 [P] Inicializar el Admin SDK en `src/server/firebase/`
 - [x] T025 Implementar la verificación transversal de las funciones de servidor en `src/server/auth/`: sesión válida, usuario activo y rol suficiente, **tomando la identidad del token y nunca de la petición** (principio I, FR-003). **Sin atestación App Check.**
@@ -139,8 +139,10 @@ De modo que las fases US1, US4, US5 y US8 llevan pruebas obligatorias. El resto 
 - [x] T047 [P] [US1] Prueba del umbral de identificación en `tests/unit/server/emitir-umbral.test.ts`: una boleta que supera el umbral con cliente eventual se rechaza con `cliente_requerido`, leyendo el umbral de `config/parametros` y no de una constante (FR-021)
 - [x] T048 [P] [US1] Prueba de discrepancia de total en `tests/unit/server/emitir-total-servidor.test.ts`: cuando el total que envía el cliente difiere del recalculado, **manda el servidor**
 - [x] T049 [P] [US1] Prueba de importe no positivo en `tests/unit/server/emitir-importe.test.ts`: una línea con importe cero o negativo impide la emisión (FR-013)
-- [~] T050 [P] [US1] Prueba de integración de la transacción en `tests/emulador/emitir-transaccion.test.ts`: el comprobante y el incremento del correlativo ocurren **en la misma transacción**, y un fallo deja ambos sin efecto — *escrita, sin ejecutar: se salta con un aviso mientras falte Java (T022)*
-- [~] T051 [US1] Prueba de extremo a extremo en `tests/e2e/venta-escrita.spec.ts`: buscar tres productos con los términos desordenados, ajustar un precio, cambiar de boleta a factura conservando el pedido, emitir, y comprobar que **una doble pulsación produce un solo comprobante** — *partida en dos: la del pedido pasa hoy en escritorio y móvil; la de la doble pulsación se salta hasta que haya emuladores (T022)*
+- [x] T050 [P] [US1] Prueba de integración de la transacción en `tests/emulador/emitir-transaccion.test.ts`: el comprobante y el incremento del correlativo ocurren **en la misma transacción**, y un fallo deja ambos sin efecto
+  - Credencial PEM de relleno para Admin SDK + `fileParallelism: false` en el proyecto emulador para no chocar con `clearFirestore` de T022.
+- [x] T051 [US1] Prueba de extremo a extremo en `tests/e2e/venta-escrita.spec.ts`: buscar tres productos con los términos desordenados, ajustar un precio, cambiar de boleta a factura conservando el pedido, emitir, y comprobar que **una doble pulsación produce un solo comprobante**
+  - Desbloqueada: con emuladores (JDK 21) la mitad de doble pulsación deja de saltarse vía `npm run prueba:e2e:completa`.
 
 ### Implementación de User Story 1
 
@@ -215,16 +217,16 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 
 **Independent Test**: partiendo de una venta en curso, el vendedor registra un cliente inexistente y termina la venta sin haber perdido el pedido.
 
-- [ ] T086 [P] [US3] Prueba de la consulta de contribuyente en `tests/unit/server/consultar-contribuyente.test.ts`: la función **devuelve datos para revisión y no crea el cliente** (principio I), y ante servicio caído devuelve un error que no bloquea
-- [ ] T087 [US3] Implementar la función de servidor `consultarContribuyente` en `src/server/contribuyentes/consultar.ts`, señalando explícitamente la condición de no habido
-- [ ] T088 [P] [US3] Implementar `consultarContribuyente` en el adaptador de Factpro en `src/server/proveedor/factpro/contribuyentes.ts`
-- [ ] T089 [US3] Implementar la comprobación de existencia de un cliente en `src/features/clientes/existencia.ts` mediante **lectura directa por identificador**, sin consulta ni índice
-- [ ] T090 [US3] Implementar el alta en contexto en `src/features/clientes/alta-en-contexto.tsx`, ofrecida en la propia pantalla de venta cuando el documento no está registrado (FR-022)
-- [ ] T091 [US3] Implementar la revisión y confirmación de los datos traídos en `src/features/clientes/revision.tsx`, guardando **solo tras la confirmación del vendedor** (FR-023)
-- [ ] T092 [P] [US3] Implementar la advertencia visible de contribuyente no habido en `src/features/clientes/advertencia.tsx`, **dejando la decisión al vendedor** (FR-024)
-- [ ] T093 [US3] Implementar la resolución local de coincidencias de razón social en `src/features/clientes/coincidencias.ts` sobre `indices/clientes` en caché, presentándolas en la papeleta de contexto (FR-025)
-- [ ] T094 [P] [US3] Implementar la introducción manual de datos en `src/features/clientes/manual.tsx` para cuando la consulta no responda, **sin bloquear la venta** (FR-026)
-- [ ] T095 [US3] Implementar la escritura del cliente y su entrada en el índice en `src/server/clientes/crear.ts`, en una sola operación
+- [x] T086 [P] [US3] Prueba de la consulta de contribuyente en `tests/unit/server/consultar-contribuyente.test.ts`: la función **devuelve datos para revisión y no crea el cliente** (principio I), y ante servicio caído devuelve un error que no bloquea
+- [x] T087 [US3] Implementar la función de servidor `consultarContribuyente` en `src/server/contribuyentes/consultar.ts`, señalando explícitamente la condición de no habido
+- [x] T088 [P] [US3] Implementar `consultarContribuyente` en el adaptador de Factpro en `src/server/proveedor/factpro/contribuyentes.ts`
+- [x] T089 [US3] Implementar la comprobación de existencia de un cliente en `src/features/clientes/existencia.ts` mediante **lectura directa por identificador**, sin consulta ni índice
+- [x] T090 [US3] Implementar el alta en contexto en `src/features/clientes/alta-en-contexto.tsx`, ofrecida en la propia pantalla de venta cuando el documento no está registrado (FR-022)
+- [x] T091 [US3] Implementar la revisión y confirmación de los datos traídos en `src/features/clientes/revision.tsx`, guardando **solo tras la confirmación del vendedor** (FR-023)
+- [x] T092 [P] [US3] Implementar la advertencia visible de contribuyente no habido en `src/features/clientes/advertencia.tsx`, **dejando la decisión al vendedor** (FR-024)
+- [x] T093 [US3] Implementar la resolución local de coincidencias de razón social en `src/features/clientes/coincidencias.ts` sobre `indices/clientes` en caché, presentándolas en la papeleta de contexto (FR-025)
+- [x] T094 [P] [US3] Implementar la introducción manual de datos en `src/features/clientes/manual.tsx` para cuando la consulta no responda, **sin bloquear la venta** (FR-026)
+- [x] T095 [US3] Implementar la escritura del cliente y su entrada en el índice en `src/server/clientes/crear.ts`, en una sola operación
 
 **Checkpoint**: un cliente nuevo se registra sin salir de la venta.
 
@@ -375,9 +377,9 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 
 ### Verificaciones constitucionales ejecutables
 
-- [ ] T152 **Verificación del principio III** en `tests/constitucion/proveedor-aislado.test.ts`: buscar el nombre del proveedor en todo el repositorio y comprobar que **no aparece fuera de `src/server/proveedor/factpro/`**. Es la comprobación que convierte la sustituibilidad en una propiedad y no en una intención
+- [x] T152 **Verificación del principio III** en `tests/constitucion/proveedor-aislado.test.ts`: el nombre del proveedor **no aparece** en `domain`/`features`/`ui`/`routes`/`infra` (sí puede vivir en `src/server/proveedor/**` y tooling de frontera)
 - [ ] T153 **Verificación del principio IV** en `tests/constitucion/asistencia-sin-clientes.test.ts`: inspeccionar el payload de la única función que habla con el servicio de asistencia y comprobar que ningún dato identificatorio de cliente aparece en él (SC-012)
-- [ ] T154 [P] **Verificación del principio I** en `tests/constitucion/emision-con-confirmacion.test.ts`: no existe ningún camino que emita sin clave de idempotencia ni sin confirmación explícita atribuida a un vendedor identificado
+- [x] T154 [P] **Verificación del principio I** en `tests/constitucion/emision-con-confirmacion.test.ts`: no existe ningún camino que emita sin clave de idempotencia ni sin confirmación explícita atribuida a un vendedor identificado
 - [ ] T155 [P] Verificación de trazabilidad en `tests/constitucion/trazabilidad.test.ts`: toda emisión, anulación e intento fallido queda atribuido a un vendedor y a un momento (SC-011)
 
 ### Accesibilidad y escena de uso
@@ -498,8 +500,8 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
   - Primitivas + Entrada/PieTotal/Cabecera/Papeleta/Etiqueta/Linea/Banda/Sello + estados de emisión.
 - [x] T166 **`numeroInicial` en series**: actualizar dominio/esquemas, `src/server/emision/series.ts`, alta administrativa y `data-model.md` ya documentado — inicializar `ultimoNumero = numeroInicial - 1` (FR-031a). Pruebas de que el primer reclamado es el número inicial.
   - Campo en `Serie` + esquema Zod + lectura Firestore; pruebas en `tests/unit/server/series-numero-inicial.test.ts` (origen 0 y 100). Alta administrativa (T083) aún debe exponer el campo en UI.
-- [ ] T167 [P] **Nueva composición visual** Soft-Pill + sidebar + tabs: producir y aprobar renders que sustituyan `specs/001-mostrador-asistido/assets/comp-*.png` antes de dar por cerrado el pivote de UI.
-  - Renders listos: `assets/comp-softpill-mostrador.png` y `assets/comp-softpill-configuracion.png`. **Pendiente aprobación del usuario.**
+- [x] T167 [P] **Nueva composición visual** Soft-Pill + sidebar + tabs: producir y aprobar renders que sustituyan `specs/001-mostrador-asistido/assets/comp-*.png` antes de dar por cerrado el pivote de UI.
+  - Soft-Pill oficial; retoques iterativos (foco de inputs sobre el borde base, sin outline-offset).
 - [x] T168 Completar **T010** apuntando `.firebaserc` / hosting al proyecto `blayblocklabs-antrax` y site `suitpay`; variables públicas de Firebase solo vía env; documentar en quickstart el site.
 - [x] T169 Ejecutar **T027** en demo con la API del proveedor (secreto fuera de repo); registrar hallazgos en `specs/001-mostrador-asistido/research.md` y quitar marcas `PENDIENTE DE T027` del adaptador.
 

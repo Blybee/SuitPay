@@ -1,50 +1,24 @@
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { ProveedorFactpro } from '../../../src/server/proveedor/factpro/index.ts'
+import {
+  hayCredencialesDelProveedor,
+  proveedorReal,
+} from './ayudas-proveedor-vivo.ts'
 
 /**
- * T083 — prueba en vivo (demo) de crear y eliminar establecimiento.
- *
- * Se salta si no hay `PROVEEDOR_TOKEN` (p. ej. CI sin secretos).
- * Carga `.env.local` sin imprimir el token.
+ * T083 — prueba en vivo (demo) de crear/eliminar establecimiento y serie.
+ * Se salta si no hay credenciales (p. ej. CI sin secretos).
  */
 
-function cargarEnvLocal(): void {
-  try {
-    const texto = readFileSync(resolve('.env.local'), 'utf8')
-    for (const linea of texto.split('\n')) {
-      const limpia = linea.trim()
-      if (limpia === '' || limpia.startsWith('#')) continue
-      const igual = limpia.indexOf('=')
-      if (igual <= 0) continue
-      const clave = limpia.slice(0, igual).trim()
-      const valor = limpia.slice(igual + 1).trim()
-      if (process.env[clave] === undefined) {
-        process.env[clave] = valor
-      }
-    }
-  } catch {
-    // Sin .env.local: la prueba se salta.
-  }
-}
+const hayCredenciales = hayCredencialesDelProveedor()
 
-cargarEnvLocal()
-
-const hayToken =
-  typeof process.env.PROVEEDOR_TOKEN === 'string' &&
-  process.env.PROVEEDOR_TOKEN.length > 0 &&
-  typeof process.env.PROVEEDOR_URL_BASE === 'string' &&
-  process.env.PROVEEDOR_URL_BASE.length > 0
-
-describe.skipIf(!hayToken)(
+describe.skipIf(!hayCredenciales)(
   'establecimientos y series en el proveedor (demo en vivo)',
   () => {
     it(
       'crea un establecimiento, aparece en el listado y se puede eliminar',
       { timeout: 30_000 },
       async () => {
-        const proveedor = new ProveedorFactpro()
+        const proveedor = proveedorReal()
         const anexo = `9${String(Date.now()).slice(-3)}`
 
         const creado = await proveedor.crearEstablecimiento({
@@ -84,7 +58,7 @@ describe.skipIf(!hayToken)(
       'crea y elimina una serie de boleta sobre un establecimiento existente',
       { timeout: 30_000 },
       async () => {
-        const proveedor = new ProveedorFactpro()
+        const proveedor = proveedorReal()
         const lista = await proveedor.listarEstablecimientos()
         expect(lista.ok).toBe(true)
         if (!lista.ok) return

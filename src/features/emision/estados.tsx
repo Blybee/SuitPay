@@ -1,7 +1,7 @@
 import { AlertTriangle, Loader2, Printer, Share2 } from 'lucide-react'
 import { useState } from 'react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
-import { PapeletaContexto } from '../../ui/componentes/PapeletaContexto.tsx'
+import { Modal } from '../../ui/componentes/Modal.tsx'
 import { MarcaDeEstado } from '../../ui/componentes/Sello.tsx'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
 import { consultarEstado } from './emitir.funciones.ts'
@@ -48,7 +48,7 @@ export function EstadoDeEmision({
   if (fase.nombre === 'emitida') {
     const { comprobante, yaExistia } = fase
     return (
-      <PapeletaContexto
+      <Modal
         abierta
         alCambiar={(abierta) => {
           if (!abierta) onCerrar()
@@ -108,7 +108,7 @@ export function EstadoDeEmision({
             </Boton>
           </div>
         </div>
-      </PapeletaContexto>
+      </Modal>
     )
   }
 
@@ -119,7 +119,7 @@ export function EstadoDeEmision({
   const reintentable = sePuedeReintentar(fase)
 
   return (
-    <PapeletaContexto
+    <Modal
       abierta
       alCambiar={(abierta) => {
         if (!abierta) onCerrar()
@@ -157,7 +157,7 @@ export function EstadoDeEmision({
           </Boton>
         </div>
       </div>
-    </PapeletaContexto>
+    </Modal>
   )
 }
 
@@ -236,7 +236,7 @@ function Verificacion({
   }
 
   return (
-    <PapeletaContexto
+    <Modal
       abierta
       noSeCierraSola
       alCambiar={() => undefined}
@@ -286,6 +286,6 @@ function Verificacion({
           </Boton>
         </div>
       </div>
-    </PapeletaContexto>
+    </Modal>
   )
 }

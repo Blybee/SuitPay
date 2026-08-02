@@ -74,7 +74,11 @@ export async function verificarIdentidad(
       credenciales.tokenDeSesion,
       true,
     )
-  } catch {
+  } catch (error) {
+    // Fallos frecuentes en local: Admin SDK apuntando a otro proyecto que el
+    // cliente (ADC/gcloud ≠ VITE_FIREBASE_PROJECT_ID). Sin el detalle, parece
+    // que «caducó» la sesión del vendedor.
+    console.error('[SuitPay] verifyIdToken falló', error)
     fallar('sesion_invalida')
   }
 

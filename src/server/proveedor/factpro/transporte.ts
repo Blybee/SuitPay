@@ -100,7 +100,9 @@ function rastroDe(respuesta: RespuestaCruda): RastroDelProveedor {
     mensajeDeErrors(objeto) ??
     objeto?.['mensaje'] ??
     objeto?.['message'] ??
-    objeto?.['error']
+    objeto?.['error'] ??
+    // Host de consultas RUC/DNI: `{ "detail": "Token incorrecto" }`
+    objeto?.['detail']
 
   return {
     codigoOriginal: typeof codigo === 'string' ? codigo : undefined,

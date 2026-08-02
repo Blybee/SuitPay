@@ -3,7 +3,10 @@ import { useEffect, useState } from 'react'
 import { REGLAS } from '../domain/documentos/tipos.ts'
 import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
 import { usarCatalogo, umbralVigente } from '../features/catalogo/almacen.ts'
-import { usarDegradacion } from '../features/degradacion/estado.ts'
+import {
+  alRecuperarConectividad,
+  usarDegradacion,
+} from '../features/degradacion/estado.ts'
 import { usarEmision } from '../features/emision/flujo.ts'
 import { EstadoDeEmision } from '../features/emision/estados.tsx'
 import {
@@ -18,6 +21,7 @@ import {
 } from '../features/pedido/almacen.ts'
 import { puedeEmitir, usarSesion } from '../features/sesion/almacen.ts'
 import { GuardaSesion } from '../features/sesion/GuardaSesion.tsx'
+import { AltaClienteEnContexto } from '../features/clientes/alta-en-contexto.tsx'
 import { emitir } from '../features/emision/emitir.funciones.ts'
 import { leerMiSerieFn } from '../features/series/series.funciones.ts'
 import { CabeceraDocumento } from '../ui/componentes/CabeceraDocumento.tsx'
@@ -56,6 +60,7 @@ function Mostrador() {
   const [termino, setTermino] = useState('')
   const [medioPago, setMedioPago] = useState('efectivo')
   const [serieAsignada, setSerieAsignada] = useState<string | null>(null)
+  const [altaClienteAbierta, setAltaClienteAbierta] = useState(false)
 
   const catalogo = usarCatalogo()
   const sesion = usarSesion()
@@ -67,8 +72,25 @@ function Mostrador() {
   const cerrarEmision = usarEmision((estado) => estado.cerrar)
   const degradaciones = usarDegradacion((estado) => estado.activas)
 
+  // El arranque exige sesión: sin token, Firestore deniega y el fallback a
+  // caché declaraba «sin conexión» aunque el wifi estuviera bien. Se espera
+  // al uid y se fuerza reintento si la banda de red quedó activa.
   useEffect(() => {
-    void usarCatalogo.getState().cargar()
+    if (sesion.uid === null) return
+    const degradadaPorRed = usarDegradacion
+      .getState()
+      .activas.some((cada) => cada.causa === 'red')
+    void usarCatalogo.getState().cargar({
+      forzar:
+        degradadaPorRed ||
+        usarCatalogo.getState().posiblementeDesactualizado,
+    })
+  }, [sesion.uid])
+
+  useEffect(() => {
+    return alRecuperarConectividad(() => {
+      void usarCatalogo.getState().cargar({ forzar: true })
+    })
   }, [])
 
   useEffect(() => {
@@ -181,10 +203,20 @@ function Mostrador() {
             onCambiarTipo={pedido.fijarTipoDocumento}
             serie={serieAsignada}
             cliente={pedido.cliente}
-            onElegirCliente={() => undefined}
+            onElegirCliente={() => setAltaClienteAbierta(true)}
             onQuitarCliente={() => pedido.fijarCliente(null)}
             total={total}
             umbral={umbral}
+          />
+
+          <AltaClienteEnContexto
+            abierta={altaClienteAbierta}
+            onCerrar={() => setAltaClienteAbierta(false)}
+            indiceDeClientes={catalogo.clientes}
+            onClienteElegido={(cliente) => pedido.fijarCliente(cliente)}
+            onClienteCreadoEnIndice={(entrada) =>
+              usarCatalogo.getState().incorporarCliente(entrada)
+            }
           />
 
           <div className="flex-1 overflow-y-auto pb-2">

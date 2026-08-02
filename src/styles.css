@@ -49,11 +49,11 @@
     font-variant-numeric: tabular-nums;
   }
 
-  /* El foco tiene que verse a distancia y de pie: el sistema se opera con
-     teclado y un anillo tenue es un anillo inútil. */
+  /* Foco sobre el borde base (sin anillo desfasado). El sistema se opera de pie
+     con teclado: un cambio de color del borde propio basta y no “sale” del
+     componente. */
   :focus-visible {
-    outline: 3px solid var(--color-tinta);
-    outline-offset: 1px;
+    outline: none;
   }
 }
 
@@ -63,6 +63,39 @@
  * Sin soporte → select del SO (degradación progresiva).
  */
 @layer components {
+  /*
+   * Modal Soft-Pill sobre <dialog> nativo.
+   * Guía: modern-web-guidance / html + light-dismiss-a-dialog.
+   */
+  .modal-suitpay {
+    margin: auto;
+    border: 1px solid var(--color-borde);
+    background-color: var(--color-papel);
+    color: var(--color-tinta);
+    font-family: var(--font-sans);
+  }
+
+  .modal-suitpay::backdrop {
+    background-color: rgb(26 23 20 / 0.25);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .modal-suitpay[open] {
+      animation: modal-suitpay-entrar 160ms ease-out;
+    }
+  }
+
+  @keyframes modal-suitpay-entrar {
+    from {
+      opacity: 0;
+      transform: translateY(0.35rem) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+
   .selector-suitpay,
   .selector-suitpay::picker(select) {
     appearance: base-select;
@@ -83,8 +116,8 @@
   }
 
   .selector-suitpay:focus-visible {
-    outline: 2px solid var(--color-tinta);
-    outline-offset: 2px;
+    outline: none;
+    border-color: var(--color-tinta);
   }
 
   .selector-suitpay:disabled {

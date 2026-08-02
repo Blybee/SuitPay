@@ -21,6 +21,7 @@ import type {
   SerieEnProveedor,
 } from '../interfaz.ts'
 import { consultarDocumento } from './consultar.ts'
+import { consultarContribuyenteEnProveedor } from './contribuyentes.ts'
 import {
   crearEstablecimiento as crearEstablecimientoEnApi,
   eliminarEstablecimiento as eliminarEstablecimientoEnApi,
@@ -52,7 +53,6 @@ import type { ConfiguracionDelProveedor } from './transporte.ts'
  */
 
 const RUTA_DE_BAJA = '/api/v3/anulaciones'
-const RUTA_DE_CONTRIBUYENTE = '/api/v3/consulta-ruc'
 const RUTA_DE_NOTA_CREDITO = '/api/v3/notas'
 
 export class ProveedorFactpro implements ProveedorDeEmision {
@@ -115,40 +115,10 @@ export class ProveedorFactpro implements ProveedorDeEmision {
     })
   }
 
-  async consultarContribuyente(
+  consultarContribuyente(
     peticion: PeticionDeContribuyente,
   ): Promise<Resultado<Contribuyente>> {
-    const respuesta = await pedirAlProveedor(
-      this.configuracion,
-      RUTA_DE_CONTRIBUYENTE,
-      { numero: peticion.numeroDocumento, tipo: peticion.tipoDocumento },
-    )
-
-    if (!respuesta.ok) return propagarFallo(respuesta.fallo)
-
-    const datos = (
-      respuesta.valor.json as {
-        data?: {
-          nombre?: string
-          direccion?: string
-          ubigeo?: string
-          condicion?: string
-          estado?: string
-        }
-      }
-    ).data
-
-    if (datos?.nombre === undefined) {
-      return fallo('rechazo_definitivo', 'no_encontrado', respuesta.valor.rastro)
-    }
-
-    return exito({
-      denominacion: datos.nombre,
-      direccion: datos.direccion,
-      ubigeo: datos.ubigeo,
-      condicion: datos.condicion,
-      estadoRegistro: datos.estado,
-    })
+    return consultarContribuyenteEnProveedor(this.configuracion, peticion)
   }
 
   async emitirNotaCredito(

@@ -6,10 +6,10 @@ import type { CatalogoPublicado, ProductoDeCatalogo } from './tipos.ts'
  */
 
 export interface AlmacenDeCatalogo {
-  leerPublicado(): Promise<CatalogoPublicado | null>
-  publicar(entrada: {
+  leerPublicado: () => Promise<CatalogoPublicado | null>
+  publicar: (entrada: {
     readonly productos: readonly ProductoDeCatalogo[]
     readonly publicadoPor: string
     readonly momento: Date
-  }): Promise<CatalogoPublicado>
+  }) => Promise<CatalogoPublicado>
 }

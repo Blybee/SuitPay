@@ -60,6 +60,7 @@ export function CabeceraDocumento({
       <div className="flex flex-wrap items-center gap-3">
         <Selector
           etiqueta="Tipo de documento"
+          ocultarEtiqueta
           valor={tipo}
           onCambiar={onCambiarTipo}
           opciones={OPCIONES_TIPO}

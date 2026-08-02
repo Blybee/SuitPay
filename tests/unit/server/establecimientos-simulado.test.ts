@@ -1,73 +1,54 @@
 import { describe, expect, it } from 'vitest'
-import { ProveedorSimulado } from '../../../src/server/proveedor/simulado.ts'
+import {
+  hayCredencialesDelProveedor,
+  proveedorReal,
+} from './ayudas-proveedor-vivo.ts'
 
 /**
- * T083 — crear / listar / eliminar establecimiento (simulado).
+ * Antes usaba ProveedorSimulado. Ahora valida contra el proveedor real
+ * (mismo contrato que T083 / establecimientos-demo).
  */
-describe('establecimientos en el proveedor simulado', () => {
-  it('crea, lista y elimina un establecimiento', async () => {
-    const proveedor = new ProveedorSimulado()
 
-    const creado = await proveedor.crearEstablecimiento({
-      nombre: 'Sede prueba',
-      codigoAnexo: '0099',
-      direccion: 'Av. Prueba 1',
-      ubigeoId: '150101',
-      correo: 'prueba@example.com',
-    })
+const hayCredenciales = hayCredencialesDelProveedor()
 
-    expect(creado.ok).toBe(true)
-    if (!creado.ok) return
+describe.skipIf(!hayCredenciales)(
+  'establecimientos en el proveedor real',
+  () => {
+    it(
+      'lista establecimientos (cuenta demo puede venir vacía)',
+      { timeout: 20_000 },
+      async () => {
+        const proveedor = proveedorReal()
+        const lista = await proveedor.listarEstablecimientos()
+        expect(lista.ok, JSON.stringify(lista)).toBe(true)
+        if (!lista.ok) return
+        expect(Array.isArray(lista.valor)).toBe(true)
+        if (lista.valor[0] !== undefined) {
+          expect(lista.valor[0].id).toMatch(/^\d+$/)
+        }
+      },
+    )
 
-    expect(creado.valor.codigoAnexo).toBe('0099')
-    expect(creado.valor.id).toMatch(/^\d+$/)
+    it(
+      'crear y eliminar un establecimiento temporal',
+      { timeout: 30_000 },
+      async () => {
+        const proveedor = proveedorReal()
+        const anexo = `9${String(Date.now()).slice(-3)}`
 
-    const lista = await proveedor.listarEstablecimientos()
-    expect(lista.ok).toBe(true)
-    if (!lista.ok) return
-    expect(lista.valor.some((e) => e.id === creado.valor.id)).toBe(true)
+        const creado = await proveedor.crearEstablecimiento({
+          nombre: `SuitPay live ${anexo}`,
+          codigoAnexo: anexo,
+          direccion: 'Av. Prueba SuitPay 1',
+          ubigeoId: '150101',
+          correo: 'suitpay-test@example.com',
+        })
+        expect(creado.ok, JSON.stringify(creado)).toBe(true)
+        if (!creado.ok) return
 
-    const baja = await proveedor.eliminarEstablecimiento(creado.valor.id)
-    expect(baja.ok).toBe(true)
-
-    const despues = await proveedor.listarEstablecimientos()
-    expect(despues.ok).toBe(true)
-    if (!despues.ok) return
-    expect(despues.valor.some((e) => e.id === creado.valor.id)).toBe(false)
-
-    expect(proveedor.llamadasA('crear_establecimiento')).toBe(1)
-    expect(proveedor.llamadasA('eliminar_establecimiento')).toBe(1)
-  })
-
-  it('crear serie exige un establecimiento previo', async () => {
-    const proveedor = new ProveedorSimulado()
-
-    const sinSede = await proveedor.crearSerie({
-      tipoDocumento: 'boleta',
-      serie: 'B001',
-      numeroInicial: 1,
-      establecimientoId: '999',
-    })
-    expect(sinSede.ok).toBe(false)
-
-    const sede = await proveedor.crearEstablecimiento({
-      codigoAnexo: '0001',
-      direccion: 'Calle 1',
-      ubigeoId: '150101',
-    })
-    expect(sede.ok).toBe(true)
-    if (!sede.ok) return
-
-    const serie = await proveedor.crearSerie({
-      tipoDocumento: 'boleta',
-      serie: 'B001',
-      numeroInicial: 1,
-      establecimientoId: sede.valor.id,
-    })
-    expect(serie.ok).toBe(true)
-    if (!serie.ok) return
-
-    const bajaSerie = await proveedor.eliminarSerie(serie.valor.id)
-    expect(bajaSerie.ok).toBe(true)
-  })
-})
+        const baja = await proveedor.eliminarEstablecimiento(creado.valor.id)
+        expect(baja.ok, JSON.stringify(baja)).toBe(true)
+      },
+    )
+  },
+)

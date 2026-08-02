@@ -130,6 +130,20 @@ export function sePuedeEmitir(estado: AlmacenDeDegradacion): boolean {
 }
 
 /**
+ * Callback opcional al recuperar `online`. Lo registra el arranque del
+ * catálogo para reintentar contra el servidor: el evento del navegador solo
+ * dice que hay interfaz de red, no que Firestore responda.
+ */
+let alRecuperarRed: (() => void) | undefined
+
+export function alRecuperarConectividad(reintento: () => void): () => void {
+  alRecuperarRed = reintento
+  return () => {
+    if (alRecuperarRed === reintento) alRecuperarRed = undefined
+  }
+}
+
+/**
  * Vigila la conectividad del navegador.
  *
  * `navigator.onLine` es notoriamente optimista: dice que hay red cuando hay
@@ -137,20 +151,26 @@ export function sePuedeEmitir(estado: AlmacenDeDegradacion): boolean {
  * detectar el corte evidente, y de ahí que **un fallo real de una operación
  * también declare la degradación**: la señal fiable es que algo no funcionó, no
  * que el sistema operativo crea que hay cable.
+ *
+ * Al volver `online` no se limpia la banda a ciegas: se dispara el reintento
+ * registrado (lectura al servidor). Solo un arranque con `sinRed: false`
+ * resuelve la causa.
  */
 export function vigilarConectividad(): () => void {
   if (typeof window === 'undefined') return () => {}
 
   const declarar = () => usarDegradacion.getState().declarar('red')
-  const resolver = () => usarDegradacion.getState().resolver('red')
+  const alVolverOnline = () => {
+    alRecuperarRed?.()
+  }
 
   if (!navigator.onLine) declarar()
 
   window.addEventListener('offline', declarar)
-  window.addEventListener('online', resolver)
+  window.addEventListener('online', alVolverOnline)
 
   return () => {
     window.removeEventListener('offline', declarar)
-    window.removeEventListener('online', resolver)
+    window.removeEventListener('online', alVolverOnline)
   }
 }

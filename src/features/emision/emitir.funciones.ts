@@ -10,9 +10,10 @@ import { AlmacenFirestore } from '../../server/emision/almacen-firestore.ts'
 import { emitirComprobante } from '../../server/emision/emitir.ts'
 import type { RespuestaDeEmitir } from '../../server/emision/emitir.ts'
 import {
-  consultarEstadoEmision,
-  type ResultadoDeConsultaDeEstado,
+  consultarEstadoEmision
+  
 } from '../../server/emision/consultar-estado.ts'
+import type {ResultadoDeConsultaDeEstado} from '../../server/emision/consultar-estado.ts';
 
 /**
  * El punto de entrada de la emisión desde el cliente.

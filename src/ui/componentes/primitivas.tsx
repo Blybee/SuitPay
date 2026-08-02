@@ -48,7 +48,7 @@ export function Boton({
       className={unir(
         'inline-flex min-h-11 items-center justify-center gap-2 px-5 font-bold',
         'transition-colors',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta',
+        'focus-visible:outline-none focus-visible:border-tinta',
         'disabled:cursor-not-allowed',
         ESTILOS_DE_BOTON[variante],
         className,
@@ -77,7 +77,7 @@ export function Campo({
       className={unir(
         'min-h-11 w-full rounded-full border bg-papel px-4 text-tinta',
         'placeholder:text-desvaida',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta',
+        'focus-visible:outline-none focus-visible:border-tinta',
         numerico && 'font-mono tabular-nums text-right',
         invalido ? 'border-aviso' : 'border-borde',
         className,
@@ -114,7 +114,7 @@ export function Casilla({
     <RadixCheckbox.Root
       className={unir(
         'flex size-6 shrink-0 items-center justify-center rounded-full border border-borde bg-papel',
-        'focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-tinta',
+        'focus-visible:outline-none focus-visible:border-tinta',
         className,
       )}
       {...resto}

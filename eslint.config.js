@@ -156,6 +156,7 @@ const config = [
       '.nitro/**',
       '.tanstack/**',
       'dist/**',
+      'tmp/**',
     ],
   },
 ]

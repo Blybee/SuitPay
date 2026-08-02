@@ -200,7 +200,7 @@ export function LineaPedido({
         onClick={onQuitar}
         className={[
           'flex min-h-11 items-center justify-center text-desvaida',
-          'hover:text-aviso focus-visible:outline-3 focus-visible:outline-tinta',
+          'hover:text-aviso focus-visible:outline-none focus-visible:border-tinta',
         ].join(' ')}
       >
         <X className="size-5" aria-hidden />

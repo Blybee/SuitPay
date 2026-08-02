@@ -58,10 +58,6 @@ export function detectarConflictos(
 export function hayConflictosBloqueantes(
   conflictos: readonly ConflictoDeImportacion[],
 ): boolean {
-  return conflictos.some(
-    (c) =>
-      c.tipo === 'codigo_duplicado' ||
-      c.tipo === 'descripcion_ausente' ||
-      c.tipo === 'unidad_desconocida',
-  )
+  // Hoy todo TipoDeConflicto bloquea la publicación (FR-010).
+  return conflictos.length > 0
 }
