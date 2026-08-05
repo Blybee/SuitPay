@@ -1,5 +1,9 @@
 import { Timestamp } from 'firebase-admin/firestore'
-import type { DocumentData, Firestore } from 'firebase-admin/firestore'
+import type {
+  DocumentData,
+  Firestore,
+  Query,
+} from 'firebase-admin/firestore'
 import { COLECCIONES, bd } from '../firebase/admin.ts'
 import type {
   AlmacenDeEmision,
@@ -200,13 +204,20 @@ export class AlmacenFirestore implements AlmacenDeEmision {
   ): Promise<void> {
     const referencia = this.base.collection(COLECCIONES.comprobantes).doc(clave)
     const { nuevoIntento, ...resto } = cambios
+    const payload: DocumentData = { ...resto }
+    if (resto.anulacion !== undefined && resto.anulacion !== null) {
+      payload['anulacion'] = {
+        ...resto.anulacion,
+        momento: Timestamp.fromDate(resto.anulacion.momento),
+      }
+    }
 
     // El intento se añade con una lectura previa en lugar de con `arrayUnion`
     // porque dos intentos idénticos —mismo momento, mismo resultado— se
     // considerarían el mismo elemento y uno se perdería. La traza tiene que
     // registrar cada invocación, incluidas las repetidas.
     if (nuevoIntento === undefined) {
-      await referencia.update(resto)
+      await referencia.update(payload)
       return
     }
 
@@ -214,7 +225,7 @@ export class AlmacenFirestore implements AlmacenDeEmision {
       const instantanea = await tx.get(referencia)
       const previos = (instantanea.data()?.['intentos'] ?? []) as unknown[]
       tx.update(referencia, {
-        ...resto,
+        ...payload,
         intentos: [
           ...previos,
           { ...nuevoIntento, momento: Timestamp.fromDate(nuevoIntento.momento) },
@@ -266,6 +277,44 @@ export class AlmacenFirestore implements AlmacenDeEmision {
       ultimoNumeroConfirmado:
         datos['ultimoNumeroConfirmado'] ?? numeroInicial - 1,
       activa: datos['activa'] ?? false,
+    }
+  }
+
+  async listarComprobantes(opciones: {
+    readonly vendedorId: string | null
+    readonly limite: number
+    readonly cursorEmitidoEn?: Date
+    readonly cursorId?: string
+  }): Promise<{
+    readonly items: readonly Comprobante[]
+    readonly hayMas: boolean
+  }> {
+    // Índice: vendedorId ASC + emitidoEn DESC (data-model.md / US4).
+    let armada: Query = this.base.collection(COLECCIONES.comprobantes)
+    if (opciones.vendedorId !== null) {
+      armada = armada.where('vendedorId', '==', opciones.vendedorId)
+    }
+    armada = armada.orderBy('emitidoEn', 'desc')
+
+    if (opciones.cursorId !== undefined) {
+      const cursor = await this.base
+        .collection(COLECCIONES.comprobantes)
+        .doc(opciones.cursorId)
+        .get()
+      if (cursor.exists) {
+        armada = armada.startAfter(cursor)
+      }
+    }
+
+    const instantanea = await armada.limit(opciones.limite + 1).get()
+    const docs = instantanea.docs
+    const hayMas = docs.length > opciones.limite
+    const pagina = docs.slice(0, opciones.limite)
+    return {
+      items: pagina.map((documento) =>
+        aComprobante(documento.id, documento.data()),
+      ),
+      hayMas,
     }
   }
 }

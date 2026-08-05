@@ -7,13 +7,13 @@ import { COLECCIONES, DOCUMENTOS, bd } from '../../server/firebase/admin.ts'
 import { ErrorDeSuitPay, esErrorDeSuitPay, fallar } from '../../server/errores.ts'
 import { proveedorActual } from '../../server/proveedor/actual.ts'
 import { AlmacenFirestore } from '../../server/emision/almacen-firestore.ts'
+import { anularComprobante } from '../../server/emision/anular.ts'
+import type { RespuestaDeAnular } from '../../server/emision/anular.ts'
 import { emitirComprobante } from '../../server/emision/emitir.ts'
 import type { RespuestaDeEmitir } from '../../server/emision/emitir.ts'
-import {
-  consultarEstadoEmision
-  
-} from '../../server/emision/consultar-estado.ts'
-import type {ResultadoDeConsultaDeEstado} from '../../server/emision/consultar-estado.ts';
+import { consultarEstadoEmision } from '../../server/emision/consultar-estado.ts'
+import type { ResultadoDeConsultaDeEstado } from '../../server/emision/consultar-estado.ts'
+import type { Comprobante } from '../../server/emision/almacen.ts'
 
 /**
  * El punto de entrada de la emisión desde el cliente.
@@ -51,7 +51,9 @@ import type {ResultadoDeConsultaDeEstado} from '../../server/emision/consultar-e
  * pantalla los reciba desde aquí mantiene una sola ruta hacia el servidor.
  */
 export type { RespuestaDeEmitir } from '../../server/emision/emitir.ts'
+export type { RespuestaDeAnular } from '../../server/emision/anular.ts'
 export type { CodigoDeError } from '../../server/errores.ts'
+export type { Comprobante } from '../../server/emision/almacen.ts'
 
 const esquemaDeLinea = z.object({
   codigo: z.string().min(1),
@@ -228,6 +230,96 @@ export const consultarEstado = createServerFn({ method: 'POST' })
         return { ok: false, error: error.aRespuesta() }
       }
       console.error('[SuitPay] fallo al consultar estado', error)
+      return {
+        ok: false,
+        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
+      }
+    }
+  })
+
+export interface RespuestaDeAnulacionParaCliente {
+  readonly ok: boolean
+  readonly resultado?: RespuestaDeAnular
+  readonly error?: ReturnType<ErrorDeSuitPay['aRespuesta']>
+}
+
+/** Anulación con confirmación explícita (US4). Autor = uid del token. */
+export const anular = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      comprobanteId: z.string().min(1),
+      motivo: z.string().trim().min(4).max(300),
+    }),
+  )
+  .handler(async ({ data }): Promise<RespuestaDeAnulacionParaCliente> => {
+    const identidad = await exigirIdentidad(getRequestHeaders(), [
+      'vendedor',
+      'administrador',
+    ])
+
+    try {
+      const resultado = await anularComprobante(
+        {
+          almacen: new AlmacenFirestore(),
+          proveedor: proveedorActual(),
+        },
+        {
+          comprobanteId: data.comprobanteId,
+          motivo: data.motivo,
+          autorId: identidad.uid,
+        },
+      )
+      return { ok: true, resultado }
+    } catch (error) {
+      if (esErrorDeSuitPay(error)) {
+        return { ok: false, error: error.aRespuesta() }
+      }
+      console.error('[SuitPay] fallo inesperado al anular', error)
+      return {
+        ok: false,
+        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
+      }
+    }
+  })
+
+export interface RespuestaDeListadoParaCliente {
+  readonly ok: boolean
+  readonly items?: readonly Comprobante[]
+  readonly hayMas?: boolean
+  readonly error?: ReturnType<ErrorDeSuitPay['aRespuesta']>
+}
+
+/** Listado con cursor (nunca offset). Vendedor: solo los suyos. */
+export const listarComprobantes = createServerFn({ method: 'GET' })
+  .validator(
+    z.object({
+      limite: z.number().int().min(1).max(50).optional(),
+      cursorId: z.string().min(1).optional(),
+      cursorEmitidoEn: z.string().datetime().optional(),
+    }),
+  )
+  .handler(async ({ data }): Promise<RespuestaDeListadoParaCliente> => {
+    const identidad = await exigirIdentidad(getRequestHeaders(), [
+      'vendedor',
+      'administrador',
+      'jefe',
+    ])
+
+    const vendedorId = identidad.rol === 'vendedor' ? identidad.uid : null
+
+    try {
+      const pagina = await new AlmacenFirestore().listarComprobantes({
+        vendedorId,
+        limite: data.limite ?? 20,
+        cursorId: data.cursorId,
+        cursorEmitidoEn:
+          data.cursorEmitidoEn === undefined
+            ? undefined
+            : new Date(data.cursorEmitidoEn),
+      })
+      return { ok: true, items: pagina.items, hayMas: pagina.hayMas }
+    } catch (error) {
+      console.error('[SuitPay] fallo al listar comprobantes', error)
       return {
         ok: false,
         error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
