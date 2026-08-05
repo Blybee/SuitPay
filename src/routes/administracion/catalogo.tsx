@@ -215,7 +215,10 @@ function Resumen({ resumen }: { readonly resumen: ResumenDeImportacion }) {
                   <span className="font-mono text-etiqueta">
                     {cambio.siguiente.codigo}
                   </span>{' '}
-                  {cambio.anterior.descripcion}:{' '}
+                  <span className="uppercase">
+                    {cambio.anterior.descripcion}
+                  </span>
+                  :{' '}
                   <span className="text-desvaida line-through">
                     {formatearImporte(cambio.anterior.precio)}
                   </span>{' '}

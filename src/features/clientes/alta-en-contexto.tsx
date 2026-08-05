@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
 import type { ClienteEnIndice } from '../../infra/local/catalogo.ts'
@@ -31,12 +31,15 @@ export function AltaClienteEnContexto({
   indiceDeClientes,
   onClienteElegido,
   onClienteCreadoEnIndice,
+  consultaInicial = null,
 }: {
   readonly abierta: boolean
   readonly onCerrar: () => void
   readonly indiceDeClientes: readonly ClienteEnIndice[]
   readonly onClienteElegido: (cliente: ClienteDelPedido) => void
   readonly onClienteCreadoEnIndice: (entrada: ClienteEnIndice) => void
+  /** Si llega al abrir (p. ej. desde el RUC/DNI inline), se busca sola. */
+  readonly consultaInicial?: string | null
 }) {
   const [fase, setFase] = useState<Fase>('buscar')
   const [consulta, setConsulta] = useState('')
@@ -53,6 +56,7 @@ export function AltaClienteEnContexto({
     denominacion: '',
   })
   const [mensaje, setMensaje] = useState<string | null>(null)
+  const consultaAutoProcesada = useRef<string | null>(null)
 
   function reiniciar() {
     setFase('buscar')
@@ -61,6 +65,7 @@ export function AltaClienteEnContexto({
     setRevision(null)
     setMensaje(null)
     setManual({ tipoDocumento: 'RUC', numeroDocumento: '', denominacion: '' })
+    consultaAutoProcesada.current = null
   }
 
   function cerrar() {
@@ -77,10 +82,11 @@ export function AltaClienteEnContexto({
     cerrar()
   }
 
-  async function buscar() {
+  async function buscar(consultaForzada?: string) {
     setMensaje(null)
-    const texto = consulta.trim()
+    const texto = (consultaForzada ?? consulta).trim()
     if (texto.length === 0) return
+    if (consultaForzada !== undefined) setConsulta(texto)
 
     const locales = buscarCoincidenciasDeCliente(texto, indiceDeClientes)
     if (locales.length > 0 && !/^\d{8,11}$/.test(texto)) {
@@ -146,6 +152,18 @@ export function AltaClienteEnContexto({
     setMensaje('Escribe un RUC/DNI o parte de la razón social.')
     setFase('error')
   }
+
+  useEffect(() => {
+    if (!abierta) {
+      consultaAutoProcesada.current = null
+      return
+    }
+    const inicial = consultaInicial?.trim() ?? ''
+    if (inicial.length === 0) return
+    if (consultaAutoProcesada.current === inicial) return
+    consultaAutoProcesada.current = inicial
+    void buscar(inicial)
+  }, [abierta, consultaInicial]) // buscar es estable respecto a la consulta forzada
 
   async function confirmarRevision() {
     if (revision === null) return
