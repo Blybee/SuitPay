@@ -38,7 +38,7 @@ function projectIdDelEntorno(): string | undefined {
     process.env['GCLOUD_PROJECT'] ??
     process.env['VITE_FIREBASE_PROJECT_ID'] ??
     (typeof import.meta !== 'undefined'
-      ? (import.meta.env?.['VITE_FIREBASE_PROJECT_ID'] as string | undefined)
+      ? (import.meta.env['VITE_FIREBASE_PROJECT_ID'] as string | undefined)
       : undefined)
   )
 }

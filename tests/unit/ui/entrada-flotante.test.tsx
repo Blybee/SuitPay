@@ -2,8 +2,10 @@ import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Entrada } from '../../../src/ui/componentes/Entrada.tsx'
-import type { ResultadoDeBusqueda } from '../../../src/domain/busqueda/productos.ts'
-import type { ProductoBuscable } from '../../../src/domain/busqueda/productos.ts'
+import type {
+  ProductoBuscable,
+  ResultadoDeBusqueda,
+} from '../../../src/domain/busqueda/productos.ts'
 
 const producto: ProductoBuscable = {
   codigo: 'P-1',
