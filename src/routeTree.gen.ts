@@ -17,6 +17,8 @@ import { Route as AdministracionCatalogoRouteImport } from './routes/administrac
 import { Route as AdministracionParametrosRouteImport } from './routes/administracion/parametros'
 import { Route as AdministracionSeriesRouteImport } from './routes/administracion/series'
 import { Route as AdministracionUsuariosRouteImport } from './routes/administracion/usuarios'
+import { Route as ComprobantesIndexRouteImport } from './routes/comprobantes/index'
+import { Route as ComprobantesComprobanteIdRouteImport } from './routes/comprobantes/$comprobanteId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -59,6 +61,17 @@ const AdministracionUsuariosRoute = AdministracionUsuariosRouteImport.update({
   path: '/administracion/usuarios',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComprobantesIndexRoute = ComprobantesIndexRouteImport.update({
+  id: '/comprobantes/',
+  path: '/comprobantes/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ComprobantesComprobanteIdRoute =
+  ComprobantesComprobanteIdRouteImport.update({
+    id: '/comprobantes/$comprobanteId',
+    path: '/comprobantes/$comprobanteId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -68,7 +81,9 @@ export interface FileRoutesByFullPath {
   '/administracion/parametros': typeof AdministracionParametrosRoute
   '/administracion/series': typeof AdministracionSeriesRoute
   '/administracion/usuarios': typeof AdministracionUsuariosRoute
+  '/comprobantes/$comprobanteId': typeof ComprobantesComprobanteIdRoute
   '/administracion/': typeof AdministracionIndexRoute
+  '/comprobantes/': typeof ComprobantesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -78,7 +93,9 @@ export interface FileRoutesByTo {
   '/administracion/parametros': typeof AdministracionParametrosRoute
   '/administracion/series': typeof AdministracionSeriesRoute
   '/administracion/usuarios': typeof AdministracionUsuariosRoute
+  '/comprobantes/$comprobanteId': typeof ComprobantesComprobanteIdRoute
   '/administracion': typeof AdministracionIndexRoute
+  '/comprobantes': typeof ComprobantesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -89,7 +106,9 @@ export interface FileRoutesById {
   '/administracion/parametros': typeof AdministracionParametrosRoute
   '/administracion/series': typeof AdministracionSeriesRoute
   '/administracion/usuarios': typeof AdministracionUsuariosRoute
+  '/comprobantes/$comprobanteId': typeof ComprobantesComprobanteIdRoute
   '/administracion/': typeof AdministracionIndexRoute
+  '/comprobantes/': typeof ComprobantesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -101,7 +120,9 @@ export interface FileRouteTypes {
     | '/administracion/parametros'
     | '/administracion/series'
     | '/administracion/usuarios'
+    | '/comprobantes/$comprobanteId'
     | '/administracion/'
+    | '/comprobantes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -111,7 +132,9 @@ export interface FileRouteTypes {
     | '/administracion/parametros'
     | '/administracion/series'
     | '/administracion/usuarios'
+    | '/comprobantes/$comprobanteId'
     | '/administracion'
+    | '/comprobantes'
   id:
     | '__root__'
     | '/'
@@ -121,7 +144,9 @@ export interface FileRouteTypes {
     | '/administracion/parametros'
     | '/administracion/series'
     | '/administracion/usuarios'
+    | '/comprobantes/$comprobanteId'
     | '/administracion/'
+    | '/comprobantes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -132,7 +157,9 @@ export interface RootRouteChildren {
   AdministracionParametrosRoute: typeof AdministracionParametrosRoute
   AdministracionSeriesRoute: typeof AdministracionSeriesRoute
   AdministracionUsuariosRoute: typeof AdministracionUsuariosRoute
+  ComprobantesComprobanteIdRoute: typeof ComprobantesComprobanteIdRoute
   AdministracionIndexRoute: typeof AdministracionIndexRoute
+  ComprobantesIndexRoute: typeof ComprobantesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -193,6 +220,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdministracionUsuariosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/comprobantes/': {
+      id: '/comprobantes/'
+      path: '/comprobantes'
+      fullPath: '/comprobantes/'
+      preLoaderRoute: typeof ComprobantesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/comprobantes/$comprobanteId': {
+      id: '/comprobantes/$comprobanteId'
+      path: '/comprobantes/$comprobanteId'
+      fullPath: '/comprobantes/$comprobanteId'
+      preLoaderRoute: typeof ComprobantesComprobanteIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -204,7 +245,9 @@ const rootRouteChildren: RootRouteChildren = {
   AdministracionParametrosRoute: AdministracionParametrosRoute,
   AdministracionSeriesRoute: AdministracionSeriesRoute,
   AdministracionUsuariosRoute: AdministracionUsuariosRoute,
+  ComprobantesComprobanteIdRoute: ComprobantesComprobanteIdRoute,
   AdministracionIndexRoute: AdministracionIndexRoute,
+  ComprobantesIndexRoute: ComprobantesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

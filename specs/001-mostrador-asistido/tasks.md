@@ -240,22 +240,23 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 
 ### Pruebas obligatorias de User Story 4 ⚠️
 
-- [ ] T096 [P] [US4] Prueba de la ventana de anulación en `tests/unit/server/anular-ventana.test.ts`: un comprobante de ayer se rechaza con `fuera_de_ventana_anulacion`, y el cálculo se hace **en horario de Lima**, incluido el caso de las 19:00 que en UTC ya sería del día siguiente (FR-037, FR-038)
-- [ ] T097 [P] [US4] Prueba de fallo del proveedor al anular en `tests/unit/server/anular-proveedor-caido.test.ts`: el comprobante **no queda anulado localmente** si el proveedor no confirmó la baja
-- [ ] T098 [P] [US4] Prueba de reintento de anulación en `tests/unit/server/anular-idempotencia.test.ts`: anular dos veces el mismo comprobante no duplica la baja ni altera el registro original
-- [ ] T099 [P] [US4] Prueba de que nada se borra en `tests/emulador/anular-no-borra.test.ts`: tras la anulación el documento **sigue existiendo** con su estado, motivo, autor y momento (FR-030)
-- [ ] T100 [P] [US4] **Prueba de vocabulario** en `tests/unit/ui/sin-eliminar.test.ts`: la palabra "eliminar" no aparece en ninguna etiqueta, mensaje ni texto de ayuda referido a un comprobante, recorriendo las cadenas de la interfaz (FR-039)
+- [x] T096 [P] [US4] Prueba de la ventana de anulación en `tests/unit/server/anular-ventana.test.ts`: un comprobante de ayer se rechaza con `fuera_de_ventana_anulacion`, y el cálculo se hace **en horario de Lima**, incluido el caso de las 19:00 que en UTC ya sería del día siguiente (FR-037, FR-038)
+- [x] T097 [P] [US4] Prueba de fallo del proveedor al anular en `tests/unit/server/anular-proveedor-caido.test.ts`: el comprobante **no queda anulado localmente** si el proveedor no confirmó la baja
+- [x] T098 [P] [US4] Prueba de reintento de anulación en `tests/unit/server/anular-idempotencia.test.ts`: anular dos veces el mismo comprobante no duplica la baja ni altera el registro original
+- [x] T099 [P] [US4] Prueba de que nada se borra en `tests/emulador/anular-no-borra.test.ts`: tras la anulación el documento **sigue existiendo** con su estado, motivo, autor y momento (FR-030)
+  - Escrita; se ejecuta con emulador (`npm run prueba:emulador`). Sin emulador se omite.
+- [x] T100 [P] [US4] **Prueba de vocabulario** en `tests/unit/ui/sin-eliminar.test.ts`: la palabra "eliminar" no aparece en ninguna etiqueta, mensaje ni texto de ayuda referido a un comprobante, recorriendo las cadenas de la interfaz (FR-039)
 
 ### Implementación de User Story 4
 
-- [ ] T101 [US4] Implementar la función de servidor `anularComprobante` en `src/server/emision/anular.ts`: verifica estado y ventana, solicita la baja al proveedor, y registra motivo, autor y momento en el propio documento. **No borra nada**
-- [ ] T102 [P] [US4] Implementar `anular` en el adaptador de Factpro en `src/server/proveedor/factpro/anular.ts`
-- [ ] T103 [US4] Implementar la consulta de comprobantes en `src/routes/comprobantes/index.tsx`, con paginación por cursores y **nunca por desplazamiento de posición**
-- [ ] T104 [US4] Implementar el detalle del comprobante en `src/routes/comprobantes/$comprobanteId.tsx`, con el sello violeta si está aceptado y la marca de ANULADO si lo está
-- [ ] T105 [US4] Implementar la confirmación de anulación en `src/features/emision/confirmar-anulacion.tsx`, que **muestra qué documento se va a anular** y exige el motivo antes de proceder (FR-037)
-- [ ] T106 [P] [US4] Implementar el estado de fuera de ventana en `src/features/emision/fuera-de-ventana.tsx`, que explica que corresponde una nota de crédito y **no ofrece un botón que va a fallar**
+- [x] T101 [US4] Implementar la función de servidor `anularComprobante` en `src/server/emision/anular.ts`: verifica estado y ventana, solicita la baja al proveedor, y registra motivo, autor y momento en el propio documento. **No borra nada**
+- [x] T102 [P] [US4] Implementar `anular` en el adaptador de Factpro en `src/server/proveedor/factpro/anular.ts`
+- [x] T103 [US4] Implementar la consulta de comprobantes en `src/routes/comprobantes/index.tsx`, con paginación por cursores y **nunca por desplazamiento de posición**
+- [x] T104 [US4] Implementar el detalle del comprobante en `src/routes/comprobantes/$comprobanteId.tsx`, con el sello violeta si está aceptado y la marca de ANULADO si lo está
+- [x] T105 [US4] Implementar la confirmación de anulación en `src/features/emision/confirmar-anulacion.tsx`, que **muestra qué documento se va a anular** y exige el motivo antes de proceder (FR-037)
+- [x] T106 [P] [US4] Implementar el estado de fuera de ventana en `src/features/emision/fuera-de-ventana.tsx`, que explica que corresponde una nota de crédito y **no ofrece un botón que va a fallar**
 
-**Checkpoint**: la anulación funciona dentro de plazo, se impide fuera de plazo, y nada se borra nunca.
+**Checkpoint**: la anulación funciona dentro de plazo, se impide fuera de plazo, y nada se borra nunca. *Alcanzado en código (2026-08-05): pruebas de servidor/UI en verde; T099 requiere emulador.*
 
 ---
 

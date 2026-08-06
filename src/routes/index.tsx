@@ -61,6 +61,9 @@ function Mostrador() {
   const [medioPago, setMedioPago] = useState('efectivo')
   const [serieAsignada, setSerieAsignada] = useState<string | null>(null)
   const [altaClienteAbierta, setAltaClienteAbierta] = useState(false)
+  const [consultaClienteInicial, setConsultaClienteInicial] = useState<
+    string | null
+  >(null)
 
   const catalogo = usarCatalogo()
   const sesion = usarSesion()
@@ -203,20 +206,31 @@ function Mostrador() {
             onCambiarTipo={pedido.fijarTipoDocumento}
             serie={serieAsignada}
             cliente={pedido.cliente}
-            onElegirCliente={() => setAltaClienteAbierta(true)}
+            onElegirCliente={() => {
+              setConsultaClienteInicial(null)
+              setAltaClienteAbierta(true)
+            }}
             onQuitarCliente={() => pedido.fijarCliente(null)}
+            onDocumentoCompleto={({ numeroDocumento }) => {
+              setConsultaClienteInicial(numeroDocumento)
+              setAltaClienteAbierta(true)
+            }}
             total={total}
             umbral={umbral}
           />
 
           <AltaClienteEnContexto
             abierta={altaClienteAbierta}
-            onCerrar={() => setAltaClienteAbierta(false)}
+            onCerrar={() => {
+              setAltaClienteAbierta(false)
+              setConsultaClienteInicial(null)
+            }}
             indiceDeClientes={catalogo.clientes}
             onClienteElegido={(cliente) => pedido.fijarCliente(cliente)}
             onClienteCreadoEnIndice={(entrada) =>
               usarCatalogo.getState().incorporarCliente(entrada)
             }
+            consultaInicial={consultaClienteInicial}
           />
 
           <div className="flex-1 overflow-y-auto pb-2">

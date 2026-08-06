@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react'
 import { UserPlus } from 'lucide-react'
 import {
   REGLAS,
@@ -7,18 +8,35 @@ import type { TipoElegible } from '../../domain/documentos/tipos.ts'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type { Centimos } from '../../domain/totales/calculo.ts'
 import { EtiquetaSinValor } from './EtiquetaSinValor.tsx'
-import { Boton } from './primitivas.tsx'
+import { Boton, Campo } from './primitivas.tsx'
 import { Selector } from './Selector.tsx'
 
 /**
  * Cabecera del documento: tipo (Selector), serie y cliente.
  * Cambiar de tipo no toca las líneas del pedido (FR-014).
+ *
+ * Factura muestra input de RUC; boleta muestra input de DNI.
+ * Al completar la longitud esperada se dispara la identificación.
  */
 
 const OPCIONES_TIPO = TIPOS_ELEGIBLES.map((cada) => ({
   valor: cada,
   etiqueta: REGLAS[cada].nombre,
 }))
+
+type CampoDeDocumento =
+  | { readonly etiqueta: 'RUC'; readonly longitud: 11; readonly tipoDocumento: 'RUC' }
+  | { readonly etiqueta: 'DNI'; readonly longitud: 8; readonly tipoDocumento: 'DNI' }
+
+function campoSegunTipo(tipo: TipoElegible): CampoDeDocumento | null {
+  if (tipo === 'factura') {
+    return { etiqueta: 'RUC', longitud: 11, tipoDocumento: 'RUC' }
+  }
+  if (tipo === 'boleta') {
+    return { etiqueta: 'DNI', longitud: 8, tipoDocumento: 'DNI' }
+  }
+  return null
+}
 
 export interface PropsDeCabecera {
   readonly tipo: TipoElegible
@@ -30,6 +48,11 @@ export interface PropsDeCabecera {
   } | null
   readonly onElegirCliente: () => void
   readonly onQuitarCliente: () => void
+  /** Se dispara al completar RUC (11) o DNI (8) en el campo inline. */
+  readonly onDocumentoCompleto?: (datos: {
+    readonly tipoDocumento: 'RUC' | 'DNI'
+    readonly numeroDocumento: string
+  }) => void
   readonly total: Centimos
   readonly umbral: Centimos
 }
@@ -41,14 +64,37 @@ export function CabeceraDocumento({
   cliente,
   onElegirCliente,
   onQuitarCliente,
+  onDocumentoCompleto,
   total,
   umbral,
 }: PropsDeCabecera) {
   const reglas = REGLAS[tipo]
+  const campo = campoSegunTipo(tipo)
+  const [numeroDocumento, setNumeroDocumento] = useState('')
+
+  useEffect(() => {
+    setNumeroDocumento('')
+  }, [tipo, cliente])
+
   const exigeCliente =
     cliente === null &&
     (reglas.exigeClienteIdentificado ||
       (reglas.sujetoAUmbralDeIdentificacion && total > umbral))
+
+  function alCambiarDocumento(valor: string): void {
+    if (campo === null) return
+    const soloDigitos = valor.replace(/\D/g, '').slice(0, campo.longitud)
+    setNumeroDocumento(soloDigitos)
+    if (
+      soloDigitos.length === campo.longitud &&
+      onDocumentoCompleto !== undefined
+    ) {
+      onDocumentoCompleto({
+        tipoDocumento: campo.tipoDocumento,
+        numeroDocumento: soloDigitos,
+      })
+    }
+  }
 
   return (
     <header
@@ -77,10 +123,33 @@ export function CabeceraDocumento({
           </p>
         )}
 
+        {cliente === null && campo !== null && (
+          <div className="flex min-w-[12rem] flex-1 items-center gap-2 sm:max-w-xs">
+            <label
+              htmlFor="documento-cliente-inline"
+              className="shrink-0 font-mono text-etiqueta uppercase text-desvaida"
+            >
+              {campo.etiqueta}
+            </label>
+            <Campo
+              id="documento-cliente-inline"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder={campo.etiqueta === 'RUC' ? '20123456789' : '12345678'}
+              maxLength={campo.longitud}
+              value={numeroDocumento}
+              onChange={(evento) => alCambiarDocumento(evento.target.value)}
+              aria-label={`${campo.etiqueta} del cliente`}
+              invalido={exigeCliente && numeroDocumento.length === 0}
+              className="font-mono tabular-nums tracking-wide"
+            />
+          </div>
+        )}
+
         <div className="ml-auto flex items-center gap-2">
           {cliente === null ? (
             <Boton
-              variante={exigeCliente ? 'peligro' : 'secundario'}
+              variante={exigeCliente && campo === null ? 'peligro' : 'secundario'}
               onClick={onElegirCliente}
             >
               <UserPlus className="size-5" aria-hidden />

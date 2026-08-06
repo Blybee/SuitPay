@@ -1,8 +1,4 @@
-import {
-  exito,
-  fallo,
-  propagarFallo,
-} from '../interfaz.ts'
+import { exito, fallo, propagarFallo } from '../interfaz.ts'
 import type {
   Contribuyente,
   DocumentoAnulado,
@@ -20,6 +16,7 @@ import type {
   Resultado,
   SerieEnProveedor,
 } from '../interfaz.ts'
+import { anularDocumento } from './anular.ts'
 import { consultarDocumento } from './consultar.ts'
 import { consultarContribuyenteEnProveedor } from './contribuyentes.ts'
 import {
@@ -52,7 +49,6 @@ import type { ConfiguracionDelProveedor } from './transporte.ts'
  * impone para los imports.
  */
 
-const RUTA_DE_BAJA = '/api/v3/anulaciones'
 const RUTA_DE_NOTA_CREDITO = '/api/v3/notas'
 
 export class ProveedorFactpro implements ProveedorDeEmision {
@@ -74,45 +70,10 @@ export class ProveedorFactpro implements ProveedorDeEmision {
     return consultarDocumento(this.configuracion, peticion)
   }
 
-  async anular(
+  anular(
     peticion: PeticionDeAnulacion,
   ): Promise<Resultado<DocumentoAnulado>> {
-    const respuesta = await pedirAlProveedor(this.configuracion, RUTA_DE_BAJA, {
-      serie: peticion.serie,
-      numero: String(peticion.numero),
-      motivo: peticion.motivo,
-      fecha_emision: peticion.emitidoEn.toISOString(),
-    })
-
-    if (!respuesta.ok) return propagarFallo(respuesta.fallo)
-
-    const datos = (
-      respuesta.valor.json as { data?: { estado?: string; external_id?: string } }
-    ).data
-
-    const traducido = traducirEstado(datos?.estado)
-
-    if (traducido.anulacionEnCurso) {
-      return exito({
-        estado: 'aceptado',
-        referenciaExterna: datos?.external_id,
-        rastro: respuesta.valor.rastro,
-      })
-    }
-
-    if (traducido.estado === undefined) {
-      return fallo(
-        'indeterminado',
-        `estado_de_baja_desconocido_${datos?.estado ?? 'ausente'}`,
-        respuesta.valor.rastro,
-      )
-    }
-
-    return exito({
-      estado: traducido.estado,
-      referenciaExterna: datos?.external_id,
-      rastro: respuesta.valor.rastro,
-    })
+    return anularDocumento(this.configuracion, peticion)
   }
 
   consultarContribuyente(

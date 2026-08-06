@@ -198,4 +198,18 @@ export interface AlmacenDeEmision {
   ) => Promise<readonly Comprobante[]>
 
   leerSerie: (serieId: string) => Promise<Serie | undefined>
+
+  /**
+   * Lista comprobantes por vendedor con paginación por cursor (nunca offset).
+   * Orden: `emitidoEn` descendente. `vendedorId` nulo = todos (admin/jefe).
+   */
+  listarComprobantes: (opciones: {
+    readonly vendedorId: string | null
+    readonly limite: number
+    readonly cursorEmitidoEn?: Date
+    readonly cursorId?: string
+  }) => Promise<{
+    readonly items: readonly Comprobante[]
+    readonly hayMas: boolean
+  }>
 }

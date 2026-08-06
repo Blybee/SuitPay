@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Mic, Search } from 'lucide-react'
+import { Camera, Eye, Mic, Minus, Search } from 'lucide-react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type {
   ProductoBuscable,
@@ -10,6 +10,9 @@ import type {
  * Cinta de herramientas del mostrador: un campo + dictado/foto.
  * Persiste siempre en la página de Inicio, anclada arriba (sobre los tabs).
  * Soft-Pill: cápsulas, borde sutil, full-bleed del área de trabajo.
+ *
+ * Las sugerencias flotan sobre el contenido (no lo desplazan) y se pueden
+ * minimizar; al minimizar, un ojo al final del campo las restaura.
  */
 
 export interface PropsDeEntrada {
@@ -35,6 +38,7 @@ export function Entrada({
 }: PropsDeEntrada) {
   const campo = useRef<HTMLInputElement>(null)
   const [resaltado, setResaltado] = useState(0)
+  const [minimizado, setMinimizado] = useState(false)
 
   useEffect(() => {
     if (enfocarAlMontar) campo.current?.focus()
@@ -42,21 +46,42 @@ export function Entrada({
 
   useEffect(() => {
     setResaltado(0)
+    setMinimizado(false)
   }, [termino])
 
   const sugiriendo = termino.length > 0
   const coincidencias = resultado.coincidencias
+  const panelAbierto = sugiriendo && !minimizado
+  const mostrarOjo = sugiriendo && minimizado
 
   function elegir(indice: number): void {
     const elegida = coincidencias[indice]
     if (elegida === undefined) return
     onElegirProducto(elegida.elemento)
     onTerminoCambia('')
+    setMinimizado(false)
     campo.current?.focus()
   }
 
   function alPulsarTecla(evento: React.KeyboardEvent<HTMLInputElement>): void {
+    if (!sugiriendo) return
+
+    if (evento.key === 'Escape') {
+      onTerminoCambia('')
+      setMinimizado(false)
+      return
+    }
+
+    if (minimizado) {
+      if (evento.key === 'ArrowDown') {
+        evento.preventDefault()
+        setMinimizado(false)
+      }
+      return
+    }
+
     if (coincidencias.length === 0) return
+
     if (evento.key === 'ArrowDown') {
       evento.preventDefault()
       setResaltado((actual) => (actual + 1) % coincidencias.length)
@@ -68,74 +93,118 @@ export function Entrada({
     } else if (evento.key === 'Enter') {
       evento.preventDefault()
       elegir(resaltado)
-    } else if (evento.key === 'Escape') {
-      onTerminoCambia('')
     }
   }
 
   return (
     <div className="sticky top-0 z-20 w-full border-b border-borde bg-papel">
-      <div className="flex w-full items-stretch gap-2 px-4 py-3">
-        <div className="relative flex flex-1 items-center">
-          <Search
-            className="pointer-events-none absolute left-4 size-5 text-desvaida"
-            aria-hidden
-          />
-          <input
-            ref={campo}
-            value={termino}
-            onChange={(evento) => onTerminoCambia(evento.target.value)}
-            onKeyDown={alPulsarTecla}
-            placeholder="Escribe un producto…"
-            aria-label="Buscar producto o escribir un comando"
-            aria-autocomplete="list"
-            aria-expanded={sugiriendo}
-            aria-controls="sugerencias-de-producto"
-            aria-activedescendant={
-              sugiriendo && coincidencias.length > 0
-                ? `sugerencia-${resaltado}`
-                : undefined
-            }
-            role="combobox"
-            className={[
-              'min-h-14 w-full rounded-full border border-borde bg-mesa pl-12 pr-4',
-              'text-entrada text-tinta placeholder:text-desvaida shadow-sm',
-              'focus-visible:outline-none focus-visible:border-tinta',
-            ].join(' ')}
-          />
+      <div className="relative">
+        <div className="flex w-full items-stretch gap-2 px-4 py-3">
+          <div className="relative flex flex-1 items-center">
+            <Search
+              className="pointer-events-none absolute left-4 size-5 text-desvaida"
+              aria-hidden
+            />
+            <input
+              ref={campo}
+              value={termino}
+              onChange={(evento) => onTerminoCambia(evento.target.value)}
+              onKeyDown={alPulsarTecla}
+              placeholder="Escribe un producto…"
+              aria-label="Buscar producto o escribir un comando"
+              aria-autocomplete="list"
+              aria-expanded={panelAbierto}
+              aria-controls="sugerencias-de-producto"
+              aria-activedescendant={
+                panelAbierto && coincidencias.length > 0
+                  ? `sugerencia-${resaltado}`
+                  : undefined
+              }
+              role="combobox"
+              className={[
+                'min-h-14 w-full rounded-full border border-borde bg-mesa pl-12',
+                mostrarOjo ? 'pr-14' : 'pr-4',
+                'text-entrada text-tinta placeholder:text-desvaida shadow-sm',
+                'focus-visible:outline-none focus-visible:border-tinta',
+              ].join(' ')}
+            />
+            {mostrarOjo && (
+              <button
+                type="button"
+                aria-label="Mostrar resultados de búsqueda"
+                title="Mostrar resultados"
+                onClick={() => {
+                  setMinimizado(false)
+                  campo.current?.focus()
+                }}
+                className={[
+                  'absolute right-2 flex size-10 items-center justify-center',
+                  'rounded-full text-tinta hover:bg-papel',
+                  'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
+                ].join(' ')}
+              >
+                <Eye className="size-5" aria-hidden />
+              </button>
+            )}
+          </div>
+
+          <BotonDeCaptura
+            etiqueta="Dictar el pedido"
+            disponible={asistenciaDisponible}
+            onClick={onDictar}
+          >
+            <Mic className="size-6" aria-hidden />
+          </BotonDeCaptura>
+
+          <BotonDeCaptura
+            etiqueta="Fotografiar el pedido"
+            disponible={asistenciaDisponible}
+            onClick={onFotografiar}
+          >
+            <Camera className="size-6" aria-hidden />
+          </BotonDeCaptura>
         </div>
 
-        <BotonDeCaptura
-          etiqueta="Dictar el pedido"
-          disponible={asistenciaDisponible}
-          onClick={onDictar}
-        >
-          <Mic className="size-6" aria-hidden />
-        </BotonDeCaptura>
+        {!asistenciaDisponible && (
+          <p className="w-full px-4 pb-2 font-mono text-etiqueta uppercase text-aviso">
+            Dictado y fotografía no disponibles
+          </p>
+        )}
 
-        <BotonDeCaptura
-          etiqueta="Fotografiar el pedido"
-          disponible={asistenciaDisponible}
-          onClick={onFotografiar}
-        >
-          <Camera className="size-6" aria-hidden />
-        </BotonDeCaptura>
+        {panelAbierto && (
+          <div
+            className={[
+              'absolute left-0 right-0 top-full z-30',
+              'border-b border-borde bg-papel shadow-lg',
+            ].join(' ')}
+          >
+            <div className="flex items-center justify-end border-b border-borde px-2 py-1">
+              <button
+                type="button"
+                aria-label="Minimizar resultados de búsqueda"
+                title="Minimizar"
+                onClick={() => {
+                  setMinimizado(true)
+                  campo.current?.focus()
+                }}
+                className={[
+                  'flex size-9 items-center justify-center rounded-full',
+                  'text-desvaida hover:bg-mesa hover:text-tinta',
+                  'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
+                ].join(' ')}
+              >
+                <Minus className="size-5" aria-hidden />
+              </button>
+            </div>
+            <Sugerencias
+              resultado={resultado}
+              resaltado={resaltado}
+              onElegir={elegir}
+              onResaltar={setResaltado}
+            />
+          </div>
+        )}
       </div>
-
-      {!asistenciaDisponible && (
-        <p className="w-full px-4 pb-2 font-mono text-etiqueta uppercase text-aviso">
-          Dictado y fotografía no disponibles
-        </p>
-      )}
-
-      {sugiriendo && (
-        <Sugerencias
-          resultado={resultado}
-          resaltado={resaltado}
-          onElegir={elegir}
-          onResaltar={setResaltado}
-        />
-      )}
     </div>
   )
 }
@@ -184,7 +253,7 @@ function Sugerencias({
 }) {
   if (resultado.sinCoincidencias) {
     return (
-      <div className="w-full border-t border-borde bg-papel px-4 py-3">
+      <div className="w-full bg-papel px-4 py-3">
         <p className="text-cuerpo font-bold text-aviso">
           No hay ningún producto que coincida con «{resultado.termino}»
         </p>
@@ -196,7 +265,7 @@ function Sugerencias({
   }
 
   return (
-    <div className="w-full border-t border-borde bg-papel">
+    <div className="w-full bg-papel">
       {resultado.soloAproximadas && (
         <p className="border-b border-aviso px-4 py-1.5 font-mono text-etiqueta font-bold uppercase text-aviso">
           Nada coincide con exactitud. Comprueba antes de aceptar.
@@ -226,7 +295,7 @@ function Sugerencias({
               ].join(' ')}
             >
               <span className="min-w-0 flex-1">
-                <span className="block truncate text-cuerpo">
+                <span className="block truncate text-cuerpo uppercase">
                   {coincidencia.elemento.descripcion}
                 </span>
                 <span

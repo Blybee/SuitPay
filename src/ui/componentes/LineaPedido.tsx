@@ -123,7 +123,10 @@ export function LineaPedido({
         .join(' ')}
     >
       <div className="min-w-0">
-        <p className="truncate text-cuerpo text-tinta" title={linea.descripcion}>
+        <p
+          className="truncate text-cuerpo uppercase text-tinta"
+          title={linea.descripcion}
+        >
           {linea.descripcion}
         </p>
         <p className="font-mono text-etiqueta uppercase text-desvaida">

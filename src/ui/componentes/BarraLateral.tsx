@@ -1,5 +1,6 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import {
+  FileText,
   LayoutDashboard,
   LogOut,
   PanelLeftClose,
@@ -26,6 +27,7 @@ export interface ItemDeBarraLateral {
   readonly to:
     | '/'
     | '/configuracion'
+    | '/comprobantes'
     | '/administracion'
     | '/administracion/catalogo'
     | '/administracion/series'
@@ -39,6 +41,12 @@ export interface ItemDeBarraLateral {
 
 const ITEMS_VENDEDOR: readonly ItemDeBarraLateral[] = [
   { to: '/', etiqueta: 'Inicio', icono: Store, exacto: true },
+  {
+    to: '/comprobantes',
+    etiqueta: 'Comprobantes',
+    icono: FileText,
+    exacto: false,
+  },
   {
     to: '/configuracion',
     etiqueta: 'Configuración',
@@ -55,6 +63,12 @@ const ITEMS_ADMIN: readonly ItemDeBarraLateral[] = [
     exacto: false,
   },
   { to: '/', etiqueta: 'Mostrador', icono: Store, exacto: true },
+  {
+    to: '/comprobantes',
+    etiqueta: 'Comprobantes',
+    icono: FileText,
+    exacto: false,
+  },
 ]
 
 export function itemsParaRol(rol: Rol | null): readonly ItemDeBarraLateral[] {

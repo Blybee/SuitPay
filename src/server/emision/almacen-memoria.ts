@@ -246,4 +246,41 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
   async leerSerie(serieId: string): Promise<Serie | undefined> {
     return this.series.get(serieId)?.valor
   }
+
+  async listarComprobantes(opciones: {
+    readonly vendedorId: string | null
+    readonly limite: number
+    readonly cursorEmitidoEn?: Date
+    readonly cursorId?: string
+  }): Promise<{
+    readonly items: readonly Comprobante[]
+    readonly hayMas: boolean
+  }> {
+    let items = [...this.comprobantes.values()].map((cada) => cada.valor)
+    if (opciones.vendedorId !== null) {
+      items = items.filter((cada) => cada.vendedorId === opciones.vendedorId)
+    }
+    items.sort((uno, otro) => {
+      const porFecha = otro.emitidoEn.getTime() - uno.emitidoEn.getTime()
+      if (porFecha !== 0) return porFecha
+      return otro.id.localeCompare(uno.id)
+    })
+
+    if (
+      opciones.cursorEmitidoEn !== undefined &&
+      opciones.cursorId !== undefined
+    ) {
+      const cursorMs = opciones.cursorEmitidoEn.getTime()
+      const cursorId = opciones.cursorId
+      items = items.filter((cada) => {
+        const ms = cada.emitidoEn.getTime()
+        if (ms < cursorMs) return true
+        if (ms > cursorMs) return false
+        return cada.id < cursorId
+      })
+    }
+
+    const pagina = items.slice(0, opciones.limite)
+    return { items: pagina, hayMas: items.length > opciones.limite }
+  }
 }
