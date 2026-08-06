@@ -229,9 +229,20 @@ async function reclamarEnTransaccion(
     // dispositivo genera una clave distinta.
     if (peticion.cotizacionId !== null) {
       const cotizacion = await transaccion.leerCotizacion(peticion.cotizacionId)
-      if (cotizacion !== undefined && cotizacion.estado === 'convertida') {
+      if (cotizacion === undefined) {
+        fallar('cotizacion_no_pendiente', {
+          cotizacionId: peticion.cotizacionId,
+        })
+      }
+      if (cotizacion.estado === 'convertida') {
         fallar('cotizacion_ya_convertida', {
           comprobanteId: cotizacion.comprobanteId,
+        })
+      }
+      if (cotizacion.estado !== 'pendiente') {
+        fallar('cotizacion_no_pendiente', {
+          cotizacionId: peticion.cotizacionId,
+          estado: cotizacion.estado,
         })
       }
     }

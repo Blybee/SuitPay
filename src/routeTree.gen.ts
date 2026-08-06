@@ -19,6 +19,7 @@ import { Route as AdministracionSeriesRouteImport } from './routes/administracio
 import { Route as AdministracionUsuariosRouteImport } from './routes/administracion/usuarios'
 import { Route as ComprobantesIndexRouteImport } from './routes/comprobantes/index'
 import { Route as ComprobantesComprobanteIdRouteImport } from './routes/comprobantes/$comprobanteId'
+import { Route as CotizacionesIndexRouteImport } from './routes/cotizaciones/index'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -72,6 +73,11 @@ const ComprobantesComprobanteIdRoute =
     path: '/comprobantes/$comprobanteId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const CotizacionesIndexRoute = CotizacionesIndexRouteImport.update({
+  id: '/cotizaciones/',
+  path: '/cotizaciones/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -84,6 +90,7 @@ export interface FileRoutesByFullPath {
   '/comprobantes/$comprobanteId': typeof ComprobantesComprobanteIdRoute
   '/administracion/': typeof AdministracionIndexRoute
   '/comprobantes/': typeof ComprobantesIndexRoute
+  '/cotizaciones/': typeof CotizacionesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -96,6 +103,7 @@ export interface FileRoutesByTo {
   '/comprobantes/$comprobanteId': typeof ComprobantesComprobanteIdRoute
   '/administracion': typeof AdministracionIndexRoute
   '/comprobantes': typeof ComprobantesIndexRoute
+  '/cotizaciones': typeof CotizacionesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -109,6 +117,7 @@ export interface FileRoutesById {
   '/comprobantes/$comprobanteId': typeof ComprobantesComprobanteIdRoute
   '/administracion/': typeof AdministracionIndexRoute
   '/comprobantes/': typeof ComprobantesIndexRoute
+  '/cotizaciones/': typeof CotizacionesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/comprobantes/$comprobanteId'
     | '/administracion/'
     | '/comprobantes/'
+    | '/cotizaciones/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -135,6 +145,7 @@ export interface FileRouteTypes {
     | '/comprobantes/$comprobanteId'
     | '/administracion'
     | '/comprobantes'
+    | '/cotizaciones'
   id:
     | '__root__'
     | '/'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/comprobantes/$comprobanteId'
     | '/administracion/'
     | '/comprobantes/'
+    | '/cotizaciones/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -160,6 +172,7 @@ export interface RootRouteChildren {
   ComprobantesComprobanteIdRoute: typeof ComprobantesComprobanteIdRoute
   AdministracionIndexRoute: typeof AdministracionIndexRoute
   ComprobantesIndexRoute: typeof ComprobantesIndexRoute
+  CotizacionesIndexRoute: typeof CotizacionesIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -234,6 +247,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ComprobantesComprobanteIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cotizaciones/': {
+      id: '/cotizaciones/'
+      path: '/cotizaciones'
+      fullPath: '/cotizaciones/'
+      preLoaderRoute: typeof CotizacionesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -248,17 +268,8 @@ const rootRouteChildren: RootRouteChildren = {
   ComprobantesComprobanteIdRoute: ComprobantesComprobanteIdRoute,
   AdministracionIndexRoute: AdministracionIndexRoute,
   ComprobantesIndexRoute: ComprobantesIndexRoute,
+  CotizacionesIndexRoute: CotizacionesIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

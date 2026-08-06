@@ -29,6 +29,7 @@ export const CODIGOS_DE_ERROR = {
   cliente_requerido: 'cliente_requerido',
   importe_no_positivo: 'importe_no_positivo',
   cotizacion_ya_convertida: 'cotizacion_ya_convertida',
+  cotizacion_no_pendiente: 'cotizacion_no_pendiente',
   emision_indeterminada: 'emision_indeterminada',
   proveedor_no_disponible: 'proveedor_no_disponible',
   emision_rechazada: 'emision_rechazada',
@@ -79,6 +80,8 @@ const MENSAJES: Record<CodigoDeError, string> = {
     'Hay una línea con cantidad o precio en cero. Corrígela para poder emitir.',
   cotizacion_ya_convertida:
     'Esta cotización ya se convirtió en un comprobante desde otro dispositivo. Búscalo antes de volver a emitir.',
+  cotizacion_no_pendiente:
+    'Esa cotización no se puede convertir. Comprueba que exista y siga pendiente.',
   emision_indeterminada:
     'No se pudo confirmar si el comprobante se emitió. NO vuelvas a emitir a ciegas: usa «Consultar estado».',
   proveedor_no_disponible:
@@ -129,6 +132,7 @@ const REINTENTABLE: Record<CodigoDeError, boolean> = {
   cliente_requerido: false,
   importe_no_positivo: false,
   cotizacion_ya_convertida: false,
+  cotizacion_no_pendiente: false,
   emision_indeterminada: false,
   proveedor_no_disponible: true,
   emision_rechazada: false,

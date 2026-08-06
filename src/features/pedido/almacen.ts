@@ -66,6 +66,16 @@ interface AccionesDelPedido {
     capturaId?: string | null
   }) => void
   /**
+   * Sustituye el pedido en curso por el contenido de una cotización recuperada.
+   * Nueva clave de idempotencia: recuperar no es la misma intención de venta
+   * que hubiera quedado a medias en este dispositivo.
+   */
+  cargarDesdeCotizacion: (datos: {
+    readonly cotizacionId: string
+    readonly lineas: readonly LineaDePedido[]
+    readonly cliente: ClienteDelPedido | null
+  }) => void
+  /**
    * Reclama la clave de idempotencia con la que se confirmará la venta. Es
    * idempotente a propósito: llamarla dos veces devuelve la misma clave, porque
    * la clave identifica **la intención de venta** y no la pulsación. Ahí es
@@ -163,6 +173,18 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         ...(origen.capturaId !== undefined
           ? { capturaId: origen.capturaId }
           : {}),
+      })
+    },
+
+    cargarDesdeCotizacion(datos) {
+      cambiarContenido({
+        lineas: datos.lineas.map((linea) => ({
+          ...linea,
+          cantidad: normalizarCantidad(linea.cantidad),
+        })),
+        cliente: datos.cliente,
+        cotizacionId: datos.cotizacionId,
+        capturaId: null,
       })
     },
 

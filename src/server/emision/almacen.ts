@@ -120,7 +120,7 @@ export interface Serie {
 
 export interface Cotizacion {
   readonly id: string
-  readonly estado: 'pendiente' | 'convertida' | 'vencida'
+  readonly estado: 'pendiente' | 'convertida' | 'descartada'
   readonly comprobanteId: string | null
 }
 

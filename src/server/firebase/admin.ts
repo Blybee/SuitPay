@@ -101,4 +101,5 @@ export const DOCUMENTOS = {
   catalogoActual: 'catalogo/actual',
   indiceDeClientes: 'indices/clientes',
   parametros: 'config/parametros',
+  contadorCotizaciones: 'config/contadorCotizaciones',
 } as const

@@ -10,6 +10,7 @@ import type {
   CambiosDelComprobante,
   Comprobante,
   Cotizacion,
+  IntentoDeEmision,
   Serie,
   TransaccionDeEmision,
 } from './almacen.ts'
@@ -38,6 +39,29 @@ function aFecha(valor: unknown): Date {
   if (valor instanceof Timestamp) return valor.toDate()
   if (valor instanceof Date) return valor
   return new Date(0)
+}
+
+/** Firestore rechaza `undefined`; el rastro del proveedor lo usa a menudo. */
+function sinUndefined<T extends Record<string, unknown>>(objeto: T): DocumentData {
+  const limpio: DocumentData = {}
+  for (const [clave, valor] of Object.entries(objeto)) {
+    if (valor === undefined) continue
+    if (valor !== null && typeof valor === 'object' && !Array.isArray(valor)) {
+      limpio[clave] = sinUndefined(valor as Record<string, unknown>)
+    } else {
+      limpio[clave] = valor
+    }
+  }
+  return limpio
+}
+
+function serializarIntento(intento: IntentoDeEmision): DocumentData {
+  return sinUndefined({
+    momento: Timestamp.fromDate(intento.momento),
+    resultado: intento.resultado,
+    razon: intento.razon,
+    rastro: intento.rastro,
+  })
 }
 
 function aComprobante(id: string, datos: DocumentData): Comprobante {
@@ -228,7 +252,7 @@ export class AlmacenFirestore implements AlmacenDeEmision {
         ...payload,
         intentos: [
           ...previos,
-          { ...nuevoIntento, momento: Timestamp.fromDate(nuevoIntento.momento) },
+          serializarIntento(nuevoIntento),
         ],
       })
     })

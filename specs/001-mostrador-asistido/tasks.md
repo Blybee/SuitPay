@@ -268,17 +268,17 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 
 ### Pruebas obligatorias de User Story 5 ⚠️
 
-- [ ] T107 [P] [US5] **Prueba de la carrera entre dispositivos** en `tests/emulador/cotizacion-dos-dispositivos.test.ts`: dos claves de idempotencia distintas sobre la misma cotización producen **un solo comprobante**, y la segunda recibe `cotizacion_ya_convertida`. Es el hueco que la clave de idempotencia por sí sola no cubre
-- [ ] T108 [P] [US5] Prueba de la transacción de conversión en `tests/emulador/cotizacion-transaccion.test.ts`: la cotización pasa a `convertida` **en la misma transacción** que crea el comprobante, y un fallo deja ambos sin efecto
+- [x] T107 [P] [US5] **Prueba de la carrera entre dispositivos** en `tests/emulador/cotizacion-dos-dispositivos.test.ts`: dos claves de idempotencia distintas sobre la misma cotización producen **un solo comprobante**, y la segunda recibe `cotizacion_ya_convertida`. Es el hueco que la clave de idempotencia por sí sola no cubre
+- [x] T108 [P] [US5] Prueba de la transacción de conversión en `tests/emulador/cotizacion-transaccion.test.ts`: la cotización pasa a `convertida` **en la misma transacción** que crea el comprobante, y un fallo deja ambos sin efecto
 
 ### Implementación de User Story 5
 
-- [ ] T109 [P] [US5] Implementar la numeración de cotizaciones en `src/server/cotizaciones/numerar.ts`, con un número legible para poder pedirla por voz o por comando
-- [ ] T110 [US5] Implementar el guardado de la cotización en `src/features/cotizaciones/guardar.ts` (FR-016)
-- [ ] T111 [US5] Implementar la recuperación por número en `src/routes/cotizaciones/index.tsx`, accesible **desde cualquier dispositivo y para cualquier vendedor autorizado** (FR-017)
-- [ ] T112 [US5] Implementar la advertencia de cambios al recuperar en `src/features/cotizaciones/diferencias.ts`, comparando contra el catálogo en caché **sin lecturas adicionales** y señalando precios cambiados y productos desaparecidos (FR-018)
-- [ ] T113 [US5] Extender `emitirComprobante` en `src/server/emision/emitir.ts` para marcar la cotización como `convertida` en la misma transacción
-- [ ] T114 [P] [US5] Implementar el estado de cotización ya convertida en `src/features/cotizaciones/ya-convertida.tsx`, que **indica en qué comprobante terminó** y ofrece abrirlo (FR-019)
+- [x] T109 [P] [US5] Implementar la numeración de cotizaciones en `src/server/cotizaciones/numerar.ts`, con un número legible para poder pedirla por voz o por comando
+- [x] T110 [US5] Implementar el guardado de la cotización en `src/features/cotizaciones/guardar.ts` (FR-016)
+- [x] T111 [US5] Implementar la recuperación por número en `src/routes/cotizaciones/index.tsx`, accesible **desde cualquier dispositivo y para cualquier vendedor autorizado** (FR-017)
+- [x] T112 [US5] Implementar la advertencia de cambios al recuperar en `src/features/cotizaciones/diferencias.ts`, comparando contra el catálogo en caché **sin lecturas adicionales** y señalando precios cambiados y productos desaparecidos (FR-018)
+- [x] T113 [US5] Extender `emitirComprobante` en `src/server/emision/emitir.ts` para marcar la cotización como `convertida` en la misma transacción
+- [x] T114 [P] [US5] Implementar el estado de cotización ya convertida en `src/features/cotizaciones/ya-convertida.tsx`, que **indica en qué comprobante terminó** y ofrece abrirlo (FR-019)
 
 **Checkpoint**: las cotizaciones viajan entre dispositivos y solo pueden convertirse una vez.
 

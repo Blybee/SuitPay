@@ -20,7 +20,10 @@ export interface PropsDePieTotal {
   readonly estado: EstadoDeEmision
   readonly motivoDeBloqueo: string | null
   readonly onEmitir: () => void
+  readonly onGuardarCotizacion?: () => void
+  readonly guardandoCotizacion?: boolean
   readonly proveedorCaido?: boolean
+  readonly sinRed?: boolean
 }
 
 const OPCIONES_PAGO = [
@@ -39,10 +42,19 @@ export function PieTotal({
   estado,
   motivoDeBloqueo,
   onEmitir,
+  onGuardarCotizacion,
+  guardandoCotizacion = false,
   proveedorCaido = false,
+  sinRed = false,
 }: PropsDePieTotal) {
   const bloqueado = estado === 'inhabilitado' || motivoDeBloqueo !== null
   const enVuelo = estado === 'emitiendo'
+  const puedeGuardar =
+    onGuardarCotizacion !== undefined &&
+    numeroDeLineas > 0 &&
+    !guardandoCotizacion &&
+    !sinRed &&
+    !enVuelo
 
   return (
     <div className="sticky bottom-0 z-20 w-full border-t border-borde bg-papel shadow-md">
@@ -88,6 +100,24 @@ export function PieTotal({
             {formatearImporte(total)}
           </output>
         </div>
+
+        {onGuardarCotizacion !== undefined ? (
+          <button
+            type="button"
+            onClick={onGuardarCotizacion}
+            disabled={!puedeGuardar}
+            className={[
+              'min-h-14 shrink-0 rounded-full border px-5 text-entrada font-bold',
+              'focus-visible:outline-none focus-visible:border-tinta',
+              'disabled:cursor-not-allowed disabled:border-borde disabled:bg-mesa disabled:text-desvaida',
+              puedeGuardar
+                ? 'border-borde bg-papel text-tinta hover:bg-mesa'
+                : '',
+            ].join(' ')}
+          >
+            {guardandoCotizacion ? 'Guardando…' : 'Guardar cotización'}
+          </button>
+        ) : null}
 
         <button
           type="button"

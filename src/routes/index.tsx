@@ -1,8 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { REGLAS } from '../domain/documentos/tipos.ts'
 import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
 import { usarCatalogo, umbralVigente } from '../features/catalogo/almacen.ts'
+import { guardarCotizacion } from '../features/cotizaciones/guardar.ts'
+import { PanelDeCotizaciones } from '../features/cotizaciones/panel.tsx'
 import {
   alRecuperarConectividad,
   usarDegradacion,
@@ -24,6 +27,7 @@ import { GuardaSesion } from '../features/sesion/GuardaSesion.tsx'
 import { AltaClienteEnContexto } from '../features/clientes/alta-en-contexto.tsx'
 import { emitir } from '../features/emision/emitir.funciones.ts'
 import { leerMiSerieFn } from '../features/series/series.funciones.ts'
+import { CLAVES_DE_CONSULTA } from '../infra/consultas/cliente.ts'
 import { CabeceraDocumento } from '../ui/componentes/CabeceraDocumento.tsx'
 import { Entrada } from '../ui/componentes/Entrada.tsx'
 import {
@@ -56,6 +60,7 @@ function MostradorConGuarda() {
 }
 
 function Mostrador() {
+  const queryClient = useQueryClient()
   const [pestana, setPestana] = useState<PestanaMostrador>('pedido')
   const [termino, setTermino] = useState('')
   const [medioPago, setMedioPago] = useState('efectivo')
@@ -64,6 +69,8 @@ function Mostrador() {
   const [consultaClienteInicial, setConsultaClienteInicial] = useState<
     string | null
   >(null)
+  const [guardandoCotizacion, setGuardandoCotizacion] = useState(false)
+  const [avisoCotizacion, setAvisoCotizacion] = useState<string | null>(null)
 
   const catalogo = usarCatalogo()
   const sesion = usarSesion()
@@ -74,6 +81,7 @@ function Mostrador() {
   const falloDeRed = usarEmision((estado) => estado.falloDeRed)
   const cerrarEmision = usarEmision((estado) => estado.cerrar)
   const degradaciones = usarDegradacion((estado) => estado.activas)
+  const sinRed = degradaciones.some((cada) => cada.causa === 'red')
 
   // El arranque exige sesión: sin token, Firestore deniega y el fallback a
   // caché declaraba «sin conexión» aunque el wifi estuviera bien. Se espera
@@ -177,6 +185,31 @@ function Mostrador() {
     }
   }
 
+  async function lanzarGuardadoDeCotizacion(): Promise<void> {
+    if (sesion.uid === null || guardandoCotizacion) return
+    setGuardandoCotizacion(true)
+    setAvisoCotizacion(null)
+    try {
+      const resultado = await guardarCotizacion({
+        uid: sesion.uid,
+        lineas: pedido.lineas,
+        cliente: pedido.cliente,
+      })
+      if (!resultado.ok || resultado.numero === undefined) {
+        setAvisoCotizacion(
+          resultado.mensaje ?? 'No se pudo guardar la cotización.',
+        )
+        return
+      }
+      setAvisoCotizacion(`Cotización guardada: número ${resultado.numero}.`)
+      void queryClient.invalidateQueries({
+        queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
+      })
+    } finally {
+      setGuardandoCotizacion(false)
+    }
+  }
+
   const faseDelBoton: FaseDelBoton =
     fase.nombre === 'en_vuelo'
       ? 'emitiendo'
@@ -256,6 +289,15 @@ function Mostrador() {
             </ul>
           </div>
 
+          {avisoCotizacion !== null ? (
+            <p
+              role="status"
+              className="border-t border-borde px-4 py-2 text-cuerpo font-bold text-tinta"
+            >
+              {avisoCotizacion}
+            </p>
+          ) : null}
+
           <PieTotal
             total={total}
             numeroDeLineas={pedido.lineas.length}
@@ -264,7 +306,10 @@ function Mostrador() {
             estado={faseDelBoton}
             motivoDeBloqueo={motivoDeBloqueo}
             onEmitir={() => void lanzarEmision()}
+            onGuardarCotizacion={() => void lanzarGuardadoDeCotizacion()}
+            guardandoCotizacion={guardandoCotizacion}
             proveedorCaido={proveedorCaido}
+            sinRed={sinRed}
           />
 
           <EstadoDeEmision
@@ -278,10 +323,7 @@ function Mostrador() {
       )}
 
       {pestana === 'cotizaciones' && (
-        <PanelPlaceholder
-          titulo="Cotizaciones"
-          texto="Aquí aparecerán las cotizaciones del día para reabrirlas en el pedido."
-        />
+        <PanelDeCotizaciones onRecuperada={() => setPestana('pedido')} />
       )}
 
       {pestana === 'vecinos' && (
