@@ -95,3 +95,65 @@ tanstackIntent:
     run: "npx @tanstack/intent@latest load @tanstack/virtual-file-routes#virtual-file-routes"
     for: "Programmatic route tree building as an alternative to filesystem conventions: rootRoute, index, route, layout, physical, defineVirtualSubtreeConfig. Use with TanStack Router plugin's virtualRouteConfig option."
 <!-- intent-skills:end -->
+
+## Cursor Cloud specific instructions
+
+SuitPay es una unica app (TanStack Start + React 19, Vite 8 + Nitro, Firebase).
+No es un monorepo. Comandos estandar en `package.json`; los detalles del negocio
+en `PRODUCT.md`, `DESIGN.md` y `specs/001-mostrador-asistido/`. Aqui solo van los
+caveats no obvios para arrancar/probar en el VM (el update script ya corrio
+`npm install`).
+
+### Node y dependencias
+- El `node` por defecto del VM es 22.14.0; `engines` pide `>=22`. Funciona y todas
+  las pruebas pasan, aunque `npm install` avisa `EBADENGINE` para `jsdom`/`undici`.
+  Si hiciera falta la version exacta, `nvm use 22.22.2` (lts/jod, ya instalada).
+- `npm ci` **falla**: el `package-lock.json` versionado esta desincronizado
+  (`Missing: lru-cache from lock file`). Usa `npm install` (lo hace el update script).
+- Lint tiene **1 error preexistente** ajeno al setup: `src/server/firebase/admin.ts`
+  (`@typescript-eslint/no-unnecessary-condition` en la cadena `import.meta.env?.`).
+  No lo introdujimos; `npm run lint` termina en error por eso.
+
+### Pruebas
+- `npm run prueba` — unit (dominio/servidor/interfaz), sin emuladores. Pasan.
+- `npm run prueba:emulador` — arranca la Emulator Suite y corre el proyecto
+  `emulador`. Requiere Java (ya presente: OpenJDK 21). La primera vez descarga los
+  jars de los emuladores a `~/.cache/firebase/` (una sola vez). Pasan.
+- `npm run tipos` — typecheck, limpio.
+- `npm run prueba:e2e:completa` — Playwright dentro de `emulators:exec`. Necesita
+  navegador: `npx playwright install chromium` (no incluido en el update script).
+  **Dos specs de `tests/e2e/venta-escrita.spec.ts` fallan por causas preexistentes,
+  no del entorno**: (1) el test "solo cliente" asume que `/` no exige sesion, pero la
+  app ya protege `/` y redirige a `/acceso`; (2) el helper `tests/e2e/ayudas-sesion.ts`
+  usa `cert({ privateKey: 'sin-uso-en-el-emulador' })`, que `firebase-admin` v14
+  rechaza al parsear la clave.
+
+### Correr la app sin secretos de nube (modo emulador)
+No hay credenciales de `blayblocklabs-antrax` ni token de proveedor en el VM. Para
+levantar la app de punta a punta se usa la Emulator Suite (`demo-suitpay`) con el
+doble local del proveedor:
+
+1. `.env.local` (git-ignorado, hay que recrearlo en un VM nuevo) con valores demo:
+   `VITE_FIREBASE_API_KEY=demo-api-key`, `VITE_FIREBASE_AUTH_DOMAIN=demo-suitpay.firebaseapp.com`,
+   `VITE_FIREBASE_PROJECT_ID=demo-suitpay`, `VITE_FIREBASE_STORAGE_BUCKET=demo-suitpay.appspot.com`,
+   `VITE_FIREBASE_APP_ID=demo-app-id`, `VITE_USAR_EMULADORES=true`,
+   `GOOGLE_CLOUD_PROJECT=demo-suitpay`, `PROVEEDOR_SIMULADO=true`.
+2. Emuladores: `npm run emuladores` (Firestore 8080, Auth 9099, Storage 9199, UI 4000).
+3. Sembrar usuarios + catalogo en el emulador (no uses `bootstrap-admin.mjs`, que
+   exige ADC de nube):
+   `FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 GOOGLE_CLOUD_PROJECT=demo-suitpay node scripts/sembrar-emulador.mjs`
+   Crea `vendedor@suitpay.local / vendedor123` (vendedor) y `admin@suitpay.local / admin1234`.
+4. Dev server: **hay que exportar los hosts de emulador en el proceso de `npm run dev`**.
+   Vite NO propaga las variables no-`VITE_` de `.env.local` a `process.env` del
+   servidor, asi que el Admin SDK no enrutaria a los emuladores por si solo:
+   `export FIRESTORE_EMULATOR_HOST=127.0.0.1:8080 FIREBASE_AUTH_EMULATOR_HOST=127.0.0.1:9099 FIREBASE_STORAGE_EMULATOR_HOST=127.0.0.1:9199 GOOGLE_CLOUD_PROJECT=demo-suitpay PROVEEDOR_SIMULADO=true` y luego `npm run dev` (http://localhost:3000).
+5. Entrar en `/acceso` como vendedor. El tipo por defecto es **nota de venta**, que
+   no consume serie ni llama al proveedor: sirve para probar una venta completa sin
+   token real. Boleta/factura requieren serie asignada (admin) y proveedor (real o
+   `PROVEEDOR_SIMULADO=true`).
+
+### Camino de nube (produccion / dev real)
+Para operar contra Firebase real (`VITE_USAR_EMULADORES=false`) hacen falta secretos
+que no estan en el VM: `VITE_FIREBASE_API_KEY`/`VITE_FIREBASE_APP_ID` reales, ADC del
+Admin SDK (`gcloud auth application-default login` o `GOOGLE_APPLICATION_CREDENTIALS`)
+y `PROVEEDOR_TOKEN` (Secret Manager). Ver `.env.example` y `specs/001-mostrador-asistido/quickstart.md`.
