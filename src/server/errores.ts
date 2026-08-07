@@ -197,7 +197,21 @@ export function fallar(
 }
 
 export function esErrorDeSuitPay(valor: unknown): valor is ErrorDeSuitPay {
-  return valor instanceof ErrorDeSuitPay
+  if (valor instanceof ErrorDeSuitPay) return true
+  // Bundles duplicados / réplicas: `instanceof` puede fallar aunque el valor
+  // sea el mismo contrato (código estable + aRespuesta).
+  if (typeof valor !== 'object' || valor === null) return false
+  const candidato = valor as {
+    codigo?: unknown
+    aRespuesta?: unknown
+    name?: unknown
+  }
+  return (
+    candidato.name === 'ErrorDeSuitPay' &&
+    typeof candidato.codigo === 'string' &&
+    candidato.codigo in CODIGOS_DE_ERROR &&
+    typeof candidato.aRespuesta === 'function'
+  )
 }
 
 export function mensajeDe(codigo: CodigoDeError): string {

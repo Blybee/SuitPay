@@ -12,7 +12,17 @@ import type { DatosDeContribuyenteParaRevision } from './clientes.funciones.ts'
 import { leerClientePorDocumento } from './existencia.ts'
 import { FormularioManualDeCliente } from './manual.tsx'
 import type { DatosManualesDeCliente } from './manual.tsx'
+import {
+  decidirTrasConsultaContribuyente,
+  mensajeDeConsultaIndisponible,
+} from './resultado-consulta.ts'
 import { RevisionDeContribuyente } from './revision.tsx'
+
+export type ArranqueManualDeCliente = {
+  readonly tipoDocumento: 'DNI' | 'RUC'
+  readonly numeroDocumento: string
+  readonly mensaje?: string
+}
 
 type Fase =
   | 'buscar'
@@ -32,6 +42,7 @@ export function AltaClienteEnContexto({
   onClienteElegido,
   onClienteCreadoEnIndice,
   consultaInicial = null,
+  arranqueManual = null,
 }: {
   readonly abierta: boolean
   readonly onCerrar: () => void
@@ -40,6 +51,11 @@ export function AltaClienteEnContexto({
   readonly onClienteCreadoEnIndice: (entrada: ClienteEnIndice) => void
   /** Si llega al abrir (p. ej. desde el RUC/DNI inline), se busca sola. */
   readonly consultaInicial?: string | null
+  /**
+   * Abre directo en alta manual (p. ej. padrón caído tras morph Agregar).
+   * Evita reconsultar un host que ya falló.
+   */
+  readonly arranqueManual?: ArranqueManualDeCliente | null
 }) {
   const [fase, setFase] = useState<Fase>('buscar')
   const [consulta, setConsulta] = useState('')
@@ -57,6 +73,7 @@ export function AltaClienteEnContexto({
   })
   const [mensaje, setMensaje] = useState<string | null>(null)
   const consultaAutoProcesada = useRef<string | null>(null)
+  const manualAutoProcesado = useRef<string | null>(null)
 
   function reiniciar() {
     setFase('buscar')
@@ -66,6 +83,7 @@ export function AltaClienteEnContexto({
     setMensaje(null)
     setManual({ tipoDocumento: 'RUC', numeroDocumento: '', denominacion: '' })
     consultaAutoProcesada.current = null
+    manualAutoProcesado.current = null
   }
 
   function cerrar() {
@@ -112,35 +130,37 @@ export function AltaClienteEnContexto({
       }
 
       setFase('guardando')
-      const respuesta = await consultarContribuyenteFn({
-        data: { tipoDocumento: tipo, numeroDocumento: texto },
-      })
-
-      if (respuesta.ok && respuesta.datos) {
-        setRevision(respuesta.datos)
-        setFase('revision')
+      try {
+        const respuesta = await consultarContribuyenteFn({
+          data: { tipoDocumento: tipo, numeroDocumento: texto },
+        })
+        const decision = decidirTrasConsultaContribuyente(respuesta, {
+          tipoDocumento: tipo,
+          numeroDocumento: texto,
+        })
+        if (decision.tipo === 'confirmar') {
+          setRevision(decision.datos)
+          setFase('revision')
+          return
+        }
+        setManual({
+          tipoDocumento: decision.tipoDocumento,
+          numeroDocumento: decision.numeroDocumento,
+          denominacion: '',
+        })
+        setMensaje(decision.mensaje)
+        setFase('manual')
         return
-      }
-
-      if (respuesta.error?.codigo === 'servicio_no_disponible') {
+      } catch {
         setManual({
           tipoDocumento: tipo,
           numeroDocumento: texto,
           denominacion: '',
         })
-        setMensaje(respuesta.error.mensaje)
+        setMensaje(mensajeDeConsultaIndisponible())
         setFase('manual')
         return
       }
-
-      setMensaje(respuesta.error?.mensaje ?? 'No se pudo consultar.')
-      setManual({
-        tipoDocumento: tipo,
-        numeroDocumento: texto,
-        denominacion: '',
-      })
-      setFase('manual')
-      return
     }
 
     if (locales.length > 0) {
@@ -156,14 +176,32 @@ export function AltaClienteEnContexto({
   useEffect(() => {
     if (!abierta) {
       consultaAutoProcesada.current = null
+      manualAutoProcesado.current = null
       return
     }
+
+    if (arranqueManual !== null && arranqueManual !== undefined) {
+      const clave = `${arranqueManual.tipoDocumento}:${arranqueManual.numeroDocumento}`
+      if (manualAutoProcesado.current === clave) return
+      manualAutoProcesado.current = clave
+      setTipoDocumento(arranqueManual.tipoDocumento)
+      setConsulta(arranqueManual.numeroDocumento)
+      setManual({
+        tipoDocumento: arranqueManual.tipoDocumento,
+        numeroDocumento: arranqueManual.numeroDocumento,
+        denominacion: '',
+      })
+      setMensaje(arranqueManual.mensaje ?? mensajeDeConsultaIndisponible())
+      setFase('manual')
+      return
+    }
+
     const inicial = consultaInicial?.trim() ?? ''
     if (inicial.length === 0) return
     if (consultaAutoProcesada.current === inicial) return
     consultaAutoProcesada.current = inicial
     void buscar(inicial)
-  }, [abierta, consultaInicial]) // buscar es estable respecto a la consulta forzada
+  }, [abierta, consultaInicial, arranqueManual]) // buscar es estable respecto a la consulta forzada
 
   async function confirmarRevision() {
     if (revision === null) return
