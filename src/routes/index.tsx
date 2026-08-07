@@ -44,10 +44,12 @@ import { leerClientePorDocumento } from '../features/clientes/existencia.ts'
 import { emitir } from '../features/emision/emitir.funciones.ts'
 import { leerMiSerieFn } from '../features/series/series.funciones.ts'
 import { CLAVES_DE_CONSULTA } from '../infra/consultas/cliente.ts'
+import { DOCUMENTO_CLIENTE_POR_NOMBRE } from '../features/clientes/documento-marcador.ts'
 import {
   CabeceraDocumento,
   type ClienteParaConfirmar,
   type ModoDeCabecera,
+  type SeriesEnCabecera,
 } from '../ui/componentes/CabeceraDocumento.tsx'
 import { Entrada } from '../ui/componentes/Entrada.tsx'
 import {
@@ -85,7 +87,10 @@ function Mostrador() {
   const [pestana, setPestana] = useState<PestanaMostrador>('pedido')
   const [termino, setTermino] = useState('')
   const [medioPago, setMedioPago] = useState('efectivo')
-  const [serieAsignada, setSerieAsignada] = useState<string | null>(null)
+  const [seriesCabecera, setSeriesCabecera] = useState<SeriesEnCabecera>({
+    boleta: null,
+    factura: null,
+  })
   const [altaClienteAbierta, setAltaClienteAbierta] = useState(false)
   const [consultaClienteInicial, setConsultaClienteInicial] = useState<
     string | null
@@ -141,24 +146,32 @@ function Mostrador() {
   }, [])
 
   useEffect(() => {
-    if (!REGLAS[pedido.tipoDocumento].consumeSerieRegulada) {
-      setSerieAsignada(null)
+    if (sesion.uid === null) {
+      setSeriesCabecera({ boleta: null, factura: null })
       return
     }
-
     const estado = { vivo: true }
     void (async () => {
-      const respuesta = await leerMiSerieFn({
-        data: { tipoDocumento: pedido.tipoDocumento },
-      })
+      const [boleta, factura] = await Promise.all([
+        leerMiSerieFn({ data: { tipoDocumento: 'boleta' } }),
+        leerMiSerieFn({ data: { tipoDocumento: 'factura' } }),
+      ])
       if (!estado.vivo) return
-      const serie = respuesta.ok ? (respuesta.serie ?? null) : null
-      setSerieAsignada(serie !== null && serie.activa ? serie.serie : null)
+      const serieDe = (
+        respuesta: Awaited<ReturnType<typeof leerMiSerieFn>>,
+      ): string | null => {
+        const serie = respuesta.ok ? (respuesta.serie ?? null) : null
+        return serie !== null && serie.activa ? serie.serie : null
+      }
+      setSeriesCabecera({
+        boleta: serieDe(boleta),
+        factura: serieDe(factura),
+      })
     })()
     return () => {
       estado.vivo = false
     }
-  }, [pedido.tipoDocumento, sesion.uid])
+  }, [sesion.uid])
 
   const lineas = lineasCalculadas(pedido)
   const total = totalDelPedido(pedido)
@@ -243,9 +256,19 @@ function Mostrador() {
         },
       })
       resolverEmision(respuesta)
+      if (respuesta.ok && respuesta.comprobante !== undefined) {
+        // vaciar() ya corre en el flujo de emisión; soltamos el modo cotización.
+        limpiarContextoDeCotizacionEnCabecera()
+      }
     } catch {
       falloDeRed()
     }
+  }
+
+  function limpiarContextoDeCotizacionEnCabecera(): void {
+    setModoCotizacion(false)
+    setClienteParaConfirmar(null)
+    setDocumentoNoRegistrado(null)
   }
 
   async function lanzarGuardadoDeCotizacion(): Promise<void> {
@@ -257,6 +280,7 @@ function Mostrador() {
         uid: sesion.uid,
         lineas: pedido.lineas,
         cliente: pedido.cliente,
+        cotizacionId: pedido.cotizacionId,
       })
       if (!resultado.ok || resultado.numero === undefined) {
         setAvisoCotizacion(
@@ -264,7 +288,11 @@ function Mostrador() {
         )
         return
       }
-      setAvisoCotizacion(`Cotización guardada: número ${resultado.numero}.`)
+      // Cierra el borrador en Pedido: la cotización vive en su tab.
+      // Sin aviso persistente en Pedido (el listado de Cotizaciones basta).
+      usarPedido.getState().vaciar()
+      limpiarContextoDeCotizacionEnCabecera()
+      setAvisoCotizacion(null)
       void queryClient.invalidateQueries({
         queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
       })
@@ -343,26 +371,45 @@ function Mostrador() {
     }
   }
 
+  function alNombreListo(nombre: string): void {
+    setDocumentoNoRegistrado(null)
+    setClienteParaConfirmar({
+      tipoDocumento: 'NOMBRE',
+      numeroDocumento: DOCUMENTO_CLIENTE_POR_NOMBRE,
+      denominacion: nombre.trim(),
+      origen: 'nombre',
+    })
+  }
+
   async function confirmarClientePendiente(): Promise<void> {
     if (clienteParaConfirmar === null || consultandoPadron) return
     const pendiente = clienteParaConfirmar
 
-    if (pendiente.origen === 'registrado') {
+    if (pendiente.origen === 'registrado' || pendiente.origen === 'nombre') {
       pedido.fijarCliente({
-        tipoDocumento: pendiente.tipoDocumento,
+        tipoDocumento:
+          pendiente.tipoDocumento === 'NOMBRE' ? 'DNI' : pendiente.tipoDocumento,
         numeroDocumento: pendiente.numeroDocumento,
         denominacion: pendiente.denominacion,
-        direccion: pendiente.direccion,
+        ...(pendiente.direccion !== undefined && pendiente.direccion.trim() !== ''
+          ? { direccion: pendiente.direccion }
+          : {}),
       })
       setClienteParaConfirmar(null)
       return
     }
 
+    if (pendiente.tipoDocumento !== 'DNI' && pendiente.tipoDocumento !== 'RUC') {
+      setClienteParaConfirmar(null)
+      return
+    }
+    const tipoDocumento = pendiente.tipoDocumento
+
     setConsultandoPadron(true)
     try {
       const respuesta = await crearClienteFn({
         data: {
-          tipoDocumento: pendiente.tipoDocumento,
+          tipoDocumento,
           numeroDocumento: pendiente.numeroDocumento,
           denominacion: pendiente.denominacion,
           direccion: pendiente.direccion,
@@ -381,7 +428,7 @@ function Mostrador() {
         denominacion: respuesta.cliente.denominacion,
       })
       pedido.fijarCliente({
-        tipoDocumento: pendiente.tipoDocumento,
+        tipoDocumento,
         numeroDocumento: pendiente.numeroDocumento,
         denominacion: pendiente.denominacion,
         direccion: pendiente.direccion,
@@ -423,7 +470,13 @@ function Mostrador() {
             setPestana('pedido')
           }}
         />
-        <PestanasMostrador activa={pestana} onCambiar={setPestana} />
+        <PestanasMostrador
+          activa={pestana}
+          onCambiar={(siguiente) => {
+            setAvisoCotizacion(null)
+            setPestana(siguiente)
+          }}
+        />
       </div>
 
       <PanelDictado
@@ -484,7 +537,7 @@ function Mostrador() {
           <CabeceraDocumento
             modo={modoCabecera}
             onCambiarModo={alCambiarModoCabecera}
-            serie={serieAsignada}
+            series={seriesCabecera}
             cliente={pedido.cliente}
             onAgregarClienteNuevo={() => {
               setConsultaClienteInicial(null)
@@ -504,6 +557,7 @@ function Mostrador() {
               setDocumentoNoRegistrado(null)
               setClienteParaConfirmar(null)
             }}
+            onNombreListo={alNombreListo}
             documentoNoRegistrado={documentoNoRegistrado}
             onConsultarNoRegistrado={() => {
               void consultarNoRegistrado()
@@ -592,7 +646,12 @@ function Mostrador() {
       )}
 
       {pestana === 'cotizaciones' && (
-        <PanelDeCotizaciones onRecuperada={() => setPestana('pedido')} />
+        <PanelDeCotizaciones
+          onRecuperada={() => {
+            setModoCotizacion(true)
+            setPestana('pedido')
+          }}
+        />
       )}
 
       {pestana === 'vecinos' && (

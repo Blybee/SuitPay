@@ -88,8 +88,8 @@ El significado exacto del tab **Lista** queda abierto en el intake (volcado 5).
 2. **La entrada.** Campo ancho con micrófono y cámara; acepta producto, comando `/`, dictado y foto. Foco al abrir.
 3. **Banda de degradación.** Bajo la entrada cuando algo está caído; no desaparece sola.
 4. **Cabecera fija de documento.** Selector de tipo (Boleta | Factura | Nota de venta | **Cotización**), serie cuando aplica, cliente. Cotización es modo borrador (no tributario): el pie muestra **Guardar** y persiste en el tab Cotizaciones. Cambio de tipo no destruye las líneas.
-5. **Cliente en cabecera.** Input RUC/DNI para clientes **ya registrados**; icon-button (UserPlus) para alta de cliente nuevo. Si el documento del input no está registrado, el icon-button morph a «Agregar» y consulta el padrón. Antes de fijar el cliente, el vendedor confirma **razón social** y **dirección** (requeridos para factura/boleta identificada).
-6. **Distintivo de documento interno.** Etiqueta **SIN VALOR TRIBUTARIO** (cápsula en rojo) junto al tipo cuando aplica; en Cotización, cápsula «Borrador».
+5. **Cliente en cabecera.** Label ciclable (chevrons): factura = RUC; boleta = DNI|Nombre; cotización = RUC|DNI|Nombre. Confirmación **manual con Enter** (no al completar dígitos); errores visibles si faltan dígitos. Nombre fija cliente eventual (marcador `00000000`). Icon-button morph «Agregar» / «Usar».
+6. **Selector de tipo.** Boleta/factura muestran la serie en la etiqueta (`Boleta · B001`). Cotización no lleva badge aparte.
 7. **El pedido.** Líneas densas; cabecera de columna **Producto (N)** con el conteo; precio editable inline; scroll interno entre cabecera y pie.
 8. **El pie del total.** Medio de pago (oculto en modo cotización), total grande, CTA a la derecha: **EMITIR** o **Guardar**.
 

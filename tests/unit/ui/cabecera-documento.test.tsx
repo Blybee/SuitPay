@@ -1,10 +1,15 @@
 import { describe, expect, it, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { CabeceraDocumento } from '../../../src/ui/componentes/CabeceraDocumento.tsx'
+import {
+  CabeceraDocumento,
+  mensajeValidacionCampo,
+} from '../../../src/ui/componentes/CabeceraDocumento.tsx'
+
+const series = { boleta: 'B001', factura: 'F001' }
 
 const base = {
-  serie: 'B001' as string | null,
+  series,
   cliente: null,
   onAgregarClienteNuevo: vi.fn(),
   onQuitarCliente: vi.fn(),
@@ -13,32 +18,22 @@ const base = {
   umbral: 70_000,
 }
 
-describe('CabeceraDocumento — documento inline', () => {
-  it('muestra RUC en factura y dispara al completar 11 dígitos', async () => {
-    const usuario = userEvent.setup()
-    const onDocumentoCompleto = vi.fn()
+describe('mensajeValidacionCampo', () => {
+  it('exige 8 / 11 dígitos o nombre ≥2', () => {
+    expect(mensajeValidacionCampo('dni', '123')).not.toBeNull()
+    expect(mensajeValidacionCampo('ruc', '2012345678')).not.toBeNull()
+    expect(mensajeValidacionCampo('nombre', 'A')).not.toBeNull()
+    expect(mensajeValidacionCampo('ruc', '20123456789')).toBeNull()
+  })
+})
 
-    render(
-      <CabeceraDocumento
-        {...base}
-        modo="factura"
-        serie="F001"
-        onDocumentoCompleto={onDocumentoCompleto}
-      />,
-    )
-
-    const campo = screen.getByLabelText('RUC del cliente')
-    expect(campo).toBeInTheDocument()
-    expect(screen.queryByLabelText('DNI del cliente')).not.toBeInTheDocument()
-
-    await usuario.type(campo, '20123456789')
-    expect(onDocumentoCompleto).toHaveBeenCalledWith({
-      tipoDocumento: 'RUC',
-      numeroDocumento: '20123456789',
-    })
+describe('CabeceraDocumento — campo manual con Enter', () => {
+  it('cotización arranca en Nombre', () => {
+    render(<CabeceraDocumento {...base} modo="cotizacion" />)
+    expect(screen.getByLabelText('Nombre del cliente')).toBeInTheDocument()
   })
 
-  it('muestra DNI en boleta y dispara al completar 8 dígitos', async () => {
+  it('no busca al llegar a 8 dígitos; sí con Enter', async () => {
     const usuario = userEvent.setup()
     const onDocumentoCompleto = vi.fn()
 
@@ -51,73 +46,54 @@ describe('CabeceraDocumento — documento inline', () => {
     )
 
     const campo = screen.getByLabelText('DNI del cliente')
-    expect(campo).toBeInTheDocument()
-    expect(screen.queryByLabelText('RUC del cliente')).not.toBeInTheDocument()
-
     await usuario.type(campo, '12345678')
+    expect(onDocumentoCompleto).not.toHaveBeenCalled()
+
+    await usuario.keyboard('{Enter}')
     expect(onDocumentoCompleto).toHaveBeenCalledWith({
       tipoDocumento: 'DNI',
       numeroDocumento: '12345678',
     })
   })
 
-  it('icon-button de agregar sin texto; morph a Agregar si no registrado', async () => {
+  it('marca borde inválido sin mensaje si Enter con RUC incompleto', async () => {
     const usuario = userEvent.setup()
-    const onConsultar = vi.fn()
 
-    const { rerender } = render(
-      <CabeceraDocumento {...base} modo="nota_venta" serie={null} />,
-    )
-
-    expect(
-      screen.getByRole('button', { name: /Agregar cliente nuevo/i }),
-    ).toBeInTheDocument()
-    expect(screen.queryByText('Agregar')).not.toBeInTheDocument()
-
-    rerender(
-      <CabeceraDocumento
-        {...base}
-        modo="boleta"
-        documentoNoRegistrado="12345678"
-        onConsultarNoRegistrado={onConsultar}
-      />,
-    )
-
-    const boton = screen.getByRole('button', {
-      name: /Agregar cliente no registrado/i,
-    })
-    expect(screen.getByText('Agregar')).toBeInTheDocument()
-    await usuario.click(boton)
-    expect(onConsultar).toHaveBeenCalled()
-  })
-
-  it('muestra razón social y dirección para confirmar', () => {
     render(
       <CabeceraDocumento
         {...base}
         modo="factura"
-        serie="F001"
-        clienteParaConfirmar={{
-          tipoDocumento: 'RUC',
-          numeroDocumento: '20123456789',
-          denominacion: 'FERRETERIA DEMO SAC',
-          direccion: 'Av. Principal 123',
-          origen: 'consulta',
-        }}
-        onConfirmarCliente={vi.fn()}
-        onCancelarConfirmacion={vi.fn()}
+        onDocumentoCompleto={vi.fn()}
       />,
     )
 
-    expect(screen.getByTestId('confirmacion-cliente')).toBeInTheDocument()
-    expect(screen.getByText('FERRETERIA DEMO SAC')).toBeInTheDocument()
-    expect(screen.getByText('Av. Principal 123')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Confirmar/i })).toBeInTheDocument()
+    const campo = screen.getByLabelText('RUC del cliente')
+    await usuario.type(campo, '20123456')
+    await usuario.keyboard('{Enter}')
+    expect(campo).toHaveAttribute('aria-invalid', 'true')
+    expect(screen.queryByTestId('error-campo-cliente')).not.toBeInTheDocument()
   })
 
-  it('incluye Cotización en el selector', () => {
-    render(<CabeceraDocumento {...base} modo="cotizacion" serie={null} />)
-    expect(screen.getByText('Borrador')).toBeInTheDocument()
-    expect(screen.getByLabelText('Tipo de documento')).toHaveValue('cotizacion')
+  it('permite 11 dígitos en RUC', async () => {
+    const usuario = userEvent.setup()
+    const onDocumentoCompleto = vi.fn()
+
+    render(
+      <CabeceraDocumento
+        {...base}
+        modo="cotizacion"
+        onDocumentoCompleto={onDocumentoCompleto}
+      />,
+    )
+
+    await usuario.click(screen.getByLabelText('Modo de campo siguiente'))
+    await usuario.click(screen.getByLabelText('Modo de campo siguiente'))
+    const campo = screen.getByLabelText('RUC del cliente')
+    await usuario.type(campo, '20123456789')
+    await usuario.keyboard('{Enter}')
+    expect(onDocumentoCompleto).toHaveBeenCalledWith({
+      tipoDocumento: 'RUC',
+      numeroDocumento: '20123456789',
+    })
   })
 })

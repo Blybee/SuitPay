@@ -1,8 +1,10 @@
 import {
   collection,
   doc,
+  getDoc,
   serverTimestamp,
   setDoc,
+  updateDoc,
 } from 'firebase/firestore'
 import { calcularTotal } from '../../domain/totales/calculo.ts'
 import type { LineaDePedido } from '../../domain/totales/calculo.ts'
@@ -15,23 +17,87 @@ export interface ResultadoDeGuardarCotizacion {
   readonly ok: boolean
   readonly cotizacionId?: string
   readonly numero?: number
+  readonly actualizada?: boolean
   readonly mensaje?: string
 }
 
+function clienteParaFirestore(cliente: ClienteDelPedido | null) {
+  if (cliente === null) return null
+  return {
+    tipoDocumento: cliente.tipoDocumento,
+    numeroDocumento: cliente.numeroDocumento,
+    denominacion: cliente.denominacion,
+    ...(cliente.direccion !== undefined && cliente.direccion.trim() !== ''
+      ? { direccion: cliente.direccion }
+      : {}),
+  }
+}
+
+function lineasParaFirestore(lineas: readonly LineaDePedido[]) {
+  return lineas.map((linea) => ({
+    codigo: linea.codigo,
+    descripcion: linea.descripcion,
+    unidad: linea.unidad,
+    cantidad: linea.cantidad,
+    precio: linea.precio,
+  }))
+}
+
 /**
- * Guarda el pedido en curso como cotización (FR-016).
+ * Guarda o actualiza cotización (FR-016).
  *
- * 1. Reserva un número en el servidor.
- * 2. Escribe el documento con el SDK del cliente (reglas).
- * 3. Engancha el pedido a esa cotización para la conversión posterior.
+ * - Sin `cotizacionId`: reserva número y crea documento nuevo.
+ * - Con `cotizacionId` (pedido abierto desde una cotización): actualiza
+ *   líneas/cliente/total sin crear otra ni consumir un número nuevo.
  */
 export async function guardarCotizacion(datos: {
   readonly uid: string
   readonly lineas: readonly LineaDePedido[]
   readonly cliente: ClienteDelPedido | null
+  readonly cotizacionId?: string | null
 }): Promise<ResultadoDeGuardarCotizacion> {
   if (datos.lineas.length === 0) {
     return { ok: false, mensaje: 'No hay líneas para guardar.' }
+  }
+
+  const total = calcularTotal(datos.lineas)
+  const cliente = clienteParaFirestore(datos.cliente)
+  const lineas = lineasParaFirestore(datos.lineas)
+  const idExistente = datos.cotizacionId?.trim() || null
+
+  if (idExistente !== null) {
+    const referencia = doc(obtenerBaseDeDatos(), 'cotizaciones', idExistente)
+    try {
+      const instantanea = await getDoc(referencia)
+      if (!instantanea.exists()) {
+        return {
+          ok: false,
+          mensaje: 'La cotización ya no existe. Guarda una nueva.',
+        }
+      }
+      const datosActuales = instantanea.data()
+      if (datosActuales['estado'] !== 'pendiente') {
+        return {
+          ok: false,
+          mensaje: 'Esa cotización ya se convirtió y no se puede editar.',
+        }
+      }
+      await updateDoc(referencia, { cliente, lineas, total })
+      usarPedido.getState().fijarOrigen({ cotizacionId: idExistente })
+      const numero = Number(datosActuales['numero'])
+      return {
+        ok: true,
+        cotizacionId: idExistente,
+        numero: Number.isFinite(numero) ? numero : undefined,
+        actualizada: true,
+      }
+    } catch (error) {
+      console.error('[SuitPay] guardarCotizacion: fallo al actualizar', error)
+      return {
+        ok: false,
+        mensaje: 'No se pudo actualizar la cotización. Comprueba la conexión.',
+      }
+    }
   }
 
   const reserva = await reservarNumeroCotizacionFn()
@@ -43,27 +109,21 @@ export async function guardarCotizacion(datos: {
   }
 
   const referencia = doc(collection(obtenerBaseDeDatos(), 'cotizaciones'))
-  const total = calcularTotal(datos.lineas)
 
   try {
     await setDoc(referencia, {
       numero: reserva.numero,
       estado: 'pendiente',
-      cliente: datos.cliente,
-      lineas: datos.lineas.map((linea) => ({
-        codigo: linea.codigo,
-        descripcion: linea.descripcion,
-        unidad: linea.unidad,
-        cantidad: linea.cantidad,
-        precio: linea.precio,
-      })),
+      cliente,
+      lineas,
       total,
       creadoPor: datos.uid,
       creadoEn: serverTimestamp(),
       comprobanteId: null,
       convertidaEn: null,
     })
-  } catch {
+  } catch (error) {
+    console.error('[SuitPay] guardarCotizacion: fallo al escribir', error)
     return {
       ok: false,
       mensaje: 'No se pudo guardar la cotización. Comprueba la conexión.',
@@ -76,5 +136,6 @@ export async function guardarCotizacion(datos: {
     ok: true,
     cotizacionId: referencia.id,
     numero: reserva.numero,
+    actualizada: false,
   }
 }

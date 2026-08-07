@@ -229,7 +229,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 
 - **FR-020**: El sistema MUST ofrecer como opción por defecto un cliente eventual, sin exigir datos para una venta ordinaria.
 - **FR-021**: El sistema MUST exigir los datos identificatorios del cliente cuando el importe de una boleta supere los 700 soles, e impedir la emisión mientras falten.
-- **FR-022**: El campo RUC/DNI de la cabecera MUST resolver primero clientes ya registrados. Si el documento no está registrado, el sistema MUST ofrecer registrarlo sin abandonar la venta (icon-button que morph a «Agregar» y dispara la consulta).
+- **FR-022**: El campo de cliente en cabecera MUST admitir, según el tipo: RUC (factura), DNI o Nombre (boleta), y RUC/DNI/Nombre (cotización). Con documento, MUST resolver primero clientes ya registrados; si no está registrado, MUST ofrecer registrarlo (morph «Agregar»). Con Nombre, MUST permitir fijar la denominación en el pedido/cotización sin abandonar la venta.
 - **FR-023**: El sistema MUST poder traer los datos de un contribuyente a partir de su RUC o DNI, presentarlos para revisión (como mínimo razón social/denominación y dirección cuando exista) y guardarlos solo tras la confirmación del vendedor.
 - **FR-024**: El sistema MUST advertir de forma visible cuando el registro oficial señale al contribuyente como no habido, dejando la decisión al vendedor.
 - **FR-025**: Cuando una razón social parcial coincida con varios clientes, el sistema MUST presentar las coincidencias para que el vendedor elija.
