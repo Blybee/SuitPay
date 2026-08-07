@@ -130,13 +130,12 @@ beforeEach(async () => {
     await setDoc(doc(bd, 'cotizaciones/cot-de-otro'), {
       numero: 42,
       estado: 'pendiente',
+      canal: 'general',
       cliente: null,
       lineas: [],
       total: 5000,
       creadoPor: 'vendedor-2',
       creadoEn: serverTimestamp(),
-      comprobanteId: null,
-      convertidaEn: null,
     })
     await setDoc(doc(bd, 'usuarios/vendedor-1'), {
       nombre: 'Vendedor Uno',
@@ -258,8 +257,6 @@ describeConEmulador('series: el contador no lo toca nadie desde el cliente', () 
 
 describeConEmulador('cotizaciones', () => {
   it('un vendedor NO puede marcar una cotización como convertida', async () => {
-    // Sería la forma de burlar la protección contra la doble conversión: marcar
-    // la cotización sin que haya nacido ningún comprobante.
     await assertFails(
       updateDoc(doc(comoVendedor(), 'cotizaciones/cot-de-otro'), {
         estado: 'convertida',
@@ -267,7 +264,7 @@ describeConEmulador('cotizaciones', () => {
     )
   })
 
-  it('un vendedor NO puede escribir el comprobante resultante', async () => {
+  it('un vendedor NO puede escribir campos retirados (comprobanteId)', async () => {
     await assertFails(
       updateDoc(doc(comoVendedor(), 'cotizaciones/cot-de-otro'), {
         comprobanteId: 'inventado',
@@ -286,13 +283,12 @@ describeConEmulador('cotizaciones', () => {
       setDoc(doc(comoVendedor(), 'cotizaciones/nueva'), {
         numero: 43,
         estado: 'pendiente',
+        canal: 'general',
         cliente: null,
         lineas: [],
         total: 1000,
         creadoPor: 'vendedor-1',
         creadoEn: serverTimestamp(),
-        comprobanteId: null,
-        convertidaEn: null,
       }),
     )
   })
@@ -302,21 +298,19 @@ describeConEmulador('cotizaciones', () => {
       setDoc(doc(comoVendedor(), 'cotizaciones/suplantada'), {
         numero: 44,
         estado: 'pendiente',
+        canal: 'general',
         cliente: null,
         lineas: [],
         total: 1000,
         creadoPor: 'vendedor-2',
         creadoEn: serverTimestamp(),
-        comprobanteId: null,
-        convertidaEn: null,
       }),
     )
   })
 
-  it('nadie puede borrar una cotización', async () => {
-    await assertFails(deleteDoc(doc(comoVendedor(), 'cotizaciones/cot-de-otro')))
-    await assertFails(
-      deleteDoc(doc(comoAdministrador(), 'cotizaciones/cot-de-otro')),
+  it('un vendedor puede borrar una cotización pendiente de otro (FR-019a)', async () => {
+    await assertSucceeds(
+      deleteDoc(doc(comoVendedor(), 'cotizaciones/cot-de-otro')),
     )
   })
 })
@@ -363,13 +357,12 @@ describeConEmulador('un vendedor desactivado no puede escribir nada (FR-003)', (
       setDoc(doc(comoDesactivado(), 'cotizaciones/de-desactivado'), {
         numero: 50,
         estado: 'pendiente',
+        canal: 'general',
         cliente: null,
         lineas: [],
         total: 100,
         creadoPor: 'vendedor-3',
         creadoEn: serverTimestamp(),
-        comprobanteId: null,
-        convertidaEn: null,
       }),
     )
   })

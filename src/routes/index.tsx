@@ -15,8 +15,15 @@ import { EstadoIlegible } from '../features/captura/ilegible.tsx'
 import { PanelFotografia } from '../features/captura/imagen.tsx'
 import { motivoBloqueoPorCaptura } from '../features/captura/pendientes.ts'
 import { PasoTextoExtraido } from '../features/captura/revision-imagen.tsx'
+import {
+  reconocerCrearVecino,
+  type PropuestaCrearVecino,
+} from '../features/comandos/crear-vecino.ts'
 import { guardarCotizacion } from '../features/cotizaciones/guardar.ts'
 import { PanelDeCotizaciones } from '../features/cotizaciones/panel.tsx'
+import { crearCotizacionVecino } from '../features/vecinos/crear.ts'
+import { agregarProductoAVecino } from '../features/vecinos/lineas.ts'
+import { PanelDeVecinos } from '../features/vecinos/panel.tsx'
 import {
   alRecuperarConectividad,
   usarDegradacion,
@@ -56,11 +63,15 @@ import {
   CabecerasDeColumna,
   LineaPedido,
 } from '../ui/componentes/LineaPedido.tsx'
+import { Modal } from '../ui/componentes/Modal.tsx'
 import { PestanasMostrador } from '../ui/componentes/PestanasMostrador.tsx'
 import type { PestanaMostrador } from '../ui/componentes/PestanasMostrador.tsx'
+import { Boton } from '../ui/componentes/primitivas.tsx'
 import { PieTotal } from '../ui/componentes/PieTotal.tsx'
 import type { EstadoDeEmision as FaseDelBoton } from '../ui/componentes/PieTotal.tsx'
 import { RevisionCaptura } from '../ui/componentes/RevisionCaptura.tsx'
+import type { Cotizacion } from '../features/cotizaciones/tipos.ts'
+import { listarCotizacionesPendientes } from '../features/cotizaciones/leer.ts'
 
 /**
  * Mostrador Soft-Pill (FR-005b).
@@ -106,6 +117,13 @@ function Mostrador() {
   const [avisoCotizacion, setAvisoCotizacion] = useState<string | null>(null)
   const [panelDictado, setPanelDictado] = useState(false)
   const [panelFoto, setPanelFoto] = useState(false)
+  const [vecinoActivoId, setVecinoActivoId] = useState<string | null>(null)
+  const [propuestaVecino, setPropuestaVecino] =
+    useState<PropuestaCrearVecino | null>(null)
+  const [pendienteAltaVecino, setPendienteAltaVecino] =
+    useState<PropuestaCrearVecino | null>(null)
+  const [creandoVecino, setCreandoVecino] = useState(false)
+  const [avisoVecino, setAvisoVecino] = useState<string | null>(null)
 
   const catalogo = usarCatalogo()
   const sesion = usarSesion()
@@ -221,6 +239,31 @@ function Mostrador() {
   }
 
   function agregar(producto: ProductoBuscable): void {
+    if (pestana === 'vecinos' && vecinoActivoId !== null) {
+      void (async () => {
+        const lista = await listarCotizacionesPendientes('vecino')
+        const activa = lista.find((cada) => cada.id === vecinoActivoId)
+        if (activa === undefined) {
+          setAvisoVecino('Ese vecino ya no está disponible.')
+          return
+        }
+        const resultado = await agregarProductoAVecino({
+          cotizacionId: activa.id,
+          lineasActuales: activa.lineas,
+          producto,
+        })
+        if (!resultado.ok) {
+          setAvisoVecino(resultado.mensaje ?? 'No se pudo agregar el producto.')
+          return
+        }
+        setAvisoVecino(null)
+        void queryClient.invalidateQueries({
+          queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+        })
+      })()
+      return
+    }
+
     pedido.agregarLinea({
       codigo: producto.codigo,
       descripcion: producto.descripcion,
@@ -228,6 +271,62 @@ function Mostrador() {
       cantidad: 1,
       precio: producto.precio,
     })
+  }
+
+  async function confirmarCrearVecino(
+    propuesta: PropuestaCrearVecino,
+  ): Promise<void> {
+    if (sesion.uid === null) return
+    setCreandoVecino(true)
+    setAvisoVecino(null)
+    try {
+      const existente = await leerClientePorDocumento(propuesta.numeroDocumento)
+      if (existente === null) {
+        setPendienteAltaVecino(propuesta)
+        setConsultaClienteInicial(propuesta.numeroDocumento)
+        setAltaClienteAbierta(true)
+        setPropuestaVecino(null)
+        return
+      }
+      const resultado = await crearCotizacionVecino({
+        uid: sesion.uid,
+        alias: propuesta.alias,
+        cliente: {
+          tipoDocumento: existente.tipoDocumento,
+          numeroDocumento: existente.numeroDocumento,
+          denominacion: existente.denominacion,
+          ...(existente.direccion !== undefined
+            ? { direccion: existente.direccion }
+            : {}),
+        },
+      })
+      if (!resultado.ok || resultado.cotizacionId === undefined) {
+        setAvisoVecino(resultado.mensaje ?? 'No se pudo crear el vecino.')
+        return
+      }
+      setTermino('')
+      setPropuestaVecino(null)
+      setVecinoActivoId(resultado.cotizacionId)
+      setPestana('vecinos')
+      void queryClient.invalidateQueries({
+        queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+      })
+    } finally {
+      setCreandoVecino(false)
+    }
+  }
+
+  function convertirVecinoEnPedido(cotizacion: Cotizacion): void {
+    pedido.cargarDesdeCotizacion({
+      cotizacionId: cotizacion.id,
+      lineas: cotizacion.lineas,
+      cliente: cotizacion.cliente,
+    })
+    setModoCotizacion(false)
+    setPestana('pedido')
+    setAvisoCotizacion(
+      `Cotización de vecino #${cotizacion.numero} abierta. Elige boleta, factura o nota de venta y emite.`,
+    )
   }
 
   async function lanzarEmision(): Promise<void> {
@@ -454,7 +553,13 @@ function Mostrador() {
       <div className="sticky top-0 z-20 w-full border-b border-borde bg-papel">
         <Entrada
           termino={termino}
-          onTerminoCambia={setTermino}
+          onTerminoCambia={(siguiente) => {
+            setTermino(siguiente)
+            const propuesta = reconocerCrearVecino(siguiente)
+            if (propuesta !== null) {
+              setPropuestaVecino(propuesta)
+            }
+          }}
           resultado={resultado}
           onElegirProducto={agregar}
           asistenciaDisponible={asistenciaDisponible}
@@ -574,20 +679,6 @@ function Mostrador() {
             umbral={umbral}
           />
 
-          <AltaClienteEnContexto
-            abierta={altaClienteAbierta}
-            onCerrar={() => {
-              setAltaClienteAbierta(false)
-              setConsultaClienteInicial(null)
-            }}
-            indiceDeClientes={catalogo.clientes}
-            onClienteElegido={(cliente) => pedido.fijarCliente(cliente)}
-            onClienteCreadoEnIndice={(entrada) =>
-              usarCatalogo.getState().incorporarCliente(entrada)
-            }
-            consultaInicial={consultaClienteInicial}
-          />
-
           <div className="flex-1 overflow-y-auto pb-2">
             <CabecerasDeColumna numeroDeLineas={pedido.lineas.length} />
             <ul>
@@ -655,9 +746,11 @@ function Mostrador() {
       )}
 
       {pestana === 'vecinos' && (
-        <PanelPlaceholder
-          titulo="Vecinos"
-          texto="Búsqueda de clientes frecuentes del barrio / zona."
+        <PanelDeVecinos
+          activaId={vecinoActivoId}
+          onCambiarActiva={setVecinoActivoId}
+          onConvertir={convertirVecinoEnPedido}
+          aviso={avisoVecino}
         />
       )}
 
@@ -667,6 +760,105 @@ function Mostrador() {
           texto="Contenido por definir (clarify del intake). Placeholder hasta entonces."
         />
       )}
+
+      <AltaClienteEnContexto
+        abierta={altaClienteAbierta}
+        onCerrar={() => {
+          setAltaClienteAbierta(false)
+          setConsultaClienteInicial(null)
+          setPendienteAltaVecino(null)
+        }}
+        indiceDeClientes={catalogo.clientes}
+        onClienteElegido={(cliente) => {
+          if (pendienteAltaVecino !== null && sesion.uid !== null) {
+            const propuesta = pendienteAltaVecino
+            const uid = sesion.uid
+            setPendienteAltaVecino(null)
+            setAltaClienteAbierta(false)
+            setConsultaClienteInicial(null)
+            void (async () => {
+              setCreandoVecino(true)
+              try {
+                const resultado = await crearCotizacionVecino({
+                  uid,
+                  alias: propuesta.alias,
+                  cliente,
+                })
+                if (!resultado.ok || resultado.cotizacionId === undefined) {
+                  setAvisoVecino(
+                    resultado.mensaje ?? 'No se pudo crear el vecino.',
+                  )
+                  return
+                }
+                setTermino('')
+                setVecinoActivoId(resultado.cotizacionId)
+                setPestana('vecinos')
+                void queryClient.invalidateQueries({
+                  queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+                })
+              } finally {
+                setCreandoVecino(false)
+              }
+            })()
+            return
+          }
+          pedido.fijarCliente(cliente)
+        }}
+        onClienteCreadoEnIndice={(entrada) =>
+          usarCatalogo.getState().incorporarCliente(entrada)
+        }
+        consultaInicial={consultaClienteInicial}
+      />
+
+      <Modal
+        abierta={propuestaVecino !== null}
+        alCambiar={(abierta) => {
+          if (!abierta && !creandoVecino) setPropuestaVecino(null)
+        }}
+        titulo="Crear vecino"
+        descripcion="Confirma para crear la cotización del vecino. Sin confirmar no se escribe nada."
+        pie={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Boton
+              variante="secundario"
+              disabled={creandoVecino}
+              onClick={() => setPropuestaVecino(null)}
+            >
+              Cancelar
+            </Boton>
+            <Boton
+              variante="principal"
+              disabled={creandoVecino || propuestaVecino === null}
+              onClick={() => {
+                if (propuestaVecino !== null) {
+                  void confirmarCrearVecino(propuestaVecino)
+                }
+              }}
+            >
+              {creandoVecino ? 'Creando…' : 'Confirmar'}
+            </Boton>
+          </div>
+        }
+      >
+        {propuestaVecino !== null ? (
+          <dl className="space-y-2 text-cuerpo text-tinta">
+            <div>
+              <dt className="font-mono text-etiqueta uppercase text-desvaida">
+                Alias
+              </dt>
+              <dd className="font-bold">{propuestaVecino.alias}</dd>
+            </div>
+            <div>
+              <dt className="font-mono text-etiqueta uppercase text-desvaida">
+                {propuestaVecino.tipoDocumento}
+              </dt>
+              <dd className="font-mono font-bold">
+                {propuestaVecino.numeroDocumento}
+              </dd>
+            </div>
+          </dl>
+        ) : null}
+      </Modal>
     </div>
   )
 }

@@ -12,10 +12,9 @@ import { ProveedorSimulado } from '../../src/server/proveedor/simulado.ts'
 import { esErrorDeSuitPay } from '../../src/server/errores.ts'
 
 /**
- * T107 — dos claves de idempotencia distintas sobre la misma cotización
- * producen un solo comprobante. La segunda recibe `cotizacion_ya_convertida`.
- *
- * Es el hueco que la clave de idempotencia por sí sola no cubre (FR-019).
+ * T173 — dos claves de idempotencia distintas sobre la misma cotización
+ * producen un solo comprobante. La segunda recibe `cotizacion_ya_usada` y el
+ * documento de cotización ya no existe (FR-019).
  */
 
 const EMULADOR = { host: '127.0.0.1', puerto: 8080 }
@@ -125,6 +124,7 @@ beforeEach(async () => {
   await base.collection(COLECCIONES.cotizaciones).doc(COTIZACION_ID).set({
     numero: 1001,
     estado: 'pendiente',
+    canal: 'general',
     cliente: null,
     lineas: [
       {
@@ -138,8 +138,6 @@ beforeEach(async () => {
     total: 2_500,
     creadoPor: VENDEDOR,
     creadoEn: Timestamp.now(),
-    comprobanteId: null,
-    convertidaEn: null,
   })
 })
 
@@ -191,8 +189,7 @@ describeConEmulador('carrera entre dispositivos sobre una cotización', () => {
     expect(esErrorDeSuitPay(errorDeLaSegunda)).toBe(true)
     if (!esErrorDeSuitPay(errorDeLaSegunda)) return
 
-    expect(errorDeLaSegunda.codigo).toBe('cotizacion_ya_convertida')
-    expect(errorDeLaSegunda.detalle?.['comprobanteId']).toBe('clave-escritorio')
+    expect(errorDeLaSegunda.codigo).toBe('cotizacion_ya_usada')
 
     const comprobantes = await base.collection(COLECCIONES.comprobantes).get()
     expect(comprobantes.size).toBe(1)
@@ -201,7 +198,6 @@ describeConEmulador('carrera entre dispositivos sobre una cotización', () => {
       .collection(COLECCIONES.cotizaciones)
       .doc(COTIZACION_ID)
       .get()
-    expect(cotizacion.data()?.['estado']).toBe('convertida')
-    expect(cotizacion.data()?.['comprobanteId']).toBe('clave-escritorio')
+    expect(cotizacion.exists).toBe(false)
   })
 })

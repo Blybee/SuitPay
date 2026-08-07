@@ -4,12 +4,11 @@ import { esErrorDeSuitPay } from '../../../src/server/errores.ts'
 import { montarEscenario, peticion } from './ayudas-emision.ts'
 
 describe('conversión de cotización en emisión', () => {
-  it('marca convertida y rechaza una segunda clave distinta', async () => {
+  it('borra la cotización y rechaza una segunda clave distinta', async () => {
     const { almacen, contexto } = montarEscenario()
     almacen.sembrarCotizacion({
       id: 'cot-1',
       estado: 'pendiente',
-      comprobanteId: null,
     })
 
     const primero = await emitirComprobante(
@@ -20,6 +19,7 @@ describe('conversión de cotización en emisión', () => {
       }),
     )
     expect(primero.comprobanteId).toBe('clave-a')
+    expect(almacen.cotizacionPorId('cot-1')).toBeUndefined()
 
     await expect(
       emitirComprobante(
@@ -30,12 +30,11 @@ describe('conversión de cotización en emisión', () => {
         }),
       ),
     ).rejects.toMatchObject({
-      codigo: 'cotizacion_ya_convertida',
-      detalle: { comprobanteId: 'clave-a' },
+      codigo: 'cotizacion_ya_usada',
     })
   })
 
-  it('rechaza cotización inexistente o descartada sin crear comprobante', async () => {
+  it('rechaza cotización inexistente o no pendiente sin crear comprobante', async () => {
     const { almacen, contexto } = montarEscenario()
 
     await expect(
@@ -46,14 +45,13 @@ describe('conversión de cotización en emisión', () => {
           cotizacionId: 'no-existe',
         }),
       ),
-    ).rejects.toMatchObject({ codigo: 'cotizacion_no_pendiente' })
+    ).rejects.toMatchObject({ codigo: 'cotizacion_ya_usada' })
 
     expect(almacen.totalDeComprobantes).toBe(0)
 
     almacen.sembrarCotizacion({
       id: 'cot-descartada',
       estado: 'descartada',
-      comprobanteId: null,
     })
 
     try {
@@ -68,7 +66,7 @@ describe('conversión de cotización en emisión', () => {
     } catch (error) {
       expect(esErrorDeSuitPay(error)).toBe(true)
       if (esErrorDeSuitPay(error)) {
-        expect(error.codigo).toBe('cotizacion_no_pendiente')
+        expect(error.codigo).toBe('cotizacion_ya_usada')
       }
     }
 

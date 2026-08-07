@@ -8,7 +8,12 @@ import {
   type Timestamp,
 } from 'firebase/firestore'
 import { obtenerBaseDeDatos } from '../../infra/firebase/cliente.ts'
-import type { Cotizacion, EstadoDeCotizacion, LineaDeCotizacion } from './tipos.ts'
+import type {
+  CanalDeCotizacion,
+  Cotizacion,
+  EstadoDeCotizacion,
+  LineaDeCotizacion,
+} from './tipos.ts'
 import type { ClienteDelPedido } from '../pedido/almacen.ts'
 
 function aFecha(valor: unknown): Date {
@@ -54,36 +59,57 @@ function mapearCotizacion(
     }
   }
 
+  const canalRaw = datos['canal']
+  const canal: CanalDeCotizacion =
+    canalRaw === 'vecino' ? 'vecino' : 'general'
+
+  const alias =
+    typeof datos['aliasVecino'] === 'string' && datos['aliasVecino'].trim() !== ''
+      ? datos['aliasVecino'].trim()
+      : null
+
   return {
     id,
     numero: Number(datos['numero'] ?? 0),
     estado: (datos['estado'] as EstadoDeCotizacion) ?? 'pendiente',
+    canal,
+    aliasVecino: canal === 'vecino' ? alias : null,
     cliente,
     lineas,
     total: Number(datos['total'] ?? 0),
     creadoPor: String(datos['creadoPor'] ?? ''),
     creadoEn: aFecha(datos['creadoEn']),
-    comprobanteId:
-      typeof datos['comprobanteId'] === 'string' ? datos['comprobanteId'] : null,
-    convertidaEn:
-      datos['convertidaEn'] === null || datos['convertidaEn'] === undefined
+    actualizadoEn:
+      datos['actualizadoEn'] === null || datos['actualizadoEn'] === undefined
         ? null
-        : aFecha(datos['convertidaEn']),
+        : aFecha(datos['actualizadoEn']),
   }
 }
 
-/** Cotizaciones pendientes más recientes (índice estado + creadoEn). */
+/**
+ * Cotizaciones pendientes del canal indicado.
+ *
+ * Usa el índice ya desplegado `estado + creadoEn` y filtra `canal` en cliente:
+ * - evita depender del índice compuesto `canal+estado+creadoEn` (aún no
+ *   desplegado en muchos entornos);
+ * - incluye cotizaciones legacy sin campo `canal` como `general`.
+ */
 export async function listarCotizacionesPendientes(
+  canal: CanalDeCotizacion = 'general',
   tope = 40,
 ): Promise<readonly Cotizacion[]> {
+  // Pedimos de más para no quedarnos cortos tras filtrar vecinos/general.
   const consulta = query(
     collection(obtenerBaseDeDatos(), 'cotizaciones'),
     where('estado', '==', 'pendiente'),
     orderBy('creadoEn', 'desc'),
-    limit(tope),
+    limit(Math.max(tope * 3, 60)),
   )
   const instantanea = await getDocs(consulta)
-  return instantanea.docs.map((cada) => mapearCotizacion(cada.id, cada.data()))
+  return instantanea.docs
+    .map((cada) => mapearCotizacion(cada.id, cada.data()))
+    .filter((cada) => cada.canal === canal)
+    .slice(0, tope)
 }
 
 /** Recuperación por número legible (FR-017). */

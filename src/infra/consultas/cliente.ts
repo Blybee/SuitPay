@@ -55,6 +55,7 @@ export const CLAVES_DE_CONSULTA = {
     ['comprobantes', 'vendedor', vendedorId] as const,
   comprobantesDelCliente: (numeroDocumento: string) =>
     ['comprobantes', 'cliente', numeroDocumento] as const,
-  cotizacionesPendientes: ['cotizaciones', 'pendientes'] as const,
+  cotizacionesPendientes: ['cotizaciones', 'pendientes', 'general'] as const,
+  cotizacionesVecinos: ['cotizaciones', 'pendientes', 'vecino'] as const,
   series: (vendedorId: string) => ['series', vendedorId] as const,
 } as const

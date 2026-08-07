@@ -35,9 +35,8 @@ export type FaseDeEmision =
       readonly reintentable: boolean
     }
   | {
-      readonly nombre: 'cotizacion_ya_convertida'
+      readonly nombre: 'cotizacion_ya_usada'
       readonly mensaje: string
-      readonly comprobanteId: string | null
     }
 
 export interface RespuestaDelServidor {
@@ -112,15 +111,12 @@ export const usarEmision = create<AlmacenDeEmision>((set, get) => ({
         })
         return
 
-      case 'cotizacion_ya_convertida':
+      case 'cotizacion_ya_usada':
+      case 'cotizacion_no_pendiente':
         set({
           fase: {
-            nombre: 'cotizacion_ya_convertida',
+            nombre: 'cotizacion_ya_usada',
             mensaje: error.mensaje,
-            comprobanteId:
-              typeof error.detalle?.['comprobanteId'] === 'string'
-                ? error.detalle['comprobanteId']
-                : null,
           },
         })
         return

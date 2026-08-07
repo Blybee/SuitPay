@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { Camera, Eye, Mic, Minus, Search } from 'lucide-react'
+import {
+  esModoComando,
+  pistaDeComando,
+  placeholderDelBuscador,
+} from '../../features/comandos/pistas.ts'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type {
   ProductoBuscable,
@@ -13,6 +18,7 @@ import type {
  *
  * Las sugerencias flotan sobre el contenido (no lo desplazan) y se pueden
  * minimizar; al minimizar, un ojo al final del campo las restaura.
+ * Con `/` (modo comando) no se muestran: hay texto fantasma de parámetros.
  */
 
 export interface PropsDeEntrada {
@@ -52,10 +58,13 @@ export function Entrada({
     setMinimizado(false)
   }, [termino])
 
-  const sugiriendo = termino.length > 0
+  const modoComando = esModoComando(termino)
+  const pista = modoComando ? pistaDeComando(termino) : null
+  const sugiriendoProducto = termino.length > 0 && !modoComando
   const coincidencias = resultado.coincidencias
-  const panelAbierto = sugiriendo && !minimizado
-  const mostrarOjo = sugiriendo && minimizado
+  const panelAbierto = sugiriendoProducto && !minimizado
+  const mostrarOjo = sugiriendoProducto && minimizado
+  const placeholder = placeholderDelBuscador(termino)
 
   function elegir(indice: number): void {
     const elegida = coincidencias[indice]
@@ -67,7 +76,14 @@ export function Entrada({
   }
 
   function alPulsarTecla(evento: React.KeyboardEvent<HTMLInputElement>): void {
-    if (!sugiriendo) return
+    if (modoComando) {
+      if (evento.key === 'Escape') {
+        onTerminoCambia('')
+      }
+      return
+    }
+
+    if (!sugiriendoProducto) return
 
     if (evento.key === 'Escape') {
       onTerminoCambia('')
@@ -103,34 +119,69 @@ export function Entrada({
     <div className="w-full bg-papel">
       <div className="relative">
         <div className="flex w-full items-stretch gap-2 px-4 pt-2 pb-1">
-          <div className="relative flex flex-1 items-center">
+          <div
+            className={[
+              'relative flex flex-1 items-center rounded-full border border-borde bg-mesa shadow-sm',
+              'focus-within:border-tinta',
+            ].join(' ')}
+          >
             <Search
-              className="pointer-events-none absolute left-4 size-5 text-desvaida"
+              className="pointer-events-none absolute left-4 z-10 size-5 text-desvaida"
               aria-hidden
             />
+            {/* Fantasma de parámetros (modo comando): detrás del input transparente. */}
+            {modoComando &&
+            pista !== null &&
+            pista.fantasma.length > 0 &&
+            termino.length > 0 ? (
+              <div
+                aria-hidden
+                className={[
+                  'pointer-events-none absolute inset-0 flex items-center overflow-hidden',
+                  'pl-12',
+                  mostrarOjo ? 'pr-14' : 'pr-4',
+                  'text-entrada',
+                ].join(' ')}
+              >
+                <span className="whitespace-pre text-transparent">{termino}</span>
+                <span className="whitespace-pre text-desvaida">
+                  {pista.fantasma}
+                </span>
+              </div>
+            ) : null}
             <input
               ref={campo}
               value={termino}
               onChange={(evento) => onTerminoCambia(evento.target.value)}
               onKeyDown={alPulsarTecla}
-              placeholder="Escribe un producto…"
+              placeholder={placeholder}
               aria-label="Buscar producto o escribir un comando"
-              aria-autocomplete="list"
-              aria-expanded={panelAbierto}
-              aria-controls="sugerencias-de-producto"
+              aria-autocomplete={modoComando ? 'none' : 'list'}
+              aria-expanded={modoComando ? false : panelAbierto}
+              aria-controls={
+                modoComando ? undefined : 'sugerencias-de-producto'
+              }
               aria-activedescendant={
                 panelAbierto && coincidencias.length > 0
                   ? `sugerencia-${resaltado}`
                   : undefined
               }
+              aria-describedby={
+                modoComando && pista?.plantilla ? 'pista-comando' : undefined
+              }
               role="combobox"
               className={[
-                'min-h-14 w-full rounded-full border border-borde bg-mesa pl-12',
+                'relative z-[1] min-h-14 w-full rounded-full border-0 bg-transparent pl-12',
                 mostrarOjo ? 'pr-14' : 'pr-4',
-                'text-entrada text-tinta placeholder:text-desvaida shadow-sm',
-                'focus-visible:outline-none focus-visible:border-tinta',
+                'text-entrada text-tinta placeholder:text-desvaida',
+                'focus-visible:outline-none',
               ].join(' ')}
             />
+            {modoComando && pista?.plantilla ? (
+              <span id="pista-comando" className="sr-only">
+                Comando: {pista.plantilla}
+              </span>
+            ) : null}
             {mostrarOjo && (
               <button
                 type="button"
@@ -141,7 +192,7 @@ export function Entrada({
                   campo.current?.focus()
                 }}
                 className={[
-                  'absolute right-2 flex size-10 items-center justify-center',
+                  'absolute right-2 z-10 flex size-10 items-center justify-center',
                   'rounded-full text-tinta hover:bg-papel',
                   'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
                 ].join(' ')}

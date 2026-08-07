@@ -3,6 +3,7 @@
 **Feature**: 001-mostrador-asistido | **Fecha**: 2026-07-28  
 **Enmienda**: 2026-07-29 (volcado 5 — Modern Soft-Pill, sidebar, tabs, full-bleed)  
 **Enmienda**: 2026-08-06 (polish cabecera cliente + cotización en selector + contador de líneas)  
+**Enmienda**: 2026-08-07 (borrado de cotizaciones + tab Vecinos como cotizaciones por alias)  
 **Modo de visitante**: Operate — el vendedor viene a completar una tarea, no a decidir ni a leer.  
 **Sistema visual durable**: [`DESIGN.md`](../../DESIGN.md) · **Verdad de producto**: [`PRODUCT.md`](../../PRODUCT.md)
 
@@ -103,13 +104,25 @@ Lo que deliberadamente **no** está: métricas, gráficos, contadores del día, 
 Marca, nav, perfil al pie. Controles en cápsula. Superficie blanca sobre lienzo.
 
 ### Entrada (`Entrada`)
-Un campo, tres alimentaciones. Sugerencias locales; modo comando con `/`. Objetivos generosos. Estados: reposo, sugiriendo, comando, grabando, procesando, asistencia caída.
+Un campo, tres alimentaciones. Sugerencias locales; modo comando con `/`. Objetivos generosos. Estados: reposo, sugiriendo, comando, grabando, procesando, asistencia caída, **propuesta pendiente de confirmación** (p. ej. `/crear vecino {alias} {DNI/RUC}` → chip/propuesta Confirmar | Cancelar; sin escritura hasta confirmar).
+
+**Modo comando (obligatorio al implementar cualquier comando nuevo):**
+- Al empezar con `/`, **no** se muestran sugerencias de producto.
+- Los parámetros que faltan se muestran como **texto fantasma** gris tras lo escrito (p. ej. `/crear vecino` → `{alias} {DNI/RUC}`).
+- Fuente de verdad del catálogo de pistas: [`src/features/comandos/pistas.ts`](../../src/features/comandos/pistas.ts) → `CATALOGO_DE_COMANDOS`.
+- **Todo comando nuevo MUST añadir** una entrada `{ id, prefijo, parametros }` en ese catálogo (y su parseo/ejecución aparte). Sin esa entrada no hay pista en el buscador.
 
 ### Tabs del mostrador (`PestanasMostrador`)
 Pedido | Cotizaciones | Vecinos | Lista. Cápsulas o subrayado suave; el tab activo contraste claro.
 
+### Tab Cotizaciones (`PanelDeCotizaciones`)
+Lista de cotizaciones `canal` general. Cada fila: resumen (#, cliente, líneas, total) a la izquierda; a la derecha un **IconButton de eliminar** que abre diálogo de confirmación antes del borrado duro. Pulsar la fila abre la cotización en Pedido.
+
+### Tab Vecinos
+No es una lista plana como Cotizaciones. **Sub-tabs internos** por `aliasVecino` (solo el alias como etiqueta). El cuerpo del tab activo reutiliza la densidad del pedido: cabeceras de columna Producto / Cant. / Precio / Importe, líneas editables y **total** visible. Con un sub-tab activo, las altas desde Entrada caen en esa cotización viva. Vacío inicial: mensaje breve + pista del comando `/crear vecino …`.
+
 ### Región del pedido (`Pedido`)
-Panel blanco a todo el ancho útil del área de trabajo (`rounded-2xl` / `3xl` si es contenedor). Estados: vacía, con líneas, en revisión, emitida.
+Panel blanco a todo el ancho útil del área de trabajo (`rounded-2xl` / `3xl` si es contenedor). Estados: vacía, con líneas, en revisión, emitida. La misma gramática de líneas/total aplica dentro de cada sub-tab de Vecinos.
 
 ### Línea de pedido (`LineaPedido`)
 Igual semántica que antes; formas Soft-Pill en controles editables.
@@ -147,7 +160,9 @@ Misma semántica; sin bordes gruesos ni radio cero.
 | **Requiere intervención** | Rojo persistente + vía de escalado. |
 | **Serie no configurada** | Botón inhabilitado con texto exacto de qué falta. |
 | **Cliente exigido por umbral** | Cabecera en rojo; motivo visible. |
-| **Cotización ya convertida** | Papeleta con el comprobante resultante. |
+| **Cotización ya usada / inexistente** | Aviso de que la cotización ya no existe (convertida o eliminada); no ofrece reintentar la misma conversión. |
+| **Confirmar eliminar cotización** | Diálogo/papeleta: qué cotización se borra; Confirmar | Cancelar. |
+| **Propuesta crear vecino** | Resumen alias + DNI/RUC; Confirmar | Cancelar. Sin efecto hasta confirmar. |
 | **Fotografía ilegible** | Revisión vacía + reintentar; foto conservada. |
 | **Fuera de ventana de anulación** | Solo nota de crédito; no botón que fallará. |
 | **Sesión inválida** | Reautenticar sin perder el pedido local. |
@@ -182,12 +197,15 @@ Poco y con propósito. Línea nueva casi inmediata. Sello sin deslizamiento. Bot
 - **Hay sidebar** con marca arriba y perfil+logout abajo.
 - **Contenido a todo el ancho** del área de trabajo.
 - **Tabs** Pedido | Cotizaciones | Vecinos | Lista en el mostrador.
+- **Vecinos** = cotizaciones por alias (sub-tabs + líneas + total), no módulo de crédito/cobro.
 - **Default de tipo:** Nota de Venta.
 - **No hay modo oscuro.**
 - **Entrada arriba, total abajo.**
 - **Etiqueta SIN VALOR TRIBUTARIO** cuando no hay valor tributario.
 - **Emitir es un botón** deshabilitado al pulsar.
-- **La palabra "eliminar"** no aparece referida a un comprobante emitido.
+- **La palabra "eliminar"** no aparece referida a un comprobante emitido; sí puede usarse para cotizaciones pendientes (FR-019a), siempre con confirmación.
+- **`/crear vecino`** nunca escribe solo: siempre propuesta a confirmar.
+- **Nuevos comandos:** registrar prefijo + parámetros en `CATALOGO_DE_COMANDOS` (`src/features/comandos/pistas.ts`); ocultar sugerencias de producto en modo `/`.
 - **Ventana de anulación** en zona horaria `America/Lima`.
 - **No implementar contra los PNG obsoletos** sin nueva aprobación visual.
 

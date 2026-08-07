@@ -5,19 +5,21 @@ import type { Firestore } from 'firebase-admin/firestore'
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from 'vitest'
 import { AlmacenFirestore } from '../../src/server/emision/almacen-firestore.ts'
 import { idDeSerie } from '../../src/server/emision/almacen.ts'
-import { reclamarCorrelativo } from '../../src/server/emision/series.ts'
+import { emitirComprobante } from '../../src/server/emision/emitir.ts'
+import type { ContextoDeEmision } from '../../src/server/emision/emitir.ts'
 import { COLECCIONES } from '../../src/server/firebase/admin.ts'
+import { ProveedorSimulado } from '../../src/server/proveedor/simulado.ts'
+import { esErrorDeSuitPay } from '../../src/server/errores.ts'
 
 /**
- * T173 — la cotización se borra en la misma transacción que crea el
- * comprobante; un fallo deja ambos sin efecto.
+ * T138 — emitir desde cotización de vecino borra el documento (FR-035a).
  */
 
 const EMULADOR = { host: '127.0.0.1', puerto: 8080 }
 const PROYECTO = 'demo-suitpay'
 const VENDEDOR = 'vendedor-1'
 const SERIE = idDeSerie(VENDEDOR, 'boleta')
-const COTIZACION_ID = 'cot-tx-atomica'
+const COTIZACION_ID = 'cot-vecino-emitir'
 
 async function emuladorEscuchando(): Promise<boolean> {
   try {
@@ -29,13 +31,6 @@ async function emuladorEscuchando(): Promise<boolean> {
 }
 
 const hayEmulador = await emuladorEscuchando()
-
-if (!hayEmulador) {
-  console.warn(
-    '\n  AVISO: cotizacion-transaccion NO se verificó (sin emulador).\n',
-  )
-}
-
 const describeConEmulador = describe.skipIf(!hayEmulador)
 
 let aplicacion: App
@@ -44,9 +39,7 @@ let almacen: AlmacenFirestore
 
 beforeAll(() => {
   if (!hayEmulador) return
-
   process.env['FIRESTORE_EMULATOR_HOST'] = `${EMULADOR.host}:${EMULADOR.puerto}`
-
   const claveDeRelleno = `-----BEGIN PRIVATE KEY-----
 MIIEvAIBADANBgkqhkiG9w0BAQEFAASCBKYwggSiAgEAAoIBAQDUjQdP2FUPF1h+
 0S9Dkbm6UTgeOXXbjmcCXPx/YEjFOd8S3w95LyPcnzAozjAVvm0pklNVmmtukCLz
@@ -75,7 +68,6 @@ Cxc+//3au9CrY8N5tlbMeW/V0ffdespsd+JmQpxAJRDJqBl2QvFXPffuLDK7chmD
 GfRv2W74+j60JOzQ3wDmT/Tb0pt+L7gsQUjTupv+dQOUzjAyUdY917oCfgpzgd9M
 QLTGBd1yeqphojuTlB37jQ==
 -----END PRIVATE KEY-----`
-
   aplicacion = initializeApp(
     {
       projectId: PROYECTO,
@@ -85,7 +77,7 @@ QLTGBd1yeqphojuTlB37jQ==
         privateKey: claveDeRelleno,
       }),
     },
-    'prueba-cotizacion-transaccion',
+    'prueba-vecino-emitir',
   )
   base = getFirestore(aplicacion)
   almacen = new AlmacenFirestore(base)
@@ -118,25 +110,15 @@ beforeEach(async () => {
   })
 
   await base.collection(COLECCIONES.cotizaciones).doc(COTIZACION_ID).set({
-    numero: 2002,
+    numero: 3003,
     estado: 'pendiente',
-    canal: 'general',
-    cliente: null,
-    lineas: [],
-    total: 2_500,
-    creadoPor: VENDEDOR,
-    creadoEn: Timestamp.now(),
-  })
-})
-
-function comprobanteDe(numero: number, clave: string) {
-  return {
-    id: clave,
-    estado: 'reclamado' as const,
-    tipoDocumento: 'boleta' as const,
-    serie: 'B001',
-    numero,
-    cliente: null,
+    canal: 'vecino',
+    aliasVecino: 'wilmer',
+    cliente: {
+      tipoDocumento: 'RUC',
+      numeroDocumento: '20123456789',
+      denominacion: 'Wilmer SAC',
+    },
     lineas: [
       {
         codigo: 'TUB-1-2',
@@ -144,62 +126,82 @@ function comprobanteDe(numero: number, clave: string) {
         unidad: 'UND',
         cantidad: 2,
         precio: 1_250,
-        importe: 2_500,
       },
     ],
     total: 2_500,
-    condicionPago: {
-      tipo: 'contado' as const,
-      fechaVencimiento: null,
-      estadoCobro: 'no_aplica' as const,
-    },
-    medioPago: { medio: 'efectivo', montoRecibido: 2_500 },
+    creadoPor: VENDEDOR,
+    creadoEn: Timestamp.now(),
+  })
+})
+
+function contexto(): ContextoDeEmision {
+  return {
+    almacen,
+    proveedor: new ProveedorSimulado(),
     vendedorId: VENDEDOR,
-    emitidoEn: new Date('2026-07-28T15:00:00Z'),
-    proveedor: null,
-    cotizacionId: COTIZACION_ID,
-    capturaId: null,
-    contacto: null,
-    intentos: [],
-    anulacion: null,
+    umbralIdentificacion: 70_000,
+    formatoImpresion: 'a4',
+    ahora: () => new Date('2026-07-28T15:00:00Z'),
   }
 }
 
-describeConEmulador('transacción de conversión de cotización', () => {
-  it('borra la cotización y crea el comprobante en el mismo acto', async () => {
-    await almacen.enTransaccion(async (tx) => {
-      const reclamo = await reclamarCorrelativo(tx, VENDEDOR, 'boleta')
-      tx.crearComprobante(comprobanteDe(reclamo.numero, 'clave-atomica'))
-      tx.eliminarCotizacion(COTIZACION_ID)
+describeConEmulador('emisión desde cotización de vecino', () => {
+  it('emite y borra la cotización; el segundo intento falla', async () => {
+    const primero = await emitirComprobante(contexto(), {
+      claveIdempotencia: 'clave-vecino-a',
+      tipoDocumento: 'boleta',
+      cliente: {
+        tipoDocumento: 'RUC',
+        numeroDocumento: '20123456789',
+        denominacion: 'Wilmer SAC',
+      },
+      lineas: [
+        {
+          codigo: 'TUB-1-2',
+          descripcion: 'TUBO PVC 1/2 PULGADA',
+          unidad: 'UND',
+          cantidad: 2,
+          precio: 1_250,
+        },
+      ],
+      condicionPago: { tipo: 'contado' },
+      medioPago: { medio: 'efectivo', montoRecibido: 2_500 },
+      cotizacionId: COTIZACION_ID,
+      capturaId: null,
     })
-
-    const comprobante = await almacen.leerComprobante('clave-atomica')
-    expect(comprobante?.id).toBe('clave-atomica')
+    expect(primero.comprobanteId).toBe('clave-vecino-a')
 
     const cotizacion = await base
       .collection(COLECCIONES.cotizaciones)
       .doc(COTIZACION_ID)
       .get()
     expect(cotizacion.exists).toBe(false)
-  })
 
-  it('un fallo a mitad deja la cotización pendiente y sin comprobante', async () => {
-    await expect(
-      almacen.enTransaccion(async (tx) => {
-        const reclamo = await reclamarCorrelativo(tx, VENDEDOR, 'boleta')
-        tx.crearComprobante(comprobanteDe(reclamo.numero, 'clave-abortada'))
-        tx.eliminarCotizacion(COTIZACION_ID)
-        throw new Error('corte a mitad de la conversión')
-      }),
-    ).rejects.toThrow('corte a mitad')
-
-    expect(await almacen.leerComprobante('clave-abortada')).toBeUndefined()
-
-    const cotizacion = await base
-      .collection(COLECCIONES.cotizaciones)
-      .doc(COTIZACION_ID)
-      .get()
-    expect(cotizacion.exists).toBe(true)
-    expect(cotizacion.data()?.['estado']).toBe('pendiente')
+    try {
+      await emitirComprobante(contexto(), {
+        claveIdempotencia: 'clave-vecino-b',
+        tipoDocumento: 'boleta',
+        cliente: null,
+        lineas: [
+          {
+            codigo: 'TUB-1-2',
+            descripcion: 'TUBO PVC 1/2 PULGADA',
+            unidad: 'UND',
+            cantidad: 2,
+            precio: 1_250,
+          },
+        ],
+        condicionPago: { tipo: 'contado' },
+        medioPago: { medio: 'efectivo', montoRecibido: 2_500 },
+        cotizacionId: COTIZACION_ID,
+        capturaId: null,
+      })
+      expect.unreachable()
+    } catch (error) {
+      expect(esErrorDeSuitPay(error)).toBe(true)
+      if (esErrorDeSuitPay(error)) {
+        expect(error.codigo).toBe('cotizacion_ya_usada')
+      }
+    }
   })
 })

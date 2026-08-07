@@ -223,26 +223,15 @@ async function reclamarEnTransaccion(
       return { comprobante: existente, yaExistia: true }
     }
 
-    // La cotización se marca convertida **en este mismo acto**. Es lo que impide
+    // La cotización se **borra en duro** en este mismo acto. Es lo que impide
     // que dos dispositivos con la misma cotización abierta produzcan dos
     // comprobantes: la clave de idempotencia no cubre ese caso, porque cada
-    // dispositivo genera una clave distinta.
+    // dispositivo genera una clave distinta (FR-019).
     if (peticion.cotizacionId !== null) {
       const cotizacion = await transaccion.leerCotizacion(peticion.cotizacionId)
-      if (cotizacion === undefined) {
-        fallar('cotizacion_no_pendiente', {
+      if (cotizacion === undefined || cotizacion.estado !== 'pendiente') {
+        fallar('cotizacion_ya_usada', {
           cotizacionId: peticion.cotizacionId,
-        })
-      }
-      if (cotizacion.estado === 'convertida') {
-        fallar('cotizacion_ya_convertida', {
-          comprobanteId: cotizacion.comprobanteId,
-        })
-      }
-      if (cotizacion.estado !== 'pendiente') {
-        fallar('cotizacion_no_pendiente', {
-          cotizacionId: peticion.cotizacionId,
-          estado: cotizacion.estado,
         })
       }
     }
@@ -294,10 +283,7 @@ async function reclamarEnTransaccion(
     transaccion.crearComprobante(comprobante)
 
     if (peticion.cotizacionId !== null) {
-      transaccion.marcarCotizacionConvertida(
-        peticion.cotizacionId,
-        comprobante.id,
-      )
+      transaccion.eliminarCotizacion(peticion.cotizacionId)
     }
 
     return { comprobante, yaExistia: false }

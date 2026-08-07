@@ -137,19 +137,31 @@ service cloud.firestore {
 
     // --- Cotizaciones ----------------------------------------------------
     //
-    // Un vendedor puede recuperar la cotización de otro, que es lo que FR-017
-    // exige. Puede editarla mientras esté pendiente, pero no puede escribir el
-    // estado ni el comprobante resultante: marcar una cotización como
-    // convertida sin que haya nacido un comprobante sería la forma de burlar la
-    // protección contra la doble conversión. Ese paso lo da el backend en la
-    // misma transacción que crea el comprobante.
+    // Un vendedor puede recuperar la cotización de otro (FR-017), editarla y
+    // borrarla mientras esté pendiente. La conversión la borra el backend en la
+    // misma transacción que crea el comprobante (FR-019).
 
     match /cotizaciones/{cotizacionId} {
+      function canalValido() {
+        return request.resource.data.canal == 'general'
+               || request.resource.data.canal == 'vecino';
+      }
+
+      function aliasCoherente() {
+        return request.resource.data.canal == 'general'
+               ? !('aliasVecino' in request.resource.data)
+                 || request.resource.data.aliasVecino == null
+               : request.resource.data.aliasVecino is string
+                 && request.resource.data.aliasVecino.size() > 0;
+      }
+
       function cotizacionBienFormada() {
         return soloEstosCampos([
-                 'numero', 'estado', 'cliente', 'lineas', 'total',
-                 'creadoPor', 'creadoEn', 'comprobanteId', 'convertidaEn'
-               ]);
+                 'numero', 'estado', 'canal', 'aliasVecino', 'cliente',
+                 'lineas', 'total', 'creadoPor', 'creadoEn', 'actualizadoEn'
+               ])
+               && canalValido()
+               && aliasCoherente();
       }
 
       allow read: if personalDeLaEmpresa();
@@ -157,7 +169,6 @@ service cloud.firestore {
       allow create: if (esVendedor() || esAdministrador())
                     && request.resource.data.creadoPor == uid()
                     && request.resource.data.estado == 'pendiente'
-                    && request.resource.data.comprobanteId == null
                     && cotizacionBienFormada();
 
       allow update: if (esVendedor() || esAdministrador())
@@ -165,11 +176,12 @@ service cloud.firestore {
                     && request.resource.data.estado == 'pendiente'
                     && sinCambiar('creadoPor')
                     && sinCambiar('numero')
-                    && sinCambiar('comprobanteId')
-                    && sinCambiar('convertidaEn')
+                    && sinCambiar('canal')
+                    && sinCambiar('aliasVecino')
                     && cotizacionBienFormada();
 
-      allow delete: if false;
+      allow delete: if (esVendedor() || esAdministrador())
+                    && resource.data.estado == 'pendiente';
     }
 
     // --- Capturas --------------------------------------------------------

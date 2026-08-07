@@ -22,7 +22,7 @@ Define quién puede leer y escribir cada colección. Es el contrato que sostiene
 | `clientes/{id}` | leer, crear | leer, crear, editar | leer | El vendedor crea pero no edita: corregir los datos de un cliente ya registrado es una operación administrativa. |
 | `comprobantes/{id}` | **leer** | **leer** | **leer** | **Ningún rol escribe. Nunca.** Solo el backend. |
 | `series/{id}` | leer las propias | leer, editar | leer | El contador solo lo toca el backend, en transacción. |
-| `cotizaciones/{id}` | leer, crear, editar las pendientes | leer, crear, editar | leer | El paso a `convertida` solo lo hace el backend. |
+| `cotizaciones/{id}` | leer, crear, editar y **borrar** las pendientes | leer, crear, editar, borrar pendientes | leer | La conversión las borra el backend en la transacción de emisión (FR-019). El cliente puede borrar pendientes tras confirmación en UI (FR-019a). |
 | `capturas/{id}` | leer, crear las propias | leer | — | El estado y las propuestas los escribe el backend. |
 | `usuarios/{uid}` | leer el propio | leer, crear, editar | leer | El rol solo lo asigna el administrador, y se propaga al token. |
 
@@ -30,9 +30,9 @@ Define quién puede leer y escribir cada colección. Es el contrato que sostiene
 
 **Sobre comprobantes.** Prohibido crear, modificar y borrar desde el cliente, sin excepción y para todos los roles. Es la restricción más importante del sistema. Si un cliente pudiera escribir aquí, podría inventar un número, declarar `aceptado` un documento que nunca se emitió, o saltarse el correlativo. Toda la máquina de estados perdería sentido.
 
-**Sobre el borrado.** Ninguna regla concede borrado en ninguna colección. La anulación es un cambio de estado y la ejecuta el backend. No existe camino para eliminar un comprobante, ni desde el cliente ni desde una función.
+**Sobre el borrado.** Ninguna regla concede borrado de **comprobantes**, series ni config. La anulación es un cambio de estado y la ejecuta el backend. No existe camino para eliminar un comprobante. **Excepción**: las cotizaciones `pendiente` sí pueden borrarse desde el cliente (FR-019a) y desde el backend al emitir (FR-019).
 
-**Sobre las cotizaciones.** El vendedor puede editar una cotización mientras esté `pendiente`, pero no puede escribir el campo de estado ni el del comprobante resultante. Así se impide marcar una cotización como convertida sin que haya nacido un comprobante, que sería la forma de burlar la protección contra la doble conversión.
+**Sobre las cotizaciones.** El vendedor puede crear, editar y borrar una cotización mientras esté `pendiente`. El único estado vigente es `pendiente` (el documento existe o no). Campos `canal` (`general` \| `vecino`) y, si aplica, `aliasVecino`. No existen campos de “comprobante resultante” ni transición a `convertida`: la protección contra la doble conversión es el **borrado en la misma transacción de emisión**. Cualquier vendedor autorizado puede borrar pendientes de otro (alineado a FR-017).
 
 **Sobre las series.** El cliente puede leer su serie para saber si la tiene configurada, pero no puede tocar el contador. Escribirlo desde el cliente permitiría reservar o repetir numeración.
 
@@ -45,8 +45,9 @@ Define quién puede leer y escribir cada colección. Es el contrato que sostiene
 Las reglas comprueban forma, no lógica de negocio. La lógica vive en las funciones, donde puede validarse en serio.
 
 - Al crear un cliente: el identificador del documento coincide con el campo del número de documento, los campos obligatorios están presentes, y `creadoPor` coincide con el usuario autenticado.
-- Al crear una cotización: `creadoPor` coincide con el usuario autenticado, el estado inicial es `pendiente`, y el campo del comprobante resultante viene vacío.
-- Al editar una cotización: el estado sigue siendo `pendiente` y no se altera la autoría.
+- Al crear una cotización: `creadoPor` coincide con el usuario autenticado, el estado inicial es `pendiente`, `canal` es `general` o `vecino`, y si `canal` es `vecino` entonces `aliasVecino` está presente y no vacío.
+- Al editar una cotización: el estado sigue siendo `pendiente`, no se altera la autoría ni el `canal`, y `aliasVecino` solo existe cuando el canal es `vecino`.
+- Al borrar una cotización: el documento existía en estado `pendiente` (el cliente no “borra” comprobantes disfrazados).
 - En toda escritura: se rechazan campos no previstos, para que la forma de los documentos no derive con el tiempo.
 
 ## Cómo se verifica este contrato
@@ -57,7 +58,8 @@ Las reglas se prueban con el emulador, y las pruebas son obligatorias porque pro
 - Un vendedor intenta cambiar el estado de un comprobante a `aceptado`. **Debe fallar.**
 - Un vendedor intenta borrar un comprobante. **Debe fallar.**
 - Un vendedor intenta incrementar el contador de su serie. **Debe fallar.**
-- Un vendedor intenta marcar una cotización como `convertida`. **Debe fallar.**
+- Un vendedor intenta escribir un campo `comprobanteId` o `estado: convertida` en una cotización. **Debe fallar** (campos no previstos / estado inválido).
+- Un vendedor borra una cotización `pendiente` (propia o de otro). **Debe funcionar** (FR-019a / FR-017).
 - Un vendedor desactivado intenta cualquier escritura. **Debe fallar.**
 - Un vendedor intenta cambiar su propio rol a administrador. **Debe fallar.**
 - Un vendedor lee el catálogo, el índice de clientes y los parámetros. **Debe funcionar.**

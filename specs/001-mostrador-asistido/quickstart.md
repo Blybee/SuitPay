@@ -57,7 +57,13 @@ En el emulador, forzar que la llamada al proveedor agote su tiempo de espera **d
 
 Guardar una cotización. Abrirla simultáneamente en el escritorio y en un teléfono. Convertirla a comprobante desde ambos, casi a la vez.
 
-**Observar**: solo uno emite. El otro recibe el aviso de que ya fue convertida e indica en qué comprobante terminó. Es el caso que la clave de idempotencia por sí sola no cubre, porque cada dispositivo genera una clave distinta.
+**Observar**: solo uno emite. El otro recibe el aviso de que la cotización ya no existe / ya fue usada (`cotizacion_ya_usada`). En Firestore, el documento de la cotización **ya no está**. Es el caso que la clave de idempotencia por sí sola no cubre, porque cada dispositivo genera una clave distinta.
+
+### V4b — Eliminar cotización con confirmación (FR-019a)
+
+En el tab Cotizaciones, pulsar el IconButton de eliminar de una cotización pendiente y confirmar el diálogo. Repetir otra y cancelar el diálogo.
+
+**Observar**: tras confirmar, la cotización desaparece de la lista y del emulador Firestore. Tras cancelar, permanece intacta.
 
 ### V5 — El proveedor no responde (FR-050, principio V)
 
@@ -113,17 +119,23 @@ Como administrador, en Configuración → Catálogo, cargar el JSON de la tienda
 
 **Observar**: el resumen previo muestra las diferencias antes de aplicar nada; los códigos duplicados se señalan **sin resolverse automáticamente**; tras publicar, los vendedores ven el catálogo nuevo al refrescar. Contar las escrituras de la publicación: **debe ser una sola**, no una por producto. Esperado del export actual: ~737 ítems a partir de ~465 productos de tienda.
 
-### V14 — Los comandos no escriben (FR-048, principio I)
+### V14 — Los comandos no escriben comprobantes (FR-048, principio I)
 
-Pedir por comando los últimos comprobantes de un cliente. Después intentar, escrito y dictado, "anula la boleta B001-25" y "elimina el comprobante de ayer".
+Pedir por comando los últimos comprobantes de un cliente. Después intentar, escrito y dictado, "anula la boleta B001-25" y "elimina el comprobante de ayer". Probar `/crear vecino wilmer 12345678901`: cancelar la propuesta y, en otra pasada, confirmarla.
 
-**Observar**: la consulta funciona sin salir de la pantalla. **Las instrucciones de anulación no se ejecutan**: el sistema indica dónde se realiza esa operación. Es la protección que se acordó al acotar el alcance.
+**Observar**: la consulta funciona sin salir de la pantalla. **Las instrucciones de anulación no se ejecutan**: el sistema indica dónde se realiza esa operación. Cancelar `/crear vecino` no crea nada; confirmar crea el tab de alias y la cotización `canal: vecino`.
+
+### V14b — Canal vecinos (US8, FR-034…FR-035a)
+
+Con el tab Vecinos, crear un vecino confirmado, activar su sub-tab, agregar dos productos desde el buscador y comprobar el total. Convertir esa cotización a nota de venta (o boleta/factura).
+
+**Observar**: las líneas y el total viven en el sub-tab del alias; el buscador no ensucia el Pedido general ni otro vecino; tras emitir, la cotización de vecino desaparece de Firestore y del tab.
 
 ### V15 — Las reglas de acceso aguantan (contrato de reglas)
 
-Desde el emulador, con un token de vendedor, intentar: crear un comprobante, cambiar su estado a aceptado, borrarlo, incrementar el contador de una serie, marcar una cotización como convertida y cambiarse el rol a administrador.
+Desde el emulador, con un token de vendedor, intentar: crear un comprobante, cambiar su estado a aceptado, borrarlo, incrementar el contador de una serie, escribir `estado: convertida` / `comprobanteId` en una cotización y cambiarse el rol a administrador.
 
-**Observar**: **las seis operaciones fallan.** Comprobar acto seguido que sí funcionan las legítimas: leer el catálogo, crear un cliente y recuperar una cotización creada por otro vendedor.
+**Observar**: **esas operaciones fallan.** Comprobar acto seguido que sí funcionan las legítimas: leer el catálogo, crear un cliente, recuperar una cotización creada por otro vendedor y **borrar una cotización pendiente**.
 
 ### V16 — Coste de una jornada
 

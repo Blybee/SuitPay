@@ -89,18 +89,20 @@ Un cliente vuelve porque su boleta salió con una cantidad equivocada. El vended
 
 ### User Story 5 - Guardar el pedido como cotización y recuperarlo (Priority: P5)
 
-Un cliente pide precios pero no cierra la compra. El vendedor guarda el pedido como cotización con un número que lo identifica. Días después —quizá otro vendedor, quizá desde otro dispositivo— la recupera por ese número y la convierte en el documento que el cliente finalmente pida.
+Un cliente pide precios pero no cierra la compra. El vendedor guarda el pedido como cotización con un número que lo identifica. Días después —quizá otro vendedor, quizá desde otro dispositivo— la recupera por ese número y la convierte en el documento que el cliente finalmente pida. Si la cotización ya no sirve, el vendedor puede eliminarla; si se convierte en comprobante, desaparece del sistema.
 
 **Why this priority**: es una capacidad que el negocio ya usa conceptualmente ("pedidos guardados") y habilita la historia del canal de vecinos.
 
-**Independent Test**: se guarda una cotización en un dispositivo y se recupera y convierte en comprobante desde otro.
+**Independent Test**: se guarda una cotización en un dispositivo y se recupera y convierte en comprobante desde otro; la cotización deja de existir tras la conversión.
 
 **Acceptance Scenarios**:
 
-1. **Given** un pedido armado, **When** el vendedor lo guarda como cotización, **Then** recibe un número que la identifica.
+1. **Given** un pedido armado, **When** el vendedor lo guarda como cotización, **Then** recibe un número que la identifica y queda listada en el tab Cotizaciones (`canal` general).
 2. **Given** una cotización guardada en el puesto de escritorio, **When** otro vendedor la busca por su número desde un teléfono, **Then** la encuentra con todas sus líneas y precios.
-3. **Given** una cotización, **When** se convierte en comprobante, **Then** queda cerrada a nuevas conversiones.
-4. **Given** una cotización ya convertida, **When** alguien intenta convertirla otra vez, **Then** el sistema lo impide e indica en qué comprobante terminó.
+3. **Given** una cotización pendiente, **When** se convierte en boleta, factura o nota de venta, **Then** el documento de cotización se elimina en duro de Firestore en el mismo acto que crea el comprobante.
+4. **Given** una cotización que ya fue convertida o eliminada, **When** alguien intenta convertirla otra vez (p. ej. desde otro dispositivo), **Then** el sistema lo impide porque la cotización ya no existe.
+5. **Given** una cotización pendiente en el tab Cotizaciones, **When** el vendedor pulsa eliminar y confirma en el diálogo, **Then** el documento se elimina en duro de Firestore y deja de listarse.
+6. **Given** el diálogo de confirmación de eliminación, **When** el vendedor cancela, **Then** la cotización permanece intacta.
 
 ---
 
@@ -140,19 +142,21 @@ El almacenero tomó pedidos en papel, como siempre. Otra persona fotografía esa
 
 ---
 
-### User Story 8 - Facturar al canal de vecinos en la entrega y cobrar después (Priority: P8)
+### User Story 8 - Canal de vecinos como cotizaciones por alias (Priority: P8)
 
-Un comerciante vecino se lleva mercadería y pagará al cierre del día o en los días siguientes. El vendedor documenta la venta en el momento de la entrega, indicando que el pago es a crédito y cuándo se espera. Cuando el vecino paga, la venta queda registrada como cobrada.
+Un comerciante vecino se lleva mercadería y pagará al cierre del día o en los días siguientes. En la práctica de la empresa, el vendedor arma una cotización dedicada a ese vecino en el momento de la entrega; cuando el vecino paga —el mismo día u otro—, esa cotización se convierte en boleta, factura o nota de venta. El tab Vecinos agrupa esas cotizaciones por alias, con una superficie de trabajo (líneas + total) por vecino.
 
-**Why this priority**: corrige un desfase que hoy existe entre la entrega y el documento. Se ordena al final porque depende de las cotizaciones y de la emisión ya consolidadas, y porque requiere confirmación del contador.
+**Why this priority**: alinea el sistema al flujo real (cotizar → cobrar → emitir) y corrige el desfase entre entrega y documento. Depende de las cotizaciones (incluida su eliminación al convertir) ya consolidadas.
 
-**Independent Test**: se documenta una venta a crédito con fecha de pago esperada y, más tarde, se registra su cobro.
+**Independent Test**: se crea un vecino por comando confirmado, se le agregan productos desde el buscador dentro de su tab, y más tarde se convierte esa cotización en comprobante; la cotización desaparece.
 
 **Acceptance Scenarios**:
 
-1. **Given** una venta a un vecino que se lleva la mercadería, **When** el vendedor la documenta como crédito, **Then** el comprobante se emite en ese momento con la fecha de pago esperada.
-2. **Given** una venta a crédito pendiente, **When** el vecino paga, **Then** el vendedor registra el cobro y la venta deja de figurar como pendiente.
-3. **Given** varias ventas a crédito de un mismo vecino, **When** se consulta ese cliente, **Then** se ve qué ventas siguen pendientes y desde cuándo.
+1. **Given** el buscador del mostrador, **When** el vendedor escribe `/crear vecino {alias} {DNI/RUC}` (p. ej. `/crear vecino wilmer 12345678901`) y confirma la propuesta, **Then** queda un vecino con ese alias y una cotización viva (`canal` vecino) asociada a ese documento de identidad.
+2. **Given** el tab Vecinos con al menos un vecino, **When** el vendedor abre un tab interno, **Then** solo se muestra el alias como etiqueta del tab, y el cuerpo muestra la lista de productos y el total de esa cotización.
+3. **Given** un tab interno de vecino activo, **When** el vendedor busca y elige un producto en el buscador, **Then** la línea se agrega a la cotización de ese vecino (no al pedido general ni a otro vecino).
+4. **Given** la cotización de un vecino con líneas, **When** el vendedor la convierte en boleta, factura o nota de venta, **Then** se emite el comprobante y la cotización se elimina en duro (misma regla que US5).
+5. **Given** el comando `/crear vecino …` sin confirmación, **When** el vendedor cancela la propuesta o no confirma, **Then** no se crea ningún documento.
 
 ---
 
@@ -175,7 +179,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 ### Edge Cases
 
 - **La emisión se confirma y la respuesta nunca llega.** El sistema no debe reintentar a ciegas: debe poder averiguar si el documento existe antes de volver a intentarlo, y mientras no lo sepa, no debe presentar la venta como emitida ni como fallida.
-- **El mismo pedido abierto en dos dispositivos.** Solo uno puede convertirlo en comprobante; el otro debe descubrir que ya se emitió.
+- **La misma cotización abierta en dos dispositivos.** Solo uno puede convertirla en comprobante; el otro debe descubrir que la cotización ya no existe (`cotizacion_ya_usada`).
 - **El proveedor de emisión no responde.** Se informa con claridad; el pedido permanece en el dispositivo; el vendedor reintenta manualmente más tarde con la misma intención de venta (idempotencia). No hay emisión automática en background ni documento interno de contingencia (decisión 10 de `research.md`).
 - **La respuesta de emisión se pierde (indeterminado).** El sistema MUST NOT ofrecer reemitir a ciegas. El vendedor (o un administrador) consulta el estado al proveedor bajo demanda; solo entonces se adopta el resultado.
 - **Corte de red con el pedido a medio armar.** El pedido sobrevive en el dispositivo; al recuperar la conexión continúa.
@@ -220,10 +224,11 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **FR-014**: El sistema MUST permitir armar un pedido único y convertirlo en boleta, factura o nota de venta sin volver a capturarlo.
 - **FR-014a**: Al iniciar un pedido nuevo (o al abrir el mostrador sin pedido en curso que fije otro tipo), el tipo de documento MUST ser Nota de Venta por defecto.
 - **FR-015**: El sistema MUST conservar el pedido en curso en el propio dispositivo, de forma que sobreviva a una pérdida de conexión y a un cambio de red.
-- **FR-016**: El sistema MUST permitir guardar un pedido como cotización identificada por un número. En la cabecera del mostrador, Cotización es una opción del selector de tipo: el CTA del pie pasa a Guardar (sin emitir) y el resultado queda en el tab Cotizaciones.
+- **FR-016**: El sistema MUST permitir guardar un pedido como cotización identificada por un número, con `canal` `general`. En la cabecera del mostrador, Cotización es una opción del selector de tipo: el CTA del pie pasa a Guardar (sin emitir) y el resultado queda en el tab Cotizaciones (solo cotizaciones de canal general).
 - **FR-017**: Las cotizaciones MUST quedar accesibles desde cualquier dispositivo y para cualquier vendedor autorizado.
 - **FR-018**: Al recuperar una cotización, el sistema MUST advertir de los productos que cambiaron de precio o dejaron de existir.
-- **FR-019**: Una cotización convertida en comprobante MUST quedar cerrada a nuevas conversiones, indicando en qué comprobante terminó.
+- **FR-019**: Al convertir una cotización en boleta, factura o nota de venta, el sistema MUST eliminar en duro el documento de cotización en la misma transacción que crea el comprobante. Si la cotización ya no existe, MUST impedir una segunda conversión.
+- **FR-019a**: El tab Cotizaciones MUST ofrecer eliminar una cotización pendiente mediante un control explícito que exige confirmación del vendedor; tras confirmar, el documento MUST eliminarse en duro de Firestore. Cancelar el diálogo MUST dejar la cotización intacta.
 
 **Clientes**
 
@@ -245,9 +250,14 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **FR-031a**: Al configurar una serie, el sistema MUST registrar un número inicial desde el cual empezará a emitir (ej. 0 → primer comprobante `serie-0`; 100 → `serie-100`), y MUST alinear el contador interno a ese origen. La serie y el número inicial MUST quedar coherentes con la configuración del proveedor de emisión.
 - **FR-032**: El sistema MUST NOT recalcular por su cuenta el desglose del impuesto: los precios del catálogo lo incluyen y el desglose corresponde al proveedor de emisión.
 - **FR-033**: El sistema MUST registrar el medio de pago y el monto recibido con carácter referencial, sin exigir conciliación.
-- **FR-034**: El sistema MUST permitir documentar una venta a crédito indicando la fecha de pago esperada, y registrar posteriormente su cobro.
-- **FR-035**: El sistema MUST permitir consultar qué ventas a crédito de un cliente siguen pendientes y desde cuándo.
+- **FR-034**: El tab Vecinos MUST listar cotizaciones de `canal` `vecino` como tabs internos etiquetados solo con el `aliasVecino`, cada uno con la lista de líneas y el total de esa cotización viva.
+- **FR-034a**: El sistema MUST admitir el comando `/crear vecino {alias} {DNI/RUC}` en el buscador del mostrador. El comando MUST resolverse en una propuesta que el vendedor confirma o cancela; MUST NOT crear el vecino ni su cotización sin esa confirmación (principio I).
+- **FR-034b**: Tras confirmar `/crear vecino`, el sistema MUST crear (o reutilizar el cliente registrado para ese documento) y una cotización pendiente `canal` `vecino` con el alias indicado; si el cliente no está registrado, MUST ofrecer el alta en contexto antes de completar.
+- **FR-035**: Mientras un tab interno de vecino esté activo, las altas de producto desde el buscador MUST agregarse a la cotización de ese vecino y MUST persistirse en su documento de Firestore.
+- **FR-035a**: La conversión de una cotización de vecino a boleta, factura o nota de venta MUST reutilizar FR-019 (eliminación en duro en la misma transacción).
 - **FR-036**: El sistema MUST distinguir de forma inequívoca, en pantalla y en la impresión, los documentos con valor tributario de los internos.
+
+**Nota de alcance (crédito/cobro)**: la emisión a crédito con fecha de vencimiento, el registro de cobro y la consulta de pendientes de cobro **no forman parte de esta entrega**. El canal de vecinos se documenta como cotización hasta que el vecino paga y se emite el comprobante al contado (u otra condición que el flujo de emisión ya soporte sin módulo de cobranzas).
 
 **Anulación**
 
@@ -268,7 +278,8 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 **Comandos**
 
 - **FR-047**: El sistema MUST admitir instrucciones de consulta, escritas o dictadas, resueltas sin abandonar la pantalla de venta.
-- **FR-048**: El sistema MUST NOT ejecutar mediante instrucción en lenguaje natural ninguna operación que cree, modifique, anule o dé de baja un comprobante.
+- **FR-047a**: Cuando el buscador opera en modo comando (texto que empieza por `/`), el sistema MUST NOT mostrar sugerencias de producto. MUST mostrar como pista (texto fantasma / placeholder de parámetros) los argumentos que aún faltan según un **catálogo cerrado** en `src/features/comandos/pistas.ts` (`CATALOGO_DE_COMANDOS`: `prefijo` + `parametros`). Todo comando nuevo —consulta o escritura con confirmación— MUST registrarse en ese catálogo; no hay interpretación libre de intenciones para las pistas.
+- **FR-048**: El sistema MUST NOT ejecutar mediante instrucción en lenguaje natural ninguna operación que cree, modifique, anule o dé de baja un comprobante. La única escritura iniciada por comando en esta entrega es `/crear vecino` (FR-034a), y MUST resolverse siempre como propuesta a confirmar —nunca como efecto inmediato.
 - **FR-049**: Cuando una instrucción esté incompleta o admita varias interpretaciones de cliente o de producto, el sistema MUST pedir lo que falta o presentar las coincidencias.
 
 **Contingencia**
@@ -290,14 +301,14 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **Producto**: lo que se vende. Nombre descriptivo que incorpora material, medida y marca; código; unidad de medida; precio mayorista de referencia con impuesto incluido.
 - **Cliente**: quien compra. Tipo y número de documento de identidad, denominación, dirección, contacto y condición ante el registro oficial. Incluye el cliente eventual como caso por defecto.
 - **Pedido en curso**: la lista que el vendedor está armando. Vive en el dispositivo, no ha producido ningún documento y puede convertirse en cualquiera de ellos.
-- **Cotización**: un pedido guardado con número propio, accesible desde cualquier dispositivo, pendiente de convertirse o ya convertido.
+- **Cotización**: un pedido guardado con número propio, accesible desde cualquier dispositivo, con `canal` `general` o `vecino`. Mientras está pendiente puede editarse o eliminarse; al convertirse en comprobante se elimina en duro.
+- **Vecino (canal)**: cotización de `canal` `vecino` identificada por un `aliasVecino` (etiqueta del tab) y un cliente (DNI/RUC). Una cotización viva por vecino; se arma en la entrega y se convierte en comprobante cuando el vecino paga.
 - **Comprobante**: el documento resultante. Tipo, serie y número, cliente, líneas con precio, condición de pago, estado ante la autoridad, autor de la emisión y momento.
 - **Intento de emisión**: el registro de una emisión solicitada, con su resultado o su indeterminación. Es lo que permite no emitir dos veces la misma venta.
 - **Anulación**: la baja de un comprobante, con motivo, autor y momento.
 - **Serie**: la numeración asignada a un vendedor para un tipo de documento, con número inicial configurado y correlativo consumido a partir de ese origen.
 - **Vendedor**: quien atiende y asume la responsabilidad de lo emitido. Tiene rol, credenciales y series asignadas.
 - **Captura asistida**: el contenido original —audio o imagen— y la propuesta derivada de él, con su estado de revisión.
-- **Venta a crédito**: el compromiso de pago asociado a un comprobante, con fecha esperada y estado de cobro.
 
 ## Success Criteria *(mandatory)*
 
@@ -312,7 +323,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **SC-007**: Un pedido en curso sobrevive al 100% de las pérdidas de conexión y cambios de red dentro del mismo dispositivo.
 - **SC-008**: El 80% de las líneas de un pedido dictado o fotografiado se aprueban sin corrección manual. (Línea base: no aplica; hoy se transcriben a mano en su totalidad.)
 - **SC-009**: Los pedidos en papel que requieren transcripción manual completa se reducen respecto de la línea base semanal medida antes de la puesta en marcha.
-- **SC-010**: El 100% de las ventas al canal de vecinos quedan documentadas el mismo día de la entrega. (Línea base: hoy se documentan cuando el cliente paga, que puede ser días después.)
+- **SC-010**: El 100% de las entregas al canal de vecinos quedan documentadas el mismo día como cotización de vecino; el comprobante se emite cuando el vecino paga. (Línea base: hoy se documentan solo al pagar, sin rastro formal en la entrega.)
 - **SC-011**: El 100% de las emisiones, anulaciones e intentos fallidos son atribuibles a un vendedor identificado y a un momento concreto.
 - **SC-012**: Ningún dato identificatorio de clientes aparece en el tráfico hacia servicios de asistencia automática, verificable por inspección.
 - **SC-013**: Señal cualitativa, declarada como tal: los 5 vendedores manifiestan preferir SuitPay al sistema anterior tras dos semanas de uso. Es el criterio de aceptación del dueño y no sustituye a las métricas anteriores.
@@ -329,7 +340,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **Los precios del catálogo incluyen el impuesto** y el desglose lo realiza el proveedor de emisión.
 - **El catálogo ronda los 500 productos** con nombres estructurados por material, medida y marca, lo que favorece tanto la búsqueda tolerante como el emparejamiento de las capturas.
 - **La empresa dispone de conexión estable** y, ante caída del router, los vendedores pueden usar la red de sus teléfonos.
-- **El alcance de esta entrega no incluye** contabilidad, cobranzas como módulo, guía de remisión, panel del jefe ni alertas de mercadería por agotarse, sugerencias de compra, notas de crédito como flujo completo, migración masiva de clientes, aplicación nativa, impresión desde el móvil, ni comandos que escriban. Ver `concept.md`.
+- **El alcance de esta entrega no incluye** contabilidad, cobranzas como módulo (incluido registro de cobro / ventas a crédito como UX), guía de remisión, panel del jefe ni alertas de mercadería por agotarse, sugerencias de compra, notas de crédito como flujo completo, migración masiva de clientes, aplicación nativa, impresión desde el móvil, ni comandos que escriban salvo `/crear vecino` con confirmación explícita (FR-034a). Ver `concept.md`.
 - **El inventario no forma parte de esta entrega.** Mientras SuitPay y el sistema anterior operen aislados, cualquier cifra de stock sería inconsistente por diseño. El momento en que SuitPay tome el control del inventario es una decisión posterior.
 - **La captura por voz y fotografía reutiliza herramientas ya existentes** en el proyecto de la tienda virtual de la empresa. Están funcionando pero acopladas a ese proyecto, y el grado de reelaboración necesario está sin evaluar. Si resultara profundo, las historias 6 y 7 deberían replantearse.
 - **El pedido en curso no viaja entre dispositivos.** Cambiar de dispositivo obliga a rehacerlo, y el negocio lo acepta.

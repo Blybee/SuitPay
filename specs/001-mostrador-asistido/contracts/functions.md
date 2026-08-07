@@ -36,7 +36,7 @@ La función más importante del sistema. Es el único camino por el que nace un 
 
 1. Valida la petición y recalcula los totales con las reglas del dominio. **Si el total recalculado difiere del que envió el cliente, manda el servidor.**
 2. Comprueba el umbral de identificación del comprador: si el importe lo supera y no hay cliente identificado, rechaza sin emitir.
-3. Abre una transacción que: busca el comprobante con esa clave; si existe, termina y devuelve su estado sin emitir; si no existe, consume el correlativo de la serie del vendedor (`ultimoNumero + 1`, cuyo origen al crear la serie es `numeroInicial` — FR-031a), crea el comprobante en estado `reclamado` y, cuando venga de una cotización, la marca como `convertida` en el mismo acto.
+3. Abre una transacción que: busca el comprobante con esa clave; si existe, termina y devuelve su estado sin emitir; si no existe, consume el correlativo de la serie del vendedor (`ultimoNumero + 1`, cuyo origen al crear la serie es `numeroInicial` — FR-031a), crea el comprobante en estado `reclamado` y, cuando venga de una cotización (`cotizacionId`), **verifica que exista en estado `pendiente` y la elimina en duro en el mismo acto** (FR-019). Si la cotización ya no existe, aborta con `cotizacion_ya_usada`.
 4. **Solo entonces** invoca al proveedor, a través de su módulo frontera.
 5. Actualiza el estado con el resultado y añade la entrada correspondiente a la traza de intentos.
 
@@ -55,9 +55,9 @@ La función más importante del sistema. Es el único camino por el que nace un 
 - `serie_no_configurada`: el vendedor no tiene serie para ese tipo de documento (FR-031).
 - `cliente_requerido`: el importe supera el umbral de identificación (FR-021).
 - `importe_no_positivo`: alguna línea no puede convertirse en comprobante (FR-013).
-- `cotizacion_ya_convertida`: otro dispositivo llegó primero (FR-019).
-- `emision_indeterminada`: no se pudo determinar el resultado. **El cliente no debe reintentar**; la venta queda a cargo de la reconciliación.
-- `proveedor_no_disponible`: la venta queda `pendiente`; el cliente debe recoger los datos de contacto y ofrecer el documento interno.
+- `cotizacion_ya_usada`: la cotización ya no existe (fue convertida o eliminada; p. ej. otro dispositivo llegó primero) (FR-019). Sustituye al antiguo `cotizacion_ya_convertida`.
+- `emision_indeterminada`: no se pudo determinar el resultado. **El cliente no debe reintentar**; debe usar la consulta bajo demanda (decisión 10).
+- `proveedor_no_disponible`: se informa el fallo, se conserva el pedido y se permite reintento manual con la misma clave (FR-050 enmendado).
 
 ---
 

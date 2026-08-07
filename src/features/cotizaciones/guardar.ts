@@ -79,10 +79,15 @@ export async function guardarCotizacion(datos: {
       if (datosActuales['estado'] !== 'pendiente') {
         return {
           ok: false,
-          mensaje: 'Esa cotización ya se convirtió y no se puede editar.',
+          mensaje: 'Esa cotización ya no existe o no se puede editar.',
         }
       }
-      await updateDoc(referencia, { cliente, lineas, total })
+      await updateDoc(referencia, {
+        cliente,
+        lineas,
+        total,
+        actualizadoEn: serverTimestamp(),
+      })
       usarPedido.getState().fijarOrigen({ cotizacionId: idExistente })
       const numero = Number(datosActuales['numero'])
       return {
@@ -114,13 +119,13 @@ export async function guardarCotizacion(datos: {
     await setDoc(referencia, {
       numero: reserva.numero,
       estado: 'pendiente',
+      canal: 'general',
       cliente,
       lineas,
       total,
       creadoPor: datos.uid,
       creadoEn: serverTimestamp(),
-      comprobanteId: null,
-      convertidaEn: null,
+      actualizadoEn: serverTimestamp(),
     })
   } catch (error) {
     console.error('[SuitPay] guardarCotizacion: fallo al escribir', error)

@@ -4,7 +4,7 @@ import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { MarcaDeEstado } from '../../ui/componentes/Sello.tsx'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
-import { YaConvertida } from '../cotizaciones/ya-convertida.tsx'
+import { YaUsada } from '../cotizaciones/ya-usada.tsx'
 import { consultarEstado } from './emitir.funciones.ts'
 import { sePuedeReintentar, usarEmision } from './flujo.ts'
 import type { FaseDeEmision } from './flujo.ts'
@@ -117,20 +117,16 @@ export function EstadoDeEmision({
     return <Verificacion fase={fase} onCerrar={onCerrar} />
   }
 
-  if (fase.nombre === 'cotizacion_ya_convertida') {
+  if (fase.nombre === 'cotizacion_ya_usada') {
     return (
       <Modal
         abierta
         alCambiar={(abierta) => {
           if (!abierta) onCerrar()
         }}
-        titulo="Cotización ya convertida"
+        titulo="Cotización ya usada"
       >
-        <YaConvertida
-          comprobanteId={fase.comprobanteId}
-          mensaje={fase.mensaje}
-          onCerrar={onCerrar}
-        />
+        <YaUsada mensaje={fase.mensaje} onCerrar={onCerrar} />
       </Modal>
     )
   }

@@ -74,7 +74,9 @@ Las ocho puertas siguen pasando, y el diseño las refuerza en tres puntos que an
 
 **La puerta II se volvió estructural.** Al hacer que el comprobante y la clave de idempotencia sean el mismo documento (`data-model.md`), la garantía deja de depender de que alguien recuerde comprobarla en cada ruta: no existe forma de emitir sin haber reclamado antes el documento. La clasificación de fallos en `indeterminado`, `indisponible` y `rechazo_definitivo` de `contracts/proveedor-emision.md` es lo que impide el reintento a ciegas, y el escenario V3 de `quickstart.md` la ejercita en su variante peligrosa.
 
-**La puerta II descubrió un hueco que se cerró.** La clave de idempotencia protege contra la doble pulsación y el reintento, pero **no** contra dos dispositivos con la misma cotización abierta, porque cada uno genera una clave distinta. El diseño lo resuelve marcando la cotización como convertida en la misma transacción que crea el comprobante, y el escenario V4 lo verifica.
+**La puerta II descubrió un hueco que se cerró.** La clave de idempotencia protege contra la doble pulsación y el reintento, pero **no** contra dos dispositivos con la misma cotización abierta, porque cada uno genera una clave distinta. El diseño lo resuelve **eliminando en duro** la cotización en la misma transacción que crea el comprobante (FR-019 enmendado); el segundo dispositivo recibe `cotizacion_ya_usada`. El escenario V4 lo verifica.
+
+**US8 y la puerta I.** El canal de vecinos no introduce módulo de cobranzas: son cotizaciones `canal: vecino`. El único comando que escribe en esta entrega es `/crear vecino`, y solo tras confirmación explícita de la propuesta —nunca como efecto inmediato del texto.
 
 **Las puertas I y V ganaron un guardián explícito.** `contracts/firestore-rules.md` prohíbe al cliente escribir comprobantes y series bajo cualquier rol. Sin esa prohibición, todo lo anterior sería una convención voluntaria del cliente en lugar de una propiedad del sistema.
 
@@ -140,7 +142,8 @@ src/
 │   ├── emision/              # Confirmación, estados, salida impresa
 │   ├── cotizaciones/
 │   ├── captura/              # Audio, fotografía, revisión contrastada
-│   ├── comandos/             # Instrucciones de consulta
+│   ├── comandos/             # Consultas + /crear vecino; pistas.ts = CATALOGO_DE_COMANDOS
+│   ├── vecinos/              # Tab Vecinos: sub-tabs por alias sobre cotizaciones
 │   └── degradacion/          # Detección y exposición del estado degradado
 │
 ├── ui/                       # Sistema de diseño. Ver design.md

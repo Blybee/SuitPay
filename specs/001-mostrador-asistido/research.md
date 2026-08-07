@@ -79,7 +79,7 @@ Además satisface FR-007 de forma estructural: si el catálogo está en el dispo
 
 El flujo es: el cliente genera una clave al confirmar; la función abre una transacción que lee el documento con esa clave y, si no existe, lo crea en estado `reclamado` consumiendo a la vez el correlativo de la serie; solo entonces invoca al proveedor; finalmente actualiza el estado con el resultado. Si llega una segunda petición con la misma clave, la transacción encuentra el documento y devuelve su estado en lugar de emitir. Si la primera aún está en vuelo, la segunda ve `reclamado` y espera o informa, pero no emite.
 
-Esto cubre los tres modos de fallo identificados en el assessment. La doble pulsación reutiliza la misma clave. El reintento tras una respuesta que no llegó también, y encuentra el estado `indeterminado` que prohíbe reintentar a ciegas. Y el caso de dos dispositivos queda cubierto por otra vía: la cotización pasa a estado `convertida` en la misma transacción, de modo que el segundo dispositivo no puede convertirla otra vez.
+Esto cubre los tres modos de fallo identificados en el assessment. La doble pulsación reutiliza la misma clave. El reintento tras una respuesta que no llegó también, y encuentra el estado `indeterminado` que prohíbe reintentar a ciegas. Y el caso de dos dispositivos queda cubierto por otra vía: la cotización se **elimina en duro** en la misma transacción que crea el comprobante, de modo que el segundo dispositivo encuentra el documento ausente y recibe `cotizacion_ya_usada` (FR-019 enmendado 2026-08-07; antes se marcaba `convertida`).
 
 Registrar antes de invocar es lo que la constitución exige explícitamente. El orden inverso —emitir y luego registrar— dejaría una ventana en la que un reintento durante la llamada en vuelo pasaría de largo y produciría el duplicado.
 
@@ -145,7 +145,7 @@ El estado `01` avisa de que el comprobante **todavía se puede editar** en el pr
 
 ## Decisión 5 — El cliente no escribe comprobantes
 
-**Decisión**: las reglas de seguridad de Firestore prohíben al cliente crear, modificar o borrar documentos de comprobantes, series y parámetros de configuración. Solo el backend escribe ahí. El cliente sí crea y modifica cotizaciones y clientes, con restricciones.
+**Decisión**: las reglas de seguridad de Firestore prohíben al cliente crear, modificar o borrar documentos de comprobantes, series y parámetros de configuración. Solo el backend escribe ahí. El cliente sí crea, modifica y **borra cotizaciones pendientes**, y crea/modifica clientes, con restricciones.
 
 **Rationale**: sin esta regla, todo lo anterior es decorativo. Si un cliente pudiera escribir un comprobante, podría inventarse un número, saltarse el correlativo, o crear un documento que dice `aceptado` sin que nada se haya emitido. La integridad del correlativo y de la clave de idempotencia solo es defendible si un único actor con autoridad escribe esos documentos.
 
@@ -396,8 +396,31 @@ Las historias 6 y 7 **no se replantean**: SuitPay ya fijó la frontera (Decisió
 
 ### Fuera de Phase 8–9
 
-No se porta `neighbor-lists` ni el workspace de despacho. El canal de vecinos/crédito es Phase 10; la identidad del cliente se resuelve en SuitPay (T126), nunca en el modelo.
+No se porta el workspace de despacho del proyecto de tienda. El canal de vecinos (Phase 10 / US8) **no** es crédito/cobro en esta entrega: son cotizaciones `canal: vecino` con tabs por alias (inspiración conceptual de `neighbor-lists`, no un port literal). La identidad del cliente se resuelve en SuitPay (T126), nunca en el modelo. Queda prohibido enviar `clientNames` al modelo (principio IV).
 
 ### Lote de respaldo sin término de búsqueda
 
 Cuando el vendedor dicta con el campo de Entrada vacío, el cliente envía hasta **60** productos del índice en caché (techo fijo), no los ~500. Las líneas sin match quedan `ambigua` o `pendiente` para resolución humana.
+
+---
+
+## Decisión 11b — Pistas de comandos en el buscador (2026-08-07)
+
+**Decisión**: todo comando del buscador (prefijo `/`) se declara en `src/features/comandos/pistas.ts` → `CATALOGO_DE_COMANDOS` con `prefijo` y `parametros`. En modo comando no hay sugerencias de producto; los parámetros faltantes se muestran como texto fantasma (FR-047a).
+
+**Rationale**: un solo sitio evita que un comando nuevo “funcione” al parsearse pero deje al vendedor sin guía en el campo. US9 reutiliza este catálogo al añadir consultas.
+
+**Alternatives considered**: placeholder nativo solo (invisible con texto escrito); descartada. Inventar pistas ad hoc por comando; descartada por divergencia.
+
+---
+
+## Decisión 11 — Borrado duro de cotizaciones y canal vecinos sin módulo de cobro (2026-08-07)
+
+**Decisión**: (a) al convertir una cotización a comprobante, el backend **borra el documento** en la misma transacción (no marca `convertida`); (b) el vendedor puede borrar cotizaciones pendientes desde el cliente tras confirmación en UI; (c) US8 es el tab Vecinos como cotizaciones vivas por alias, creadas con `/crear vecino {alias} {DNI/RUC}` confirmado; (d) emisión a crédito / registro de cobro quedan **fuera de esta entrega**.
+
+**Rationale**: el flujo real de la empresa es cotizar al entregar y emitir cuando el vecino paga. Mantener estados `convertida`/`descartada` no aporta si la lista solo muestra pendientes; el borrado en transacción sigue cerrando la carrera entre dispositivos (el segundo ve el doc ausente → `cotizacion_ya_usada`). El comando de alta de vecino escribe solo tras confirmación, así que no viola el principio I ni abre la puerta a comandos que anulen comprobantes.
+
+**Alternatives considered**:
+- *Soft-delete (`descartada`) o estado `convertida`.* Descartada: el negocio pidió borrado duro; el rastro de origen vive en el comprobante (`cotizacionId`).
+- *US8 = crédito con fecha de vencimiento + cobro.* Descartada para esta entrega: no refleja el flujo operativo actual.
+- *Colección `vecinos` aparte con líneas embebidas.* Descartada: una cotización viva por vecino reutiliza US5, numeración y reglas de conversión.

@@ -65,6 +65,10 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
     return this.comprobantes.size
   }
 
+  cotizacionPorId(id: string): Cotizacion | undefined {
+    return this.cotizaciones.get(id)?.valor
+  }
+
   todosLosComprobantes(): readonly Comprobante[] {
     return [...this.comprobantes.values()].map((cada) => cada.valor)
   }
@@ -93,6 +97,7 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
       comprobantes: new Map<string, Comprobante>(),
       series: new Map<string, Serie>(),
       cotizaciones: new Map<string, Cotizacion>(),
+      cotizacionesEliminadas: new Set<string>(),
     }
 
     const anotarLectura = (clave: string, version: number | undefined): void => {
@@ -116,6 +121,11 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
       },
 
       leerCotizacion: async (cotizacionId) => {
+        if (borrador.cotizacionesEliminadas.has(cotizacionId)) {
+          const guardada = this.cotizaciones.get(cotizacionId)
+          anotarLectura(`cotizacion:${cotizacionId}`, guardada?.version)
+          return undefined
+        }
         const guardada = this.cotizaciones.get(cotizacionId)
         anotarLectura(`cotizacion:${cotizacionId}`, guardada?.version)
         return borrador.cotizaciones.get(cotizacionId) ?? guardada?.valor
@@ -131,14 +141,9 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
         borrador.comprobantes.set(comprobante.id, comprobante)
       },
 
-      marcarCotizacionConvertida: (cotizacionId, comprobanteId) => {
-        const actual = this.cotizaciones.get(cotizacionId)
-        if (actual === undefined) return
-        borrador.cotizaciones.set(cotizacionId, {
-          ...actual.valor,
-          estado: 'convertida',
-          comprobanteId,
-        })
+      eliminarCotizacion: (cotizacionId) => {
+        borrador.cotizacionesEliminadas.add(cotizacionId)
+        borrador.cotizaciones.delete(cotizacionId)
       },
     }
 
@@ -167,7 +172,11 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
       const previo = this.series.get(clave)
       this.series.set(clave, { valor, version: (previo?.version ?? 0) + 1 })
     }
+    for (const id of borrador.cotizacionesEliminadas) {
+      this.cotizaciones.delete(id)
+    }
     for (const [clave, valor] of borrador.cotizaciones) {
+      if (borrador.cotizacionesEliminadas.has(clave)) continue
       const previo = this.cotizaciones.get(clave)
       this.cotizaciones.set(clave, {
         valor,

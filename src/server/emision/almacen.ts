@@ -120,8 +120,8 @@ export interface Serie {
 
 export interface Cotizacion {
   readonly id: string
+  /** Solo `pendiente` mientras el documento exista. Legacy puede traer otros. */
   readonly estado: 'pendiente' | 'convertida' | 'descartada'
-  readonly comprobanteId: string | null
 }
 
 /** El identificador de una serie es determinista: vendedor y tipo. */
@@ -153,7 +153,8 @@ export interface TransaccionDeEmision {
    */
   consumirCorrelativo: (serieId: string, ultimoNumero: number) => void
   crearComprobante: (comprobante: Comprobante) => void
-  marcarCotizacionConvertida: (cotizacionId: string, comprobanteId: string) => void
+  /** Borrado duro en la misma transacción que crea el comprobante (FR-019). */
+  eliminarCotizacion: (cotizacionId: string) => void
 }
 
 export interface CambiosDelComprobante {

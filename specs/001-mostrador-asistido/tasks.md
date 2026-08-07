@@ -269,7 +269,9 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 ### Pruebas obligatorias de User Story 5 ⚠️
 
 - [x] T107 [P] [US5] **Prueba de la carrera entre dispositivos** en `tests/emulador/cotizacion-dos-dispositivos.test.ts`: dos claves de idempotencia distintas sobre la misma cotización producen **un solo comprobante**, y la segunda recibe `cotizacion_ya_convertida`. Es el hueco que la clave de idempotencia por sí sola no cubre
+  - **Superseded por T173/T176** (enmienda 2026-08-07): el segundo error pasa a `cotizacion_ya_usada` y la cotización se borra en duro.
 - [x] T108 [P] [US5] Prueba de la transacción de conversión en `tests/emulador/cotizacion-transaccion.test.ts`: la cotización pasa a `convertida` **en la misma transacción** que crea el comprobante, y un fallo deja ambos sin efecto
+  - **Superseded por T173/T176**: la transacción **borra** la cotización; un fallo deja comprobante y cotización sin el efecto parcial de conversión.
 
 ### Implementación de User Story 5
 
@@ -278,7 +280,9 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 - [x] T111 [US5] Implementar la recuperación por número en `src/routes/cotizaciones/index.tsx`, accesible **desde cualquier dispositivo y para cualquier vendedor autorizado** (FR-017)
 - [x] T112 [US5] Implementar la advertencia de cambios al recuperar en `src/features/cotizaciones/diferencias.ts`, comparando contra el catálogo en caché **sin lecturas adicionales** y señalando precios cambiados y productos desaparecidos (FR-018)
 - [x] T113 [US5] Extender `emitirComprobante` en `src/server/emision/emitir.ts` para marcar la cotización como `convertida` en la misma transacción
+  - **Superseded por T174**: borrar en duro en lugar de marcar `convertida`.
 - [x] T114 [P] [US5] Implementar el estado de cotización ya convertida en `src/features/cotizaciones/ya-convertida.tsx`, que **indica en qué comprobante terminó** y ofrece abrirlo (FR-019)
+  - **Superseded por T175**: aviso de cotización inexistente / ya usada (sin enlace a comprobante vía estado `convertida`).
 
 **Checkpoint**: las cotizaciones viajan entre dispositivos y solo pueden convertirse una vez.
 
@@ -330,26 +334,32 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 
 ---
 
-## Phase 10: User Story 8 — Facturar al canal de vecinos y cobrar después (Priority: P8)
+## Phase 10: User Story 8 — Canal de vecinos como cotizaciones por alias (Priority: P8)
 
-**Goal**: documentar la venta en el momento de la entrega indicando que el pago es a crédito, y registrar el cobro cuando llegue.
+**Goal**: documentar la entrega al vecino como cotización viva por alias; cuando paga, convertirla en boleta, factura o nota de venta (la cotización se elimina). **No** incluye UX de crédito/cobro.
 
-**Independent Test**: se documenta una venta a crédito con fecha de pago esperada y, más tarde, se registra su cobro.
+**Independent Test**: se crea un vecino por comando confirmado, se le agregan productos en su tab y se convierte la cotización en comprobante; la cotización desaparece.
+
+**Dependencias**: Phase C7 (borrado de cotizaciones T173–T177) y US5 deben estar hechas.
 
 ### Pruebas obligatorias de User Story 8 ⚠️
 
-- [ ] T137 [P] [US8] Prueba de emisión a crédito en `tests/unit/server/emitir-credito.test.ts`: el comprobante se emite en el momento de la entrega con su fecha de vencimiento, y los tres modos de fallo del proveedor se comportan igual que al contado
-- [ ] T138 [P] [US8] Prueba del registro de cobro en `tests/emulador/registrar-cobro.test.ts`: registrar el cobro **no altera el comprobante emitido** más allá de su estado de cobro, y registrarlo dos veces no lo duplica
+- [x] T137 [P] [US8] Prueba unitaria de parseo `/crear vecino` en `tests/unit/features/crear-vecino.test.ts` (propuesta sin escritura). Emulador de creación completa: pendiente de semilla con cliente en suite emulador
+- [x] T138 [P] [US8] Prueba de emisión desde cotización de vecino en `tests/emulador/vecino-emitir.test.ts`: emitir borra la cotización (FR-019/FR-035a); segundo intento → `cotizacion_ya_usada`
 
 ### Implementación de User Story 8
 
-- [ ] T139 [US8] Extender la condición de pago en `src/features/emision/condicion-pago.tsx` con el crédito y su fecha de vencimiento esperada (FR-034)
-- [ ] T140 [US8] Implementar el registro del cobro en `src/server/emision/registrar-cobro.ts`, embebido en el propio comprobante y **sin colección aparte**
-- [ ] T141 [US8] Implementar la consulta de ventas a crédito pendientes por cliente en `src/routes/credito/index.tsx`, mostrando **qué ventas siguen pendientes y desde cuándo** (FR-035)
-- [ ] T142 [P] [US8] Aplicar el sello violeta de COBRADO en `src/routes/credito/index.tsx` a las ventas ya cobradas
-- [ ] T143 [P] [US8] Implementar el envío del comprobante al vecino en `src/features/emision/compartir.ts`, reutilizando el archivo compartible de US1
+- [x] T139 [US8] Extender modelo/tipos/reglas/índice para `canal` y `aliasVecino` en `src/features/cotizaciones/tipos.ts`, `firestore.rules`, `firestore.indexes.json` y listados por canal (FR-016/FR-034)
+- [x] T140 [US8] Implementar parseo de `/crear vecino {alias} {DNI/RUC}` y propuesta Confirmar|Cancelar en `src/features/comandos/` + cableado en el mostrador (FR-034a, principio I)
+- [x] T141 [US8] Implementar alta de vecino al confirmar: resolver/alta cliente en contexto + crear cotización viva `canal: vecino` en `src/features/vecinos/`, y abrir tab Vecinos en ese alias (FR-034b)
+- [x] T142 [US8] Implementar UI del tab Vecinos en `src/features/vecinos/panel.tsx`: sub-tabs solo con alias; cuerpo = líneas + total reutilizando `LineaPedido` / pie; vacío con pista del comando (FR-034)
+- [x] T143 [US8] Enrutar altas de producto desde Entrada al vecino activo y persistir la cotización viva (create/update) mientras el sub-tab esté seleccionado (FR-035)
+- [x] T143a [P] [US8] Permitir convertir/emitir la cotización del vecino activo a boleta, factura o nota de venta reutilizando el flujo de emisión + borrado T174 (FR-035a)
+- [ ] T143b [P] [US8] Prueba e2e o de integración del flujo vecino en `tests/e2e/vecinos.spec.ts` (o emulador): crear → agregar líneas → emitir → cotización ausente
 
-**Checkpoint**: el canal de vecinos queda documentado el mismo día de la entrega.
+**Checkpoint**: el canal de vecinos queda documentado el mismo día de la entrega como cotización; el comprobante nace al convertir cuando el vecino paga.
+
+> **Superseded (crédito/cobro)**: las tareas previas T137–T143 que cubrían emisión a crédito, `registrar-cobro`, ruta `/credito` y sello COBRADO quedan **canceladas** por la enmienda 2026-08-07 (decisión 11 de `research.md`). El esquema `condicionPago` crédito puede seguir existiendo en dominio/emisión, pero sin UX ni Phase 10.
 
 ---
 
@@ -359,14 +369,14 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 
 **Independent Test**: se pide por comando la lista de comprobantes de un cliente y se obtiene sin salir de la pantalla de venta.
 
-- [ ] T144 [P] [US9] **Prueba de la frontera de los comandos** en `tests/unit/features/comandos-solo-lectura.test.ts`: ninguna instrucción en lenguaje natural puede crear, modificar, anular o dar de baja un comprobante, y el intento **indica dónde se realiza esa operación** (FR-048, principio I)
-- [ ] T145 [US9] Implementar el catálogo cerrado de operaciones de consulta en `src/features/comandos/catalogo.ts`. Es un catálogo cerrado por diseño: **no hay interpretación libre de intenciones**
-- [ ] T146 [US9] Implementar el reconocimiento de comandos en la entrada en `src/features/comandos/reconocer.ts`, que cambia a modo comando al empezar con barra y muestra los parámetros que faltan como marcadores dentro del propio campo
-- [ ] T147 [P] [US9] Implementar la consulta de últimos comprobantes de un cliente en `src/features/comandos/comprobantes-cliente.ts`, con cursor y página corta
-- [ ] T148 [P] [US9] Implementar la consulta de cotización por número en `src/features/comandos/cotizacion.ts`
+- [ ] T144 [P] [US9] **Prueba de la frontera de los comandos** en `tests/unit/features/comandos-solo-lectura.test.ts`: ninguna instrucción en lenguaje natural puede crear, modificar, anular o dar de baja un **comprobante**, y el intento **indica dónde se realiza esa operación** (FR-048, principio I). `/crear vecino` es de US8 (T140) y queda fuera de este catálogo de solo-consulta
+- [ ] T145 [US9] Implementar el catálogo cerrado de operaciones de consulta en `src/features/comandos/catalogo.ts`. Es un catálogo cerrado por diseño: **no hay interpretación libre de intenciones**. **Cada comando nuevo MUST también registrarse** en `src/features/comandos/pistas.ts` → `CATALOGO_DE_COMANDOS` (`prefijo` + `parametros`) para las pistas del buscador (FR-047a); `/crear vecino` ya está
+- [ ] T146 [US9] Extender el reconocimiento de comandos reutilizando modo `/` de `Entrada` + `pistas.ts` (ya oculta sugerencias de producto y muestra parámetros fantasma). Completar en `src/features/comandos/reconocer.ts` el despacho a consultas; no reinventar el catálogo de pistas
+- [ ] T147 [P] [US9] Implementar la consulta de últimos comprobantes de un cliente en `src/features/comandos/comprobantes-cliente.ts`, con cursor y página corta; **añadir** su entrada en `CATALOGO_DE_COMANDOS`
+- [ ] T148 [P] [US9] Implementar la consulta de cotización por número en `src/features/comandos/cotizacion.ts`; **añadir** su entrada en `CATALOGO_DE_COMANDOS`
 - [ ] T149 [US9] Implementar la resolución de instrucciones incompletas en `src/features/comandos/incompletas.tsx` mediante la papeleta de contexto, que **pide lo que falta en lugar de fallar** (FR-049)
 - [ ] T150 [P] [US9] Implementar la presentación de resultados sin abandonar la pantalla de venta en `src/features/comandos/resultados.tsx` (FR-047)
-- [ ] T151 [US9] Extender el dictado para admitir comandos hablados en `src/features/comandos/por-voz.ts`, con la misma frontera de solo lectura
+- [ ] T151 [US9] Extender el dictado para admitir comandos hablados en `src/features/comandos/por-voz.ts`, con la misma frontera: consultas sí; escritura de comprobantes no
 
 **Checkpoint**: las consultas se resuelven sin navegar, y ninguna instrucción hablada o escrita puede escribir.
 
@@ -393,12 +403,12 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 
 ### Acabado
 
-- [ ] T161 Ejecutar la guía de validación completa de [quickstart.md](./quickstart.md), incluidos los escenarios V3 de emisión indeterminada y V4 de la cotización en dos dispositivos
+- [ ] T161 Ejecutar la guía de validación completa de [quickstart.md](./quickstart.md), incluidos los escenarios V3 de emisión indeterminada, V4/V4b de cotizaciones y V14b de vecinos
 - [ ] T162 **Actualizar `DESIGN.md`** con los valores exactos de espaciado, ancho de columna y tipografía que sobrevivieron a la implementación, sustituyendo los marcadores provisionales
 - [ ] T163 [P] Ejercitar la integración completa contra el **entorno de demostración** del proveedor antes de tocar el entorno real, como exige la disciplina de desarrollo de la constitución
 - [ ] T164 [P] Desplegar en Firebase App Hosting y verificar el adaptador de Nitro. **Si el adaptador ha dejado de funcionar**, aplicar la contingencia de la decisión 1b de `research.md`: Cloud Run con el mismo artefacto
 - [ ] T165 [P] Verificar el coste real de lecturas de una jornada contra la estimación de `data-model.md`, para confirmar que el diseño de una lectura por sesión se sostiene en la práctica
-- [ ] T166 Revisar que el alcance excluido no se haya colado: sin contabilidad, sin guía de remisión, sin panel del jefe, sin alertas de stock, sin notas de crédito como flujo, sin comandos que escriban
+- [ ] T166 Revisar que el alcance excluido no se haya colado: sin contabilidad, sin cobranzas/crédito como UX, sin guía de remisión, sin panel del jefe, sin alertas de stock, sin notas de crédito como flujo, sin comandos que escriban **salvo** `/crear vecino` con confirmación (FR-034a)
 
 ---
 
@@ -409,6 +419,7 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 - **Setup (Fase 1)**: sin dependencias. Empieza de inmediato.
 - **Foundational (Fase 2)**: depende de Setup. **Bloquea todas las historias.**
 - **Historias (Fases 3–11)**: todas dependen de Foundational. Luego pueden avanzar en paralelo o en orden de prioridad.
+- **Phase C7 (borrado de cotizaciones)**: depende de US5 (Phase 7). **Bloquea Phase 10 / US8.**
 - **Polish (Fase 12)**: depende de que estén completas las historias que se quieran entregar.
 
 ### Dependencias entre historias
@@ -417,11 +428,11 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 - **US2 (P2)**: solo depende de Foundational. US1 puede demostrarse con un catálogo cargado a mano, así que **no hay dependencia real** entre ellas.
 - **US3 (P3)**: independiente. Se integra con la pantalla de US1 pero se prueba sola.
 - **US4 (P4)**: necesita comprobantes emitidos, así que en la práctica va después de US1.
-- **US5 (P5)**: toca `emitirComprobante` en T113, de modo que **T113 depende de T061**.
+- **US5 (P5)**: toca `emitirComprobante` en T113, de modo que **T113 depende de T061**. La enmienda de borrado (T173–T177) supersede T113/T114.
 - **US6 (P6)**: independiente, pero **T115 debe resolverse antes de comprometer las tareas siguientes**.
 - **US7 (P7)**: reutiliza `RevisionCaptura` de US6, así que **T133 depende de T122**.
-- **US8 (P8)**: extiende la emisión y el compartir de US1. **T139 depende de T061** y **T143 de T071**.
-- **US9 (P9)**: independiente. Consume la entrada de US1, así que **T146 depende de T053**.
+- **US8 (P8)**: cotizaciones de vecino sobre US5 + C7. **T139–T143 dependen de T174/T177**; emisión reutiliza T061.
+- **US9 (P9)**: independiente. Consume la entrada de US1, así que **T146 depende de T053**. El comando `/crear vecino` vive en US8 (T140), no en el catálogo de solo-consulta de US9.
 
 ### Dentro de cada historia
 
@@ -519,6 +530,28 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 - [x] T172 [P] [US1] **Retirar artefactos Scheduler/contingencia**: rutas `/api/procesar-pendientes` y `/api/reconciliar`, `TAREAS_SECRETO_*` de env/apphosting si ya no se usan, y dejar de enlazar `contingencia.tsx` en el flujo de emisión. Actualizar `contracts/functions.md` y `data-model.md` (estados `pendiente` de contingencia / índice de barrido programado).
 
 **Checkpoint C6**: US1 ya no depende de Cloud Scheduler; el principio II se sostiene con idempotencia + consulta explícita.
+
+---
+
+## Phase C7: Converge — Borrado duro de cotizaciones (2026-08-07)
+
+**Propósito**: materializar FR-019 / FR-019a (enmienda SpecKit): eliminar cotizaciones en duro —manual con confirmación e implícito al emitir— en lugar de marcar `convertida`. Origen: decisión 11 de `research.md`.
+
+**Dependencias**: Phase 7 (US5) hecha. **Bloquea Phase 10 / US8.**
+
+### Pruebas obligatorias ⚠️
+
+- [x] T173 [P] [US5] Actualizar `tests/emulador/cotizacion-dos-dispositivos.test.ts` y `tests/emulador/cotizacion-transaccion.test.ts`: tras emitir, la cotización **no existe**; el segundo intento recibe `cotizacion_ya_usada`; un fallo de transacción no borra la cotización ni crea comprobante huérfano
+- [x] T173a [P] [US5] Prueba de borrado manual en `tests/emulador/cotizacion-eliminar.test.ts`: vendedor autenticado puede borrar pendiente (propia o de otro); comprobantes siguen sin `allow delete`
+
+### Implementación
+
+- [x] T174 [US5] Cambiar `emitirComprobante` en `src/server/emision/emitir.ts` para **borrar** la cotización en la misma transacción (FR-019); renombrar/mapear error a `cotizacion_ya_usada` en `src/server/errores.ts` y contratos
+- [x] T175 [US5] Sustituir `src/features/cotizaciones/ya-convertida.tsx` por estado de cotización inexistente/ya usada (sin depender de `comprobanteId` en la cotización)
+- [x] T176 [US5] Implementar eliminación en cliente `src/features/cotizaciones/eliminar.ts` + IconButton y diálogo de confirmación en `src/features/cotizaciones/panel.tsx` (FR-019a)
+- [x] T177 [US5] Actualizar `firestore.rules` (y pruebas en `tests/emulador/reglas.test.ts`) para `allow delete` de cotizaciones `pendiente`; retirar campos/estados `convertida`/`descartada`/`comprobanteId`/`convertidaEn` del modelo vigente en `src/features/cotizaciones/tipos.ts` y escrituras
+
+**Checkpoint C7**: cotizaciones pendientes se borran a mano (con confirmación) o al emitir; la carrera entre dispositivos sigue cubierta.
 
 ---
 

@@ -179,7 +179,6 @@ export class AlmacenFirestore implements AlmacenDeEmision {
           return {
             id: cotizacionId,
             estado: datos['estado'],
-            comprobanteId: datos['comprobanteId'] ?? null,
           } satisfies Cotizacion
         },
 
@@ -196,14 +195,9 @@ export class AlmacenFirestore implements AlmacenDeEmision {
           )
         },
 
-        marcarCotizacionConvertida: (cotizacionId, comprobanteId) => {
-          tx.update(
+        eliminarCotizacion: (cotizacionId) => {
+          tx.delete(
             this.base.collection(COLECCIONES.cotizaciones).doc(cotizacionId),
-            {
-              estado: 'convertida',
-              comprobanteId,
-              convertidaEn: Timestamp.now(),
-            },
           )
         },
       }

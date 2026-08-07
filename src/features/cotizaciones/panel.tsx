@@ -1,21 +1,24 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { CLAVES_DE_CONSULTA } from '../../infra/consultas/cliente.ts'
+import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
 import { usarCatalogo } from '../catalogo/almacen.ts'
 import { usarPedido } from '../pedido/almacen.ts'
 import { diferenciasContraCatalogo } from './diferencias.ts'
 import type { DiferenciaDeCotizacion } from './diferencias.ts'
+import { eliminarCotizacion } from './eliminar.ts'
 import {
   buscarCotizacionPorNumero,
   listarCotizacionesPendientes,
 } from './leer.ts'
 import type { Cotizacion } from './tipos.ts'
-import { YaConvertida } from './ya-convertida.tsx'
+import { YaUsada } from './ya-usada.tsx'
 
 /**
- * Lista y recuperación de cotizaciones (FR-017, FR-018).
+ * Lista y recuperación de cotizaciones (FR-017, FR-018, FR-019a).
  * Montable en el tab del mostrador y en `/cotizaciones`.
  */
 export function PanelDeCotizaciones({
@@ -35,15 +38,18 @@ export function PanelDeCotizaciones({
       : '',
   )
   const [buscada, setBuscada] = useState<Cotizacion | null>(null)
+  const [yaUsada, setYaUsada] = useState(false)
   const [diferencias, setDiferencias] = useState<
     readonly DiferenciaDeCotizacion[]
   >([])
   const [aviso, setAviso] = useState<string | null>(null)
   const [buscando, setBuscando] = useState(false)
+  const [aEliminar, setAEliminar] = useState<Cotizacion | null>(null)
+  const [eliminando, setEliminando] = useState(false)
 
   const pendientes = useQuery({
     queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
-    queryFn: () => listarCotizacionesPendientes(),
+    queryFn: () => listarCotizacionesPendientes('general'),
     staleTime: 30_000,
   })
 
@@ -73,11 +79,19 @@ export function PanelDeCotizaciones({
     setBuscando(true)
     setAviso(null)
     setBuscada(null)
+    setYaUsada(false)
     setDiferencias([])
     try {
       const hallada = await buscarCotizacionPorNumero(numero)
       if (hallada === null) {
+        setYaUsada(true)
         setAviso(`No hay cotización con el número ${numero}.`)
+        return
+      }
+      if (hallada.canal === 'vecino') {
+        setAviso(
+          `La cotización ${numero} pertenece al canal Vecinos. Ábrela desde ese tab.`,
+        )
         return
       }
       setBuscada(hallada)
@@ -87,11 +101,11 @@ export function PanelDeCotizaciones({
   }
 
   function presentar(cotizacion: Cotizacion): void {
+    setYaUsada(false)
     setBuscada(cotizacion)
   }
 
   function abrirEnPedido(cotizacion: Cotizacion): void {
-    if (cotizacion.estado === 'convertida') return
     cargarDesdeCotizacion({
       cotizacionId: cotizacion.id,
       lineas: cotizacion.lineas,
@@ -103,13 +117,34 @@ export function PanelDeCotizaciones({
     onRecuperada?.()
   }
 
+  async function confirmarEliminacion(): Promise<void> {
+    if (aEliminar === null) return
+    setEliminando(true)
+    try {
+      const resultado = await eliminarCotizacion(aEliminar.id)
+      if (!resultado.ok) {
+        setAviso(resultado.mensaje ?? 'No se pudo eliminar.')
+        return
+      }
+      if (buscada?.id === aEliminar.id) {
+        setBuscada(null)
+      }
+      setAEliminar(null)
+      void queryClient.invalidateQueries({
+        queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
+      })
+    } finally {
+      setEliminando(false)
+    }
+  }
+
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-6">
       <header>
         <h2 className="text-cabecera font-bold text-tinta">Cotizaciones</h2>
         <p className="mt-1 text-cuerpo text-desvaida">
           Recupera por número desde cualquier dispositivo. Cualquier vendedor
-          autorizado puede abrirla.
+          autorizado puede abrirla o eliminarla.
         </p>
       </header>
 
@@ -147,12 +182,14 @@ export function PanelDeCotizaciones({
         </p>
       ) : null}
 
-      {buscada !== null && buscada.estado === 'convertida' ? (
+      {yaUsada && buscada === null ? (
         <div className="rounded-3xl border border-borde bg-papel p-5 shadow-sm">
-          <p className="mb-2 font-mono text-etiqueta uppercase text-desvaida">
-            Cotización {buscada.numero}
-          </p>
-          <YaConvertida comprobanteId={buscada.comprobanteId} />
+          <YaUsada
+            mensaje={
+              aviso ??
+              'No se encontró esa cotización. Puede haberse convertido o eliminado.'
+            }
+          />
         </div>
       ) : null}
 
@@ -196,12 +233,20 @@ export function PanelDeCotizaciones({
             ))}
           </ul>
 
-          <Boton
-            variante="principal"
-            onClick={() => abrirEnPedido(buscada)}
-          >
-            Abrir en el pedido
-          </Boton>
+          <div className="flex flex-wrap gap-2">
+            <Boton
+              variante="principal"
+              onClick={() => abrirEnPedido(buscada)}
+            >
+              Abrir en el pedido
+            </Boton>
+            <Boton
+              variante="secundario"
+              onClick={() => setAEliminar(buscada)}
+            >
+              Eliminar
+            </Boton>
+          </div>
         </article>
       ) : null}
 
@@ -215,6 +260,9 @@ export function PanelDeCotizaciones({
         {pendientes.isError ? (
           <p className="text-cuerpo font-bold text-aviso" role="alert">
             No se pudieron cargar las cotizaciones.
+            {pendientes.error instanceof Error && pendientes.error.message
+              ? ` (${pendientes.error.message})`
+              : null}
           </p>
         ) : null}
         {(pendientes.data?.length ?? 0) === 0 && !pendientes.isLoading ? (
@@ -224,10 +272,10 @@ export function PanelDeCotizaciones({
         ) : null}
         <ul className="flex flex-col gap-2">
           {(pendientes.data ?? []).map((cada) => (
-            <li key={cada.id}>
+            <li key={cada.id} className="flex items-stretch gap-2">
               <button
                 type="button"
-                className="flex w-full items-center justify-between gap-3 rounded-2xl border border-borde bg-papel px-4 py-3 text-left hover:bg-mesa"
+                className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border border-borde bg-papel px-4 py-3 text-left hover:bg-mesa"
                 onClick={() => {
                   presentar(cada)
                   setConsulta(String(cada.numero))
@@ -245,10 +293,55 @@ export function PanelDeCotizaciones({
                   {formatearImporte(cada.total)}
                 </span>
               </button>
+              <button
+                type="button"
+                className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-borde bg-papel px-3 text-aviso hover:bg-mesa focus-visible:outline-none focus-visible:border-tinta"
+                aria-label={`Eliminar cotización ${cada.numero}`}
+                onClick={() => setAEliminar(cada)}
+              >
+                <Trash2 className="size-5" aria-hidden />
+              </button>
             </li>
           ))}
         </ul>
       </section>
+
+      <Modal
+        abierta={aEliminar !== null}
+        alCambiar={(abierta) => {
+          if (!abierta && !eliminando) setAEliminar(null)
+        }}
+        titulo="Eliminar cotización"
+        descripcion={
+          aEliminar !== null
+            ? `Se eliminará la cotización #${aEliminar.numero}. Esta acción no se puede deshacer.`
+            : undefined
+        }
+        pie={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Boton
+              variante="secundario"
+              disabled={eliminando}
+              onClick={() => setAEliminar(null)}
+            >
+              Cancelar
+            </Boton>
+            <Boton
+              variante="principal"
+              disabled={eliminando}
+              onClick={() => void confirmarEliminacion()}
+            >
+              {eliminando ? 'Eliminando…' : 'Confirmar'}
+            </Boton>
+          </div>
+        }
+      >
+        <p className="text-cuerpo text-tinta">
+          {aEliminar !== null
+            ? `${aEliminar.cliente?.denominacion ?? 'Sin cliente'} · ${aEliminar.lineas.length} líneas · ${formatearImporte(aEliminar.total)}`
+            : null}
+        </p>
+      </Modal>
     </div>
   )
 }

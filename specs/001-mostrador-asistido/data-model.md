@@ -85,7 +85,7 @@ El documento central del sistema. **Su identificador es la clave de idempotencia
 | `cliente` | objeto | Instantánea al emitir: tipo y número de documento, denominación, dirección. Nulo o marcado como eventual si no se identificó. |
 | `lineas` | arreglo de objetos | Cada línea: `codigo`, `descripcion`, `unidad`, `cantidad`, `precio` con impuesto incluido, `importe`. Instantánea, no referencia. |
 | `total` | número | |
-| `condicionPago` | objeto | `tipo` (contado o crédito), `fechaVencimiento`, `estadoCobro`, `pagos` como arreglo. Embebido, no en colección aparte. |
+| `condicionPago` | objeto | `tipo` (contado o crédito), `fechaVencimiento`, `estadoCobro`, `pagos` como arreglo. Embebido, no en colección aparte. El esquema admite crédito a nivel de emisión; **la UX de crédito/cobro y el canal vecinos como módulo de cobranzas quedan fuera de esta entrega** (US8 = cotizaciones de vecino). |
 | `medioPago` | objeto | `medio` y `montoRecibido`. Referencial, sin conciliación. |
 | `vendedorId`, `emitidoEn` | cadena, marca de tiempo | Atribución exigida por el principio I y FR-027. |
 | `proveedor` | objeto | Referencias externas aisladas: identificadores, enlaces a los archivos generados, estado informado, código y mensaje de error. **Ningún campo del proveedor se usa como campo propio**, por el principio III. |
@@ -157,17 +157,24 @@ Una serie por vendedor y tipo de documento. Documentos pequeños con el contador
 | Campo | Tipo | Notas |
 |-------|------|-------|
 | `numero` | número | Identificador legible para pedirla por voz o por comando. |
-| `estado` | cadena | `pendiente`, `convertida`, `descartada`. |
+| `estado` | cadena | Solo `pendiente` mientras el documento existe. Los estados `convertida` y `descartada` **quedan retirados** del diseño vigente. |
+| `canal` | cadena | `general` (tab Cotizaciones) o `vecino` (tab Vecinos). Por defecto `general`. |
+| `aliasVecino` | cadena | Obligatorio si `canal === 'vecino'`; es la etiqueta del tab interno. Ausente en canal general. |
 | `cliente` | objeto | Instantánea, igual que en el comprobante. |
-| `lineas` | arreglo de objetos | Con el precio acordado en su momento. |
+| `lineas` | arreglo de objetos | Con el precio acordado en su momento. Puede estar vacío en una cotización de vecino recién creada. |
 | `total` | número | |
 | `creadoPor`, `creadoEn` | cadena, marca de tiempo | |
-| `comprobanteId` | cadena | Clave del comprobante en que terminó. Nulo mientras esté pendiente. |
-| `convertidaEn` | marca de tiempo | |
+| `actualizadoEn` | marca de tiempo | Útil en cotizaciones vivas de vecino que se reescriben al agregar/quitar líneas. |
 
-**Transición de conversión**: pasar a `convertida` ocurre **en la misma transacción** que crea el comprobante. Esto es lo que impide que dos dispositivos con la misma cotización abierta produzcan dos comprobantes, caso que la clave de idempotencia por sí sola no cubre porque cada dispositivo genera una clave distinta.
+**Campos retirados**: `comprobanteId` y `convertidaEn` ya no se escriben. El rastro de origen queda en el comprobante (`cotizacionId`), no en la cotización.
+
+**Transición de conversión (FR-019)**: **borrar en duro** la cotización ocurre **en la misma transacción** que crea el comprobante. Si el documento ya no existe, la emisión se rechaza con error estable (`cotizacion_ya_usada`). Esto impide que dos dispositivos con la misma cotización abierta produzcan dos comprobantes, caso que la clave de idempotencia por sí sola no cubre porque cada dispositivo genera una clave distinta.
+
+**Borrado manual (FR-019a)**: cualquier vendedor autorizado puede eliminar una cotización `pendiente` desde el cliente (con confirmación en UI). Coherente con FR-017 (acceso compartido).
 
 **Advertencia al recuperar** (FR-018): al abrir una cotización, el cliente compara sus líneas contra el catálogo en caché y señala los precios que cambiaron y los productos que ya no existen. No requiere lecturas adicionales.
+
+**Canal vecinos (US8)**: una cotización viva por vecino (`canal: vecino` + `aliasVecino`). El tab Vecinos filtra por canal; el tab Cotizaciones solo lista `canal: general`.
 
 ---
 
@@ -217,8 +224,8 @@ Con la edición Standard los índices de campo único se crean automáticamente;
 | `comprobantes` | `cliente.numeroDocumento` asc, `emitidoEn` desc | Últimos comprobantes de un cliente (US9). |
 | `comprobantes` | `vendedorId` asc, `emitidoEn` desc | Comprobantes del día de un vendedor, para localizar el que se va a anular. |
 | `comprobantes` | `estado` asc, `emitidoEn` asc | Consultas administrativas por estado (no hay barrido programado; decisión 10). |
-| `comprobantes` | `cliente.numeroDocumento` asc, `condicionPago.estadoCobro` asc | Ventas a crédito pendientes de un cliente (FR-035). |
-| `cotizaciones` | `estado` asc, `creadoEn` desc | Cotizaciones pendientes. |
+| `comprobantes` | `cliente.numeroDocumento` asc, `condicionPago.estadoCobro` asc | Reservado si más adelante se consulta cobro embebido; **no usado por US8 en esta entrega**. |
+| `cotizaciones` | `canal` asc, `estado` asc, `creadoEn` desc | Listar pendientes por canal (tab Cotizaciones = `general`; tab Vecinos = `vecino`). |
 
 **Paginación**: todas las listas se recorren con cursores. No se usa desplazamiento por posición, que factura los documentos omitidos.
 
