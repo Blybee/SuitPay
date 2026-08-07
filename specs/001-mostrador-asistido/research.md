@@ -331,7 +331,7 @@ Ninguna bloquea el diseño, porque todas tienen una contingencia decidida. Se li
 3. **¿Cuáles son los límites de uso de la API del proveedor?** Con 5 puestos emitiendo a la vez conviene saberlo, aunque el volumen esperado sea bajo.
 4. ~~**¿Existe un formato de impresión de rollo?**~~ Parcialmente cerrado: `formato_pdf: ticket` está documentado. Queda validar maquetación/ancho en demo.
 5. **¿Quién agrupa y envía el resumen diario de boletas, el proveedor o SuitPay?** La documentación describe la obligación de enviar dentro de 7 días pero no quién ejecuta el envío. Afecta a una tarea programada, no a la estructura de datos.
-6. **¿Cuánto acoplamiento tienen las herramientas de captura de la tienda virtual?** Condiciona el esfuerzo de las historias 6 y 7, no su diseño. Es la tarea T113.
+6. ~~**¿Cuánto acoplamiento tienen las herramientas de captura de la tienda virtual?**~~ **Cerrado T115**: veredicto **adaptar**. Ver § T115. No se replantean las historias 6 y 7.
 
 **Cerrada el 2026-07-28**: *¿se puede verificar si una emisión concreta ocurrió?* Sí. `POST /api/v3/consulta` acepta `{ serie, numero }` y devuelve existencia, estado y traza de eventos. Era la asunción más cara de la especificación.
 
@@ -364,3 +364,40 @@ Ninguna bloquea el diseño, porque todas tienen una contingencia decidida. Se li
 ### Cuerpo de emisión v3 observado
 
 El payload que funcionó coincide con la documentación pública (serie, numero, tipo_operacion, cliente anidado con `cliente_*`, items con `precio`/`tipo_tax`, `formato_pdf`). El adaptador se alineó a esa forma.
+
+---
+
+## T115 — Acoplamiento de las herramientas de captura (2026-08-06)
+
+**Estado: cerrado.** Fuente analizada: `tmp/phase 8 y 9/` (código de la tienda virtual: `dispatch-requests/` y `neighbor-lists/`).
+
+### Veredicto: adaptar
+
+| Opción | Resultado |
+|--------|-----------|
+| Reutilizar | Descartada: Gemini en el cliente con clave `VITE_*`, catálogo completo al modelo, modelo `Product`/`ProductVariant` de `@ferreteria/core`, UX de inventario (calendario, PDF, sync) ajena al mostrador. |
+| Adaptar | Elegida: reutilizar prompts/schemas de gasfitería, patrones MediaRecorder/resize y flujo de revisión por renglón; reimplementar bajo `src/server/asistencia/` + `src/features/captura/`. |
+| Reescribir a ciegas | Descartada: se perdería oficio útil de prompts y schemas multimodal. |
+
+Las historias 6 y 7 **no se replantean**: SuitPay ya fijó la frontera (Decisión 1, Decisión 7): único egress en servidor, lote filtrado local, identidad de cliente fuera del modelo.
+
+### Bloqueantes (impiden portar tal cual)
+
+1. Llamadas a Gemini desde el navegador con `VITE_GEMINI_API_KEY`.
+2. `neighbor-lists` envía `clientNames` al modelo — viola el principio IV de forma estructural.
+3. Catálogo completo en el prompt vs lote filtrado (`loteDeCandidatos`).
+4. Dependencias `@ferreteria/core`, `ProductsContext`, `VoiceCommandDock`, etc.
+
+### Portable
+
+- Reglas de prompt (medidas vs cantidad, multi-ítem, confidence).
+- Flujo audio/imagen → JSON tipado → revisión humana.
+- MediaRecorder y resize de imagen en el cliente (sin secretos).
+
+### Fuera de Phase 8–9
+
+No se porta `neighbor-lists` ni el workspace de despacho. El canal de vecinos/crédito es Phase 10; la identidad del cliente se resuelve en SuitPay (T126), nunca en el modelo.
+
+### Lote de respaldo sin término de búsqueda
+
+Cuando el vendedor dicta con el campo de Entrada vacío, el cliente envía hasta **60** productos del índice en caché (techo fijo), no los ~500. Las líneas sin match quedan `ambigua` o `pendiente` para resolución humana.

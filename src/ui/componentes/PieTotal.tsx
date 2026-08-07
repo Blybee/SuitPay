@@ -4,6 +4,7 @@ import { Selector } from './Selector.tsx'
 
 /**
  * Pie del total. Anclado abajo, Soft-Pill, a todo el ancho del área de trabajo.
+ * En modo cotización el CTA principal es Guardar (no Emitir).
  */
 
 export type EstadoDeEmision =
@@ -14,14 +15,16 @@ export type EstadoDeEmision =
 
 export interface PropsDePieTotal {
   readonly total: Centimos
-  readonly numeroDeLineas: number
   readonly medioPago: string
   readonly onCambiarMedioPago: (medio: string) => void
   readonly estado: EstadoDeEmision
   readonly motivoDeBloqueo: string | null
   readonly onEmitir: () => void
+  /** Si true, el botón principal guarda cotización en lugar de emitir. */
+  readonly modoCotizacion?: boolean
   readonly onGuardarCotizacion?: () => void
   readonly guardandoCotizacion?: boolean
+  readonly puedeGuardarCotizacion?: boolean
   readonly proveedorCaido?: boolean
   readonly sinRed?: boolean
 }
@@ -36,29 +39,31 @@ const OPCIONES_PAGO = [
 
 export function PieTotal({
   total,
-  numeroDeLineas,
   medioPago,
   onCambiarMedioPago,
   estado,
   motivoDeBloqueo,
   onEmitir,
+  modoCotizacion = false,
   onGuardarCotizacion,
   guardandoCotizacion = false,
+  puedeGuardarCotizacion = false,
   proveedorCaido = false,
   sinRed = false,
 }: PropsDePieTotal) {
   const bloqueado = estado === 'inhabilitado' || motivoDeBloqueo !== null
   const enVuelo = estado === 'emitiendo'
   const puedeGuardar =
+    modoCotizacion &&
     onGuardarCotizacion !== undefined &&
-    numeroDeLineas > 0 &&
+    puedeGuardarCotizacion &&
     !guardandoCotizacion &&
     !sinRed &&
     !enVuelo
 
   return (
     <div className="sticky bottom-0 z-20 w-full border-t border-borde bg-papel shadow-md">
-      {motivoDeBloqueo !== null && (
+      {motivoDeBloqueo !== null && !modoCotizacion && (
         <p
           role="status"
           className="w-full border-b border-aviso px-4 py-1.5 text-cuerpo font-bold text-aviso"
@@ -67,7 +72,7 @@ export function PieTotal({
         </p>
       )}
 
-      {proveedorCaido && motivoDeBloqueo === null && (
+      {proveedorCaido && motivoDeBloqueo === null && !modoCotizacion && (
         <p
           role="status"
           className="w-full border-b border-aviso px-4 py-1.5 text-cuerpo text-aviso"
@@ -78,16 +83,14 @@ export function PieTotal({
       )}
 
       <div className="flex w-full flex-wrap items-center gap-4 px-4 py-3">
-        <p className="font-mono text-etiqueta uppercase text-desvaida">
-          {numeroDeLineas === 1 ? '1 línea' : `${numeroDeLineas} líneas`}
-        </p>
-
-        <Selector
-          etiqueta="Pago"
-          valor={medioPago}
-          onCambiar={onCambiarMedioPago}
-          opciones={OPCIONES_PAGO}
-        />
+        {!modoCotizacion ? (
+          <Selector
+            etiqueta="Pago"
+            valor={medioPago}
+            onCambiar={onCambiarMedioPago}
+            opciones={OPCIONES_PAGO}
+          />
+        ) : null}
 
         <div className="ml-auto flex items-baseline gap-3">
           <span className="font-mono text-etiqueta uppercase text-desvaida">
@@ -101,46 +104,46 @@ export function PieTotal({
           </output>
         </div>
 
-        {onGuardarCotizacion !== undefined ? (
+        {modoCotizacion ? (
           <button
             type="button"
             onClick={onGuardarCotizacion}
             disabled={!puedeGuardar}
             className={[
-              'min-h-14 shrink-0 rounded-full border px-5 text-entrada font-bold',
+              'min-h-14 shrink-0 rounded-full px-8 text-entrada font-bold uppercase',
               'focus-visible:outline-none focus-visible:border-tinta',
-              'disabled:cursor-not-allowed disabled:border-borde disabled:bg-mesa disabled:text-desvaida',
+              'disabled:cursor-not-allowed',
               puedeGuardar
-                ? 'border-borde bg-papel text-tinta hover:bg-mesa'
-                : '',
+                ? 'border border-tinta bg-tinta text-papel hover:bg-tinta/90'
+                : 'border border-borde bg-mesa text-desvaida',
             ].join(' ')}
           >
-            {guardandoCotizacion ? 'Guardando…' : 'Guardar cotización'}
+            {guardandoCotizacion ? 'Guardando…' : 'Guardar'}
           </button>
-        ) : null}
-
-        <button
-          type="button"
-          onClick={onEmitir}
-          disabled={bloqueado || enVuelo || estado === 'emitido'}
-          aria-describedby={
-            motivoDeBloqueo !== null ? 'motivo-de-bloqueo' : undefined
-          }
-          className={[
-            'min-h-14 shrink-0 rounded-full px-8 text-entrada font-bold uppercase',
-            'focus-visible:outline-none focus-visible:border-tinta',
-            'disabled:cursor-not-allowed',
-            bloqueado || enVuelo || estado === 'emitido'
-              ? 'border border-borde bg-mesa text-desvaida'
-              : 'border border-tinta bg-tinta text-papel hover:bg-tinta/90',
-          ].join(' ')}
-        >
-          {enVuelo
-            ? 'Emitiendo…'
-            : estado === 'emitido'
-              ? 'Emitido'
-              : 'Emitir'}
-        </button>
+        ) : (
+          <button
+            type="button"
+            onClick={onEmitir}
+            disabled={bloqueado || enVuelo || estado === 'emitido'}
+            aria-describedby={
+              motivoDeBloqueo !== null ? 'motivo-de-bloqueo' : undefined
+            }
+            className={[
+              'min-h-14 shrink-0 rounded-full px-8 text-entrada font-bold uppercase',
+              'focus-visible:outline-none focus-visible:border-tinta',
+              'disabled:cursor-not-allowed',
+              bloqueado || enVuelo || estado === 'emitido'
+                ? 'border border-borde bg-mesa text-desvaida'
+                : 'border border-tinta bg-tinta text-papel hover:bg-tinta/90',
+            ].join(' ')}
+          >
+            {enVuelo
+              ? 'Emitiendo…'
+              : estado === 'emitido'
+                ? 'Emitido'
+                : 'Emitir'}
+          </button>
+        )}
       </div>
     </div>
   )

@@ -220,7 +220,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **FR-014**: El sistema MUST permitir armar un pedido único y convertirlo en boleta, factura o nota de venta sin volver a capturarlo.
 - **FR-014a**: Al iniciar un pedido nuevo (o al abrir el mostrador sin pedido en curso que fije otro tipo), el tipo de documento MUST ser Nota de Venta por defecto.
 - **FR-015**: El sistema MUST conservar el pedido en curso en el propio dispositivo, de forma que sobreviva a una pérdida de conexión y a un cambio de red.
-- **FR-016**: El sistema MUST permitir guardar un pedido como cotización identificada por un número.
+- **FR-016**: El sistema MUST permitir guardar un pedido como cotización identificada por un número. En la cabecera del mostrador, Cotización es una opción del selector de tipo: el CTA del pie pasa a Guardar (sin emitir) y el resultado queda en el tab Cotizaciones.
 - **FR-017**: Las cotizaciones MUST quedar accesibles desde cualquier dispositivo y para cualquier vendedor autorizado.
 - **FR-018**: Al recuperar una cotización, el sistema MUST advertir de los productos que cambiaron de precio o dejaron de existir.
 - **FR-019**: Una cotización convertida en comprobante MUST quedar cerrada a nuevas conversiones, indicando en qué comprobante terminó.
@@ -229,8 +229,8 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 
 - **FR-020**: El sistema MUST ofrecer como opción por defecto un cliente eventual, sin exigir datos para una venta ordinaria.
 - **FR-021**: El sistema MUST exigir los datos identificatorios del cliente cuando el importe de una boleta supere los 700 soles, e impedir la emisión mientras falten.
-- **FR-022**: Cuando el vendedor escriba un RUC o DNI no registrado, el sistema MUST ofrecer registrarlo sin abandonar la venta en curso.
-- **FR-023**: El sistema MUST poder traer los datos de un contribuyente a partir de su RUC o DNI, presentarlos para revisión y guardarlos solo tras la confirmación del vendedor.
+- **FR-022**: El campo RUC/DNI de la cabecera MUST resolver primero clientes ya registrados. Si el documento no está registrado, el sistema MUST ofrecer registrarlo sin abandonar la venta (icon-button que morph a «Agregar» y dispara la consulta).
+- **FR-023**: El sistema MUST poder traer los datos de un contribuyente a partir de su RUC o DNI, presentarlos para revisión (como mínimo razón social/denominación y dirección cuando exista) y guardarlos solo tras la confirmación del vendedor.
 - **FR-024**: El sistema MUST advertir de forma visible cuando el registro oficial señale al contribuyente como no habido, dejando la decisión al vendedor.
 - **FR-025**: Cuando una razón social parcial coincida con varios clientes, el sistema MUST presentar las coincidencias para que el vendedor elija.
 - **FR-026**: Si la consulta de datos no obtiene respuesta, el sistema MUST permitir introducirlos a mano y MUST NOT bloquear la venta.

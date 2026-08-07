@@ -43,6 +43,23 @@ function projectIdDelEntorno(): string | undefined {
   )
 }
 
+/** Bucket de Storage (cliente y Admin deben coincidir). */
+export function storageBucketDelEntorno(): string | undefined {
+  const desdeEnv =
+    process.env['FIREBASE_STORAGE_BUCKET'] ??
+    process.env['VITE_FIREBASE_STORAGE_BUCKET'] ??
+    (typeof import.meta !== 'undefined'
+      ? (import.meta.env['VITE_FIREBASE_STORAGE_BUCKET'] as string | undefined)
+      : undefined)
+  if (desdeEnv !== undefined && desdeEnv.trim() !== '') return desdeEnv.trim()
+
+  // Respaldo clásico si solo hay projectId.
+  const projectId = projectIdDelEntorno()
+  return projectId !== undefined && projectId !== ''
+    ? `${projectId}.appspot.com`
+    : undefined
+}
+
 function obtenerAplicacion(): App {
   if (aplicacion !== undefined) return aplicacion
   const existentes = getApps()
@@ -52,10 +69,16 @@ function obtenerAplicacion(): App {
   }
 
   const projectId = projectIdDelEntorno()
+  const storageBucket = storageBucketDelEntorno()
   aplicacion =
     projectId === undefined || projectId === ''
-      ? initializeApp()
-      : initializeApp({ projectId })
+      ? initializeApp(
+          storageBucket !== undefined ? { storageBucket } : undefined,
+        )
+      : initializeApp({
+          projectId,
+          ...(storageBucket !== undefined ? { storageBucket } : {}),
+        })
   return aplicacion
 }
 

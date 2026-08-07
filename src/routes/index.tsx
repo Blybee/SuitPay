@@ -4,6 +4,17 @@ import { useEffect, useState } from 'react'
 import { REGLAS } from '../domain/documentos/tipos.ts'
 import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
 import { usarCatalogo, umbralVigente } from '../features/catalogo/almacen.ts'
+import { PanelDictado } from '../features/captura/audio.tsx'
+import {
+  extraerMencionDeCliente,
+  resolverClienteLocal,
+} from '../features/captura/cliente.ts'
+import { usarCaptura } from '../features/captura/estado.ts'
+import { registrarInyeccionDeCapturaParaPruebas } from '../features/captura/inyeccion-prueba.ts'
+import { EstadoIlegible } from '../features/captura/ilegible.tsx'
+import { PanelFotografia } from '../features/captura/imagen.tsx'
+import { motivoBloqueoPorCaptura } from '../features/captura/pendientes.ts'
+import { PasoTextoExtraido } from '../features/captura/revision-imagen.tsx'
 import { guardarCotizacion } from '../features/cotizaciones/guardar.ts'
 import { PanelDeCotizaciones } from '../features/cotizaciones/panel.tsx'
 import {
@@ -25,10 +36,19 @@ import {
 import { puedeEmitir, usarSesion } from '../features/sesion/almacen.ts'
 import { GuardaSesion } from '../features/sesion/GuardaSesion.tsx'
 import { AltaClienteEnContexto } from '../features/clientes/alta-en-contexto.tsx'
+import {
+  consultarContribuyenteFn,
+  crearClienteFn,
+} from '../features/clientes/clientes.funciones.ts'
+import { leerClientePorDocumento } from '../features/clientes/existencia.ts'
 import { emitir } from '../features/emision/emitir.funciones.ts'
 import { leerMiSerieFn } from '../features/series/series.funciones.ts'
 import { CLAVES_DE_CONSULTA } from '../infra/consultas/cliente.ts'
-import { CabeceraDocumento } from '../ui/componentes/CabeceraDocumento.tsx'
+import {
+  CabeceraDocumento,
+  type ClienteParaConfirmar,
+  type ModoDeCabecera,
+} from '../ui/componentes/CabeceraDocumento.tsx'
 import { Entrada } from '../ui/componentes/Entrada.tsx'
 import {
   CabecerasDeColumna,
@@ -38,13 +58,14 @@ import { PestanasMostrador } from '../ui/componentes/PestanasMostrador.tsx'
 import type { PestanaMostrador } from '../ui/componentes/PestanasMostrador.tsx'
 import { PieTotal } from '../ui/componentes/PieTotal.tsx'
 import type { EstadoDeEmision as FaseDelBoton } from '../ui/componentes/PieTotal.tsx'
+import { RevisionCaptura } from '../ui/componentes/RevisionCaptura.tsx'
 
 /**
  * Mostrador Soft-Pill (FR-005b).
  *
  * Orden fijo en Inicio:
- * 1. Cinta de herramientas (`Entrada`) — siempre arriba, persiste entre tabs.
- * 2. Tabs internos (Pedido | Cotizaciones | Vecinos | Lista).
+ * 1. Bloque sticky: buscador (`Entrada`) + tabs (Pedido | Cotizaciones | …).
+ * 2. Paneles de captura / revisión (si hay).
  * 3. Contenido del tab (en Pedido: cabecera, líneas, pie de total).
  */
 export const Route = createFileRoute('/')({
@@ -69,8 +90,17 @@ function Mostrador() {
   const [consultaClienteInicial, setConsultaClienteInicial] = useState<
     string | null
   >(null)
+  const [modoCotizacion, setModoCotizacion] = useState(false)
+  const [documentoNoRegistrado, setDocumentoNoRegistrado] = useState<
+    string | null
+  >(null)
+  const [clienteParaConfirmar, setClienteParaConfirmar] =
+    useState<ClienteParaConfirmar | null>(null)
+  const [consultandoPadron, setConsultandoPadron] = useState(false)
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false)
   const [avisoCotizacion, setAvisoCotizacion] = useState<string | null>(null)
+  const [panelDictado, setPanelDictado] = useState(false)
+  const [panelFoto, setPanelFoto] = useState(false)
 
   const catalogo = usarCatalogo()
   const sesion = usarSesion()
@@ -82,6 +112,8 @@ function Mostrador() {
   const cerrarEmision = usarEmision((estado) => estado.cerrar)
   const degradaciones = usarDegradacion((estado) => estado.activas)
   const sinRed = degradaciones.some((cada) => cada.causa === 'red')
+  const faseCaptura = usarCaptura((s) => s.fase)
+  const cancelarCaptura = usarCaptura((s) => s.cancelar)
 
   // El arranque exige sesión: sin token, Firestore deniega y el fallback a
   // caché declaraba «sin conexión» aunque el wifi estuviera bien. Se espera
@@ -102,6 +134,10 @@ function Mostrador() {
     return alRecuperarConectividad(() => {
       void usarCatalogo.getState().cargar({ forzar: true })
     })
+  }, [])
+
+  useEffect(() => {
+    registrarInyeccionDeCapturaParaPruebas()
   }, [])
 
   useEffect(() => {
@@ -130,19 +166,46 @@ function Mostrador() {
   const resultado = catalogo.buscar(termino)
 
   const proveedorCaido = degradaciones.some((cada) => cada.causa === 'proveedor')
+  const asistenciaCaida = degradaciones.some((cada) => cada.causa === 'asistencia')
   const asistenciaDisponible = !degradaciones.some(
     (cada) => cada.causa === 'asistencia' || cada.causa === 'red',
   )
+  const motivoAsistenciaInerte = sinRed
+    ? 'Sin conexión: dictado y foto no disponibles. Puedes escribir el pedido.'
+    : asistenciaCaida
+      ? 'El dictado y la lectura de fotos no están disponibles. Puedes escribir el pedido con normalidad.'
+      : null
 
-  const motivoDeBloqueo = calcularMotivoDeBloqueo({
-    lineas: pedido.lineas.length,
-    emitible: sePuedeEmitir(pedido),
-    tipo: pedido.tipoDocumento,
-    cliente: pedido.cliente,
-    total,
-    umbral,
-    motivoDeSesion: puedeEmitir(sesion) ? null : sesion.motivoDeBloqueo,
-  })
+  const motivoCaptura = motivoBloqueoPorCaptura()
+  const motivoDeBloqueo =
+    motivoCaptura ??
+    calcularMotivoDeBloqueo({
+      lineas: pedido.lineas.length,
+      emitible: sePuedeEmitir(pedido),
+      tipo: pedido.tipoDocumento,
+      cliente: pedido.cliente,
+      total,
+      umbral,
+      motivoDeSesion: puedeEmitir(sesion) ? null : sesion.motivoDeBloqueo,
+    })
+
+  function alAprobarCaptura(textosOriginales: readonly string[]): void {
+    setPanelDictado(false)
+    setPanelFoto(false)
+    const mencion = extraerMencionDeCliente(textosOriginales)
+    if (mencion === null || usarPedido.getState().cliente !== null) return
+    const local = resolverClienteLocal(mencion, usarCatalogo.getState().clientes)
+    if (local) {
+      usarPedido.getState().fijarCliente({
+        tipoDocumento: local.numeroDocumento.length === 11 ? 'RUC' : 'DNI',
+        numeroDocumento: local.numeroDocumento,
+        denominacion: local.denominacion,
+      })
+    } else {
+      setConsultaClienteInicial(mencion)
+      setAltaClienteAbierta(true)
+    }
+  }
 
   function agregar(producto: ProductoBuscable): void {
     pedido.agregarLinea({
@@ -205,8 +268,127 @@ function Mostrador() {
       void queryClient.invalidateQueries({
         queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
       })
+      setPestana('cotizaciones')
     } finally {
       setGuardandoCotizacion(false)
+    }
+  }
+
+  const modoCabecera: ModoDeCabecera = modoCotizacion
+    ? 'cotizacion'
+    : pedido.tipoDocumento
+
+  function alCambiarModoCabecera(modo: ModoDeCabecera): void {
+    if (modo === 'cotizacion') {
+      setModoCotizacion(true)
+      return
+    }
+    setModoCotizacion(false)
+    pedido.fijarTipoDocumento(modo)
+  }
+
+  async function alDocumentoCompleto(datos: {
+    readonly tipoDocumento: 'RUC' | 'DNI'
+    readonly numeroDocumento: string
+  }): Promise<void> {
+    setDocumentoNoRegistrado(null)
+    setClienteParaConfirmar(null)
+    const existente = await leerClientePorDocumento(datos.numeroDocumento)
+    if (existente !== null) {
+      setClienteParaConfirmar({
+        tipoDocumento:
+          existente.tipoDocumento === 'RUC' || existente.tipoDocumento === 'DNI'
+            ? existente.tipoDocumento
+            : datos.tipoDocumento,
+        numeroDocumento: existente.numeroDocumento,
+        denominacion: existente.denominacion,
+        direccion: existente.direccion,
+        condicion: existente.condicion,
+        origen: 'registrado',
+      })
+      return
+    }
+    setDocumentoNoRegistrado(datos.numeroDocumento)
+  }
+
+  async function consultarNoRegistrado(): Promise<void> {
+    if (documentoNoRegistrado === null || consultandoPadron) return
+    const numero = documentoNoRegistrado
+    const tipoDocumento: 'RUC' | 'DNI' =
+      numero.length === 11 ? 'RUC' : 'DNI'
+    setConsultandoPadron(true)
+    try {
+      const respuesta = await consultarContribuyenteFn({
+        data: { tipoDocumento, numeroDocumento: numero },
+      })
+      if (respuesta.ok && respuesta.datos) {
+        setClienteParaConfirmar({
+          tipoDocumento: respuesta.datos.tipoDocumento,
+          numeroDocumento: respuesta.datos.numeroDocumento,
+          denominacion: respuesta.datos.denominacion,
+          direccion: respuesta.datos.direccion,
+          condicion: respuesta.datos.condicion,
+          noHabido: respuesta.datos.noHabido,
+          origen: 'consulta',
+        })
+        setDocumentoNoRegistrado(null)
+        return
+      }
+      // Padrón caído o no hallado: formulario manual con el documento precargado.
+      setConsultaClienteInicial(numero)
+      setAltaClienteAbierta(true)
+      setDocumentoNoRegistrado(null)
+    } finally {
+      setConsultandoPadron(false)
+    }
+  }
+
+  async function confirmarClientePendiente(): Promise<void> {
+    if (clienteParaConfirmar === null || consultandoPadron) return
+    const pendiente = clienteParaConfirmar
+
+    if (pendiente.origen === 'registrado') {
+      pedido.fijarCliente({
+        tipoDocumento: pendiente.tipoDocumento,
+        numeroDocumento: pendiente.numeroDocumento,
+        denominacion: pendiente.denominacion,
+        direccion: pendiente.direccion,
+      })
+      setClienteParaConfirmar(null)
+      return
+    }
+
+    setConsultandoPadron(true)
+    try {
+      const respuesta = await crearClienteFn({
+        data: {
+          tipoDocumento: pendiente.tipoDocumento,
+          numeroDocumento: pendiente.numeroDocumento,
+          denominacion: pendiente.denominacion,
+          direccion: pendiente.direccion,
+          condicion: pendiente.condicion,
+          consultadoEn: new Date().toISOString(),
+        },
+      })
+      if (!respuesta.ok || respuesta.cliente === undefined) {
+        setConsultaClienteInicial(pendiente.numeroDocumento)
+        setAltaClienteAbierta(true)
+        setClienteParaConfirmar(null)
+        return
+      }
+      usarCatalogo.getState().incorporarCliente({
+        numeroDocumento: respuesta.cliente.numeroDocumento,
+        denominacion: respuesta.cliente.denominacion,
+      })
+      pedido.fijarCliente({
+        tipoDocumento: pendiente.tipoDocumento,
+        numeroDocumento: pendiente.numeroDocumento,
+        denominacion: pendiente.denominacion,
+        direccion: pendiente.direccion,
+      })
+      setClienteParaConfirmar(null)
+    } finally {
+      setConsultandoPadron(false)
     }
   }
 
@@ -221,32 +403,118 @@ function Mostrador() {
 
   return (
     <div className="flex min-h-full flex-col">
-      {/* Cinta de herramientas: siempre visible en Inicio, encima de los tabs. */}
-      <Entrada
+      {/* Buscador + tabs: un solo bloque sticky, sin borde/hueco entre ambos. */}
+      <div className="sticky top-0 z-20 w-full border-b border-borde bg-papel">
+        <Entrada
+          termino={termino}
+          onTerminoCambia={setTermino}
+          resultado={resultado}
+          onElegirProducto={agregar}
+          asistenciaDisponible={asistenciaDisponible}
+          motivoAsistenciaInerte={motivoAsistenciaInerte}
+          onDictar={() => {
+            setPanelFoto(false)
+            setPanelDictado(true)
+            setPestana('pedido')
+          }}
+          onFotografiar={() => {
+            setPanelDictado(false)
+            setPanelFoto(true)
+            setPestana('pedido')
+          }}
+        />
+        <PestanasMostrador activa={pestana} onCambiar={setPestana} />
+      </div>
+
+      <PanelDictado
         termino={termino}
-        onTerminoCambia={setTermino}
-        resultado={resultado}
-        onElegirProducto={agregar}
-        asistenciaDisponible={asistenciaDisponible}
+        abierto={panelDictado}
+        onCerrar={() => setPanelDictado(false)}
+      />
+      <PanelFotografia
+        termino={termino}
+        abierto={panelFoto}
+        onCerrar={() => setPanelFoto(false)}
       />
 
-      <PestanasMostrador activa={pestana} onCambiar={setPestana} />
+      {faseCaptura === 'ilegible' && (
+        <EstadoIlegible
+          motivo={
+            usarCaptura.getState().motivoIlegible ??
+            'No se pudo leer la captura.'
+          }
+          onReintentar={() => {
+            cancelarCaptura()
+            setPanelFoto(true)
+          }}
+          onCerrar={() => {
+            cancelarCaptura()
+            setPanelFoto(false)
+          }}
+        />
+      )}
+
+      {faseCaptura === 'revision_texto' && (
+        <PasoTextoExtraido
+          onContinuar={() => {
+            /* fase pasa a revision en el store */
+          }}
+          onCancelar={() => {
+            cancelarCaptura()
+            setPanelFoto(false)
+          }}
+        />
+      )}
+
+      {faseCaptura === 'revision' && (
+        <RevisionCaptura
+          onAprobada={(textos) => {
+            alAprobarCaptura(textos)
+            setPestana('pedido')
+          }}
+          onDescartar={() => {
+            setPanelDictado(false)
+            setPanelFoto(false)
+          }}
+        />
+      )}
 
       {pestana === 'pedido' && (
         <div className="flex min-h-0 flex-1 flex-col">
           <CabeceraDocumento
-            tipo={pedido.tipoDocumento}
-            onCambiarTipo={pedido.fijarTipoDocumento}
+            modo={modoCabecera}
+            onCambiarModo={alCambiarModoCabecera}
             serie={serieAsignada}
             cliente={pedido.cliente}
-            onElegirCliente={() => {
+            onAgregarClienteNuevo={() => {
               setConsultaClienteInicial(null)
+              setDocumentoNoRegistrado(null)
+              setClienteParaConfirmar(null)
               setAltaClienteAbierta(true)
             }}
-            onQuitarCliente={() => pedido.fijarCliente(null)}
-            onDocumentoCompleto={({ numeroDocumento }) => {
-              setConsultaClienteInicial(numeroDocumento)
-              setAltaClienteAbierta(true)
+            onQuitarCliente={() => {
+              pedido.fijarCliente(null)
+              setClienteParaConfirmar(null)
+              setDocumentoNoRegistrado(null)
+            }}
+            onDocumentoCompleto={(datos) => {
+              void alDocumentoCompleto(datos)
+            }}
+            onDocumentoIncompleto={() => {
+              setDocumentoNoRegistrado(null)
+              setClienteParaConfirmar(null)
+            }}
+            documentoNoRegistrado={documentoNoRegistrado}
+            onConsultarNoRegistrado={() => {
+              void consultarNoRegistrado()
+            }}
+            consultandoPadron={consultandoPadron}
+            clienteParaConfirmar={clienteParaConfirmar}
+            onConfirmarCliente={() => {
+              void confirmarClientePendiente()
+            }}
+            onCancelarConfirmacion={() => {
+              setClienteParaConfirmar(null)
             }}
             total={total}
             umbral={umbral}
@@ -267,7 +535,7 @@ function Mostrador() {
           />
 
           <div className="flex-1 overflow-y-auto pb-2">
-            <CabecerasDeColumna />
+            <CabecerasDeColumna numeroDeLineas={pedido.lineas.length} />
             <ul>
               {lineas.map((linea, indice) => (
                 <LineaPedido
@@ -300,14 +568,15 @@ function Mostrador() {
 
           <PieTotal
             total={total}
-            numeroDeLineas={pedido.lineas.length}
             medioPago={medioPago}
             onCambiarMedioPago={setMedioPago}
             estado={faseDelBoton}
-            motivoDeBloqueo={motivoDeBloqueo}
+            motivoDeBloqueo={modoCotizacion ? null : motivoDeBloqueo}
             onEmitir={() => void lanzarEmision()}
+            modoCotizacion={modoCotizacion}
             onGuardarCotizacion={() => void lanzarGuardadoDeCotizacion()}
             guardandoCotizacion={guardandoCotizacion}
+            puedeGuardarCotizacion={pedido.lineas.length > 0}
             proveedorCaido={proveedorCaido}
             sinRed={sinRed}
           />

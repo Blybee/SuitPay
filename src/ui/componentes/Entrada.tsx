@@ -8,7 +8,7 @@ import type {
 
 /**
  * Cinta de herramientas del mostrador: un campo + dictado/foto.
- * Persiste siempre en la página de Inicio, anclada arriba (sobre los tabs).
+ * El marco sticky lo pone el padre junto a los tabs (sin separación visible).
  * Soft-Pill: cápsulas, borde sutil, full-bleed del área de trabajo.
  *
  * Las sugerencias flotan sobre el contenido (no lo desplazan) y se pueden
@@ -21,6 +21,8 @@ export interface PropsDeEntrada {
   readonly onTerminoCambia: (termino: string) => void
   readonly onElegirProducto: (producto: ProductoBuscable) => void
   readonly asistenciaDisponible: boolean
+  /** Motivo visible cuando mic/cámara están inertes (T127). */
+  readonly motivoAsistenciaInerte?: string | null
   readonly onDictar?: () => void
   readonly onFotografiar?: () => void
   readonly enfocarAlMontar?: boolean
@@ -32,6 +34,7 @@ export function Entrada({
   onTerminoCambia,
   onElegirProducto,
   asistenciaDisponible,
+  motivoAsistenciaInerte = null,
   onDictar,
   onFotografiar,
   enfocarAlMontar = true,
@@ -97,9 +100,9 @@ export function Entrada({
   }
 
   return (
-    <div className="sticky top-0 z-20 w-full border-b border-borde bg-papel">
+    <div className="w-full bg-papel">
       <div className="relative">
-        <div className="flex w-full items-stretch gap-2 px-4 py-3">
+        <div className="flex w-full items-stretch gap-2 px-4 pt-2 pb-1">
           <div className="relative flex flex-1 items-center">
             <Search
               className="pointer-events-none absolute left-4 size-5 text-desvaida"
@@ -151,6 +154,7 @@ export function Entrada({
           <BotonDeCaptura
             etiqueta="Dictar el pedido"
             disponible={asistenciaDisponible}
+            motivoInerte={motivoAsistenciaInerte}
             onClick={onDictar}
           >
             <Mic className="size-6" aria-hidden />
@@ -159,16 +163,20 @@ export function Entrada({
           <BotonDeCaptura
             etiqueta="Fotografiar el pedido"
             disponible={asistenciaDisponible}
+            motivoInerte={motivoAsistenciaInerte}
             onClick={onFotografiar}
           >
             <Camera className="size-6" aria-hidden />
           </BotonDeCaptura>
         </div>
 
+        {/* El motivo vive en la banda global (BandaDegradacion) y en title/aria
+            de los botones; no se repite aquí bajo el buscador. */}
         {!asistenciaDisponible && (
-          <p className="w-full px-4 pb-2 font-mono text-etiqueta uppercase text-aviso">
-            Dictado y fotografía no disponibles
-          </p>
+          <span data-testid="asistencia-inerte" className="sr-only">
+            {motivoAsistenciaInerte ??
+              'Dictado y fotografía no disponibles. Puedes escribir el pedido.'}
+          </span>
         )}
 
         {panelAbierto && (
@@ -212,19 +220,24 @@ export function Entrada({
 function BotonDeCaptura({
   etiqueta,
   disponible,
+  motivoInerte,
   onClick,
   children,
 }: {
   readonly etiqueta: string
   readonly disponible: boolean
+  readonly motivoInerte?: string | null
   readonly onClick: (() => void) | undefined
   readonly children: React.ReactNode
 }) {
+  const titulo = disponible
+    ? etiqueta
+    : `${etiqueta} — ${motivoInerte ?? 'no disponible'}`
   return (
     <button
       type="button"
-      aria-label={etiqueta}
-      title={disponible ? etiqueta : `${etiqueta} — no disponible`}
+      aria-label={titulo}
+      title={titulo}
       disabled={!disponible}
       onClick={onClick}
       className={[

@@ -27,7 +27,7 @@ export function PestanasMostrador({
     <div
       role="tablist"
       aria-label="Secciones del mostrador"
-      className="flex flex-wrap gap-2 border-b border-borde bg-papel px-4 py-3"
+      className="flex flex-wrap gap-1.5 bg-papel px-4 pt-0.5 pb-1.5"
     >
       {PESTANAS.map((cada) => {
         const seleccionada = cada.id === activa
@@ -40,7 +40,7 @@ export function PestanasMostrador({
             id={`tab-${cada.id}`}
             onClick={() => onCambiar(cada.id)}
             className={unir(
-              'min-h-11 rounded-full px-5 text-cuerpo font-bold transition-colors',
+              'min-h-9 rounded-full px-4 text-cuerpo font-bold transition-colors',
               'focus-visible:outline-none focus-visible:border-tinta',
               seleccionada
                 ? 'bg-tinta text-papel'

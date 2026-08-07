@@ -84,7 +84,14 @@ function Mostrador() {
   return (
     <QueryClientProvider client={clienteDeConsultas}>
       <div className="flex min-h-svh flex-col bg-mesa">
-        <BandaDegradacion degradacion={degradacion} />
+        <BandaDegradacion
+          degradacion={degradacion}
+          onReintentarAsistencia={
+            degradacion?.causa === 'asistencia'
+              ? () => usarDegradacion.getState().resolver('asistencia')
+              : undefined
+          }
+        />
 
         {enAcceso ? (
           <Outlet />

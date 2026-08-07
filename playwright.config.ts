@@ -36,7 +36,9 @@ export default defineConfig({
   webServer: {
     command: 'npm run dev',
     url: 'http://localhost:3000',
-    reuseExistingServer: !process.env.CI,
+    // false: el e2e de captura exige VITE_USAR_EMULADORES y vars demo; un
+    // `npm run dev` previo con .env.local de nube rompería la siembra de sesión.
+    reuseExistingServer: false,
     timeout: 120_000,
     env: {
       // Por omisión el e2e usa el proveedor **real** (demo). Solo si exportas
@@ -44,6 +46,23 @@ export default defineConfig({
       ...(process.env.PROVEEDOR_SIMULADO === 'true'
         ? { PROVEEDOR_SIMULADO: 'true' }
         : { PROVEEDOR_SIMULADO: 'false' }),
+      ASISTENCIA_SIMULADA: process.env.ASISTENCIA_SIMULADA ?? 'true',
+      FIRESTORE_EMULATOR_HOST:
+        process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080',
+      FIREBASE_AUTH_EMULATOR_HOST:
+        process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '127.0.0.1:9099',
+      FIREBASE_STORAGE_EMULATOR_HOST:
+        process.env.FIREBASE_STORAGE_EMULATOR_HOST ?? '127.0.0.1:9199',
+      GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT ?? 'demo-suitpay',
+      // Fuerza cliente contra emuladores en e2e (no pisa .env.local si ya está
+      // en process.env del padre; aquí el webServer arranca hijo limpio).
+      VITE_USAR_EMULADORES: 'true',
+      VITE_FIREBASE_PROJECT_ID: 'demo-suitpay',
+      VITE_FIREBASE_API_KEY:
+        process.env.VITE_FIREBASE_API_KEY ?? 'demo-api-key',
+      VITE_FIREBASE_AUTH_DOMAIN: 'demo-suitpay.firebaseapp.com',
+      VITE_FIREBASE_STORAGE_BUCKET: 'demo-suitpay.appspot.com',
+      VITE_FIREBASE_APP_ID: process.env.VITE_FIREBASE_APP_ID ?? 'demo-app-id',
     },
   },
 })

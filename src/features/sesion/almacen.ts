@@ -117,6 +117,35 @@ export const usarSesion = create<AlmacenDeSesion>((set) => ({
   cargando: true,
 
   vigilar() {
+    // Gancho e2e: sessionStorage evita depender del Admin SDK / Auth emulator
+    // para pruebas de UI (dictado, fotografía). Solo con emuladores.
+    if (import.meta.env.VITE_USAR_EMULADORES === 'true') {
+      try {
+        const crudo = sessionStorage.getItem('suitpay:e2e-sesion')
+        if (crudo !== null) {
+          const datos = JSON.parse(crudo) as {
+            uid: string
+            nombre: string | null
+            correo: string | null
+            rol: Rol
+            activo: boolean
+          }
+          set({
+            cargando: false,
+            uid: datos.uid,
+            nombre: datos.nombre,
+            correo: datos.correo,
+            rol: datos.rol,
+            activo: datos.activo,
+            motivoDeBloqueo: motivoDe(datos.rol, datos.activo),
+          })
+          return () => {}
+        }
+      } catch {
+        // Seguir con Firebase Auth normal.
+      }
+    }
+
     const auth = obtenerAutenticacion()
 
     const dejarDeEscucharEstado = onAuthStateChanged(auth, (usuario) => {

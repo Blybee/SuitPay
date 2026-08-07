@@ -2,6 +2,7 @@
 
 **Feature**: 001-mostrador-asistido | **Fecha**: 2026-07-28  
 **Enmienda**: 2026-07-29 (volcado 5 — Modern Soft-Pill, sidebar, tabs, full-bleed)  
+**Enmienda**: 2026-08-06 (polish cabecera cliente + cotización en selector + contador de líneas)  
 **Modo de visitante**: Operate — el vendedor viene a completar una tarea, no a decidir ni a leer.  
 **Sistema visual durable**: [`DESIGN.md`](../../DESIGN.md) · **Verdad de producto**: [`PRODUCT.md`](../../PRODUCT.md)
 
@@ -15,7 +16,7 @@
 
 **STORY** — El vendedor abre en el mostrador (tab Pedido, tipo Nota de Venta por defecto), teclea o dicta, ve la lista crecer mientras habla con el cliente, comprueba el total sin buscarlo y emite con una pulsación.
 
-**FIRST VIEWPORT** — Sidebar a la izquierda (marca SuitPay arriba; Inicio y Configuración; perfil + logout al pie). A la derecha, el área de trabajo a todo el ancho: tabs Pedido | Cotizaciones | Vecinos | Lista; bajo el tab activo, entrada con foco; cabecera de documento; pedido denso; pie del total con EMITIR.
+**FIRST VIEWPORT** — Sidebar a la izquierda (marca SuitPay arriba; Inicio y Configuración; perfil + logout al pie). A la derecha, el área de trabajo a todo el ancho: buscador + tabs Pedido | Cotizaciones | Vecinos | Lista en un bloque compacto; cabecera de documento; pedido denso; pie del total con EMITIR (o Guardar si el tipo es Cotización).
 
 **FORM** — Soft-Pill de trabajo. Sustituye el contrato anterior (papel cálido / mesa kraft / radio cero / sin barra lateral) por enmienda del volcado 5. Se conserva la lección crítica: la UI no debe parecer un comprobante.
 
@@ -86,10 +87,11 @@ El significado exacto del tab **Lista** queda abierto en el intake (volcado 5).
 1. **Tabs.** Pedido | Cotizaciones | Vecinos | Lista.
 2. **La entrada.** Campo ancho con micrófono y cámara; acepta producto, comando `/`, dictado y foto. Foco al abrir.
 3. **Banda de degradación.** Bajo la entrada cuando algo está caído; no desaparece sola.
-4. **Cabecera fija de documento.** Tipo (default Nota de Venta), serie, cliente. Cambio de tipo no destruye el pedido.
-5. **Distintivo de documento interno.** Etiqueta **SIN VALOR TRIBUTARIO** (cápsula o badge suave en rojo) junto al tipo cuando aplica.
-6. **El pedido.** Líneas densas; precio editable inline; scroll interno entre cabecera y pie.
-7. **El pie del total.** Recuento, medio de pago, total grande, EMITIR a la derecha.
+4. **Cabecera fija de documento.** Selector de tipo (Boleta | Factura | Nota de venta | **Cotización**), serie cuando aplica, cliente. Cotización es modo borrador (no tributario): el pie muestra **Guardar** y persiste en el tab Cotizaciones. Cambio de tipo no destruye las líneas.
+5. **Cliente en cabecera.** Input RUC/DNI para clientes **ya registrados**; icon-button (UserPlus) para alta de cliente nuevo. Si el documento del input no está registrado, el icon-button morph a «Agregar» y consulta el padrón. Antes de fijar el cliente, el vendedor confirma **razón social** y **dirección** (requeridos para factura/boleta identificada).
+6. **Distintivo de documento interno.** Etiqueta **SIN VALOR TRIBUTARIO** (cápsula en rojo) junto al tipo cuando aplica; en Cotización, cápsula «Borrador».
+7. **El pedido.** Líneas densas; cabecera de columna **Producto (N)** con el conteo; precio editable inline; scroll interno entre cabecera y pie.
+8. **El pie del total.** Medio de pago (oculto en modo cotización), total grande, CTA a la derecha: **EMITIR** o **Guardar**.
 
 Lo que deliberadamente **no** está: métricas, gráficos, contadores del día, avatares decorativos.
 
@@ -113,7 +115,10 @@ Panel blanco a todo el ancho útil del área de trabajo (`rounded-2xl` / `3xl` s
 Igual semántica que antes; formas Soft-Pill en controles editables.
 
 ### Pie del total (`PieTotal`)
-Total, medio de pago, emitir en cápsula. Motivo de bloqueo en rojo bajo el botón.
+Total y CTA en cápsula: Emitir (venta) o Guardar (modo Cotización del selector). Medio de pago solo en venta. Motivo de bloqueo en rojo cuando aplica. El conteo de líneas vive en la cabecera de columna Producto, no en el pie.
+
+### Cabecera de documento (`CabeceraDocumento`)
+Tipo + Cotización; input de documento para registrados; icon-button de alta con morph «Agregar»; panel de confirmación (razón social + dirección) antes de fijar cliente.
 
 ### Revisión contrastada (`RevisionCaptura`)
 Sin cambio de gramática: tachado + propuesta; mismas columnas al aprobar.

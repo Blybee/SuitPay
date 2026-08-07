@@ -242,8 +242,8 @@ export function AltaClienteEnContexto({
       alCambiar={(abiertaAhora) => {
         if (!abiertaAhora) cerrar()
       }}
-      titulo="Identificar cliente"
-      descripcion="Sin salir del pedido. Busca por documento o razón social."
+      titulo="Agregar cliente"
+      descripcion="Cliente nuevo: busca por razón social o completa los datos a mano."
       pie={
         <>
           <Boton variante="discreto" onClick={cerrar}>

@@ -292,20 +292,20 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 
 > **Aviso de riesgo**: las historias 6 y 7 reutilizan herramientas que ya funcionan en el proyecto de la tienda virtual pero están acopladas a él. El grado de reelaboración está sin evaluar. La tarea T115 existe para averiguarlo antes de comprometerse.
 
-- [ ] T115 [US6] **Evaluar el acoplamiento** de las herramientas de captura existentes en el proyecto de la tienda virtual y decidir entre reutilizar, adaptar o reescribir, dejando la conclusión en `specs/001-mostrador-asistido/research.md`. Si resultara profundo, las historias 6 y 7 se replantean antes de seguir
-- [ ] T116 [P] [US6] **Prueba del principio IV** en `tests/unit/server/asistencia-payload.test.ts`: se inspecciona el payload que sale hacia el servicio de asistencia y se verifica que **no contiene razón social, RUC, DNI, dirección, teléfono, correo ni historial de compras** (FR-045). Es la prueba que hace verificable un principio no negociable
-- [ ] T117 [P] [US6] Prueba de conmutación de credencial en `tests/unit/server/asistencia-conmutacion.test.ts`: ante error de cuota, la función conmuta a la segunda credencial configurada
-- [ ] T118 [P] [US6] Prueba de asistencia caída en `tests/unit/server/asistencia-caida.test.ts`: se devuelve `asistencia_no_disponible` y **la venta se puede completar escribiendo** (FR-046)
-- [ ] T119 [US6] Implementar la función de servidor `interpretarCaptura` en `src/server/asistencia/interpretar.ts` como **único punto de salida del sistema hacia el servicio de asistencia**, construyendo el payload con el medio y el lote de productos y nada más
-- [ ] T120 [P] [US6] Implementar el envío del lote filtrado de candidatos en `src/features/captura/lote.ts`, preseleccionado con la búsqueda difusa local para no enviar los 500 productos
-- [ ] T121 [US6] Implementar la grabación y subida del audio en `src/features/captura/audio.tsx`, con el original en Cloud Storage y **la posibilidad de abandonar la espera y seguir escribiendo**
-- [ ] T122 [US6] Implementar `RevisionCaptura` en `src/ui/componentes/RevisionCaptura.tsx`: por cada renglón, la lectura original **tachada en tinta desvaída** y debajo, sangrada, la propuesta limpia, conservando las mismas columnas que el pedido normal (FR-042)
-- [ ] T123 [US6] Implementar la elección entre candidatos ambiguos en `src/features/captura/ambiguos.tsx`, en rojo hasta que se elija, **presentando las opciones en lugar de escoger** (FR-043)
-- [ ] T124 [US6] Implementar el marcado de renglones pendientes en `src/features/captura/pendientes.tsx`, que **impide emitir mientras quede uno sin resolver** y no descarta nada en silencio (FR-044)
-- [ ] T125 [US6] Implementar la aprobación de la propuesta en `src/features/captura/aprobar.ts`, que convierte la revisión en líneas normales del pedido y **no emite nada por sí sola** (FR-041)
-- [ ] T126 [P] [US6] Implementar la resolución de la identidad del cliente en el cliente y el servidor en `src/features/captura/cliente.ts`, **nunca en el modelo** (FR-045)
-- [ ] T127 [P] [US6] Implementar el estado de asistencia caída en la entrada en `src/ui/componentes/Entrada.tsx`: los botones de micrófono y cámara **visiblemente inertes con el motivo dicho**, sin presentar la escritura como plan B
-- [ ] T128 [US6] Prueba de extremo a extremo del dictado en `tests/e2e/dictado.spec.ts`: dictar tres productos, corregir una línea, aprobar y comprobar que el pedido resultante es el mismo que se habría escrito
+- [x] T115 [US6] **Evaluar el acoplamiento** de las herramientas de captura existentes en el proyecto de la tienda virtual y decidir entre reutilizar, adaptar o reescribir, dejando la conclusión en `specs/001-mostrador-asistido/research.md`. Si resultara profundo, las historias 6 y 7 se replantean antes de seguir
+- [x] T116 [P] [US6] **Prueba del principio IV** en `tests/unit/server/asistencia-payload.test.ts`: se inspecciona el payload que sale hacia el servicio de asistencia y se verifica que **no contiene razón social, RUC, DNI, dirección, teléfono, correo ni historial de compras** (FR-045). Es la prueba que hace verificable un principio no negociable
+- [x] T117 [P] [US6] Prueba de conmutación de credencial en `tests/unit/server/asistencia-conmutacion.test.ts`: ante error de cuota, la función conmuta a la segunda credencial configurada
+- [x] T118 [P] [US6] Prueba de asistencia caída en `tests/unit/server/asistencia-caida.test.ts`: se devuelve `asistencia_no_disponible` y **la venta se puede completar escribiendo** (FR-046)
+- [x] T119 [US6] Implementar la función de servidor `interpretarCaptura` en `src/server/asistencia/interpretar.ts` como **único punto de salida del sistema hacia el servicio de asistencia**, construyendo el payload con el medio y el lote de productos y nada más
+- [x] T120 [P] [US6] Implementar el envío del lote filtrado de candidatos en `src/features/captura/lote.ts`, preseleccionado con la búsqueda difusa local para no enviar los 500 productos
+- [x] T121 [US6] Implementar la grabación y subida del audio en `src/features/captura/audio.tsx`, con el original en Cloud Storage y **la posibilidad de abandonar la espera y seguir escribiendo**
+- [x] T122 [US6] Implementar `RevisionCaptura` en `src/ui/componentes/RevisionCaptura.tsx`: por cada renglón, la lectura original **tachada en tinta desvaída** y debajo, sangrada, la propuesta limpia, conservando las mismas columnas que el pedido normal (FR-042)
+- [x] T123 [US6] Implementar la elección entre candidatos ambiguos en `src/features/captura/ambiguos.tsx`, en rojo hasta que se elija, **presentando las opciones en lugar de escoger** (FR-043)
+- [x] T124 [US6] Implementar el marcado de renglones pendientes en `src/features/captura/pendientes.tsx`, que **impide emitir mientras quede uno sin resolver** y no descarta nada en silencio (FR-044)
+- [x] T125 [US6] Implementar la aprobación de la propuesta en `src/features/captura/aprobar.ts`, que convierte la revisión en líneas normales del pedido y **no emite nada por sí sola** (FR-041)
+- [x] T126 [P] [US6] Implementar la resolución de la identidad del cliente en el cliente y el servidor en `src/features/captura/cliente.ts`, **nunca en el modelo** (FR-045)
+- [x] T127 [P] [US6] Implementar el estado de asistencia caída en la entrada en `src/ui/componentes/Entrada.tsx`: los botones de micrófono y cámara **visiblemente inertes con el motivo dicho**, sin presentar la escritura como plan B
+- [x] T128 [US6] Prueba de extremo a extremo del dictado en `tests/e2e/dictado.spec.ts`: dictar tres productos, corregir una línea, aprobar y comprobar que el pedido resultante es el mismo que se habría escrito
 
 **Checkpoint**: el dictado produce propuestas revisables y ningún dato de cliente sale del sistema.
 
@@ -317,14 +317,14 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 
 **Independent Test**: se fotografía una guía manual real y se obtiene un pedido revisable cuyo contenido puede compararse renglón a renglón con la foto.
 
-- [ ] T129 [P] [US7] Prueba de medio ilegible en `tests/unit/server/captura-ilegible.test.ts`: se devuelve `medio_ilegible`, **la fotografía original se conserva** y se permite reintentar con otra
-- [ ] T130 [P] [US7] Prueba de renglones tachados en `tests/unit/server/captura-tachados.test.ts`: los renglones que no se pudieron interpretar quedan marcados como pendientes y **ninguno se descarta en silencio**
-- [ ] T131 [US7] Implementar la captura y subida de la fotografía en `src/features/captura/imagen.tsx`, con el original en Cloud Storage
-- [ ] T132 [US7] Extender `interpretarCaptura` en `src/server/asistencia/interpretar.ts` para el tipo imagen, devolviendo **el texto extraído de cada renglón antes de proponer productos**
-- [ ] T133 [US7] Implementar la revisión en dos pasos en `src/features/captura/revision-imagen.tsx`: primero el texto extraído, después el emparejamiento contra el lote filtrado (FR-042)
-- [ ] T134 [P] [US7] Implementar la miniatura de la fotografía junto a la revisión en `src/features/captura/miniatura.tsx`, para poder comparar contra el original sin salir de la pantalla
-- [ ] T135 [P] [US7] Implementar el estado de fotografía ilegible en `src/features/captura/ilegible.tsx`, con el motivo y el reintento
-- [ ] T136 [US7] Prueba de extremo a extremo de la fotografía en `tests/e2e/fotografia.spec.ts` con una guía manual real, verificando que un renglón ilegible bloquea la emisión hasta resolverse
+- [x] T129 [P] [US7] Prueba de medio ilegible en `tests/unit/server/captura-ilegible.test.ts`: se devuelve `medio_ilegible`, **la fotografía original se conserva** y se permite reintentar con otra
+- [x] T130 [P] [US7] Prueba de renglones tachados en `tests/unit/server/captura-tachados.test.ts`: los renglones que no se pudieron interpretar quedan marcados como pendientes y **ninguno se descarta en silencio**
+- [x] T131 [US7] Implementar la captura y subida de la fotografía en `src/features/captura/imagen.tsx`, con el original en Cloud Storage
+- [x] T132 [US7] Extender `interpretarCaptura` en `src/server/asistencia/interpretar.ts` para el tipo imagen, devolviendo **el texto extraído de cada renglón antes de proponer productos**
+- [x] T133 [US7] Implementar la revisión en dos pasos en `src/features/captura/revision-imagen.tsx`: primero el texto extraído, después el emparejamiento contra el lote filtrado (FR-042)
+- [x] T134 [P] [US7] Implementar la miniatura de la fotografía junto a la revisión en `src/features/captura/miniatura.tsx`, para poder comparar contra el original sin salir de la pantalla
+- [x] T135 [P] [US7] Implementar el estado de fotografía ilegible en `src/features/captura/ilegible.tsx`, con el motivo y el reintento
+- [x] T136 [US7] Prueba de extremo a extremo de la fotografía en `tests/e2e/fotografia.spec.ts` con una guía manual real, verificando que un renglón ilegible bloquea la emisión hasta resolverse
 
 **Checkpoint**: el trabajo en papel entra al sistema sin descartar nada en silencio.
 

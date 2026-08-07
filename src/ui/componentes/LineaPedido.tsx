@@ -219,7 +219,11 @@ export function LineaPedido({
  * que la pantalla en blanco se lea como una hoja lista para escribir y no como un
  * error de carga, y por eso el estado vacío no necesita ilustración ni bienvenida.
  */
-export function CabecerasDeColumna() {
+export function CabecerasDeColumna({
+  numeroDeLineas = 0,
+}: {
+  readonly numeroDeLineas?: number
+}) {
   return (
     <div
       className={[
@@ -228,7 +232,12 @@ export function CabecerasDeColumna() {
         'font-mono text-etiqueta uppercase text-desvaida',
       ].join(' ')}
     >
-      <span>Producto</span>
+      <span>
+        Producto
+        {numeroDeLineas > 0 ? (
+          <span className="ml-1 normal-case text-desvaida">({numeroDeLineas})</span>
+        ) : null}
+      </span>
       <span className="text-right">Cant.</span>
       <span className="text-right">Precio</span>
       <span className="text-right">Importe</span>

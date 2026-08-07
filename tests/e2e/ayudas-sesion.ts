@@ -1,4 +1,4 @@
-import { cert, deleteApp, initializeApp } from 'firebase-admin/app'
+import { deleteApp, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import type { Page } from '@playwright/test'
 
@@ -38,15 +38,10 @@ interface SesionInyectable {
 async function credencialesDeVendedor(apiKey: string): Promise<SesionInyectable> {
   process.env['FIREBASE_AUTH_EMULATOR_HOST'] = AUTH_EMULADOR
 
+  // Con AUTH emulator no hace falta credencial real (firebase-admin v14
+  // rechaza claves placeholder).
   const aplicacion = initializeApp(
-    {
-      projectId: PROYECTO,
-      credential: cert({
-        projectId: PROYECTO,
-        clientEmail: `prueba@${PROYECTO}.iam.gserviceaccount.com`,
-        privateKey: 'sin-uso-en-el-emulador',
-      }),
-    },
+    { projectId: PROYECTO },
     `e2e-${Date.now()}`,
   )
 
