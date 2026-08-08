@@ -6,6 +6,9 @@ import { getFirestore } from 'firebase-admin/firestore'
 import type { Firestore } from 'firebase-admin/firestore'
 import { getStorage } from 'firebase-admin/storage'
 import type { Storage } from 'firebase-admin/storage'
+import { projectIdDelEntorno } from './project-id.ts'
+
+export { projectIdDelEntorno } from './project-id.ts'
 
 /**
  * El Admin SDK. **Solo servidor.**
@@ -22,24 +25,22 @@ import type { Storage } from 'firebase-admin/storage'
  * hay ningún archivo de cuenta de servicio en el repositorio ni debe haberlo.
  * Con emuladores, las variables `FIRESTORE_EMULATOR_HOST` y compañía redirigen
  * las conexiones sin cambiar nada de este código.
- */
-
-let aplicacion: App | undefined
-
-/**
- * El projectId del Admin SDK **debe** ser el mismo que firma el ID token del
+ *
+ * `GOOGLE_CLOUD_PROJECT` debe estar en el runtime (ver `apphosting.yaml`): el
+ * projectId del Admin SDK **debe** ser el mismo que firma el ID token del
  * cliente. Si `initializeApp()` toma el proyecto de gcloud ADC (p. ej. otra
  * app), `verifyIdToken` falla y el mostrador muestra «sesión caducó» aunque
  * el vendedor esté bien autenticado — y nunca llega al proveedor.
  */
-function projectIdDelEntorno(): string | undefined {
-  return (
-    process.env['GOOGLE_CLOUD_PROJECT'] ??
-    process.env['GCLOUD_PROJECT'] ??
-    process.env['VITE_FIREBASE_PROJECT_ID'] ??
-    (typeof import.meta !== 'undefined'
-      ? (import.meta.env['VITE_FIREBASE_PROJECT_ID'] as string | undefined)
-      : undefined)
+
+let aplicacion: App | undefined
+
+function projectIdResuelto(): string | undefined {
+  return projectIdDelEntorno(
+    process.env,
+    typeof import.meta !== 'undefined'
+      ? (import.meta.env as Record<string, unknown>)
+      : undefined,
   )
 }
 
@@ -54,7 +55,7 @@ export function storageBucketDelEntorno(): string | undefined {
   if (desdeEnv !== undefined && desdeEnv.trim() !== '') return desdeEnv.trim()
 
   // Respaldo clásico si solo hay projectId.
-  const projectId = projectIdDelEntorno()
+  const projectId = projectIdResuelto()
   return projectId !== undefined && projectId !== ''
     ? `${projectId}.appspot.com`
     : undefined
@@ -68,17 +69,22 @@ function obtenerAplicacion(): App {
     return aplicacion
   }
 
-  const projectId = projectIdDelEntorno()
+  const projectId = projectIdResuelto()
   const storageBucket = storageBucketDelEntorno()
-  aplicacion =
-    projectId === undefined || projectId === ''
-      ? initializeApp(
-          storageBucket !== undefined ? { storageBucket } : undefined,
-        )
-      : initializeApp({
-          projectId,
-          ...(storageBucket !== undefined ? { storageBucket } : {}),
-        })
+  if (projectId === undefined || projectId === '') {
+    console.error(
+      '[SuitPay] Admin SDK sin projectId: define GOOGLE_CLOUD_PROJECT ' +
+        '(y que coincida con VITE_FIREBASE_PROJECT_ID).',
+    )
+    aplicacion = initializeApp(
+      storageBucket !== undefined ? { storageBucket } : undefined,
+    )
+  } else {
+    aplicacion = initializeApp({
+      projectId,
+      ...(storageBucket !== undefined ? { storageBucket } : {}),
+    })
+  }
   return aplicacion
 }
 

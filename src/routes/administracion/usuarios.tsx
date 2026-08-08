@@ -38,13 +38,20 @@ function PantallaDeUsuarios() {
     setError(null)
     try {
       const respuesta = await listarUsuariosFn()
-      if (!respuesta.ok || respuesta.usuarios === undefined) {
-        setError(respuesta.error?.mensaje ?? 'No se pudieron listar usuarios.')
+      if (respuesta?.ok !== true || respuesta.usuarios === undefined) {
+        setError(
+          respuesta?.error?.mensaje ??
+            'No se pudieron listar usuarios. Comprueba la sesión y el projectId del servidor.',
+        )
         return
       }
       setUsuarios(respuesta.usuarios)
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de red.')
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudieron listar usuarios (fallo de red o del servidor).',
+      )
     } finally {
       setOcupado(false)
     }
@@ -62,8 +69,11 @@ function PantallaDeUsuarios() {
       const respuesta = await crearUsuarioFn({
         data: { correo, contrasena, nombre, rol },
       })
-      if (!respuesta.ok) {
-        setError(respuesta.error?.mensaje ?? 'No se pudo crear el usuario.')
+      if (respuesta?.ok !== true) {
+        setError(
+          respuesta?.error?.mensaje ??
+            'No se pudo crear el usuario. Si el fallo persiste, revisa GOOGLE_CLOUD_PROJECT en App Hosting.',
+        )
         return
       }
       setCorreo('')
@@ -72,7 +82,11 @@ function PantallaDeUsuarios() {
       setRol('vendedor')
       await cargar()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de red.')
+      setError(
+        err instanceof Error
+          ? err.message
+          : 'No se pudo crear el usuario (fallo de red o del servidor).',
+      )
     } finally {
       setOcupado(false)
     }
@@ -85,8 +99,8 @@ function PantallaDeUsuarios() {
       const respuesta = await actualizarUsuarioFn({
         data: { uid: usuario.uid, activo: !usuario.activo },
       })
-      if (!respuesta.ok) {
-        setError(respuesta.error?.mensaje ?? 'No se pudo actualizar.')
+      if (respuesta?.ok !== true) {
+        setError(respuesta?.error?.mensaje ?? 'No se pudo actualizar.')
         return
       }
       await cargar()
@@ -107,8 +121,8 @@ function PantallaDeUsuarios() {
       const respuesta = await actualizarUsuarioFn({
         data: { uid: usuario.uid, rol: nuevoRol },
       })
-      if (!respuesta.ok) {
-        setError(respuesta.error?.mensaje ?? 'No se pudo cambiar el rol.')
+      if (respuesta?.ok !== true) {
+        setError(respuesta?.error?.mensaje ?? 'No se pudo cambiar el rol.')
         return
       }
       await cargar()

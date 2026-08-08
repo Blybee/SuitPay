@@ -61,16 +61,16 @@ function PantallaDeSeries() {
         listarSeriesFn(),
         listarUsuariosFn(),
       ])
-      if (!est.ok) {
-        setError(est.error?.mensaje ?? 'No se listaron establecimientos.')
+      if (est?.ok !== true) {
+        setError(est?.error?.mensaje ?? 'No se listaron establecimientos.')
         return
       }
-      if (!ser.ok) {
-        setError(ser.error?.mensaje ?? 'No se listaron series.')
+      if (ser?.ok !== true) {
+        setError(ser?.error?.mensaje ?? 'No se listaron series.')
         return
       }
-      if (!us.ok) {
-        setError(us.error?.mensaje ?? 'No se listaron usuarios.')
+      if (us?.ok !== true) {
+        setError(us?.error?.mensaje ?? 'No se listaron usuarios.')
         return
       }
       setEstablecimientos(est.establecimientos ?? [])

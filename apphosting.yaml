@@ -55,6 +55,16 @@ env:
 
   # --- Configuración del servidor, no secreta ----------------------------
 
+  # ProjectId del Admin SDK / Google client libraries en el runtime.
+  # OBLIGATORIO y debe coincidir con VITE_FIREBASE_PROJECT_ID. Sin esto,
+  # `initializeApp()` / ADC pueden resolver otro proyecto: verifyIdToken falla
+  # («sesión caducó»), y las server functions de usuarios/Firestore responden 500.
+  # Solo RUNTIME: no es secreto, pero tampoco debe vivir en el bundle del
+  # cliente con semántica de servidor.
+  - variable: GOOGLE_CLOUD_PROJECT
+    value: [REDACTED]
+    availability: [RUNTIME]
+
   # La ventana de anulación es "el mismo día", y ese día es el de Lima.
   # Calcularlo en UTC volvería inanulable una venta de las siete de la tarde a
   # los pocos minutos, así que la zona es configuración explícita y no una
