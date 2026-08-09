@@ -43,11 +43,16 @@ import {
 import { puedeEmitir, usarSesion } from '../features/sesion/almacen.ts'
 import { GuardaSesion } from '../features/sesion/GuardaSesion.tsx'
 import { AltaClienteEnContexto } from '../features/clientes/alta-en-contexto.tsx'
+import type { ArranqueManualDeCliente } from '../features/clientes/alta-en-contexto.tsx'
 import {
   consultarContribuyenteFn,
   crearClienteFn,
 } from '../features/clientes/clientes.funciones.ts'
 import { leerClientePorDocumento } from '../features/clientes/existencia.ts'
+import {
+  decidirTrasConsultaContribuyente,
+  mensajeDeConsultaIndisponible,
+} from '../features/clientes/resultado-consulta.ts'
 import { emitir } from '../features/emision/emitir.funciones.ts'
 import { leerMiSerieFn } from '../features/series/series.funciones.ts'
 import { CLAVES_DE_CONSULTA } from '../infra/consultas/cliente.ts'
@@ -106,6 +111,8 @@ function Mostrador() {
   const [consultaClienteInicial, setConsultaClienteInicial] = useState<
     string | null
   >(null)
+  const [altaManualInicial, setAltaManualInicial] =
+    useState<ArranqueManualDeCliente | null>(null)
   const [modoCotizacion, setModoCotizacion] = useState(false)
   const [documentoNoRegistrado, setDocumentoNoRegistrado] = useState<
     string | null
@@ -233,6 +240,7 @@ function Mostrador() {
         denominacion: local.denominacion,
       })
     } else {
+      setAltaManualInicial(null)
       setConsultaClienteInicial(mencion)
       setAltaClienteAbierta(true)
     }
@@ -283,6 +291,7 @@ function Mostrador() {
       const existente = await leerClientePorDocumento(propuesta.numeroDocumento)
       if (existente === null) {
         setPendienteAltaVecino(propuesta)
+        setAltaManualInicial(null)
         setConsultaClienteInicial(propuesta.numeroDocumento)
         setAltaClienteAbierta(true)
         setPropuestaVecino(null)
@@ -438,6 +447,22 @@ function Mostrador() {
     setDocumentoNoRegistrado(datos.numeroDocumento)
   }
 
+  function abrirAltaManualTrasConsulta(params: {
+    readonly tipoDocumento: 'DNI' | 'RUC'
+    readonly numeroDocumento: string
+    readonly mensaje: string
+  }): void {
+    setClienteParaConfirmar(null)
+    setConsultaClienteInicial(null)
+    setAltaManualInicial({
+      tipoDocumento: params.tipoDocumento,
+      numeroDocumento: params.numeroDocumento,
+      mensaje: params.mensaje,
+    })
+    setAltaClienteAbierta(true)
+    setDocumentoNoRegistrado(null)
+  }
+
   async function consultarNoRegistrado(): Promise<void> {
     if (documentoNoRegistrado === null || consultandoPadron) return
     const numero = documentoNoRegistrado
@@ -448,23 +473,36 @@ function Mostrador() {
       const respuesta = await consultarContribuyenteFn({
         data: { tipoDocumento, numeroDocumento: numero },
       })
-      if (respuesta.ok && respuesta.datos) {
+      const decision = decidirTrasConsultaContribuyente(respuesta, {
+        tipoDocumento,
+        numeroDocumento: numero,
+      })
+      if (decision.tipo === 'confirmar') {
         setClienteParaConfirmar({
-          tipoDocumento: respuesta.datos.tipoDocumento,
-          numeroDocumento: respuesta.datos.numeroDocumento,
-          denominacion: respuesta.datos.denominacion,
-          direccion: respuesta.datos.direccion,
-          condicion: respuesta.datos.condicion,
-          noHabido: respuesta.datos.noHabido,
+          tipoDocumento: decision.datos.tipoDocumento,
+          numeroDocumento: decision.datos.numeroDocumento,
+          denominacion: decision.datos.denominacion,
+          direccion: decision.datos.direccion,
+          condicion: decision.datos.condicion,
+          noHabido: decision.datos.noHabido,
           origen: 'consulta',
         })
         setDocumentoNoRegistrado(null)
         return
       }
-      // Padrón caído o no hallado: formulario manual con el documento precargado.
-      setConsultaClienteInicial(numero)
-      setAltaClienteAbierta(true)
-      setDocumentoNoRegistrado(null)
+      // Padrón caído, token sin consultas, o no hallado: alta manual (FR-026).
+      abrirAltaManualTrasConsulta({
+        tipoDocumento: decision.tipoDocumento,
+        numeroDocumento: decision.numeroDocumento,
+        mensaje: decision.mensaje,
+      })
+    } catch {
+      // RPC 500 / Failed to fetch: no dejar el morph colgado.
+      abrirAltaManualTrasConsulta({
+        tipoDocumento,
+        numeroDocumento: numero,
+        mensaje: mensajeDeConsultaIndisponible(),
+      })
     } finally {
       setConsultandoPadron(false)
     }
@@ -517,6 +555,7 @@ function Mostrador() {
         },
       })
       if (!respuesta.ok || respuesta.cliente === undefined) {
+        setAltaManualInicial(null)
         setConsultaClienteInicial(pendiente.numeroDocumento)
         setAltaClienteAbierta(true)
         setClienteParaConfirmar(null)
@@ -646,6 +685,7 @@ function Mostrador() {
             cliente={pedido.cliente}
             onAgregarClienteNuevo={() => {
               setConsultaClienteInicial(null)
+              setAltaManualInicial(null)
               setDocumentoNoRegistrado(null)
               setClienteParaConfirmar(null)
               setAltaClienteAbierta(true)
@@ -766,6 +806,7 @@ function Mostrador() {
         onCerrar={() => {
           setAltaClienteAbierta(false)
           setConsultaClienteInicial(null)
+          setAltaManualInicial(null)
           setPendienteAltaVecino(null)
         }}
         indiceDeClientes={catalogo.clientes}
@@ -776,6 +817,7 @@ function Mostrador() {
             setPendienteAltaVecino(null)
             setAltaClienteAbierta(false)
             setConsultaClienteInicial(null)
+            setAltaManualInicial(null)
             void (async () => {
               setCreandoVecino(true)
               try {
@@ -808,6 +850,7 @@ function Mostrador() {
           usarCatalogo.getState().incorporarCliente(entrada)
         }
         consultaInicial={consultaClienteInicial}
+        arranqueManual={altaManualInicial}
       />
 
       <Modal

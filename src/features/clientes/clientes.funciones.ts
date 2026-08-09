@@ -12,6 +12,7 @@ import type { DatosDeContribuyenteParaRevision } from '../../server/contribuyent
 import { crearCliente } from '../../server/clientes/crear.ts'
 import type { ClienteCreado } from '../../server/clientes/crear.ts'
 import { proveedorActual } from '../../server/proveedor/actual.ts'
+import { respuestaDeFalloDeConsulta } from './fallo-consulta.ts'
 
 export type { DatosDeContribuyenteParaRevision } from '../../server/contribuyentes/consultar.ts'
 export type { ClienteCreado } from '../../server/clientes/crear.ts'
@@ -48,14 +49,7 @@ export const consultarContribuyenteFn = createServerFn({ method: 'POST' })
       )
       return { ok: true, datos }
     } catch (error) {
-      if (esErrorDeSuitPay(error)) {
-        return { ok: false, error: error.aRespuesta() }
-      }
-      console.error('[SuitPay] fallo al consultar contribuyente', error)
-      return {
-        ok: false,
-        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
-      }
+      return respuestaDeFalloDeConsulta(error)
     }
   })
 
