@@ -62,7 +62,7 @@ env:
   # Solo RUNTIME: no es secreto, pero tampoco debe vivir en el bundle del
   # cliente con semántica de servidor.
   - variable: GOOGLE_CLOUD_PROJECT
-    value: [REDACTED]
+    value: blayblocklabs-antrax
     availability: [RUNTIME]
 
   # La ventana de anulación es "el mismo día", y ese día es el de Lima.
