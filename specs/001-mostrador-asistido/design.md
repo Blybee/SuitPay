@@ -89,7 +89,7 @@ El significado exacto del tab **Lista** queda abierto en el intake (volcado 5).
 2. **La entrada.** Campo ancho con micrófono y cámara; acepta producto, comando `/`, dictado y foto. Foco al abrir.
 3. **Banda de degradación.** Bajo la entrada cuando algo está caído; no desaparece sola.
 4. **Cabecera fija de documento.** Selector de tipo (Boleta | Factura | Nota de venta | **Cotización**), serie cuando aplica, cliente. Cotización es modo borrador (no tributario): el pie muestra **Guardar** y persiste en el tab Cotizaciones. Cambio de tipo no destruye las líneas.
-5. **Cliente en cabecera.** Label ciclable (chevrons): factura = RUC; boleta = DNI|Nombre; cotización = RUC|DNI|Nombre. Confirmación **manual con Enter** (no al completar dígitos); errores visibles si faltan dígitos. Nombre fija cliente eventual (marcador `00000000`). Icon-button morph «Agregar» / «Usar».
+5. **Cliente en cabecera.** Label ciclable (chevrons): factura = RUC; boleta = DNI|Nombre; cotización = RUC|DNI|Nombre. Confirmación **manual con Enter** (no al completar dígitos); errores visibles si faltan dígitos. Nombre fija cliente eventual (marcador `00000000`). Documento no registrado: consulta padrón al confirmar y abre el **diálogo de alta** con datos precargados (sin morph «Agregar»). Morph «Usar» sigue para modo Nombre; el «+» abre alta vacía.
 6. **Selector de tipo.** Boleta/factura muestran la serie en la etiqueta (`Boleta · B001`). Cotización no lleva badge aparte.
 7. **El pedido.** Líneas densas; cabecera de columna **Producto (N)** con el conteo; precio editable inline; scroll interno entre cabecera y pie.
 8. **El pie del total.** Medio de pago (oculto en modo cotización), total grande, CTA a la derecha: **EMITIR** o **Guardar**.
@@ -107,16 +107,17 @@ Marca, nav, perfil al pie. Controles en cápsula. Superficie blanca sobre lienzo
 Un campo, tres alimentaciones. Sugerencias locales; modo comando con `/`. Objetivos generosos. Estados: reposo, sugiriendo, comando, grabando, procesando, asistencia caída, **propuesta pendiente de confirmación** (p. ej. `/crear vecino {alias} {DNI/RUC}` → chip/propuesta Confirmar | Cancelar; sin escritura hasta confirmar).
 
 **Modo comando (obligatorio al implementar cualquier comando nuevo):**
-- Al empezar con `/`, **no** se muestran sugerencias de producto.
-- Los parámetros que faltan se muestran como **texto fantasma** gris tras lo escrito (p. ej. `/crear vecino` → `{alias} {DNI/RUC}`).
+- Al empezar con `/`, **no** se muestran sugerencias de producto; sí una **lista seleccionable** de comandos del catálogo (filtrada por prefijo).
+- Al elegir un comando de la lista, el input recibe el prefijo y los parámetros que faltan se muestran como **texto fantasma** gris (p. ej. `/crear vecino` → `{alias} {DNI/RUC}`).
 - Fuente de verdad del catálogo de pistas: [`src/features/comandos/pistas.ts`](../../src/features/comandos/pistas.ts) → `CATALOGO_DE_COMANDOS`.
-- **Todo comando nuevo MUST añadir** una entrada `{ id, prefijo, parametros }` en ese catálogo (y su parseo/ejecución aparte). Sin esa entrada no hay pista en el buscador.
+- **Todo comando nuevo MUST añadir** una entrada `{ id, prefijo, parametros }` en ese catálogo (y su parseo/ejecución aparte). Sin esa entrada no hay pista ni fila en la lista.
+- La barra del panel de sugerencias usa un icono de **ojo centrado** para ocultar resultados (no un minimizar alineado a la derecha).
 
 ### Tabs del mostrador (`PestanasMostrador`)
 Pedido | Cotizaciones | Vecinos | Lista. Cápsulas o subrayado suave; el tab activo contraste claro.
 
 ### Tab Cotizaciones (`PanelDeCotizaciones`)
-Lista de cotizaciones `canal` general. Cada fila: resumen (#, cliente, líneas, total) a la izquierda; a la derecha un **IconButton de eliminar** que abre diálogo de confirmación antes del borrado duro. Pulsar la fila abre la cotización en Pedido.
+Lista de cotizaciones `canal` general. Cada fila: resumen (#, cliente, líneas, total) a la izquierda; a la derecha un control de eliminar (**solo icono**, sin borde ni fondo en reposo; en hover fondo rojo suave) que abre diálogo de confirmación antes del borrado duro. Pulsar la fila abre la cotización en Pedido.
 
 ### Tab Vecinos
 No es una lista plana como Cotizaciones. **Sub-tabs internos** por `aliasVecino` (solo el alias como etiqueta). El cuerpo del tab activo reutiliza la densidad del pedido: cabeceras de columna Producto / Cant. / Precio / Importe, líneas editables y **total** visible. Con un sub-tab activo, las altas desde Entrada caen en esa cotización viva. Vacío inicial: mensaje breve + pista del comando `/crear vecino …`.
@@ -131,7 +132,10 @@ Igual semántica que antes; formas Soft-Pill en controles editables.
 Total y CTA en cápsula: Emitir (venta) o Guardar (modo Cotización del selector). Medio de pago solo en venta. Motivo de bloqueo en rojo cuando aplica. El conteo de líneas vive en la cabecera de columna Producto, no en el pie.
 
 ### Cabecera de documento (`CabeceraDocumento`)
-Tipo + Cotización; input de documento para registrados; icon-button de alta con morph «Agregar»; panel de confirmación (razón social + dirección) antes de fijar cliente.
+Tipo + Cotización; input de documento para registrados; icon-button «+» para alta vacía; documento nuevo dispara consulta + diálogo de alta. Panel de confirmación inline solo para clientes ya registrados (razón social + dirección) antes de fijarlos al pedido.
+
+### Diálogo post-emisión (`EstadoDeEmision`)
+Tras EMITIR con éxito: número, total y acciones **Imprimir**, **Guardar/descargar** y **Compartir** usando la URL de PDF de la respuesta cuando exista. No abrir el PDF sin gesto del vendedor.
 
 ### Revisión contrastada (`RevisionCaptura`)
 Sin cambio de gramática: tachado + propuesta; mismas columnas al aprobar.
@@ -205,7 +209,8 @@ Poco y con propósito. Línea nueva casi inmediata. Sello sin deslizamiento. Bot
 - **Emitir es un botón** deshabilitado al pulsar.
 - **La palabra "eliminar"** no aparece referida a un comprobante emitido; sí puede usarse para cotizaciones pendientes (FR-019a), siempre con confirmación.
 - **`/crear vecino`** nunca escribe solo: siempre propuesta a confirmar.
-- **Nuevos comandos:** registrar prefijo + parámetros en `CATALOGO_DE_COMANDOS` (`src/features/comandos/pistas.ts`); ocultar sugerencias de producto en modo `/`.
+- **Nuevos comandos:** registrar prefijo + parámetros en `CATALOGO_DE_COMANDOS` (`src/features/comandos/pistas.ts`); ocultar sugerencias de producto en modo `/` y mostrar lista seleccionable del catálogo.
+- **Guía de remisión / transportistas:** ver feature `002-guias-remision` (no ampliar tabs del mostrador por GRE).
 - **Ventana de anulación** en zona horaria `America/Lima`.
 - **No implementar contra los PNG obsoletos** sin nueva aprobación visual.
 

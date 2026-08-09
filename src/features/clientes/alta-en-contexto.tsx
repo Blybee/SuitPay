@@ -24,6 +24,8 @@ export type ArranqueManualDeCliente = {
   readonly mensaje?: string
 }
 
+export type ArranqueRevisionDeCliente = DatosDeContribuyenteParaRevision
+
 type Fase =
   | 'buscar'
   | 'coincidencias'
@@ -43,6 +45,7 @@ export function AltaClienteEnContexto({
   onClienteCreadoEnIndice,
   consultaInicial = null,
   arranqueManual = null,
+  arranqueRevision = null,
 }: {
   readonly abierta: boolean
   readonly onCerrar: () => void
@@ -52,10 +55,12 @@ export function AltaClienteEnContexto({
   /** Si llega al abrir (p. ej. desde el RUC/DNI inline), se busca sola. */
   readonly consultaInicial?: string | null
   /**
-   * Abre directo en alta manual (p. ej. padrón caído tras morph Agregar).
+   * Abre directo en alta manual (p. ej. padrón caído).
    * Evita reconsultar un host que ya falló.
    */
   readonly arranqueManual?: ArranqueManualDeCliente | null
+  /** Abre en revisión con datos ya consultados (sin segunda llamada al padrón). */
+  readonly arranqueRevision?: ArranqueRevisionDeCliente | null
 }) {
   const [fase, setFase] = useState<Fase>('buscar')
   const [consulta, setConsulta] = useState('')
@@ -74,6 +79,7 @@ export function AltaClienteEnContexto({
   const [mensaje, setMensaje] = useState<string | null>(null)
   const consultaAutoProcesada = useRef<string | null>(null)
   const manualAutoProcesado = useRef<string | null>(null)
+  const revisionAutoProcesada = useRef<string | null>(null)
 
   function reiniciar() {
     setFase('buscar')
@@ -84,6 +90,7 @@ export function AltaClienteEnContexto({
     setManual({ tipoDocumento: 'RUC', numeroDocumento: '', denominacion: '' })
     consultaAutoProcesada.current = null
     manualAutoProcesado.current = null
+    revisionAutoProcesada.current = null
   }
 
   function cerrar() {
@@ -177,6 +184,18 @@ export function AltaClienteEnContexto({
     if (!abierta) {
       consultaAutoProcesada.current = null
       manualAutoProcesado.current = null
+      revisionAutoProcesada.current = null
+      return
+    }
+
+    if (arranqueRevision !== null && arranqueRevision !== undefined) {
+      const clave = `${arranqueRevision.tipoDocumento}:${arranqueRevision.numeroDocumento}`
+      if (revisionAutoProcesada.current === clave) return
+      revisionAutoProcesada.current = clave
+      setTipoDocumento(arranqueRevision.tipoDocumento)
+      setConsulta(arranqueRevision.numeroDocumento)
+      setRevision(arranqueRevision)
+      setFase('revision')
       return
     }
 
@@ -201,7 +220,7 @@ export function AltaClienteEnContexto({
     if (consultaAutoProcesada.current === inicial) return
     consultaAutoProcesada.current = inicial
     void buscar(inicial)
-  }, [abierta, consultaInicial, arranqueManual]) // buscar es estable respecto a la consulta forzada
+  }, [abierta, consultaInicial, arranqueManual, arranqueRevision]) // buscar es estable respecto a la consulta forzada
 
   async function confirmarRevision() {
     if (revision === null) return

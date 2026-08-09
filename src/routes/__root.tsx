@@ -20,6 +20,7 @@ import { usarPedido } from '../features/pedido/almacen.ts'
 import { usarSesion } from '../features/sesion/almacen.ts'
 import { BandaDegradacion } from '../ui/componentes/BandaDegradacion.tsx'
 import { BarraLateral } from '../ui/componentes/BarraLateral.tsx'
+import { NotificacionIsla } from '../ui/componentes/NotificacionIsla.tsx'
 import hojaDeEstilos from '../styles.css?url'
 
 /**
@@ -92,6 +93,7 @@ function Mostrador() {
               : undefined
           }
         />
+        <NotificacionIsla />
 
         {enAcceso ? (
           <Outlet />

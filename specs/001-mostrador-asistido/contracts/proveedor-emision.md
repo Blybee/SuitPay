@@ -15,7 +15,7 @@ El módulo que implementa esta interfaz es el **único** lugar del sistema que c
 | `consultarDocumento` | serie, número | estado normalizado, contenido suficiente para reconciliar (cliente, total, fecha), enlaces a archivos |
 | `consultarContribuyente` | tipo y número de documento de identidad | denominación, dirección, ubigeo, condición ante el registro |
 | `emitirNotaCredito` | documento de referencia, motivo, líneas | igual que `emitir` |
-| `emitirGuiaRemision` | datos del traslado | igual que `emitir`. **Fuera del alcance de esta entrega**, declarada aquí para que la frontera no haya que rediseñarla cuando entre. |
+| `emitirGuiaRemision` | datos del traslado | igual que `emitir`. **Implementación en feature `002-guias-remision`**; declarada aquí para que la frontera no haya que rediseñarla. |
 | `crearEstablecimiento` | código de anexo, dirección, ubigeo, nombre y correo opcionales | identificador de establecimiento en el proveedor, o fallo clasificado. **Admin / T083.** |
 | `listarEstablecimientos` | — | lista de establecimientos |
 | `eliminarEstablecimiento` | identificador de establecimiento | confirmación de baja |

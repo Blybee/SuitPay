@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
+import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import {
   actualizarUsuarioFn,
@@ -24,8 +26,11 @@ export const Route = createFileRoute('/administracion/usuarios')({
 
 function PantallaDeUsuarios() {
   const [usuarios, setUsuarios] = useState<readonly UsuarioListado[]>([])
-  const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
+
+  function avisar(tono: 'exito' | 'error' | 'info', mensaje: string): void {
+    usarNotificaciones.getState().mostrar({ tono, mensaje })
+  }
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
   const [nombre, setNombre] = useState('')
@@ -35,11 +40,11 @@ function PantallaDeUsuarios() {
 
   async function cargar(): Promise<void> {
     setOcupado(true)
-    setError(null)
     try {
       const respuesta = await listarUsuariosFn()
       if (respuesta?.ok !== true || respuesta.usuarios === undefined) {
-        setError(
+        avisar(
+          'error',
           respuesta?.error?.mensaje ??
             'No se pudieron listar usuarios. Comprueba la sesión y el projectId del servidor.',
         )
@@ -47,7 +52,8 @@ function PantallaDeUsuarios() {
       }
       setUsuarios(respuesta.usuarios)
     } catch (err) {
-      setError(
+      avisar(
+        'error',
         err instanceof Error
           ? err.message
           : 'No se pudieron listar usuarios (fallo de red o del servidor).',
@@ -64,13 +70,13 @@ function PantallaDeUsuarios() {
   async function crear(evento: FormEvent): Promise<void> {
     evento.preventDefault()
     setOcupado(true)
-    setError(null)
     try {
       const respuesta = await crearUsuarioFn({
         data: { correo, contrasena, nombre, rol },
       })
       if (respuesta?.ok !== true) {
-        setError(
+        avisar(
+          'error',
           respuesta?.error?.mensaje ??
             'No se pudo crear el usuario. Si el fallo persiste, revisa GOOGLE_CLOUD_PROJECT en App Hosting.',
         )
@@ -80,9 +86,11 @@ function PantallaDeUsuarios() {
       setContrasena('')
       setNombre('')
       setRol('vendedor')
+      avisar('exito', 'Usuario creado.')
       await cargar()
     } catch (err) {
-      setError(
+      avisar(
+        'error',
         err instanceof Error
           ? err.message
           : 'No se pudo crear el usuario (fallo de red o del servidor).',
@@ -94,18 +102,17 @@ function PantallaDeUsuarios() {
 
   async function alternarActivo(usuario: UsuarioListado): Promise<void> {
     setOcupado(true)
-    setError(null)
     try {
       const respuesta = await actualizarUsuarioFn({
         data: { uid: usuario.uid, activo: !usuario.activo },
       })
       if (respuesta?.ok !== true) {
-        setError(respuesta?.error?.mensaje ?? 'No se pudo actualizar.')
+        avisar('error', respuesta?.error?.mensaje ?? 'No se pudo actualizar.')
         return
       }
       await cargar()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de red.')
+      avisar('error', err instanceof Error ? err.message : 'Error de red.')
     } finally {
       setOcupado(false)
     }
@@ -116,18 +123,17 @@ function PantallaDeUsuarios() {
     nuevoRol: 'vendedor' | 'administrador' | 'jefe',
   ): Promise<void> {
     setOcupado(true)
-    setError(null)
     try {
       const respuesta = await actualizarUsuarioFn({
         data: { uid: usuario.uid, rol: nuevoRol },
       })
       if (respuesta?.ok !== true) {
-        setError(respuesta?.error?.mensaje ?? 'No se pudo cambiar el rol.')
+        avisar('error', respuesta?.error?.mensaje ?? 'No se pudo cambiar el rol.')
         return
       }
       await cargar()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de red.')
+      avisar('error', err instanceof Error ? err.message : 'Error de red.')
     } finally {
       setOcupado(false)
     }
@@ -135,19 +141,10 @@ function PantallaDeUsuarios() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-8">
-      <header>
-        <h1 className="text-cabecera font-bold text-tinta">Usuarios</h1>
-        <p className="mt-2 text-cuerpo text-desvaida">
-          Alta, rol y activación. El rol se replica en las reivindicaciones del
-          token.
-        </p>
-      </header>
-
-      {error !== null && (
-        <p className="text-cuerpo font-bold text-aviso" role="alert">
-          {error}
-        </p>
-      )}
+      <CabeceraAdmin
+        titulo="Usuarios"
+        descripcion="Alta, rol y activación. El rol se replica en las reivindicaciones del token."
+      />
 
       <form
         onSubmit={crear}

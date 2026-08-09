@@ -295,7 +295,7 @@ export function PanelDeCotizaciones({
               </button>
               <button
                 type="button"
-                className="inline-flex shrink-0 items-center justify-center rounded-2xl border border-borde bg-papel px-3 text-aviso hover:bg-mesa focus-visible:outline-none focus-visible:border-tinta"
+                className="inline-flex shrink-0 items-center justify-center rounded-2xl px-3 text-aviso hover:bg-aviso/15 focus-visible:outline-none focus-visible:border focus-visible:border-tinta"
                 aria-label={`Eliminar cotización ${cada.numero}`}
                 onClick={() => setAEliminar(cada)}
               >

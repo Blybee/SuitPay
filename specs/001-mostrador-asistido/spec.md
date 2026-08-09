@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-28
 
-**Updated**: 2026-07-29 (enmienda volcado 5 — shell, Soft-Pill, tabs, default Nota de Venta, número inicial de serie)
+**Updated**: 2026-08-09 (enmienda: alta cliente auto-modal, PDF post-emisión, catálogo de comandos seleccionable, UI menor; GRE → feature 002)
 
 **Status**: Draft
 
@@ -28,7 +28,7 @@ Un vendedor abre el navegador en su puesto o en su teléfono y ya está dentro, 
 2. **Given** un catálogo que contiene "CODO FG 1/2", **When** el vendedor escribe "1/2 codo fierro", **Then** el producto aparece entre los resultados.
 3. **Given** un pedido con tres productos, **When** el vendedor cambia el tipo de documento de boleta a factura, **Then** el pedido se conserva íntegro sin volver a capturarse.
 4. **Given** un producto con precio mayorista de referencia, **When** el vendedor escribe un precio distinto sobre ese valor, **Then** el sistema lo acepta sin validarlo y el total se recalcula.
-5. **Given** un pedido listo y un cliente eventual por defecto, **When** el vendedor confirma la emisión, **Then** el comprobante se emite, queda atribuido a ese vendedor y se ofrece imprimirlo o compartirlo.
+5. **Given** un pedido listo y un cliente eventual por defecto, **When** el vendedor confirma la emisión, **Then** el comprobante se emite, queda atribuido a ese vendedor y el diálogo de éxito ofrece imprimir, guardar/descargar o compartir el PDF del proveedor cuando exista (sin reemitir).
 6. **Given** un pedido en curso, **When** el vendedor pierde la conexión y la recupera en el mismo dispositivo, **Then** el pedido sigue ahí sin pérdida de líneas.
 7. **Given** una emisión en curso, **When** el vendedor pulsa confirmar dos veces seguidas, **Then** se emite un único comprobante.
 8. **Given** una boleta cuyo importe supera los 700 soles y un cliente eventual, **When** el vendedor intenta emitirla, **Then** el sistema exige identificar al comprador antes de continuar.
@@ -54,7 +54,7 @@ El administrador carga el catálogo de productos que hoy vive en el proyecto de 
 
 ### User Story 3 - Dar de alta un cliente nuevo sin abandonar la venta (Priority: P3)
 
-Llega un cliente con RUC que nunca compró aquí. El vendedor escribe el número, el sistema detecta que no existe y le ofrece agregarlo en el mismo sitio. Consulta los datos por RUC o DNI, el vendedor los revisa y confirma, y la venta continúa donde estaba. Si escribió una razón social que coincide con varios clientes, el sistema le muestra las opciones para que elija.
+Llega un cliente con RUC que nunca compró aquí. El vendedor escribe el número y confirma con Enter; el sistema detecta que no existe, consulta el padrón de inmediato y abre el diálogo de alta con los datos precargados. El vendedor los revisa y confirma, y la venta continúa donde estaba. Si escribió una razón social que coincide con varios clientes, el sistema le muestra las opciones para que elija.
 
 **Why this priority**: es una fricción diaria concreta del sistema anterior —abandonar la venta para ir a otra ventana— y su solución es autocontenida.
 
@@ -62,8 +62,8 @@ Llega un cliente con RUC que nunca compró aquí. El vendedor escribe el número
 
 **Acceptance Scenarios**:
 
-1. **Given** un RUC que no está registrado, **When** el vendedor lo escribe, **Then** el sistema le ofrece agregarlo desde ahí mismo sin cambiar de pantalla.
-2. **Given** un RUC válido, **When** el vendedor pide traer los datos, **Then** el sistema los presenta para revisión y el vendedor confirma antes de guardarlos.
+1. **Given** un RUC o DNI que no está registrado, **When** el vendedor lo confirma con Enter (o el control de confirmar documento), **Then** el sistema consulta el padrón y abre el diálogo de alta con los datos precargados, sin paso intermedio de morph «Agregar».
+2. **Given** un RUC o DNI válido no registrado y respuesta del padrón, **When** se abre el diálogo de alta, **Then** el sistema presenta los datos para revisión y el vendedor confirma antes de guardarlos.
 3. **Given** una razón social parcial que coincide con varios clientes registrados, **When** el vendedor la escribe, **Then** el sistema presenta las coincidencias para que seleccione una.
 4. **Given** un RUC que el registro oficial marca como no habido, **When** se traen sus datos, **Then** el sistema lo advierte de forma visible y deja la decisión al vendedor.
 5. **Given** una consulta de datos que no obtiene respuesta, **When** el vendedor necesita continuar, **Then** puede escribir los datos a mano y la venta no se bloquea.
@@ -173,6 +173,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 1. **Given** un cliente con comprobantes previos, **When** el vendedor pide por comando sus últimos comprobantes, **Then** los obtiene sin abandonar la pantalla de venta.
 2. **Given** una instrucción que pretende anular, eliminar o modificar un comprobante, **When** el vendedor la escribe o la dicta, **Then** el sistema no la ejecuta y le indica dónde se realiza esa operación.
 3. **Given** una instrucción incompleta, **When** falta un dato para poder consultar, **Then** el sistema pide lo que falta en lugar de fallar.
+4. **Given** el buscador vacío o con texto que empieza por `/`, **When** el vendedor escribe `/`, **Then** ve una lista seleccionable de los comandos del catálogo cerrado (no sugerencias de producto) y, al elegir uno, el prefijo queda en el campo con los parámetros pendientes como pista.
 
 ---
 
@@ -234,11 +235,11 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 
 - **FR-020**: El sistema MUST ofrecer como opción por defecto un cliente eventual, sin exigir datos para una venta ordinaria.
 - **FR-021**: El sistema MUST exigir los datos identificatorios del cliente cuando el importe de una boleta supere los 700 soles, e impedir la emisión mientras falten.
-- **FR-022**: El campo de cliente en cabecera MUST admitir, según el tipo: RUC (factura), DNI o Nombre (boleta), y RUC/DNI/Nombre (cotización). Con documento, MUST resolver primero clientes ya registrados; si no está registrado, MUST ofrecer registrarlo (morph «Agregar»). Con Nombre, MUST permitir fijar la denominación en el pedido/cotización sin abandonar la venta.
-- **FR-023**: El sistema MUST poder traer los datos de un contribuyente a partir de su RUC o DNI, presentarlos para revisión (como mínimo razón social/denominación y dirección cuando exista) y guardarlos solo tras la confirmación del vendedor.
+- **FR-022**: El campo de cliente en cabecera MUST admitir, según el tipo: RUC (factura), DNI o Nombre (boleta), y RUC/DNI/Nombre (cotización). Con documento, MUST resolver primero clientes ya registrados; si no está registrado, tras confirmación explícita del documento (Enter o control de confirmar) MUST consultar el padrón y abrir el diálogo de alta con los datos precargados — MUST NOT exigir un paso intermedio de morph «Agregar». Con Nombre, MUST permitir fijar la denominación en el pedido/cotización sin abandonar la venta. El control «+» MAY seguir abriendo el alta vacía a demanda.
+- **FR-023**: El sistema MUST poder traer los datos de un contribuyente a partir de su RUC o DNI, presentarlos para revisión en el diálogo de alta (como mínimo razón social/denominación y dirección cuando exista) y guardarlos solo tras la confirmación del vendedor.
 - **FR-024**: El sistema MUST advertir de forma visible cuando el registro oficial señale al contribuyente como no habido, dejando la decisión al vendedor.
 - **FR-025**: Cuando una razón social parcial coincida con varios clientes, el sistema MUST presentar las coincidencias para que el vendedor elija.
-- **FR-026**: Si la consulta de datos no obtiene respuesta, el sistema MUST permitir introducirlos a mano y MUST NOT bloquear la venta.
+- **FR-026**: Si la consulta de datos no obtiene respuesta, el sistema MUST abrir el diálogo de alta en modo manual, MUST permitir introducirlos a mano y MUST NOT bloquear la venta.
 
 **Emisión**
 
@@ -278,8 +279,9 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 **Comandos**
 
 - **FR-047**: El sistema MUST admitir instrucciones de consulta, escritas o dictadas, resueltas sin abandonar la pantalla de venta.
-- **FR-047a**: Cuando el buscador opera en modo comando (texto que empieza por `/`), el sistema MUST NOT mostrar sugerencias de producto. MUST mostrar como pista (texto fantasma / placeholder de parámetros) los argumentos que aún faltan según un **catálogo cerrado** en `src/features/comandos/pistas.ts` (`CATALOGO_DE_COMANDOS`: `prefijo` + `parametros`). Todo comando nuevo —consulta o escritura con confirmación— MUST registrarse en ese catálogo; no hay interpretación libre de intenciones para las pistas.
-- **FR-048**: El sistema MUST NOT ejecutar mediante instrucción en lenguaje natural ninguna operación que cree, modifique, anule o dé de baja un comprobante. La única escritura iniciada por comando en esta entrega es `/crear vecino` (FR-034a), y MUST resolverse siempre como propuesta a confirmar —nunca como efecto inmediato.
+- **FR-047a**: Cuando el buscador opera en modo comando (texto que empieza por `/`), el sistema MUST NOT mostrar sugerencias de producto. MUST mostrar una **lista seleccionable** de entradas del **catálogo cerrado** en `src/features/comandos/pistas.ts` (`CATALOGO_DE_COMANDOS`: `prefijo` + `parametros`), filtrada por lo tecleado. Al elegir un comando, MUST rellenar el prefijo en el campo y mostrar como pista (texto fantasma / placeholder) los parámetros que aún faltan. Todo comando nuevo —consulta, escritura con confirmación o plantilla `/audio:`— MUST registrarse en ese catálogo; no hay interpretación libre de intenciones para las pistas.
+- **FR-047b**: El catálogo de esta entrega incluye al menos: `/crear vecino`, `/usar cotizacion`, `/limpiar pedido`, `/cotizacion`, `/cotizaciones`, `/vecinos`, `/vecino`, `/cliente`, `/ayuda`, y plantillas `/audio:…` de documentación de voz. Las entradas `/guia` y `/crear transportista` pertenecen a la feature `002-guias-remision` y MUST NOT implementarse aquí.
+- **FR-048**: El sistema MUST NOT ejecutar mediante instrucción en lenguaje natural ninguna operación que cree, modifique, anule o dé de baja un comprobante. Las escrituras iniciadas por comando en esta entrega (`/crear vecino`, y cuando se implementen `/usar cotizacion` / `/limpiar pedido`) MUST resolverse siempre como propuesta a confirmar —nunca como efecto inmediato. Las plantillas `/audio:…` MUST NOT emitir comprobantes; solo documentan frases canónicas que se resuelven como propuesta editable.
 - **FR-049**: Cuando una instrucción esté incompleta o admita varias interpretaciones de cliente o de producto, el sistema MUST pedir lo que falta o presentar las coincidencias.
 
 **Contingencia**
@@ -294,6 +296,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 
 - **FR-053**: El sistema MUST permitir imprimir el comprobante en formato A4 desde los puestos de escritorio.
 - **FR-054**: El sistema MUST permitir obtener el comprobante como archivo para compartirlo con el cliente, especialmente desde el móvil.
+- **FR-054a**: Tras una emisión exitosa con valor tributario, el diálogo de éxito MUST ofrecer de inmediato imprimir, guardar/descargar y compartir usando la URL de PDF devuelta por el proveedor en la respuesta de emisión cuando exista; MUST NOT exigir una nueva emisión. Si no hay PDF (p. ej. nota de venta interna), MUST indicarlo con claridad.
 - **FR-055**: Un fallo de impresión MUST NOT invalidar ni repetir una emisión ya realizada; el comprobante MUST poder reimprimirse o compartirse.
 
 ### Key Entities
@@ -340,7 +343,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **Los precios del catálogo incluyen el impuesto** y el desglose lo realiza el proveedor de emisión.
 - **El catálogo ronda los 500 productos** con nombres estructurados por material, medida y marca, lo que favorece tanto la búsqueda tolerante como el emparejamiento de las capturas.
 - **La empresa dispone de conexión estable** y, ante caída del router, los vendedores pueden usar la red de sus teléfonos.
-- **El alcance de esta entrega no incluye** contabilidad, cobranzas como módulo (incluido registro de cobro / ventas a crédito como UX), guía de remisión, panel del jefe ni alertas de mercadería por agotarse, sugerencias de compra, notas de crédito como flujo completo, migración masiva de clientes, aplicación nativa, impresión desde el móvil, ni comandos que escriban salvo `/crear vecino` con confirmación explícita (FR-034a). Ver `concept.md`.
+- **El alcance de esta entrega no incluye** contabilidad, cobranzas como módulo (incluido registro de cobro / ventas a crédito como UX), panel del jefe ni alertas de mercadería por agotarse, sugerencias de compra, notas de crédito como flujo completo, migración masiva de clientes, aplicación nativa, impresión desde el móvil, ni la implementación completa de todos los parsers de consulta del catálogo (las pistas y la lista seleccionable sí). **La guía de remisión electrónica** y el alta de transportistas se especifican en la feature `002-guias-remision` (fuera del código de esta entrega). Las únicas escrituras por comando implementadas aquí siguen el principio I (propuesta a confirmar). Ver `concept.md`.
 - **El inventario no forma parte de esta entrega.** Mientras SuitPay y el sistema anterior operen aislados, cualquier cifra de stock sería inconsistente por diseño. El momento en que SuitPay tome el control del inventario es una decisión posterior.
 - **La captura por voz y fotografía reutiliza herramientas ya existentes** en el proyecto de la tienda virtual de la empresa. Están funcionando pero acopladas a ese proyecto, y el grado de reelaboración necesario está sin evaluar. Si resultara profundo, las historias 6 y 7 deberían replantearse.
 - **El pedido en curso no viaja entre dispositivos.** Cambiar de dispositivo obliga a rehacerlo, y el negocio lo acepta.

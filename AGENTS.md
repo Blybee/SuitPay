@@ -151,6 +151,11 @@ doble local del proveedor:
    no consume serie ni llama al proveedor: sirve para probar una venta completa sin
    token real. Boleta/factura requieren serie asignada (admin) y proveedor (real o
    `PROVEEDOR_SIMULADO=true`).
+6. `SUITPAY_FASE=DEMO` (omisión): en admin, las series reguladas se persisten en
+   Firestore **sin sync al proveedor** (el demo a menudo no deja crear series).
+   Documentación: `docs/FASE-OPERACION.md`. Antes del lanzamiento oficial:
+   `SUITPAY_FASE=PRODUCCION`. Toasts: `NotificacionIsla` /
+   `docs/UI-NOTIFICACIONES-Y-MIGAS.md`. Migas admin: `MigasDePan` / `CabeceraAdmin`.
 
 ### Camino de nube (produccion / dev real)
 Para operar contra Firebase real (`VITE_USAR_EMULADORES=false`) hacen falta secretos

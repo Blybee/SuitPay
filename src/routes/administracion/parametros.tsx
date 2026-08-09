@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
+import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import {
   guardarParametrosFn,
   leerParametrosFn,
@@ -26,8 +28,6 @@ function PantallaDeParametros() {
   const [parametros, setParametros] = useState<Parametros | null>(null)
   const [umbralSoles, setUmbralSoles] = useState('700')
   const [formato, setFormato] = useState<'a4' | 'rollo'>('a4')
-  const [error, setError] = useState<string | null>(null)
-  const [ok, setOk] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
 
   useEffect(() => {
@@ -35,7 +35,10 @@ function PantallaDeParametros() {
       setOcupado(true)
       const respuesta = await leerParametrosFn()
       if (!respuesta.ok || respuesta.parametros === undefined) {
-        setError(respuesta.error?.mensaje ?? 'No se leyeron parámetros.')
+        usarNotificaciones.getState().mostrar({
+          tono: 'error',
+          mensaje: respuesta.error?.mensaje ?? 'No se leyeron parámetros.',
+        })
         setOcupado(false)
         return
       }
@@ -51,11 +54,12 @@ function PantallaDeParametros() {
   async function guardar(evento: FormEvent): Promise<void> {
     evento.preventDefault()
     setOcupado(true)
-    setError(null)
-    setOk(null)
     const soles = Number(umbralSoles)
     if (!Number.isFinite(soles) || soles <= 0) {
-      setError('El umbral debe ser un importe positivo en soles.')
+      usarNotificaciones.getState().mostrar({
+        tono: 'error',
+        mensaje: 'El umbral debe ser un importe positivo en soles.',
+      })
       setOcupado(false)
       return
     }
@@ -69,15 +73,22 @@ function PantallaDeParametros() {
         },
       })
       if (!respuesta.ok || respuesta.parametros === undefined) {
-        setError(respuesta.error?.mensaje ?? 'No se guardaron.')
+        usarNotificaciones.getState().mostrar({
+          tono: 'error',
+          mensaje: respuesta.error?.mensaje ?? 'No se guardaron.',
+        })
         return
       }
       setParametros(respuesta.parametros)
-      setOk(
-        `Guardado. Umbral: ${formatearImporte(respuesta.parametros.umbralIdentificacionBoleta)}.`,
-      )
+      usarNotificaciones.getState().mostrar({
+        tono: 'exito',
+        mensaje: `Guardado. Umbral: ${formatearImporte(respuesta.parametros.umbralIdentificacionBoleta)}.`,
+      })
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de red.')
+      usarNotificaciones.getState().mostrar({
+        tono: 'error',
+        mensaje: err instanceof Error ? err.message : 'Error de red.',
+      })
     } finally {
       setOcupado(false)
     }
@@ -85,24 +96,10 @@ function PantallaDeParametros() {
 
   return (
     <div className="mx-auto flex max-w-xl flex-col gap-6 px-6 py-8">
-      <header>
-        <h1 className="text-cabecera font-bold text-tinta">Parámetros</h1>
-        <p className="mt-2 text-cuerpo text-desvaida">
-          El umbral de identificación es de origen regulatorio: cámbialo aquí
-          sin desplegar código.
-        </p>
-      </header>
-
-      {error !== null && (
-        <p className="text-cuerpo font-bold text-aviso" role="alert">
-          {error}
-        </p>
-      )}
-      {ok !== null && (
-        <p className="text-cuerpo font-bold text-sello" role="status">
-          {ok}
-        </p>
-      )}
+      <CabeceraAdmin
+        titulo="Parámetros"
+        descripcion="El umbral de identificación es de origen regulatorio: cámbialo aquí sin desplegar código."
+      />
 
       <form
         onSubmit={guardar}

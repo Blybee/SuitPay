@@ -1,6 +1,8 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
+import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
+import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import {
   crearEstablecimientoFn,
@@ -20,6 +22,8 @@ import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
 
 /**
  * Establecimientos y series por vendedor (T083 / FR-031 / decisión 12).
+ * En DEMO las series se guardan en Firestore sin sync al proveedor
+ * (docs/FASE-OPERACION.md).
  */
 
 export const Route = createFileRoute('/administracion/series')({
@@ -30,13 +34,16 @@ export const Route = createFileRoute('/administracion/series')({
   ),
 })
 
+function avisar(tono: 'exito' | 'error' | 'info', mensaje: string): void {
+  usarNotificaciones.getState().mostrar({ tono, mensaje })
+}
+
 function PantallaDeSeries() {
   const [establecimientos, setEstablecimientos] = useState<
     readonly Establecimiento[]
   >([])
   const [series, setSeries] = useState<readonly SerieAdministrativa[]>([])
   const [vendedores, setVendedores] = useState<readonly UsuarioListado[]>([])
-  const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
 
   const [codigoAnexo, setCodigoAnexo] = useState('0000')
@@ -54,7 +61,6 @@ function PantallaDeSeries() {
 
   async function cargar(): Promise<void> {
     setOcupado(true)
-    setError(null)
     try {
       const [est, ser, us] = await Promise.all([
         listarEstablecimientosFn(),
@@ -62,15 +68,15 @@ function PantallaDeSeries() {
         listarUsuariosFn(),
       ])
       if (est?.ok !== true) {
-        setError(est?.error?.mensaje ?? 'No se listaron establecimientos.')
+        avisar('error', est?.error?.mensaje ?? 'No se listaron establecimientos.')
         return
       }
       if (ser?.ok !== true) {
-        setError(ser?.error?.mensaje ?? 'No se listaron series.')
+        avisar('error', ser?.error?.mensaje ?? 'No se listaron series.')
         return
       }
       if (us?.ok !== true) {
-        setError(us?.error?.mensaje ?? 'No se listaron usuarios.')
+        avisar('error', us?.error?.mensaje ?? 'No se listaron usuarios.')
         return
       }
       setEstablecimientos(est.establecimientos ?? [])
@@ -88,7 +94,7 @@ function PantallaDeSeries() {
         if (primero) setVendedorId(primero.uid)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de red.')
+      avisar('error', err instanceof Error ? err.message : 'Error de red.')
     } finally {
       setOcupado(false)
     }
@@ -105,7 +111,6 @@ function PantallaDeSeries() {
   async function crearEst(evento: FormEvent): Promise<void> {
     evento.preventDefault()
     setOcupado(true)
-    setError(null)
     try {
       const respuesta = await crearEstablecimientoFn({
         data: {
@@ -116,14 +121,18 @@ function PantallaDeSeries() {
         },
       })
       if (!respuesta.ok) {
-        setError(respuesta.error?.mensaje ?? 'No se creó el establecimiento.')
+        avisar(
+          'error',
+          respuesta.error?.mensaje ?? 'No se creó el establecimiento.',
+        )
         return
       }
       setDireccion('')
       setNombreEst('')
+      avisar('exito', 'Establecimiento creado.')
       await cargar()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de red.')
+      avisar('error', err instanceof Error ? err.message : 'Error de red.')
     } finally {
       setOcupado(false)
     }
@@ -132,7 +141,6 @@ function PantallaDeSeries() {
   async function crearSer(evento: FormEvent): Promise<void> {
     evento.preventDefault()
     setOcupado(true)
-    setError(null)
     try {
       const respuesta = await crearSerieFn({
         data: {
@@ -144,12 +152,16 @@ function PantallaDeSeries() {
         },
       })
       if (!respuesta.ok) {
-        setError(respuesta.error?.mensaje ?? 'No se creó la serie.')
+        avisar('error', respuesta.error?.mensaje ?? 'No se creó la serie.')
         return
       }
+      avisar(
+        'exito',
+        `Serie ${serie} asignada (${tipoDocumento}). En DEMO queda en Firestore para pruebas.`,
+      )
       await cargar()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error de red.')
+      avisar('error', err instanceof Error ? err.message : 'Error de red.')
     } finally {
       setOcupado(false)
     }
@@ -157,21 +169,10 @@ function PantallaDeSeries() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-8 px-6 py-8">
-      <header>
-        <h1 className="text-cabecera font-bold text-tinta">
-          Series y establecimientos
-        </h1>
-        <p className="mt-2 text-cuerpo text-desvaida">
-          Una serie por vendedor y tipo. Las reguladas se sincronizan con el
-          proveedor.
-        </p>
-      </header>
-
-      {error !== null && (
-        <p className="text-cuerpo font-bold text-aviso" role="alert">
-          {error}
-        </p>
-      )}
+      <CabeceraAdmin
+        titulo="Series y establecimientos"
+        descripcion="Una serie por vendedor y tipo. En DEMO las reguladas se guardan en Firestore sin sync al proveedor (docs/FASE-OPERACION.md)."
+      />
 
       <section className="rounded-3xl border border-borde bg-papel p-6">
         <h2 className="text-cuerpo font-bold">Establecimientos</h2>
@@ -242,7 +243,9 @@ function PantallaDeSeries() {
                       data: { establecimientoId: est.id },
                     })
                     if (!r.ok) {
-                      setError(r.error?.mensaje ?? 'No se eliminó.')
+                      avisar('error', r.error?.mensaje ?? 'No se eliminó.')
+                    } else {
+                      avisar('exito', 'Establecimiento eliminado.')
                     }
                     await cargar()
                   })()
@@ -362,7 +365,9 @@ function PantallaDeSeries() {
                         data: { serieId: s.id },
                       })
                       if (!r.ok) {
-                        setError(r.error?.mensaje ?? 'No se desactivó.')
+                        avisar('error', r.error?.mensaje ?? 'No se desactivó.')
+                      } else {
+                        avisar('info', 'Serie desactivada.')
                       }
                       await cargar()
                     })()

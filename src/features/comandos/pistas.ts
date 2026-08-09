@@ -9,6 +9,8 @@ export interface DefinicionDeComando {
   readonly prefijo: string
   /** Tokens tras el prefijo, p. ej. `{alias}`, `{DNI/RUC}`. */
   readonly parametros: readonly string[]
+  /** Texto breve para la lista seleccionable. */
+  readonly descripcion: string
 }
 
 /** Más específico primero (prefijos más largos). */
@@ -17,6 +19,85 @@ export const CATALOGO_DE_COMANDOS: readonly DefinicionDeComando[] = [
     id: 'crear-vecino',
     prefijo: '/crear vecino',
     parametros: ['{alias}', '{DNI/RUC}'],
+    descripcion: 'Alta de vecino con cotización',
+  },
+  {
+    id: 'usar-cotizacion',
+    prefijo: '/usar cotizacion',
+    parametros: ['{n}'],
+    descripcion: 'Cargar cotización al pedido',
+  },
+  {
+    id: 'limpiar-pedido',
+    prefijo: '/limpiar pedido',
+    parametros: [],
+    descripcion: 'Vaciar el pedido en curso',
+  },
+  {
+    id: 'cotizacion',
+    prefijo: '/cotizacion',
+    parametros: ['{n}'],
+    descripcion: 'Ver cotización por número',
+  },
+  {
+    id: 'cotizaciones',
+    prefijo: '/cotizaciones',
+    parametros: [],
+    descripcion: 'Ir al tab Cotizaciones',
+  },
+  {
+    id: 'vecino',
+    prefijo: '/vecino',
+    parametros: ['{alias}'],
+    descripcion: 'Abrir tab de un vecino',
+  },
+  {
+    id: 'vecinos',
+    prefijo: '/vecinos',
+    parametros: [],
+    descripcion: 'Ir al tab Vecinos',
+  },
+  {
+    id: 'cliente',
+    prefijo: '/cliente',
+    parametros: ['{DNI/RUC}'],
+    descripcion: 'Buscar cliente local',
+  },
+  {
+    id: 'ayuda',
+    prefijo: '/ayuda',
+    parametros: [],
+    descripcion: 'Listar comandos disponibles',
+  },
+  {
+    id: 'audio-convierte-boleta-sin',
+    prefijo: '/audio: convierte',
+    parametros: ['{n}', 'a boleta sin dni'],
+    descripcion: 'Voz: convierte {n} a boleta sin dni',
+  },
+  {
+    id: 'audio-convierte-boleta-con',
+    prefijo: '/audio: boleta con dni',
+    parametros: ['{n}', '{DNI}'],
+    descripcion: 'Voz: convierte {n} a boleta con dni {DNI}',
+  },
+  {
+    id: 'audio-convierte-factura',
+    prefijo: '/audio: factura con ruc',
+    parametros: ['{n}', '{RUC}'],
+    descripcion: 'Voz: convierte {n} a factura con ruc {RUC}',
+  },
+  {
+    id: 'audio-agrega',
+    prefijo: '/audio: agrega',
+    parametros: ['{cantidad}', '{producto}'],
+    descripcion: 'Voz: agrega {cantidad} {producto}',
+  },
+  {
+    id: 'audio-cambia-tipo',
+    prefijo: '/audio: cambia a',
+    parametros: ['{nota|boleta|factura}'],
+    descripcion: 'Voz: cambia a nota/boleta/factura',
   },
 ]
 
@@ -53,13 +134,54 @@ function tokensTrasPrefijo(resto: string): readonly string[] {
   return recortado.split(/\s+/).filter((t) => t.length > 0)
 }
 
+function plantillaDe(comando: DefinicionDeComando): string {
+  return comando.parametros.length === 0
+    ? comando.prefijo
+    : `${comando.prefijo} ${comando.parametros.join(' ')}`
+}
+
+function claveNormalizada(escrito: string): string {
+  return escrito.trimStart().toLowerCase().replace(/\s+/g, ' ').trimEnd()
+}
+
+/**
+ * Comandos del catálogo que coinciden con lo tecleado (lista seleccionable).
+ * Con solo `/` devuelve todo el catálogo.
+ */
+export function comandosCoincidentes(
+  termino: string,
+): readonly DefinicionDeComando[] {
+  if (!esModoComando(termino)) return []
+  const clave = claveNormalizada(termino)
+  if (clave === '/') return CATALOGO_DE_COMANDOS
+
+  return CATALOGO_DE_COMANDOS.filter((comando) => {
+    const prefijo = comando.prefijo.toLowerCase()
+    const plantilla = plantillaDe(comando).toLowerCase()
+    return (
+      prefijo.startsWith(clave) ||
+      clave.startsWith(`${prefijo} `) ||
+      clave === prefijo ||
+      plantilla.startsWith(clave)
+    )
+  })
+}
+
+/**
+ * Texto a poner en el buscador al elegir un comando de la lista.
+ * Deja un espacio final si faltan parámetros (para el fantasma).
+ */
+export function textoAlElegirComando(comando: DefinicionDeComando): string {
+  if (comando.parametros.length === 0) return comando.prefijo
+  return `${comando.prefijo} `
+}
+
 /**
  * Resuelve la pista según lo tecleado.
  *
- * - `/` → fantasma `crear vecino {alias} {DNI/RUC}`
+ * - `/` → fantasma del primer comando coincidente (la lista muestra el catálogo)
  * - `/crear ve` → completa el prefijo + params
  * - `/crear vecino` → ` {alias} {DNI/RUC}`
- * - `/crear vecino wilmer` → ` {DNI/RUC}`
  * - completo → ``
  */
 export function pistaDeComando(termino: string): PistaDeComando {
@@ -68,7 +190,7 @@ export function pistaDeComando(termino: string): PistaDeComando {
   }
 
   const escrito = termino.trimStart()
-  const clave = escrito.toLowerCase().replace(/\s+/g, ' ').trimEnd()
+  const clave = claveNormalizada(termino)
 
   const coincidencia = CATALOGO_DE_COMANDOS.find((comando) => {
     const prefijo = comando.prefijo.toLowerCase()
@@ -81,23 +203,18 @@ export function pistaDeComando(termino: string): PistaDeComando {
 
   if (coincidencia === undefined) {
     if (clave === '/') {
-      const listado = CATALOGO_DE_COMANDOS.map(
-        (c) => `${c.prefijo.slice(1)} ${c.parametros.join(' ')}`,
-      ).join(' · ')
-      return { fantasma: listado, plantilla: `/${listado}` }
+      return { fantasma: '', plantilla: '/comando…' }
     }
     return { fantasma: '', plantilla: null }
   }
 
   const prefijo = coincidencia.prefijo
   const params = coincidencia.parametros.join(' ')
-  const plantilla = `${prefijo} ${params}`
+  const plantilla = plantillaDe(coincidencia)
   const prefijoClave = prefijo.toLowerCase()
 
   // Prefijo incompleto: completar lo que falta del prefijo + todos los params.
   if (clave.length < prefijoClave.length) {
-    // Comparar carácter a carácter sobre el prefijo canónico vs lo escrito
-    // en minúsculas (sin colapsar espacios del valor crudo para el slice).
     const escritoMinus = escrito.toLowerCase()
     let i = 0
     while (
@@ -107,17 +224,25 @@ export function pistaDeComando(termino: string): PistaDeComando {
     ) {
       i += 1
     }
-    // Si divergen por espacios normalizados, usar longitud del trim.
     const completar =
       i < prefijo.length ? prefijo.slice(Math.min(i, prefijo.length)) : ''
+    if (params.length === 0) {
+      return {
+        fantasma: completar.length > 0 ? completar : '',
+        plantilla,
+      }
+    }
     const cuerpo =
       completar.length > 0 ? `${completar} ${params}` : ` ${params}`
     return { fantasma: cuerpo, plantilla }
   }
 
+  if (coincidencia.parametros.length === 0) {
+    return { fantasma: '', plantilla }
+  }
+
   const resto = escrito.slice(prefijo.length)
   const tokens = tokensTrasPrefijo(resto)
-  // El token en curso no se muestra otra vez: faltan los siguientes.
   const restantes = coincidencia.parametros.slice(tokens.length)
 
   if (restantes.length === 0) {

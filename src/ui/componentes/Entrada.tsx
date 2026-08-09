@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
-import { Camera, Eye, Mic, Minus, Search } from 'lucide-react'
+import { Camera, Eye, Mic, Search } from 'lucide-react'
 import {
+  comandosCoincidentes,
   esModoComando,
   pistaDeComando,
   placeholderDelBuscador,
+  textoAlElegirComando,
 } from '../../features/comandos/pistas.ts'
+import type { DefinicionDeComando } from '../../features/comandos/pistas.ts'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type {
   ProductoBuscable,
@@ -17,8 +20,8 @@ import type {
  * Soft-Pill: cápsulas, borde sutil, full-bleed del área de trabajo.
  *
  * Las sugerencias flotan sobre el contenido (no lo desplazan) y se pueden
- * minimizar; al minimizar, un ojo al final del campo las restaura.
- * Con `/` (modo comando) no se muestran: hay texto fantasma de parámetros.
+ * ocultar; al ocultar, un ojo al final del campo las restaura.
+ * Con `/` (modo comando): lista seleccionable del catálogo + fantasma de parámetros.
  */
 
 export interface PropsDeEntrada {
@@ -60,13 +63,18 @@ export function Entrada({
 
   const modoComando = esModoComando(termino)
   const pista = modoComando ? pistaDeComando(termino) : null
+  const comandos = modoComando ? comandosCoincidentes(termino) : []
   const sugiriendoProducto = termino.length > 0 && !modoComando
+  const sugiriendoComando = modoComando
   const coincidencias = resultado.coincidencias
-  const panelAbierto = sugiriendoProducto && !minimizado
-  const mostrarOjo = sugiriendoProducto && minimizado
+  const panelProductoAbierto = sugiriendoProducto && !minimizado
+  const panelComandoAbierto = sugiriendoComando && !minimizado
+  const panelAbierto = panelProductoAbierto || panelComandoAbierto
+  const mostrarOjo =
+    (sugiriendoProducto || sugiriendoComando) && minimizado
   const placeholder = placeholderDelBuscador(termino)
 
-  function elegir(indice: number): void {
+  function elegirProducto(indice: number): void {
     const elegida = coincidencias[indice]
     if (elegida === undefined) return
     onElegirProducto(elegida.elemento)
@@ -75,10 +83,51 @@ export function Entrada({
     campo.current?.focus()
   }
 
+  function elegirComando(indice: number): void {
+    const elegida = comandos[indice]
+    if (elegida === undefined) return
+    onTerminoCambia(textoAlElegirComando(elegida))
+    setMinimizado(false)
+    setResaltado(0)
+    campo.current?.focus()
+  }
+
   function alPulsarTecla(evento: React.KeyboardEvent<HTMLInputElement>): void {
     if (modoComando) {
       if (evento.key === 'Escape') {
         onTerminoCambia('')
+        setMinimizado(false)
+        return
+      }
+      if (minimizado) {
+        if (evento.key === 'ArrowDown') {
+          evento.preventDefault()
+          setMinimizado(false)
+        }
+        return
+      }
+      if (comandos.length === 0) return
+      if (evento.key === 'ArrowDown') {
+        evento.preventDefault()
+        setResaltado((actual) => (actual + 1) % comandos.length)
+      } else if (evento.key === 'ArrowUp') {
+        evento.preventDefault()
+        setResaltado(
+          (actual) => (actual - 1 + comandos.length) % comandos.length,
+        )
+      } else if (evento.key === 'Enter' || evento.key === 'Tab') {
+        // Completar prefijo desde la lista; no ejecuta el comando.
+        if (comandos.length > 0 && termino.trim() === '/') {
+          evento.preventDefault()
+          elegirComando(resaltado)
+        } else if (
+          evento.key === 'Tab' &&
+          comandos.length > 0 &&
+          !termino.includes(' ')
+        ) {
+          evento.preventDefault()
+          elegirComando(resaltado)
+        }
       }
       return
     }
@@ -111,7 +160,7 @@ export function Entrada({
       )
     } else if (evento.key === 'Enter') {
       evento.preventDefault()
-      elegir(resaltado)
+      elegirProducto(resaltado)
     }
   }
 
@@ -156,15 +205,21 @@ export function Entrada({
               onKeyDown={alPulsarTecla}
               placeholder={placeholder}
               aria-label="Buscar producto o escribir un comando"
-              aria-autocomplete={modoComando ? 'none' : 'list'}
-              aria-expanded={modoComando ? false : panelAbierto}
+              aria-autocomplete="list"
+              aria-expanded={panelAbierto}
               aria-controls={
-                modoComando ? undefined : 'sugerencias-de-producto'
+                panelComandoAbierto
+                  ? 'sugerencias-de-comando'
+                  : panelProductoAbierto
+                    ? 'sugerencias-de-producto'
+                    : undefined
               }
               aria-activedescendant={
-                panelAbierto && coincidencias.length > 0
-                  ? `sugerencia-${resaltado}`
-                  : undefined
+                panelComandoAbierto && comandos.length > 0
+                  ? `comando-${resaltado}`
+                  : panelProductoAbierto && coincidencias.length > 0
+                    ? `sugerencia-${resaltado}`
+                    : undefined
               }
               aria-describedby={
                 modoComando && pista?.plantilla ? 'pista-comando' : undefined
@@ -237,11 +292,11 @@ export function Entrada({
               'border-b border-borde bg-papel shadow-lg',
             ].join(' ')}
           >
-            <div className="flex items-center justify-end border-b border-borde px-2 py-1">
+            <div className="flex items-center justify-center border-b border-borde px-2 py-1">
               <button
                 type="button"
-                aria-label="Minimizar resultados de búsqueda"
-                title="Minimizar"
+                aria-label="Ocultar resultados de búsqueda"
+                title="Ocultar resultados"
                 onClick={() => {
                   setMinimizado(true)
                   campo.current?.focus()
@@ -252,15 +307,24 @@ export function Entrada({
                   'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
                 ].join(' ')}
               >
-                <Minus className="size-5" aria-hidden />
+                <Eye className="size-5" aria-hidden />
               </button>
             </div>
-            <Sugerencias
-              resultado={resultado}
-              resaltado={resaltado}
-              onElegir={elegir}
-              onResaltar={setResaltado}
-            />
+            {panelComandoAbierto ? (
+              <SugerenciasDeComando
+                comandos={comandos}
+                resaltado={resaltado}
+                onElegir={elegirComando}
+                onResaltar={setResaltado}
+              />
+            ) : (
+              <Sugerencias
+                resultado={resultado}
+                resaltado={resaltado}
+                onElegir={elegirProducto}
+                onResaltar={setResaltado}
+              />
+            )}
           </div>
         )}
       </div>
@@ -301,6 +365,81 @@ function BotonDeCaptura({
     >
       {children}
     </button>
+  )
+}
+
+function SugerenciasDeComando({
+  comandos,
+  resaltado,
+  onElegir,
+  onResaltar,
+}: {
+  readonly comandos: readonly DefinicionDeComando[]
+  readonly resaltado: number
+  readonly onElegir: (indice: number) => void
+  readonly onResaltar: (indice: number) => void
+}) {
+  if (comandos.length === 0) {
+    return (
+      <div className="w-full bg-papel px-4 py-3">
+        <p className="text-cuerpo font-bold text-aviso">
+          Ningún comando coincide
+        </p>
+        <p className="text-cuerpo text-desvaida">
+          Escribe `/ayuda` o elige otro prefijo del catálogo.
+        </p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="w-full bg-papel">
+      <ul
+        id="sugerencias-de-comando"
+        role="listbox"
+        aria-label="Comandos disponibles"
+        className="max-h-80 overflow-y-auto"
+      >
+        {comandos.map((comando, indice) => {
+          const plantilla =
+            comando.parametros.length === 0
+              ? comando.prefijo
+              : `${comando.prefijo} ${comando.parametros.join(' ')}`
+          return (
+            <li
+              key={comando.id}
+              id={`comando-${indice}`}
+              role="option"
+              aria-selected={indice === resaltado}
+            >
+              <button
+                type="button"
+                onMouseEnter={() => onResaltar(indice)}
+                onClick={() => onElegir(indice)}
+                className={[
+                  'flex min-h-11 w-full flex-col items-start gap-0.5 px-4 py-2 text-left',
+                  indice === resaltado
+                    ? 'bg-tinta text-papel'
+                    : 'text-tinta hover:bg-mesa',
+                ].join(' ')}
+              >
+                <span className="font-mono text-cuerpo font-bold">
+                  {plantilla}
+                </span>
+                <span
+                  className={[
+                    'text-etiqueta',
+                    indice === resaltado ? 'text-papel/70' : 'text-desvaida',
+                  ].join(' ')}
+                >
+                  {comando.descripcion}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ul>
+    </div>
   )
 }
 

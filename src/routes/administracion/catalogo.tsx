@@ -1,7 +1,9 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
 import { importarCatalogoFn } from '../../features/catalogo/importar.funciones.ts'
 import type { ResumenDeImportacion } from '../../features/catalogo/importar.funciones.ts'
+import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 
@@ -24,11 +26,9 @@ function PantallaDeCatalogo() {
   const [archivoNombre, setArchivoNombre] = useState<string | null>(null)
   const [contenido, setContenido] = useState<string | null>(null)
   const [resumen, setResumen] = useState<ResumenDeImportacion | null>(null)
-  const [error, setError] = useState<string | null>(null)
   const [ocupado, setOcupado] = useState(false)
 
   async function leerArchivo(archivo: File): Promise<void> {
-    setError(null)
     setResumen(null)
     setArchivoNombre(archivo.name)
     const texto = await archivo.text()
@@ -38,7 +38,6 @@ function PantallaDeCatalogo() {
   async function validar(): Promise<void> {
     if (contenido === null) return
     setOcupado(true)
-    setError(null)
     try {
       const resultado = await importarCatalogoFn({
         data: {
@@ -48,12 +47,23 @@ function PantallaDeCatalogo() {
         },
       })
       if (!resultado.ok || resultado.resumen === undefined) {
-        setError(resultado.error?.mensaje ?? 'No se pudo validar el catálogo.')
+        usarNotificaciones.getState().mostrar({
+          tono: 'error',
+          mensaje:
+            resultado.error?.mensaje ?? 'No se pudo validar el catálogo.',
+        })
         return
       }
       setResumen(resultado.resumen)
+      usarNotificaciones.getState().mostrar({
+        tono: 'info',
+        mensaje: 'Validación lista. Revisa el resumen antes de publicar.',
+      })
     } catch (err) {
-      setError(mensajeDeError(err))
+      usarNotificaciones.getState().mostrar({
+        tono: 'error',
+        mensaje: mensajeDeError(err),
+      })
     } finally {
       setOcupado(false)
     }
@@ -62,7 +72,6 @@ function PantallaDeCatalogo() {
   async function publicar(): Promise<void> {
     if (contenido === null) return
     setOcupado(true)
-    setError(null)
     try {
       const resultado = await importarCatalogoFn({
         data: {
@@ -72,12 +81,23 @@ function PantallaDeCatalogo() {
         },
       })
       if (!resultado.ok || resultado.resumen === undefined) {
-        setError(resultado.error?.mensaje ?? 'No se pudo publicar el catálogo.')
+        usarNotificaciones.getState().mostrar({
+          tono: 'error',
+          mensaje:
+            resultado.error?.mensaje ?? 'No se pudo publicar el catálogo.',
+        })
         return
       }
       setResumen(resultado.resumen)
+      usarNotificaciones.getState().mostrar({
+        tono: 'exito',
+        mensaje: 'Catálogo publicado.',
+      })
     } catch (err) {
-      setError(mensajeDeError(err))
+      usarNotificaciones.getState().mostrar({
+        tono: 'error',
+        mensaje: mensajeDeError(err),
+      })
     } finally {
       setOcupado(false)
     }
@@ -89,13 +109,10 @@ function PantallaDeCatalogo() {
 
   return (
     <div className="flex min-h-full flex-col gap-6 px-6 py-8">
-      <header>
-        <h1 className="text-cabecera font-bold text-tinta">Catálogo</h1>
-        <p className="mt-2 max-w-2xl text-cuerpo text-desvaida">
-          Carga el JSON exportado de la tienda. Revisa el resumen antes de
-          publicar: nada se aplica hasta que confirmes.
-        </p>
-      </header>
+      <CabeceraAdmin
+        titulo="Catálogo"
+        descripcion="Carga el JSON exportado de la tienda. Revisa el resumen antes de publicar: nada se aplica hasta que confirmes."
+      />
 
       <section className="rounded-3xl border border-borde bg-papel p-6 shadow-sm">
         <label className="flex cursor-pointer flex-col gap-2">
@@ -137,12 +154,6 @@ function PantallaDeCatalogo() {
           </button>
         </div>
       </section>
-
-      {error !== null && (
-        <p className="rounded-2xl bg-aviso/15 px-4 py-3 font-bold text-aviso">
-          {error}
-        </p>
-      )}
 
       {resumen !== null && <Resumen resumen={resumen} />}
     </div>

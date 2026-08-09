@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccesoRouteImport } from './routes/acceso'
+import { Route as AdministracionRouteRouteImport } from './routes/administracion/route'
 import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as AdministracionIndexRouteImport } from './routes/administracion/index'
 import { Route as AdministracionCatalogoRouteImport } from './routes/administracion/catalogo'
@@ -31,36 +32,41 @@ const AccesoRoute = AccesoRouteImport.update({
   path: '/acceso',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AdministracionRouteRoute = AdministracionRouteRouteImport.update({
+  id: '/administracion',
+  path: '/administracion',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConfiguracionRoute = ConfiguracionRouteImport.update({
   id: '/configuracion',
   path: '/configuracion',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdministracionIndexRoute = AdministracionIndexRouteImport.update({
-  id: '/administracion/',
-  path: '/administracion/',
-  getParentRoute: () => rootRouteImport,
+  id: '/',
+  path: '/',
+  getParentRoute: () => AdministracionRouteRoute,
 } as any)
 const AdministracionCatalogoRoute = AdministracionCatalogoRouteImport.update({
-  id: '/administracion/catalogo',
-  path: '/administracion/catalogo',
-  getParentRoute: () => rootRouteImport,
+  id: '/catalogo',
+  path: '/catalogo',
+  getParentRoute: () => AdministracionRouteRoute,
 } as any)
 const AdministracionParametrosRoute =
   AdministracionParametrosRouteImport.update({
-    id: '/administracion/parametros',
-    path: '/administracion/parametros',
-    getParentRoute: () => rootRouteImport,
+    id: '/parametros',
+    path: '/parametros',
+    getParentRoute: () => AdministracionRouteRoute,
   } as any)
 const AdministracionSeriesRoute = AdministracionSeriesRouteImport.update({
-  id: '/administracion/series',
-  path: '/administracion/series',
-  getParentRoute: () => rootRouteImport,
+  id: '/series',
+  path: '/series',
+  getParentRoute: () => AdministracionRouteRoute,
 } as any)
 const AdministracionUsuariosRoute = AdministracionUsuariosRouteImport.update({
-  id: '/administracion/usuarios',
-  path: '/administracion/usuarios',
-  getParentRoute: () => rootRouteImport,
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => AdministracionRouteRoute,
 } as any)
 const ComprobantesIndexRoute = ComprobantesIndexRouteImport.update({
   id: '/comprobantes/',
@@ -81,6 +87,7 @@ const CotizacionesIndexRoute = CotizacionesIndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/administracion': typeof AdministracionRouteRouteWithChildren
   '/acceso': typeof AccesoRoute
   '/configuracion': typeof ConfiguracionRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
@@ -108,6 +115,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/administracion': typeof AdministracionRouteRouteWithChildren
   '/acceso': typeof AccesoRoute
   '/configuracion': typeof ConfiguracionRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
@@ -123,6 +131,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/administracion'
     | '/acceso'
     | '/configuracion'
     | '/administracion/catalogo'
@@ -149,6 +158,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/administracion'
     | '/acceso'
     | '/configuracion'
     | '/administracion/catalogo'
@@ -163,14 +173,10 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdministracionRouteRoute: typeof AdministracionRouteRouteWithChildren
   AccesoRoute: typeof AccesoRoute
   ConfiguracionRoute: typeof ConfiguracionRoute
-  AdministracionCatalogoRoute: typeof AdministracionCatalogoRoute
-  AdministracionParametrosRoute: typeof AdministracionParametrosRoute
-  AdministracionSeriesRoute: typeof AdministracionSeriesRoute
-  AdministracionUsuariosRoute: typeof AdministracionUsuariosRoute
   ComprobantesComprobanteIdRoute: typeof ComprobantesComprobanteIdRoute
-  AdministracionIndexRoute: typeof AdministracionIndexRoute
   ComprobantesIndexRoute: typeof ComprobantesIndexRoute
   CotizacionesIndexRoute: typeof CotizacionesIndexRoute
 }
@@ -191,6 +197,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AccesoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/administracion': {
+      id: '/administracion'
+      path: '/administracion'
+      fullPath: '/administracion'
+      preLoaderRoute: typeof AdministracionRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/configuracion': {
       id: '/configuracion'
       path: '/configuracion'
@@ -200,38 +213,38 @@ declare module '@tanstack/react-router' {
     }
     '/administracion/': {
       id: '/administracion/'
-      path: '/administracion'
+      path: '/'
       fullPath: '/administracion/'
       preLoaderRoute: typeof AdministracionIndexRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdministracionRouteRoute
     }
     '/administracion/catalogo': {
       id: '/administracion/catalogo'
-      path: '/administracion/catalogo'
+      path: '/catalogo'
       fullPath: '/administracion/catalogo'
       preLoaderRoute: typeof AdministracionCatalogoRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdministracionRouteRoute
     }
     '/administracion/parametros': {
       id: '/administracion/parametros'
-      path: '/administracion/parametros'
+      path: '/parametros'
       fullPath: '/administracion/parametros'
       preLoaderRoute: typeof AdministracionParametrosRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdministracionRouteRoute
     }
     '/administracion/series': {
       id: '/administracion/series'
-      path: '/administracion/series'
+      path: '/series'
       fullPath: '/administracion/series'
       preLoaderRoute: typeof AdministracionSeriesRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdministracionRouteRoute
     }
     '/administracion/usuarios': {
       id: '/administracion/usuarios'
-      path: '/administracion/usuarios'
+      path: '/usuarios'
       fullPath: '/administracion/usuarios'
       preLoaderRoute: typeof AdministracionUsuariosRouteImport
-      parentRoute: typeof rootRouteImport
+      parentRoute: typeof AdministracionRouteRoute
     }
     '/comprobantes/': {
       id: '/comprobantes/'
@@ -257,16 +270,31 @@ declare module '@tanstack/react-router' {
   }
 }
 
-const rootRouteChildren: RootRouteChildren = {
-  IndexRoute: IndexRoute,
-  AccesoRoute: AccesoRoute,
-  ConfiguracionRoute: ConfiguracionRoute,
+interface AdministracionRouteRouteChildren {
+  AdministracionCatalogoRoute: typeof AdministracionCatalogoRoute
+  AdministracionParametrosRoute: typeof AdministracionParametrosRoute
+  AdministracionSeriesRoute: typeof AdministracionSeriesRoute
+  AdministracionUsuariosRoute: typeof AdministracionUsuariosRoute
+  AdministracionIndexRoute: typeof AdministracionIndexRoute
+}
+
+const AdministracionRouteRouteChildren: AdministracionRouteRouteChildren = {
   AdministracionCatalogoRoute: AdministracionCatalogoRoute,
   AdministracionParametrosRoute: AdministracionParametrosRoute,
   AdministracionSeriesRoute: AdministracionSeriesRoute,
   AdministracionUsuariosRoute: AdministracionUsuariosRoute,
-  ComprobantesComprobanteIdRoute: ComprobantesComprobanteIdRoute,
   AdministracionIndexRoute: AdministracionIndexRoute,
+}
+
+const AdministracionRouteRouteWithChildren =
+  AdministracionRouteRoute._addFileChildren(AdministracionRouteRouteChildren)
+
+const rootRouteChildren: RootRouteChildren = {
+  IndexRoute: IndexRoute,
+  AdministracionRouteRoute: AdministracionRouteRouteWithChildren,
+  AccesoRoute: AccesoRoute,
+  ConfiguracionRoute: ConfiguracionRoute,
+  ComprobantesComprobanteIdRoute: ComprobantesComprobanteIdRoute,
   ComprobantesIndexRoute: ComprobantesIndexRoute,
   CotizacionesIndexRoute: CotizacionesIndexRoute,
 }

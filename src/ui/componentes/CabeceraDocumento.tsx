@@ -112,8 +112,6 @@ export interface PropsDeCabecera {
   }) => void
   readonly onDocumentoIncompleto?: () => void
   readonly onNombreListo?: (nombre: string) => void
-  readonly documentoNoRegistrado?: string | null
-  readonly onConsultarNoRegistrado?: () => void
   readonly consultandoPadron?: boolean
   readonly clienteParaConfirmar?: ClienteParaConfirmar | null
   readonly onConfirmarCliente?: () => void
@@ -132,8 +130,6 @@ export function CabeceraDocumento({
   onDocumentoCompleto,
   onDocumentoIncompleto,
   onNombreListo,
-  documentoNoRegistrado = null,
-  onConsultarNoRegistrado,
   consultandoPadron = false,
   clienteParaConfirmar = null,
   onConfirmarCliente,
@@ -176,17 +172,10 @@ export function CabeceraDocumento({
     (reglas.exigeClienteIdentificado ||
       (reglas.sujetoAUmbralDeIdentificacion && total > umbral))
 
-  const morphAgregar =
-    cliente === null &&
-    clienteParaConfirmar === null &&
-    documentoNoRegistrado !== null &&
-    documentoNoRegistrado.length > 0
-
   const nombreTrim = textoCampo.trim()
   const morphUsarNombre =
     cliente === null &&
     clienteParaConfirmar === null &&
-    !morphAgregar &&
     modoCampo === 'nombre' &&
     nombreTrim.length >= 2 &&
     onNombreListo !== undefined
@@ -360,10 +349,6 @@ export function CabeceraDocumento({
             <button
               type="button"
               onClick={() => {
-                if (morphAgregar && onConsultarNoRegistrado) {
-                  onConsultarNoRegistrado()
-                  return
-                }
                 if (modoCampo === 'nombre' && onNombreListo) {
                   confirmarCampo()
                   return
@@ -376,8 +361,8 @@ export function CabeceraDocumento({
               }}
               disabled={consultandoPadron}
               title={
-                morphAgregar
-                  ? 'Consultar y agregar cliente no registrado'
+                consultandoPadron
+                  ? 'Consultando padrón…'
                   : morphUsarNombre
                     ? 'Usar este nombre en el documento'
                     : modoCampo === 'ruc' || modoCampo === 'dni'
@@ -385,8 +370,8 @@ export function CabeceraDocumento({
                       : 'Agregar cliente nuevo'
               }
               aria-label={
-                morphAgregar
-                  ? 'Agregar cliente no registrado'
+                consultandoPadron
+                  ? 'Consultando padrón'
                   : morphUsarNombre
                     ? 'Usar nombre del cliente'
                     : modoCampo === 'ruc' || modoCampo === 'dni'
@@ -397,7 +382,7 @@ export function CabeceraDocumento({
                 'inline-flex min-h-11 items-center justify-center gap-2 font-bold transition-all',
                 'focus-visible:outline-none focus-visible:border-tinta',
                 'disabled:cursor-not-allowed disabled:opacity-60',
-                morphAgregar || morphUsarNombre
+                morphUsarNombre
                   ? 'rounded-full border border-tinta bg-tinta px-5 text-papel'
                   : [
                       'size-11 rounded-full border',
@@ -408,11 +393,7 @@ export function CabeceraDocumento({
               ].join(' ')}
             >
               <UserPlus className="size-5 shrink-0" aria-hidden />
-              {morphAgregar ? (
-                <span>{consultandoPadron ? 'Consultando…' : 'Agregar'}</span>
-              ) : morphUsarNombre ? (
-                <span>Usar</span>
-              ) : null}
+              {morphUsarNombre ? <span>Usar</span> : null}
             </button>
           ) : null}
         </div>

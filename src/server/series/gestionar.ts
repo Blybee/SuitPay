@@ -1,6 +1,7 @@
 import { serieEsValida } from '../../domain/documentos/tipos.ts'
 import type { TipoDeDocumento } from '../../domain/documentos/tipos.ts'
 import { fallar } from '../errores.ts'
+import { esFaseDemo, PREFIJO_ID_DEMO } from '../fase-operacion.ts'
 import { bd, COLECCIONES } from '../firebase/admin.ts'
 import { idDeSerie } from '../emision/almacen.ts'
 import type { Serie } from '../emision/almacen.ts'
@@ -15,7 +16,20 @@ import type {
  *
  * Serie regulada (boleta/factura): Firestore + sync al proveedor.
  * Nota de venta: solo Firestore si se pide (serie vacía; no va al proveedor).
+ *
+ * En fase DEMO (`SUITPAY_FASE=DEMO`), si el proveedor no acepta series se
+ * persiste igual en Firestore con id sintético (pruebas manuales). Ver
+ * docs/FASE-OPERACION.md. Quitar/desactivar en PRODUCCION.
  */
+
+const ESTABLECIMIENTO_DEMO: Establecimiento = {
+  id: `${PREFIJO_ID_DEMO}establecimiento-0000`,
+  codigoAnexo: '0000',
+  direccion: 'Local demo SuitPay',
+  ubigeoId: '150101',
+  nombre: 'Local demo',
+  correo: undefined,
+}
 
 export interface SerieAdministrativa extends Serie {
   readonly id: string
@@ -67,9 +81,12 @@ export async function listarEstablecimientos(): Promise<
 > {
   const resultado = await proveedorActual().listarEstablecimientos()
   if (!resultado.ok) {
-    fallar('servicio_no_disponible', { razon: resultado.fallo.razon })
+    if (esFaseDemo()) return [ESTABLECIMIENTO_DEMO]
+    fallar('proveedor_admin_no_disponible', { razon: resultado.fallo.razon })
   }
-  return resultado.valor
+  const lista = resultado.valor
+  if (lista.length === 0 && esFaseDemo()) return [ESTABLECIMIENTO_DEMO]
+  return lista
 }
 
 export async function crearEstablecimiento(
@@ -77,7 +94,17 @@ export async function crearEstablecimiento(
 ): Promise<Establecimiento> {
   const resultado = await proveedorActual().crearEstablecimiento(peticion)
   if (!resultado.ok) {
-    fallar('servicio_no_disponible', { razon: resultado.fallo.razon })
+    if (esFaseDemo()) {
+      return {
+        id: `${PREFIJO_ID_DEMO}establecimiento-${peticion.codigoAnexo}`,
+        codigoAnexo: peticion.codigoAnexo,
+        direccion: peticion.direccion,
+        ubigeoId: peticion.ubigeoId,
+        nombre: peticion.nombre ?? 'Establecimiento demo',
+        correo: peticion.correo,
+      }
+    }
+    fallar('proveedor_admin_no_disponible', { razon: resultado.fallo.razon })
   }
   return resultado.valor
 }
@@ -85,10 +112,14 @@ export async function crearEstablecimiento(
 export async function eliminarEstablecimiento(
   establecimientoId: string,
 ): Promise<void> {
+  if (esFaseDemo() && establecimientoId.startsWith(PREFIJO_ID_DEMO)) {
+    return
+  }
   const resultado =
     await proveedorActual().eliminarEstablecimiento(establecimientoId)
   if (!resultado.ok) {
-    fallar('servicio_no_disponible', { razon: resultado.fallo.razon })
+    if (esFaseDemo()) return
+    fallar('proveedor_admin_no_disponible', { razon: resultado.fallo.razon })
   }
 }
 
@@ -144,16 +175,25 @@ export async function crearSerieAdministrativa(
     if (alta.establecimientoId.trim() === '') {
       fallar('peticion_invalida', { campo: 'establecimientoId' })
     }
-    const resultado = await proveedorActual().crearSerie({
-      tipoDocumento: alta.tipoDocumento,
-      serie: alta.serie.trim(),
-      numeroInicial: alta.numeroInicial,
-      establecimientoId: alta.establecimientoId.trim(),
-    })
-    if (!resultado.ok) {
-      fallar('servicio_no_disponible', { razon: resultado.fallo.razon })
+
+    // DEMO: series locales en Firestore para pruebas/presentación sin sync
+    // al proveedor (docs/FASE-OPERACION.md). En PRODUCCION siempre se sincroniza.
+    if (esFaseDemo()) {
+      serieIdEnProveedor = `${PREFIJO_ID_DEMO}${id}`
+    } else {
+      const resultado = await proveedorActual().crearSerie({
+        tipoDocumento: alta.tipoDocumento,
+        serie: alta.serie.trim(),
+        numeroInicial: alta.numeroInicial,
+        establecimientoId: alta.establecimientoId.trim(),
+      })
+      if (!resultado.ok) {
+        fallar('proveedor_admin_no_disponible', {
+          razon: resultado.fallo.razon,
+        })
+      }
+      serieIdEnProveedor = resultado.valor.id
     }
-    serieIdEnProveedor = resultado.valor.id
   }
 
   const ultimo = alta.numeroInicial - 1
@@ -216,9 +256,18 @@ export async function desactivarSerie(serieId: string): Promise<void> {
       : null
 
   if (serieIdEnProveedor !== null) {
-    const resultado = await proveedorActual().eliminarSerie(serieIdEnProveedor)
-    if (!resultado.ok) {
-      fallar('servicio_no_disponible', { razon: resultado.fallo.razon })
+    if (esFaseDemo() && serieIdEnProveedor.startsWith(PREFIJO_ID_DEMO)) {
+      // Serie solo local: no hay nada que borrar en el proveedor.
+    } else {
+      const resultado =
+        await proveedorActual().eliminarSerie(serieIdEnProveedor)
+      if (!resultado.ok) {
+        if (!esFaseDemo()) {
+          fallar('proveedor_admin_no_disponible', {
+            razon: resultado.fallo.razon,
+          })
+        }
+      }
     }
   }
 

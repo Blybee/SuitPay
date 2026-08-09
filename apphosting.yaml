@@ -73,6 +73,12 @@ env:
     value: America/Lima
     availability: [RUNTIME]
 
+  # DEMO: series locales en Firestore sin sync al proveedor (pruebas/presentación).
+  # Al lanzar oficialmente: PRODUCCION. Ver docs/FASE-OPERACION.md.
+  - variable: SUITPAY_FASE
+    value: DEMO
+    availability: [RUNTIME]
+
   # Punto de entrada del proveedor de emisión. Se cambia a su entorno de
   # demostración para las pruebas de integración sin tocar código.
   - variable: PROVEEDOR_URL_BASE

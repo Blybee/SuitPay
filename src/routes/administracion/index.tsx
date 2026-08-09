@@ -39,8 +39,7 @@ const ENLACES = [
 function InicioAdministracion() {
   return (
     <div className="flex min-h-full flex-col px-6 py-8">
-      <h1 className="text-cabecera font-bold text-tinta">Inicio</h1>
-      <p className="mt-2 max-w-xl text-cuerpo text-desvaida">
+      <p className="max-w-3xl text-cuerpo text-desvaida">
         Administración del local: catálogo, series, umbral y usuarios.
       </p>
       <ul className="mt-8 flex flex-col gap-3">

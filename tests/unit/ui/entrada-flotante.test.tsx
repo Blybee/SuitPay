@@ -53,7 +53,7 @@ describe('Entrada — panel flotante', () => {
 
     await usuario.click(
       screen.getByRole('button', {
-        name: 'Minimizar resultados de búsqueda',
+        name: 'Ocultar resultados de búsqueda',
       }),
     )
 

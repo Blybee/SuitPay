@@ -555,6 +555,21 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 
 ---
 
+## Phase C8: Converge — Alta auto-modal, PDF post-emisión, comandos seleccionables, UI (2026-08-09)
+
+**Propósito**: materializar FR-022/023/026 enmendados, FR-054a, FR-047a/b y ajustes Soft-Pill menores. GRE queda en `002-guias-remision`.
+
+### Implementación
+
+- [x] T178 [US3] Tras confirmar DNI/RUC no registrado en cabecera, consultar padrón y abrir `AltaClienteEnContexto` con datos (sin morph «Agregar»); degradar a alta manual si falla (FR-022, FR-026). Archivos: `src/routes/index.tsx`, `src/ui/componentes/CabeceraDocumento.tsx`, `src/features/clientes/*`
+- [x] T179 [US1] En `EstadoDeEmision`, usar `archivos.pdf` de la respuesta de emisión para Imprimir / Guardar / Compartir de inmediato (FR-054a). Archivos: `src/features/emision/estados.tsx`, `flujo.ts`, `impresion.ts` / `compartir.ts` según haga falta
+- [x] T180 [P] [US9] Ampliar `CATALOGO_DE_COMANDOS` (FR-047b) y mostrar lista seleccionable en modo `/` en `Entrada` (FR-047a). Archivos: `src/features/comandos/pistas.ts`, `src/ui/componentes/Entrada.tsx`
+- [x] T181 [P] Icono ojo centrado para ocultar sugerencias en `Entrada`; trash de cotizaciones sin chrome hasta hover rojo suave en `panel.tsx`
+
+**Checkpoint C8**: alta de cliente nuevo sin morph; PDF usable al emitir; `/` lista comandos; UI menor alineada a `design.md`.
+
+---
+
 ## Notas
 
 - Las tareas marcadas [P] tocan archivos distintos y no tienen dependencias pendientes.
@@ -563,3 +578,4 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 - Verifica que las pruebas fallan antes de implementar.
 - Confirma en cada punto de control antes de seguir.
 - **Volcado 5**: no se tocó `src/` en la enmienda documental; T160–T169 son el backlog de converge.
+- **2026-08-09**: guía de remisión → `specs/002-guias-remision/`; T178–T181 son el backlog de esta enmienda.

@@ -1,13 +1,16 @@
-import { AlertTriangle, Loader2, Printer, Share2 } from 'lucide-react'
+import { AlertTriangle, Download, Loader2, Printer, Share2 } from 'lucide-react'
 import { useState } from 'react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { MarcaDeEstado } from '../../ui/componentes/Sello.tsx'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
 import { YaUsada } from '../cotizaciones/ya-usada.tsx'
+import { compartirDocumento, nombreDelComprobante } from './compartir.ts'
 import { consultarEstado } from './emitir.funciones.ts'
+import type { RespuestaDeEmitir } from './emitir.funciones.ts'
 import { sePuedeReintentar, usarEmision } from './flujo.ts'
 import type { FaseDeEmision } from './flujo.ts'
+import { imprimirDocumento } from './impresion.ts'
 
 /**
  * Estados de emisión en la interfaz (decisión 10).
@@ -18,8 +21,105 @@ export interface PropsDeEstadoDeEmision {
   readonly fase: FaseDeEmision
   readonly onCerrar: () => void
   readonly onReintentar: () => void
+  /** Fallback si la respuesta no trae PDF (releer Firestore). */
   readonly onImprimir: (comprobanteId: string) => void
   readonly onCompartir: (comprobanteId: string) => void
+}
+
+function AccionesDePdf({
+  comprobante,
+  onImprimir,
+  onCompartir,
+}: {
+  readonly comprobante: RespuestaDeEmitir
+  readonly onImprimir: (comprobanteId: string) => void
+  readonly onCompartir: (comprobanteId: string) => void
+}) {
+  const [aviso, setAviso] = useState<string | null>(null)
+  const pdf = comprobante.archivos.pdf
+  const nombre = nombreDelComprobante(comprobante.serie, comprobante.numero)
+  const sinPdf = pdf === null || pdf === ''
+
+  function alImprimir(): void {
+    setAviso(null)
+    if (!sinPdf) {
+      const resultado = imprimirDocumento(pdf)
+      if (!resultado.ok) {
+        setAviso(
+          resultado.motivo === 'no_se_pudo_abrir'
+            ? 'No se pudo abrir el PDF. Revisa el bloqueador de ventanas.'
+            : 'Este comprobante no tiene archivo PDF.',
+        )
+      }
+      return
+    }
+    onImprimir(comprobante.comprobanteId)
+  }
+
+  function alGuardar(): void {
+    setAviso(null)
+    if (sinPdf) {
+      setAviso('Este comprobante no tiene archivo PDF para guardar.')
+      return
+    }
+    const enlace = document.createElement('a')
+    enlace.href = pdf
+    enlace.download = `${nombre}.pdf`
+    enlace.rel = 'noopener noreferrer'
+    enlace.target = '_blank'
+    enlace.click()
+  }
+
+  async function alCompartir(): Promise<void> {
+    setAviso(null)
+    if (!sinPdf) {
+      const resultado = await compartirDocumento(pdf, nombre)
+      if (!resultado.ok && resultado.motivo !== 'cancelado') {
+        setAviso(
+          resultado.motivo === 'sin_archivo'
+            ? 'Este comprobante no tiene archivo PDF.'
+            : 'No se pudo compartir el PDF.',
+        )
+      }
+      return
+    }
+    onCompartir(comprobante.comprobanteId)
+  }
+
+  return (
+    <div className="space-y-2 pt-1">
+      {sinPdf ? (
+        <p className="text-cuerpo text-desvaida">
+          Este documento no trae PDF en la respuesta (p. ej. nota de venta
+          interna). Imprimir/Compartir intentarán recuperarlo si existe
+          guardado.
+        </p>
+      ) : null}
+      {aviso !== null ? (
+        <p className="text-cuerpo font-bold text-aviso" role="status">
+          {aviso}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap gap-2">
+        <Boton variante="principal" onClick={alImprimir}>
+          <Printer className="size-5" aria-hidden />
+          Imprimir
+        </Boton>
+        <Boton onClick={alGuardar} disabled={sinPdf}>
+          <Download className="size-5" aria-hidden />
+          Guardar
+        </Boton>
+        <Boton
+          onClick={() => {
+            void alCompartir()
+          }}
+        >
+          <Share2 className="size-5" aria-hidden />
+          Compartir
+        </Boton>
+      </div>
+    </div>
+  )
 }
 
 export function EstadoDeEmision({
@@ -92,18 +192,13 @@ export function EstadoDeEmision({
             </p>
           )}
 
-          <div className="flex flex-wrap gap-2 pt-1">
-            <Boton
-              variante="principal"
-              onClick={() => onImprimir(comprobante.comprobanteId)}
-            >
-              <Printer className="size-5" aria-hidden />
-              Imprimir
-            </Boton>
-            <Boton onClick={() => onCompartir(comprobante.comprobanteId)}>
-              <Share2 className="size-5" aria-hidden />
-              Compartir
-            </Boton>
+          <AccionesDePdf
+            comprobante={comprobante}
+            onImprimir={onImprimir}
+            onCompartir={onCompartir}
+          />
+
+          <div className="flex flex-wrap gap-2">
             <Boton variante="discreto" onClick={onCerrar}>
               Siguiente venta
             </Boton>

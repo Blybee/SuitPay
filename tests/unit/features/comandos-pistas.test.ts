@@ -1,8 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import {
+  CATALOGO_DE_COMANDOS,
+  comandosCoincidentes,
   esModoComando,
   pistaDeComando,
   placeholderDelBuscador,
+  textoAlElegirComando,
 } from '../../../src/features/comandos/pistas.ts'
 
 describe('pistas de comando en el buscador', () => {
@@ -16,11 +19,11 @@ describe('pistas de comando en el buscador', () => {
     expect(placeholderDelBuscador('')).toBe('Escribe un producto…')
   })
 
-  it('tras / sugiere crear vecino con parámetros', () => {
-    const pista = pistaDeComando('/')
-    expect(pista.fantasma).toContain('crear vecino')
-    expect(pista.fantasma).toContain('{alias}')
-    expect(pista.fantasma).toContain('{DNI/RUC}')
+  it('tras / lista todo el catálogo seleccionable', () => {
+    const lista = comandosCoincidentes('/')
+    expect(lista.length).toBe(CATALOGO_DE_COMANDOS.length)
+    expect(lista.some((c) => c.id === 'crear-vecino')).toBe(true)
+    expect(lista.some((c) => c.id === 'ayuda')).toBe(true)
   })
 
   it('tras /crear vecino pide alias y documento', () => {
@@ -42,5 +45,18 @@ describe('pistas de comando en el buscador', () => {
     expect(
       pistaDeComando('/crear vecino wilmer 12345678901').fantasma,
     ).toBe('')
+  })
+
+  it('elegir comando deja prefijo con espacio si faltan parámetros', () => {
+    const crear = CATALOGO_DE_COMANDOS.find((c) => c.id === 'crear-vecino')
+    expect(crear).toBeDefined()
+    expect(textoAlElegirComando(crear!)).toBe('/crear vecino ')
+  })
+
+  it('filtra por prefijo parcial', () => {
+    const lista = comandosCoincidentes('/cot')
+    expect(lista.some((c) => c.id === 'cotizacion')).toBe(true)
+    expect(lista.some((c) => c.id === 'cotizaciones')).toBe(true)
+    expect(lista.some((c) => c.id === 'crear-vecino')).toBe(false)
   })
 })

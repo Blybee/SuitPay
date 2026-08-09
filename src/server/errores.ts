@@ -43,6 +43,9 @@ export const CODIGOS_DE_ERROR = {
   no_encontrado: 'no_encontrado',
   servicio_no_disponible: 'servicio_no_disponible',
 
+  // --- Administración / sync proveedor ------------------------------------
+  proveedor_admin_no_disponible: 'proveedor_admin_no_disponible',
+
   // --- Asistencia ----------------------------------------------------------
   medio_ilegible: 'medio_ilegible',
   asistencia_no_disponible: 'asistencia_no_disponible',
@@ -98,6 +101,8 @@ const MENSAJES: Record<CodigoDeError, string> = {
   no_encontrado: 'No se encontraron datos para ese documento de identidad.',
   servicio_no_disponible:
     'La consulta de datos oficiales no responde. Puedes escribir los datos del cliente a mano y continuar.',
+  proveedor_admin_no_disponible:
+    'El proveedor no aceptó la configuración (serie o establecimiento). En DEMO puedes usar series locales; en PRODUCCION hay que crearlas en el panel del proveedor.',
 
   medio_ilegible:
     'No se pudo leer la captura. Vuelve a tomarla con mejor luz, o escribe el pedido.',
@@ -143,6 +148,7 @@ const REINTENTABLE: Record<CodigoDeError, boolean> = {
 
   no_encontrado: false,
   servicio_no_disponible: true,
+  proveedor_admin_no_disponible: true,
 
   medio_ilegible: false,
   asistencia_no_disponible: true,

@@ -1,0 +1,28 @@
+---
+description: NotificacionIsla (toast) y MigasDePan — cuándo usarlos
+globs:
+  - src/routes/**/*.tsx
+  - src/ui/componentes/**/*.tsx
+  - src/features/**/*.tsx
+---
+
+# Notificaciones y migas
+
+Antes de añadir un `<p role="alert">` fijo al inicio de una página admin (o
+cualquier pantalla con scroll), usa el toast isla:
+
+- Store: `usarNotificaciones().mostrar({ tono, mensaje, titulo? })`
+- Host: `NotificacionIsla` ya montado en `__root.tsx`
+- Docs: `docs/UI-NOTIFICACIONES-Y-MIGAS.md`
+
+Tonos: `exito` | `error` | `info`.
+
+Migas de administración: viven en el layout
+(`src/routes/administracion/route.tsx` + `EncabezadoMigasAdmin`), no dentro
+del contenedor de contenido de cada página. `CabeceraAdmin` solo lleva
+descripción + H1 accesible. Si hay varias páginas en la misma capa, esa
+migaja lleva `hermanas` (select con chevron). Constantes:
+`src/features/administracion/migas.ts`.
+
+Fase DEMO/PRODUCCION (series locales, etc.): `docs/FASE-OPERACION.md` y
+`SUITPAY_FASE` (omisión DEMO).
