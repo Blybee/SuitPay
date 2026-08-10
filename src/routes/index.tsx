@@ -3,6 +3,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { REGLAS } from '../domain/documentos/tipos.ts'
 import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
+import { pedidoTienePrecioBajoCatalogo } from '../domain/totales/calculo.ts'
 import { usarCatalogo, umbralVigente } from '../features/catalogo/almacen.ts'
 import { PanelDictado } from '../features/captura/audio.tsx'
 import {
@@ -34,6 +35,7 @@ import {
   compartirComprobante,
   reimprimir,
 } from '../features/emision/reimprimir.ts'
+import { usarNotificaciones } from '../features/notificaciones/almacen.ts'
 import {
   lineasCalculadas,
   sePuedeEmitir,
@@ -216,9 +218,18 @@ function Mostrador() {
       ? 'El dictado y la lectura de fotos no están disponibles. Puedes escribir el pedido con normalidad.'
       : null
 
+  const hayPrecioBajoCatalogo = pedidoTienePrecioBajoCatalogo(
+    pedido.lineas,
+    (codigo) => catalogo.productoPorCodigo(codigo)?.precio,
+  )
+  const motivoPrecioBajo = hayPrecioBajoCatalogo
+    ? 'Hay un precio por debajo del mayorista. Súbelo al de catálogo o más para poder emitir o guardar.'
+    : null
+
   const motivoCaptura = motivoBloqueoPorCaptura()
   const motivoDeBloqueo =
     motivoCaptura ??
+    motivoPrecioBajo ??
     calcularMotivoDeBloqueo({
       lineas: pedido.lineas.length,
       emitible: sePuedeEmitir(pedido),
@@ -275,13 +286,19 @@ function Mostrador() {
       return
     }
 
-    pedido.agregarLinea({
+    const agregada = pedido.agregarLinea({
       codigo: producto.codigo,
       descripcion: producto.descripcion,
       unidad: producto.unidad,
       cantidad: 1,
       precio: producto.precio,
     })
+    if (!agregada) {
+      usarNotificaciones.getState().mostrar({
+        tono: 'info',
+        mensaje: `${producto.descripcion} ya está en el pedido.`,
+      })
+    }
   }
 
   async function confirmarCrearVecino(
@@ -456,27 +473,27 @@ function Mostrador() {
     readonly tipoDocumento: 'RUC' | 'DNI'
     readonly numeroDocumento: string
   }): Promise<void> {
-    setClienteParaConfirmar(null)
-    const existente = await leerClientePorDocumento(datos.numeroDocumento)
-    if (existente !== null) {
-      setClienteParaConfirmar({
-        tipoDocumento:
-          existente.tipoDocumento === 'RUC' || existente.tipoDocumento === 'DNI'
-            ? existente.tipoDocumento
-            : datos.tipoDocumento,
-        numeroDocumento: existente.numeroDocumento,
-        denominacion: existente.denominacion,
-        direccion: existente.direccion,
-        condicion: existente.condicion,
-        origen: 'registrado',
-      })
-      return
-    }
-
-    // No registrado: consulta padrón y abre el diálogo de alta (FR-022).
     if (consultandoPadron) return
     setConsultandoPadron(true)
+    setClienteParaConfirmar(null)
     try {
+      const existente = await leerClientePorDocumento(datos.numeroDocumento)
+      if (existente !== null) {
+        setClienteParaConfirmar({
+          tipoDocumento:
+            existente.tipoDocumento === 'RUC' || existente.tipoDocumento === 'DNI'
+              ? existente.tipoDocumento
+              : datos.tipoDocumento,
+          numeroDocumento: existente.numeroDocumento,
+          denominacion: existente.denominacion,
+          direccion: existente.direccion,
+          condicion: existente.condicion,
+          origen: 'registrado',
+        })
+        return
+      }
+
+      // No registrado: consulta padrón y abre el diálogo de alta (FR-022).
       const respuesta = await consultarContribuyenteFn({
         data: {
           tipoDocumento: datos.tipoDocumento,
@@ -508,22 +525,22 @@ function Mostrador() {
   }
 
   function alNombreListo(nombre: string): void {
-    setClienteParaConfirmar({
-      tipoDocumento: 'NOMBRE',
+    // Nombre: se fija al pedido de inmediato (sin panel de confirmación).
+    pedido.fijarCliente({
+      tipoDocumento: 'DNI',
       numeroDocumento: DOCUMENTO_CLIENTE_POR_NOMBRE,
       denominacion: nombre.trim(),
-      origen: 'nombre',
     })
+    setClienteParaConfirmar(null)
   }
 
   async function confirmarClientePendiente(): Promise<void> {
     if (clienteParaConfirmar === null || consultandoPadron) return
     const pendiente = clienteParaConfirmar
 
-    if (pendiente.origen === 'registrado' || pendiente.origen === 'nombre') {
+    if (pendiente.origen === 'registrado') {
       pedido.fijarCliente({
-        tipoDocumento:
-          pendiente.tipoDocumento === 'NOMBRE' ? 'DNI' : pendiente.tipoDocumento,
+        tipoDocumento: pendiente.tipoDocumento === 'NOMBRE' ? 'DNI' : pendiente.tipoDocumento,
         numeroDocumento: pendiente.numeroDocumento,
         denominacion: pendiente.denominacion,
         ...(pendiente.direccion !== undefined && pendiente.direccion.trim() !== ''
@@ -749,12 +766,16 @@ function Mostrador() {
             medioPago={medioPago}
             onCambiarMedioPago={setMedioPago}
             estado={faseDelBoton}
-            motivoDeBloqueo={modoCotizacion ? null : motivoDeBloqueo}
+            motivoDeBloqueo={
+              modoCotizacion ? motivoPrecioBajo : motivoDeBloqueo
+            }
             onEmitir={() => void lanzarEmision()}
             modoCotizacion={modoCotizacion}
             onGuardarCotizacion={() => void lanzarGuardadoDeCotizacion()}
             guardandoCotizacion={guardandoCotizacion}
-            puedeGuardarCotizacion={pedido.lineas.length > 0}
+            puedeGuardarCotizacion={
+              pedido.lineas.length > 0 && !hayPrecioBajoCatalogo
+            }
             proveedorCaido={proveedorCaido}
             sinRed={sinRed}
           />

@@ -4,6 +4,7 @@ import {
   calcularTotal,
   normalizarCantidad,
   pedidoEsEmitible,
+  pedidoTieneCodigo,
 } from '../../domain/totales/calculo.ts'
 import type {
   Centimos,
@@ -55,7 +56,11 @@ interface EstadoDelPedido {
 }
 
 interface AccionesDelPedido {
-  agregarLinea: (linea: LineaDePedido) => void
+  /**
+   * Agrega una línea si el código no está ya en el pedido.
+   * @returns `false` si el producto ya estaba (no modifica el pedido).
+   */
+  agregarLinea: (linea: LineaDePedido) => boolean
   cambiarCantidad: (indice: number, cantidad: number) => void
   cambiarPrecio: (indice: number, precio: Centimos) => void
   quitarLinea: (indice: number) => void
@@ -72,6 +77,15 @@ interface AccionesDelPedido {
    */
   cargarDesdeCotizacion: (datos: {
     readonly cotizacionId: string
+    readonly lineas: readonly LineaDePedido[]
+    readonly cliente: ClienteDelPedido | null
+  }) => void
+  /**
+   * Carga líneas (y cliente) desde un comprobante ya emitido para armar un
+   * documento nuevo. No liga cotización ni captura; nueva clave de idempotencia
+   * (el comprobante origen queda intacto — principio II).
+   */
+  cargarDesdeComprobante: (datos: {
     readonly lineas: readonly LineaDePedido[]
     readonly cliente: ClienteDelPedido | null
   }) => void
@@ -129,11 +143,14 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
     ...ESTADO_INICIAL,
 
     agregarLinea(linea) {
+      if (pedidoTieneCodigo(get().lineas, linea.codigo)) return false
+      // Lo nuevo va arriba: el vendedor ve al instante lo que acaba de elegir.
       const lineas = [
-        ...get().lineas,
         { ...linea, cantidad: normalizarCantidad(linea.cantidad) },
+        ...get().lineas,
       ]
       cambiarContenido({ lineas })
+      return true
     },
 
     cambiarCantidad(indice, cantidad) {
@@ -184,6 +201,18 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         })),
         cliente: datos.cliente,
         cotizacionId: datos.cotizacionId,
+        capturaId: null,
+      })
+    },
+
+    cargarDesdeComprobante(datos) {
+      cambiarContenido({
+        lineas: datos.lineas.map((linea) => ({
+          ...linea,
+          cantidad: normalizarCantidad(linea.cantidad),
+        })),
+        cliente: datos.cliente,
+        cotizacionId: null,
         capturaId: null,
       })
     },

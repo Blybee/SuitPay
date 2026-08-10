@@ -570,6 +570,20 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 
 ---
 
+## Phase C9: Converge — Piso de precio y reutilizar pedido (post reunión gerencia)
+
+**Propósito**: FR-012 enmendado (piso mayorista) y FR-056 / US10 (reutilizar líneas de un comprobante emitido).
+
+### Implementación
+
+- [x] T182 [P] [US1] Piso de precio: dominio + UI en `LineaPedido` (marca en rojo) + bloqueo de Emitir/Guardar en mostrador; validación en servidor al emitir (`precio_bajo_catalogo`). Archivos: `src/domain/totales/calculo.ts`, `src/ui/componentes/LineaPedido.tsx`, `src/routes/index.tsx`, `src/server/emision/emitir.ts`, `src/server/errores.ts`, `src/features/emision/emitir.funciones.ts`
+- [x] T183 [US10] «Reutilizar pedido» en detalle de comprobante → `cargarDesdeComprobante` + navegación al mostrador (FR-056). Archivos: `src/features/pedido/almacen.ts`, `src/routes/comprobantes/$comprobanteId.tsx`
+- [x] T184 [P] Pruebas de unidad del piso de precio y de rechazo en emisión; actualizar e2e de venta escrita (negociar al alza). Archivos: `tests/unit/domain/totales.test.ts`, `tests/unit/server/emitir-precio-piso.test.ts`, `tests/e2e/venta-escrita.spec.ts`
+
+**Checkpoint C9**: no se emite ni guarda bajo el mayorista; se puede clonar el pedido de un comprobante emitido sin tocarlo.
+
+---
+
 ## Notas
 
 - Las tareas marcadas [P] tocan archivos distintos y no tienen dependencias pendientes.

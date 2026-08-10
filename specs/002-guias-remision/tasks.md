@@ -35,6 +35,7 @@
 - [ ] T014 Registrar `/guia` y `/crear transportista` en `CATALOGO_DE_COMANDOS`
 - [ ] T015 Papeleta UI: campos condicionales por modo; Emitir explícito
 - [ ] T016 Cablear `/guia` → abrir papeleta (sin efecto tributario hasta Emitir)
+- [ ] T016a [US6] Precargar ítems de la papeleta desde el pedido del mostrador (incluye pedido cargado con «Reutilizar pedido» / FR-056 de 001) (FR-011)
 - [ ] T017 Diálogo post-emisión: Imprimir / Guardar / Compartir PDF (patrón 001)
 
 ## Phase 5: Verificación punta a punta

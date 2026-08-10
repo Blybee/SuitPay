@@ -28,6 +28,7 @@ export const CODIGOS_DE_ERROR = {
   serie_no_configurada: 'serie_no_configurada',
   cliente_requerido: 'cliente_requerido',
   importe_no_positivo: 'importe_no_positivo',
+  precio_bajo_catalogo: 'precio_bajo_catalogo',
   cotizacion_ya_usada: 'cotizacion_ya_usada',
   cotizacion_no_pendiente: 'cotizacion_no_pendiente',
   emision_indeterminada: 'emision_indeterminada',
@@ -81,6 +82,8 @@ const MENSAJES: Record<CodigoDeError, string> = {
     'Este importe obliga a identificar al cliente. Ingresa su documento para continuar.',
   importe_no_positivo:
     'Hay una línea con cantidad o precio en cero. Corrígela para poder emitir.',
+  precio_bajo_catalogo:
+    'Hay un precio por debajo del mayorista. Súbelo al precio de catálogo o más para poder emitir.',
   cotizacion_ya_usada:
     'Esta cotización ya no existe: se convirtió o se quitó. No se puede emitir otra vez con ella.',
   cotizacion_no_pendiente:
@@ -136,6 +139,7 @@ const REINTENTABLE: Record<CodigoDeError, boolean> = {
   serie_no_configurada: false,
   cliente_requerido: false,
   importe_no_positivo: false,
+  precio_bajo_catalogo: false,
   cotizacion_ya_usada: false,
   cotizacion_no_pendiente: false,
   emision_indeterminada: false,

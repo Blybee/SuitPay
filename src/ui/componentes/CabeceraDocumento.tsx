@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react'
-import { ChevronDown, ChevronUp, UserPlus } from 'lucide-react'
+import {
+  ChevronDown,
+  ChevronUp,
+  Loader2,
+  UserPlus,
+  UserRoundPen,
+} from 'lucide-react'
 import {
   REGLAS,
   TIPOS_ELEGIBLES,
@@ -30,7 +36,7 @@ export interface ClienteParaConfirmar {
   readonly direccion?: string
   readonly condicion?: string
   readonly noHabido?: boolean
-  readonly origen: 'registrado' | 'consulta' | 'nombre'
+  readonly origen: 'registrado' | 'consulta'
 }
 
 export interface SeriesEnCabecera {
@@ -287,39 +293,55 @@ export function CabeceraDocumento({
                   <span className="size-5" aria-hidden />
                 )}
               </div>
-              <Campo
-                id="documento-cliente-inline"
-                inputMode={modoCampo === 'nombre' ? 'text' : 'numeric'}
-                autoComplete="off"
-                placeholder={
-                  modoCampo === 'ruc'
-                    ? '20123456789'
-                    : modoCampo === 'dni'
-                      ? '12345678'
-                      : 'Nombre del cliente'
-                }
-                maxLength={
-                  modoCampo === 'nombre' ? 120 : modoCampo === 'ruc' ? 11 : 8
-                }
-                value={textoCampo}
-                onChange={(evento) => alCambiarTexto(evento.target.value)}
-                onKeyDown={alTeclaCampo}
-                aria-label={`${ETIQUETA_CAMPO[modoCampo]} del cliente`}
-                aria-invalid={
-                  campoMarcadoInvalido ||
-                  (exigeCliente && textoCampo.length === 0)
-                }
-                invalido={
-                  campoMarcadoInvalido ||
-                  (exigeCliente && textoCampo.length === 0)
-                }
-                className={
-                  modoCampo === 'nombre'
-                    ? 'tracking-normal'
-                    : 'font-mono tabular-nums tracking-wide'
-                }
-              />
+              <div className="relative min-w-0 flex-1">
+                <Campo
+                  id="documento-cliente-inline"
+                  inputMode={modoCampo === 'nombre' ? 'text' : 'numeric'}
+                  autoComplete="off"
+                  placeholder={
+                    modoCampo === 'ruc'
+                      ? '20123456789'
+                      : modoCampo === 'dni'
+                        ? '12345678'
+                        : 'Nombre del cliente'
+                  }
+                  maxLength={
+                    modoCampo === 'nombre' ? 120 : modoCampo === 'ruc' ? 11 : 8
+                  }
+                  value={textoCampo}
+                  onChange={(evento) => alCambiarTexto(evento.target.value)}
+                  onKeyDown={alTeclaCampo}
+                  disabled={consultandoPadron}
+                  aria-busy={consultandoPadron || undefined}
+                  aria-label={`${ETIQUETA_CAMPO[modoCampo]} del cliente`}
+                  aria-invalid={
+                    campoMarcadoInvalido ||
+                    (exigeCliente && textoCampo.length === 0)
+                  }
+                  invalido={
+                    campoMarcadoInvalido ||
+                    (exigeCliente && textoCampo.length === 0)
+                  }
+                  className={[
+                    modoCampo === 'nombre'
+                      ? 'tracking-normal'
+                      : 'font-mono tabular-nums tracking-wide',
+                    consultandoPadron ? 'pr-11' : '',
+                  ].join(' ')}
+                />
+                {consultandoPadron ? (
+                  <Loader2
+                    className="pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2 animate-spin text-desvaida"
+                    aria-hidden
+                  />
+                ) : null}
+              </div>
             </div>
+            {consultandoPadron ? (
+              <p className="pl-12 font-mono text-etiqueta text-desvaida">
+                Consultando padrón…
+              </p>
+            ) : null}
           </div>
         ) : null}
 
@@ -341,9 +363,19 @@ export function CabeceraDocumento({
                   </span>
                 ) : null}
               </span>
-              <Boton variante="discreto" onClick={onQuitarCliente}>
-                Cambiar
-              </Boton>
+              <button
+                type="button"
+                onClick={onQuitarCliente}
+                title="Cambiar cliente"
+                aria-label="Cambiar cliente"
+                className={[
+                  'inline-flex size-11 shrink-0 items-center justify-center rounded-full border',
+                  'border-borde bg-papel text-tinta transition-colors hover:bg-mesa',
+                  'focus-visible:outline-none focus-visible:border-tinta',
+                ].join(' ')}
+              >
+                <UserRoundPen className="size-5" aria-hidden />
+              </button>
             </>
           ) : clienteParaConfirmar === null ? (
             <button
@@ -407,40 +439,28 @@ export function CabeceraDocumento({
           <p className="font-mono text-etiqueta uppercase text-desvaida">
             {clienteParaConfirmar.origen === 'registrado'
               ? 'Cliente registrado — confirma los datos'
-              : clienteParaConfirmar.origen === 'nombre'
-                ? 'Cliente por nombre — confirma antes de usar'
-                : 'Datos del padrón — confirma antes de usar'}
+              : 'Datos del padrón — confirma antes de usar'}
           </p>
           <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-cuerpo">
-            {clienteParaConfirmar.origen !== 'nombre' ? (
-              <>
-                <dt className="font-mono text-etiqueta uppercase text-desvaida">
-                  Documento
-                </dt>
-                <dd className="font-mono text-tinta">
-                  {clienteParaConfirmar.tipoDocumento}{' '}
-                  {clienteParaConfirmar.numeroDocumento}
-                </dd>
-              </>
-            ) : null}
             <dt className="font-mono text-etiqueta uppercase text-desvaida">
-              {clienteParaConfirmar.origen === 'nombre'
-                ? 'Nombre'
-                : 'Razón social'}
+              Documento
+            </dt>
+            <dd className="font-mono text-tinta">
+              {clienteParaConfirmar.tipoDocumento}{' '}
+              {clienteParaConfirmar.numeroDocumento}
+            </dd>
+            <dt className="font-mono text-etiqueta uppercase text-desvaida">
+              Razón social
             </dt>
             <dd className="text-tinta">{clienteParaConfirmar.denominacion}</dd>
-            {clienteParaConfirmar.origen !== 'nombre' ? (
-              <>
-                <dt className="font-mono text-etiqueta uppercase text-desvaida">
-                  Dirección
-                </dt>
-                <dd className="text-tinta">
-                  {clienteParaConfirmar.direccion?.trim()
-                    ? clienteParaConfirmar.direccion
-                    : '—'}
-                </dd>
-              </>
-            ) : null}
+            <dt className="font-mono text-etiqueta uppercase text-desvaida">
+              Dirección
+            </dt>
+            <dd className="text-tinta">
+              {clienteParaConfirmar.direccion?.trim()
+                ? clienteParaConfirmar.direccion
+                : '—'}
+            </dd>
           </dl>
           {clienteParaConfirmar.noHabido ? (
             <p className="mt-2 text-cuerpo font-bold text-aviso">

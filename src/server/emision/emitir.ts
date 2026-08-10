@@ -1,10 +1,10 @@
 import {
   calcularLineas,
   calcularTotal,
-  pedidoEsEmitible
-  
+  pedidoEsEmitible,
+  precioEsMenorQueCatalogo,
 } from '../../domain/totales/calculo.ts'
-import type {Centimos} from '../../domain/totales/calculo.ts';
+import type { Centimos } from '../../domain/totales/calculo.ts'
 import { evaluarIdentificacionDelComprador } from '../../domain/documentos/umbral.ts'
 import { REGLAS  } from '../../domain/documentos/tipos.ts'
 import type {TipoDeDocumento} from '../../domain/documentos/tipos.ts';
@@ -123,6 +123,11 @@ export interface ContextoDeEmision {
   /** Umbral leído de `config/parametros`, nunca de una constante. */
   readonly umbralIdentificacion: Centimos
   readonly formatoImpresion: 'a4' | 'rollo'
+  /**
+   * Precios mayoristas vigentes (código → céntimos). Si viene, ninguna línea
+   * puede negociarse por debajo. Ausente = sin piso (pruebas / catálogo vacío).
+   */
+  readonly precioCatalogoPorCodigo?: ReadonlyMap<string, Centimos>
   /** Inyectable para que las pruebas fijen el momento. */
   readonly ahora?: () => Date
 }
@@ -144,6 +149,20 @@ export async function emitirComprobante(
     fallar(
       peticion.lineas.length === 0 ? 'peticion_invalida' : 'importe_no_positivo',
     )
+  }
+
+  const catalogo = contexto.precioCatalogoPorCodigo
+  if (catalogo !== undefined) {
+    for (const linea of peticion.lineas) {
+      const piso = catalogo.get(linea.codigo)
+      if (piso !== undefined && precioEsMenorQueCatalogo(linea.precio, piso)) {
+        fallar('precio_bajo_catalogo', {
+          codigo: linea.codigo,
+          precio: linea.precio,
+          piso,
+        })
+      }
+    }
   }
 
   const lineasCalculadas = calcularLineas(peticion.lineas)

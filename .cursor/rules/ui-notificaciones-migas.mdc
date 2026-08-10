@@ -1,5 +1,5 @@
 ---
-description: NotificacionIsla (toast) y MigasDePan — cuándo usarlos
+description: Toasts Sileo y MigasDePan — cuándo usarlos
 globs:
   - src/routes/**/*.tsx
   - src/ui/componentes/**/*.tsx
@@ -9,13 +9,17 @@ globs:
 # Notificaciones y migas
 
 Antes de añadir un `<p role="alert">` fijo al inicio de una página admin (o
-cualquier pantalla con scroll), usa el toast isla:
+cualquier pantalla con scroll), usa el toast Sileo vía la puerta SuitPay:
 
 - Store: `usarNotificaciones().mostrar({ tono, mensaje, titulo? })`
-- Host: `NotificacionIsla` ya montado en `__root.tsx`
+  (`src/features/notificaciones/almacen.ts`)
+- Host: `<Toaster position="top-right" theme="dark" options={{ fill: '#171717', styles: {…} }} />` en `__root.tsx`
+- Estilos: `sileo/styles.css` importado en `src/styles.css`
 - Docs: `docs/UI-NOTIFICACIONES-Y-MIGAS.md`
 
-Tonos: `exito` | `error` | `info`.
+Tonos: `exito` | `error` | `info` → `sileo.success` / `.error` / `.info`.
+Prefiere la puerta SuitPay; no llames `sileo.*` desde pantallas salvo promesa
+o botón de acción.
 
 Migas de administración: viven en el layout
 (`src/routes/administracion/route.tsx` + `EncabezadoMigasAdmin`), no dentro

@@ -5,10 +5,12 @@ import { usarCaptura, type LineaDeCapturaEditable } from './estado.ts'
 /**
  * Convierte la revisión en líneas normales del pedido (T125).
  * No emite nada por sí sola (principio I).
+ * Omite códigos que ya están en el pedido (no duplica).
  */
 export function aprobarPropuestaDeCaptura(): {
   ok: true
   lineasAgregadas: number
+  lineasOmitidas: number
   textosOriginales: readonly string[]
 } | {
   ok: false
@@ -29,25 +31,32 @@ export function aprobarPropuestaDeCaptura(): {
   const catalogo = usarCatalogo.getState()
   const pedido = usarPedido.getState()
   let agregadas = 0
+  let omitidas = 0
 
   for (const linea of captura.lineas) {
     if (linea.seleccion === null) continue
     const producto = catalogo.productoPorCodigo(linea.seleccion)
     const candidato = linea.candidatos.find((c) => c.codigo === linea.seleccion)
     if (producto === undefined && candidato === undefined) continue
-    pedido.agregarLinea({
+    const agregada = pedido.agregarLinea({
       codigo: producto?.codigo ?? candidato!.codigo,
       descripcion: producto?.descripcion ?? candidato!.descripcion,
       unidad: producto?.unidad ?? candidato!.unidad,
       cantidad: linea.cantidad > 0 ? linea.cantidad : 1,
       precio: producto?.precio ?? 0,
     })
-    agregadas += 1
+    if (agregada) agregadas += 1
+    else omitidas += 1
   }
 
   pedido.fijarOrigen({ capturaId: captura.capturaId })
   captura.cancelar()
-  return { ok: true, lineasAgregadas: agregadas, textosOriginales }
+  return {
+    ok: true,
+    lineasAgregadas: agregadas,
+    lineasOmitidas: omitidas,
+    textosOriginales,
+  }
 }
 
 export function lineasResueltas(

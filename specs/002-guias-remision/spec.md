@@ -88,6 +88,21 @@ Desde el buscador, `/guia` (incompleto o con atajos) abre la papeleta pidiendo l
 
 ---
 
+### User Story 6 - Partir de un pedido ya documentado (Priority: P2)
+
+El cliente ya tiene boleta o factura y, al recoger, pide además la guía porque el envío es a provincia. El vendedor reutiliza las líneas desde el comprobante emitido (FR-056 de `001-mostrador-asistido`) y abre la papeleta `/guia` sobre ese pedido, sin recapturar mercadería.
+
+**Why this priority**: es el caso de uso que motiva la reutilización del pedido; la guía no debe exigir volver a teclear el mismo listado.
+
+**Independent Test**: comprobante emitido → Reutilizar pedido → `/guia` con las mismas líneas precargadas en la papeleta.
+
+**Acceptance Scenarios**:
+
+1. **Given** un pedido cargado desde un comprobante emitido (FR-056), **When** el vendedor inicia `/guia`, **Then** la papeleta puede usar esas líneas como ítems de la guía (sin alterar el comprobante origen).
+2. **Given** esa guía emitida, **When** se consulta el comprobante de boleta/factura original, **Then** sigue intacto (principio II: son dos intenciones de documento distintas).
+
+---
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -102,6 +117,7 @@ Desde el buscador, `/guia` (incompleto o con atajos) abre la papeleta pidiendo l
 - **FR-008**: Tras emitir, el diálogo MUST ofrecer Imprimir / Guardar / Compartir el PDF cuando la respuesta lo traiga (alineado a FR-054a de 001).
 - **FR-009**: MUST existir serie configurada para tipo guía; sin serie, impedir emisión con mensaje claro.
 - **FR-010**: MUST NOT añadir un tab permanente «Guías» en esta entrega; la superficie es comando + papeleta/modal.
+- **FR-011**: El flujo de guía MUST poder partir de un pedido ya cargado en el mostrador, incluida la carga vía «Reutilizar pedido» de un comprobante emitido (FR-056 de 001). MUST NOT modificar ni anular el comprobante origen al emitir la guía.
 
 ### Key Entities
 

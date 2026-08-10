@@ -89,7 +89,7 @@ El significado exacto del tab **Lista** queda abierto en el intake (volcado 5).
 2. **La entrada.** Campo ancho con micrófono y cámara; acepta producto, comando `/`, dictado y foto. Foco al abrir.
 3. **Banda de degradación.** Bajo la entrada cuando algo está caído; no desaparece sola.
 4. **Cabecera fija de documento.** Selector de tipo (Boleta | Factura | Nota de venta | **Cotización**), serie cuando aplica, cliente. Cotización es modo borrador (no tributario): el pie muestra **Guardar** y persiste en el tab Cotizaciones. Cambio de tipo no destruye las líneas.
-5. **Cliente en cabecera.** Label ciclable (chevrons): factura = RUC; boleta = DNI|Nombre; cotización = RUC|DNI|Nombre. Confirmación **manual con Enter** (no al completar dígitos); errores visibles si faltan dígitos. Nombre fija cliente eventual (marcador `00000000`). Documento no registrado: consulta padrón al confirmar y abre el **diálogo de alta** con datos precargados (sin morph «Agregar»). Morph «Usar» sigue para modo Nombre; el «+» abre alta vacía.
+5. **Cliente en cabecera.** Label ciclable (chevrons): factura = RUC; boleta = DNI|Nombre; cotización = RUC|DNI|Nombre. Confirmación **manual con Enter** (no al completar dígitos); errores visibles si faltan dígitos. Nombre fija cliente eventual al instante (marcador `00000000`), sin panel de confirmación. Documento: al Enter, loader en el campo mientras consulta padrón; no registrado abre el **diálogo de alta** con datos precargados (sin morph «Agregar»). Morph «Usar» aplica el nombre de inmediato; el «+» abre alta vacía.
 6. **Selector de tipo.** Boleta/factura muestran la serie en la etiqueta (`Boleta · B001`). Cotización no lleva badge aparte.
 7. **El pedido.** Líneas densas; cabecera de columna **Producto (N)** con el conteo; precio editable inline; scroll interno entre cabecera y pie.
 8. **El pie del total.** Medio de pago (oculto en modo cotización), total grande, CTA a la derecha: **EMITIR** o **Guardar**.
@@ -132,7 +132,7 @@ Igual semántica que antes; formas Soft-Pill en controles editables.
 Total y CTA en cápsula: Emitir (venta) o Guardar (modo Cotización del selector). Medio de pago solo en venta. Motivo de bloqueo en rojo cuando aplica. El conteo de líneas vive en la cabecera de columna Producto, no en el pie.
 
 ### Cabecera de documento (`CabeceraDocumento`)
-Tipo + Cotización; input de documento para registrados; icon-button «+» para alta vacía; documento nuevo dispara consulta + diálogo de alta. Panel de confirmación inline solo para clientes ya registrados (razón social + dirección) antes de fijarlos al pedido.
+Tipo + Cotización; input de documento para registrados; icon-button «+» para alta vacía; documento nuevo dispara consulta (con loader en el campo) + diálogo de alta. Panel de confirmación inline solo para clientes ya registrados (razón social + dirección) antes de fijarlos al pedido. Modo Nombre no usa ese panel: Enter/«Usar» fija la denominación al pedido.
 
 ### Diálogo post-emisión (`EstadoDeEmision`)
 Tras EMITIR con éxito: número, total y acciones **Imprimir**, **Guardar/descargar** y **Compartir** usando la URL de PDF de la respuesta cuando exista. No abrir el PDF sin gesto del vendedor.

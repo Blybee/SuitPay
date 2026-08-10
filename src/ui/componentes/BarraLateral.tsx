@@ -16,7 +16,7 @@ import { MarcaSuitPay } from './MarcaSuitPay.tsx'
 import { Boton } from './primitivas.tsx'
 
 /**
- * Sidebar Soft-Pill colapsable: marca arriba, nav, perfil + logout al pie
+ * Sidebar Soft-Pill colapsable: marca arriba, nav, usuario + logout al pie
  * (FR-005a). Reutilizable: el mostrador y la administración pasan sus ítems
  * (o se eligen según el rol).
  */
@@ -99,15 +99,12 @@ function itemActivo(
 
 export interface PropsDeBarraLateral {
   readonly items?: readonly ItemDeBarraLateral[]
-  /** Subtítulo bajo la marca (p. ej. «Mostrador» / «Administración»). */
-  readonly ambito?: string
 }
 
-export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
+export function BarraLateral({ items }: PropsDeBarraLateral) {
   const navigate = useNavigate()
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const nombre = usarSesion((s) => s.nombre)
-  const correo = usarSesion((s) => s.correo)
   const rol = usarSesion((s) => s.rol)
   const cargando = usarSesion((s) => s.cargando)
   const salir = usarSesion((s) => s.salir)
@@ -120,10 +117,6 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
 
   const enAdmin = pathname.startsWith('/administracion')
   const menu = items ?? (enAdmin ? ITEMS_ADMIN : itemsParaRol(rol))
-  const etiquetaAmbito =
-    ambito ?? (enAdmin || rol === 'administrador' || rol === 'jefe'
-      ? 'Administración'
-      : 'Mostrador')
 
   useEffect(() => {
     setColapsada(leerColapsada())
@@ -177,7 +170,7 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
 
       <aside
         className={unir(
-          'hidden shrink-0 flex-col border-r border-borde bg-papel transition-[width] duration-200 md:flex',
+          'hidden h-full shrink-0 flex-col overflow-hidden border-r border-borde bg-papel transition-[width] duration-200 md:flex',
           colapsada
             ? 'w-[var(--ancho-sidebar-colapsada)]'
             : 'w-[var(--ancho-sidebar)]',
@@ -187,7 +180,7 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
       >
         <div
           className={unir(
-            'flex pb-4 pt-5',
+            'flex shrink-0 pb-4 pt-5',
             colapsada ? 'justify-center px-2' : 'items-center gap-3 px-4',
           )}
         >
@@ -197,9 +190,6 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
               <div className="min-w-0 flex-1">
                 <p className="text-cabecera font-bold tracking-tight text-tinta">
                   SuitPay
-                </p>
-                <p className="mt-0.5 text-etiqueta uppercase text-desvaida">
-                  {etiquetaAmbito}
                 </p>
               </div>
             </>
@@ -222,7 +212,7 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
 
         <nav
           className={unir(
-            'flex flex-1 flex-col gap-1',
+            'barra-lateral-nav flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto',
             colapsada ? 'items-center px-1' : 'px-3',
           )}
           aria-label="Menú"
@@ -236,13 +226,13 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
                 to={item.to}
                 title={item.etiqueta}
                 className={unir(
-                  'flex min-h-11 items-center rounded-full font-bold transition-colors',
+                  'relative z-10 flex min-h-11 items-center rounded-full font-bold transition-colors',
                   'focus-visible:outline-none focus-visible:border-tinta',
                   colapsada
                     ? 'w-11 justify-center px-0'
                     : 'gap-3 px-4 text-cuerpo',
                   activo
-                    ? 'bg-tinta text-papel'
+                    ? 'text-papel'
                     : 'text-desvaida hover:bg-mesa hover:text-tinta',
                 )}
                 aria-current={activo ? 'page' : undefined}
@@ -257,24 +247,23 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
 
         <div
           className={unir(
-            'mt-auto border-t border-borde py-4',
-            colapsada ? 'px-1' : 'px-4',
+            'mt-auto flex shrink-0 items-center border-t border-borde py-3',
+            colapsada ? 'justify-center px-1' : 'gap-1 px-3',
           )}
         >
           {!colapsada && (
-            <div className="mb-3 min-w-0">
-              <p className="truncate text-cuerpo font-bold text-tinta">
-                {cargando ? '…' : (nombre ?? 'Sin sesión')}
-              </p>
-              {correo !== null && (
-                <p className="truncate text-etiqueta text-desvaida">{correo}</p>
-              )}
-            </div>
+            <p className="min-w-0 flex-1 truncate text-cuerpo font-bold text-tinta">
+              {cargando ? '…' : (nombre ?? 'Sin sesión')}
+            </p>
           )}
-          <Boton
-            variante="discreto"
+          <button
+            type="button"
             className={unir(
-              colapsada ? 'w-11 justify-center px-0' : 'w-full justify-start px-3',
+              'inline-flex size-11 shrink-0 items-center justify-center rounded-full',
+              'text-desvaida transition-colors',
+              'hover:bg-mesa hover:text-tinta',
+              'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
+              'disabled:cursor-not-allowed disabled:opacity-40',
             )}
             onClick={() => void cerrarSesion()}
             disabled={cargando || nombre === null}
@@ -282,8 +271,7 @@ export function BarraLateral({ items, ambito }: PropsDeBarraLateral) {
             title="Cerrar sesión"
           >
             <LogOut className="size-4" aria-hidden />
-            {!colapsada && 'Cerrar sesión'}
-          </Boton>
+          </button>
         </div>
       </aside>
     </>

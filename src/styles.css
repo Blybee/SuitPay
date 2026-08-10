@@ -11,6 +11,8 @@
 @import '@fontsource-variable/atkinson-hyperlegible-next';
 @import '@fontsource-variable/atkinson-hyperlegible-mono';
 
+@import 'sileo/styles.css';
+
 @import './ui/tokens/tema.css';
 
 @layer base {
@@ -186,28 +188,44 @@
     field-sizing: content;
   }
 
-  /* Toast Dynamic Island (NotificacionIsla) */
-  .notificacion-isla-pastilla {
-    animation: notificacion-isla-entrar 0.32s ease-out both;
+  /* Sidebar: sliding highlight del ítem activo (CSS anchor positioning) */
+  .barra-lateral-nav {
+    position: relative;
   }
 
-  @keyframes notificacion-isla-entrar {
-    from {
-      opacity: 0;
-      transform: scale(0.88) translateY(-0.5rem);
-    }
-    to {
-      opacity: 1;
-      transform: scale(1) translateY(0);
+  .barra-lateral-nav:has([aria-current='page'])::before {
+    content: '';
+    position: absolute;
+    z-index: 0;
+    pointer-events: none;
+    border-radius: var(--radius-full);
+    background-color: var(--color-tinta);
+    position-anchor: --barra-lateral-activo;
+    inset-block-start: anchor(top);
+    inset-block-end: anchor(bottom);
+    inset-inline-start: anchor(left);
+    inset-inline-end: anchor(right);
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .barra-lateral-nav:has([aria-current='page'])::before {
+      transition: inset 200ms ease-out;
     }
   }
 
-  @media (prefers-reduced-motion: reduce) {
-    .notificacion-isla-pastilla {
-      animation-duration: 0.01ms;
-      animation-name: none;
-      opacity: 1;
-      transform: none;
+  .barra-lateral-nav a[aria-current='page'] {
+    anchor-name: --barra-lateral-activo;
+    color: var(--color-papel);
+  }
+
+  @supports not (anchor-name: --x) {
+    .barra-lateral-nav:has([aria-current='page'])::before {
+      content: none;
+    }
+
+    .barra-lateral-nav a[aria-current='page'] {
+      background-color: var(--color-tinta);
+      color: var(--color-papel);
     }
   }
 }

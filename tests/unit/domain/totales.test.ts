@@ -6,10 +6,12 @@ import {
   formatearImporte,
   lineaEsEmitible,
   lineasNoEmitibles,
-  pedidoEsEmitible
-  
+  pedidoEsEmitible,
+  pedidoTieneCodigo,
+  pedidoTienePrecioBajoCatalogo,
+  precioEsMenorQueCatalogo,
 } from '#/domain/totales/calculo.ts'
-import type {LineaDePedido} from '#/domain/totales/calculo.ts';
+import type { LineaDePedido } from '#/domain/totales/calculo.ts'
 
 function linea(parcial: Partial<LineaDePedido> = {}): LineaDePedido {
   return {
@@ -102,6 +104,42 @@ describe('importe no positivo (FR-013)', () => {
 
   it('un pedido con una sola línea mala no es emitible', () => {
     expect(pedidoEsEmitible([linea(), linea({ cantidad: 0 })])).toBe(false)
+  })
+})
+
+describe('producto ya en el pedido', () => {
+  it('detecta un código presente', () => {
+    expect(pedidoTieneCodigo([linea({ codigo: 'A' })], 'A')).toBe(true)
+    expect(pedidoTieneCodigo([linea({ codigo: 'A' })], 'B')).toBe(false)
+  })
+})
+
+describe('piso de precio mayorista (FR-012)', () => {
+  it('marca precio por debajo del catálogo', () => {
+    expect(precioEsMenorQueCatalogo(1_100, 1_250)).toBe(true)
+  })
+
+  it('acepta precio igual o mayor al catálogo', () => {
+    expect(precioEsMenorQueCatalogo(1_250, 1_250)).toBe(false)
+    expect(precioEsMenorQueCatalogo(1_300, 1_250)).toBe(false)
+  })
+
+  it('sin precio de catálogo no aplica el piso', () => {
+    expect(precioEsMenorQueCatalogo(1, undefined)).toBe(false)
+  })
+
+  it('detecta el pedido con alguna línea bajo el mayorista', () => {
+    const lineas = [linea({ codigo: 'A', precio: 1_000 }), linea({ codigo: 'B' })]
+    expect(
+      pedidoTienePrecioBajoCatalogo(lineas, (codigo) =>
+        codigo === 'A' ? 1_250 : 1_230,
+      ),
+    ).toBe(true)
+    expect(
+      pedidoTienePrecioBajoCatalogo(lineas, (codigo) =>
+        codigo === 'A' ? 900 : 1_230,
+      ),
+    ).toBe(false)
   })
 })
 

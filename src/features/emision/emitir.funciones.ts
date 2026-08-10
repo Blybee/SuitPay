@@ -6,6 +6,7 @@ import { exigirIdentidad } from '../../server/auth/verificar.ts'
 import { COLECCIONES, DOCUMENTOS, bd } from '../../server/firebase/admin.ts'
 import { ErrorDeSuitPay, esErrorDeSuitPay, fallar } from '../../server/errores.ts'
 import { proveedorActual } from '../../server/proveedor/actual.ts'
+import { AlmacenDeCatalogoFirestore } from '../../server/catalogo/almacen-firestore.ts'
 import { AlmacenFirestore } from '../../server/emision/almacen-firestore.ts'
 import { anularComprobante } from '../../server/emision/anular.ts'
 import type { RespuestaDeAnular } from '../../server/emision/anular.ts'
@@ -115,6 +116,22 @@ async function leerParametros(): Promise<ParametrosDelSistema> {
   }
 }
 
+/** Precios mayoristas activos para el piso de negociación en emisión. */
+async function leerPreciosDeCatalogo(): Promise<ReadonlyMap<string, number>> {
+  try {
+    const publicado = await new AlmacenDeCatalogoFirestore().leerPublicado()
+    const mapa = new Map<string, number>()
+    if (publicado === null) return mapa
+    for (const producto of publicado.productos) {
+      if (producto.activo) mapa.set(producto.codigo, producto.precio)
+    }
+    return mapa
+  } catch (error) {
+    console.error('[SuitPay] no se pudo leer catálogo para piso de precio', error)
+    return new Map()
+  }
+}
+
 export interface RespuestaDeEmisionParaCliente {
   readonly ok: boolean
   readonly comprobante?: RespuestaDeEmitir
@@ -130,6 +147,7 @@ export const emitir = createServerFn({ method: 'POST' })
     ])
 
     const parametros = await leerParametros()
+    const precioCatalogoPorCodigo = await leerPreciosDeCatalogo()
 
     try {
       const comprobante = await emitirComprobante(
@@ -139,6 +157,7 @@ export const emitir = createServerFn({ method: 'POST' })
           vendedorId: identidad.uid,
           umbralIdentificacion: parametros.umbralIdentificacionBoleta,
           formatoImpresion: parametros.formatoImpresionPorDefecto,
+          precioCatalogoPorCodigo,
         },
         { ...data, cliente: data.cliente ?? null },
       )

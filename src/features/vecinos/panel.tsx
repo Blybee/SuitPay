@@ -9,6 +9,7 @@ import {
 } from '../../ui/componentes/LineaPedido.tsx'
 import { listarCotizacionesPendientes } from '../cotizaciones/leer.ts'
 import type { Cotizacion } from '../cotizaciones/tipos.ts'
+import { usarCatalogo } from '../catalogo/almacen.ts'
 import { persistirLineasDeVecino } from './persistir.ts'
 
 /**
@@ -26,6 +27,7 @@ export function PanelDeVecinos({
   readonly aviso?: string | null
 }) {
   const queryClient = useQueryClient()
+  const productoPorCodigo = usarCatalogo((s) => s.productoPorCodigo)
 
   const vecinos = useQuery({
     queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
@@ -90,46 +92,35 @@ export function PanelDeVecinos({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="border-b border-borde px-4 pt-3">
-        <h2 className="text-cabecera font-bold text-tinta">Vecinos</h2>
-        <p className="mt-1 text-cuerpo text-desvaida">
-          Cotizaciones por alias. Crea con{' '}
-          <span className="font-mono text-tinta">
-            /crear vecino {'{alias}'} {'{DNI/RUC}'}
-          </span>{' '}
-          y confirma.
-        </p>
-
-        {lista.length > 0 ? (
-          <div
-            role="tablist"
-            aria-label="Vecinos"
-            className="mt-3 flex flex-wrap gap-2 pb-3"
-          >
-            {lista.map((cada) => {
-              const seleccionada = activa?.id === cada.id
-              return (
-                <button
-                  key={cada.id}
-                  type="button"
-                  role="tab"
-                  aria-selected={seleccionada}
-                  className={[
-                    'rounded-full px-4 py-2 text-cuerpo font-bold',
-                    'border focus-visible:outline-none focus-visible:border-tinta',
-                    seleccionada
-                      ? 'border-tinta bg-tinta text-papel'
-                      : 'border-borde bg-papel text-tinta hover:bg-mesa',
-                  ].join(' ')}
-                  onClick={() => onCambiarActiva(cada.id)}
-                >
-                  {cada.aliasVecino ?? `H${cada.numero}`}
-                </button>
-              )
-            })}
-          </div>
-        ) : null}
-      </div>
+      {lista.length > 0 ? (
+        <div
+          role="tablist"
+          aria-label="Vecinos"
+          className="flex flex-wrap gap-2 border-b border-borde px-4 pt-3 pb-3"
+        >
+          {lista.map((cada) => {
+            const seleccionada = activa?.id === cada.id
+            return (
+              <button
+                key={cada.id}
+                type="button"
+                role="tab"
+                aria-selected={seleccionada}
+                className={[
+                  'rounded-full px-4 py-2 text-cuerpo font-bold',
+                  'border focus-visible:outline-none focus-visible:border-tinta',
+                  seleccionada
+                    ? 'border-tinta bg-tinta text-papel'
+                    : 'border-borde bg-papel text-tinta hover:bg-mesa',
+                ].join(' ')}
+                onClick={() => onCambiarActiva(cada.id)}
+              >
+                {cada.aliasVecino ?? `H${cada.numero}`}
+              </button>
+            )
+          })}
+        </div>
+      ) : null}
 
       {aviso !== null && aviso !== undefined && aviso !== '' ? (
         <p
@@ -174,7 +165,7 @@ export function PanelDeVecinos({
                   key={`${linea.codigo}-${indice}`}
                   linea={linea}
                   indice={indice}
-                  precioDeCatalogo={undefined}
+                  precioDeCatalogo={productoPorCodigo(linea.codigo)?.precio}
                   onCambiarCantidad={(cantidad) => {
                     void cambiarCantidad(indice, cantidad)
                   }}

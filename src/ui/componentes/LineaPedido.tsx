@@ -3,26 +3,19 @@ import { X } from 'lucide-react'
 import {
   calcularImporte,
   formatearImporte,
-  lineaEsEmitible
-  
-  
+  lineaEsEmitible,
+  precioEsMenorQueCatalogo,
 } from '../../domain/totales/calculo.ts'
-import type {Centimos, LineaDePedido} from '../../domain/totales/calculo.ts';
+import type { Centimos, LineaDePedido } from '../../domain/totales/calculo.ts'
 
 /**
  * Un renglón del pedido.
  *
- * ## El precio se edita en el sitio y sin validación
+ * ## El precio se edita en el sitio, con piso en el mayorista
  *
- * FR-012, y es el requisito que más cuesta implementar bien porque el instinto de
- * cualquiera es poner un mínimo, un máximo o un aviso. No lleva ninguno, y la
- * razón es del negocio: en un mostrador mayorista **el precio se negocia**. Un
- * campo que discute con el vendedor mientras el cliente espera es un campo que se
- * acaba sorteando escribiendo el pedido en otro sitio.
- *
- * Lo que sí se hace es dejar **rastro visible**: cuando el precio difiere del de
- * catálogo, el de catálogo aparece tachado al lado. Sin validar nada, pero sin
- * ocultar nada tampoco. Quien mire el pedido ve que hubo una negociación.
+ * Se puede negociar al alza o igualar el catálogo. Por debajo del precio
+ * mayorista la línea se marca, se muestra el mayorista tachado y se bloquea
+ * emitir/guardar. Si el precio es ≥ catálogo, ese aviso no aparece.
  *
  * ## Por qué el campo guarda texto y no el número
  *
@@ -87,8 +80,12 @@ export function LineaPedido({
 
   const importe = calcularImporte(linea)
   const emitible = lineaEsEmitible(linea)
-  const precioAjustado =
-    precioDeCatalogo !== undefined && precioDeCatalogo !== linea.precio
+  const precioEnEdicion = aCentimos(precioTecleado)
+  const bajoPiso = precioEsMenorQueCatalogo(
+    precioEnEdicion ?? linea.precio,
+    precioDeCatalogo,
+  )
+  const lineaEnAviso = !emitible || bajoPiso
 
   function confirmarPrecio(): void {
     editando.current = false
@@ -117,7 +114,7 @@ export function LineaPedido({
         'border-b border-borde px-4 py-1.5',
         // El estado no se distingue solo por color: además del borde rojo, abajo
         // se escribe el motivo.
-        !emitible && 'border-l-4 border-l-aviso bg-aviso/5',
+        lineaEnAviso && 'border-l-4 border-l-aviso bg-aviso/5',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -135,6 +132,11 @@ export function LineaPedido({
         {!emitible && (
           <p className="font-mono text-etiqueta font-bold uppercase text-aviso">
             Cantidad o precio en cero: corrígelo para emitir
+          </p>
+        )}
+        {emitible && bajoPiso && (
+          <p className="font-mono text-etiqueta font-bold uppercase text-aviso">
+            Bajo el mayorista ({formatearImporte(precioDeCatalogo ?? 0)})
           </p>
         )}
       </div>
@@ -162,6 +164,7 @@ export function LineaPedido({
       <div>
         <input
           aria-label={`Precio de ${linea.descripcion}`}
+          aria-invalid={bajoPiso || undefined}
           value={precioTecleado}
           inputMode="decimal"
           onFocus={() => {
@@ -173,13 +176,15 @@ export function LineaPedido({
             if (evento.key === 'Enter') evento.currentTarget.blur()
           }}
           className={[
-            'min-h-11 w-full rounded-full border border-transparent bg-transparent px-2',
-            'font-mono tabular-nums text-right text-cuerpo text-tinta',
-            'hover:border-borde',
-            'focus-visible:border-borde focus-visible:bg-mesa focus-visible:outline-none',
+            'min-h-11 w-full rounded-full border bg-transparent px-2',
+            'font-mono tabular-nums text-right text-cuerpo',
+            'focus-visible:outline-none focus-visible:bg-mesa',
+            bajoPiso
+              ? 'border-aviso text-aviso focus-visible:border-aviso'
+              : 'border-transparent text-tinta hover:border-borde focus-visible:border-borde',
           ].join(' ')}
         />
-        {precioAjustado && (
+        {bajoPiso && precioDeCatalogo !== undefined && (
           <p className="px-1 text-right font-mono text-etiqueta text-desvaida">
             <span className="line-through">
               {formatearImporte(precioDeCatalogo)}

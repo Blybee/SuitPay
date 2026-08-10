@@ -140,14 +140,6 @@ export function PanelDeCotizaciones({
 
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-6">
-      <header>
-        <h2 className="text-cabecera font-bold text-tinta">Cotizaciones</h2>
-        <p className="mt-1 text-cuerpo text-desvaida">
-          Recupera por número desde cualquier dispositivo. Cualquier vendedor
-          autorizado puede abrirla o eliminarla.
-        </p>
-      </header>
-
       <form
         className="flex flex-wrap items-end gap-3"
         onSubmit={(evento) => {
@@ -295,8 +287,14 @@ export function PanelDeCotizaciones({
               </button>
               <button
                 type="button"
-                className="inline-flex shrink-0 items-center justify-center rounded-2xl px-3 text-aviso hover:bg-aviso/15 focus-visible:outline-none focus-visible:border focus-visible:border-tinta"
+                className={[
+                  'inline-flex size-11 shrink-0 items-center justify-center self-center rounded-full',
+                  'text-desvaida transition-colors',
+                  'hover:bg-aviso/15 hover:text-aviso',
+                  'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
+                ].join(' ')}
                 aria-label={`Eliminar cotización ${cada.numero}`}
+                title="Eliminar cotización"
                 onClick={() => setAEliminar(cada)}
               >
                 <Trash2 className="size-5" aria-hidden />

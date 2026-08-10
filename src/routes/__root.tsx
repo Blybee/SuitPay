@@ -18,9 +18,9 @@ import {
 } from '../features/degradacion/estado.ts'
 import { usarPedido } from '../features/pedido/almacen.ts'
 import { usarSesion } from '../features/sesion/almacen.ts'
+import { Toaster } from 'sileo'
 import { BandaDegradacion } from '../ui/componentes/BandaDegradacion.tsx'
 import { BarraLateral } from '../ui/componentes/BarraLateral.tsx'
-import { NotificacionIsla } from '../ui/componentes/NotificacionIsla.tsx'
 import hojaDeEstilos from '../styles.css?url'
 
 /**
@@ -84,7 +84,13 @@ function Mostrador() {
 
   return (
     <QueryClientProvider client={clienteDeConsultas}>
-      <div className="flex min-h-svh flex-col bg-mesa">
+      <div
+        className={
+          enAcceso || sinSesion || cargandoSesion
+            ? 'flex min-h-svh flex-col bg-mesa'
+            : 'flex h-svh flex-col overflow-hidden bg-mesa'
+        }
+      >
         <BandaDegradacion
           degradacion={degradacion}
           onReintentarAsistencia={
@@ -93,12 +99,24 @@ function Mostrador() {
               : undefined
           }
         />
-        <NotificacionIsla />
+        <Toaster
+          position="top-right"
+          theme="dark"
+          options={{
+            fill: '#171717',
+            styles: {
+              title: 'text-white!',
+              description: 'text-white/75!',
+              badge: 'bg-white/10!',
+              button: 'bg-white/10! hover:bg-white/15!',
+            },
+          }}
+        />
 
         {enAcceso ? (
           <Outlet />
         ) : cargandoSesion ? (
-          <div className="flex min-h-full flex-1 items-center justify-center p-8">
+          <div className="flex min-h-0 flex-1 items-center justify-center p-8">
             <p className="text-cuerpo text-desvaida">Comprobando sesión…</p>
           </div>
         ) : sinSesion ? (
@@ -106,7 +124,7 @@ function Mostrador() {
         ) : (
           <div className="flex min-h-0 flex-1 flex-col md:flex-row">
             <BarraLateral />
-            <main className="min-w-0 flex-1 overflow-auto bg-mesa">
+            <main className="min-h-0 min-w-0 flex-1 overflow-auto bg-mesa">
               <Outlet />
             </main>
           </div>

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import { estaDentroDeLaVentanaDeAnulacion } from '../../domain/anulacion/ventana.ts'
 import { estadoEsAnulable, REGLAS } from '../../domain/documentos/tipos.ts'
@@ -7,12 +7,18 @@ import { ConfirmarAnulacion } from '../../features/emision/confirmar-anulacion.t
 import { leerComprobante } from '../../features/emision/emitir.funciones.ts'
 import type { Comprobante } from '../../features/emision/emitir.funciones.ts'
 import { FueraDeVentana } from '../../features/emision/fuera-de-ventana.tsx'
+import { usarPedido } from '../../features/pedido/almacen.ts'
+import {
+  confirmarYPrepararReutilizacion,
+  etiquetaDeComprobante,
+} from '../../features/pedido/reutilizar-desde-comprobante.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
+import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import { MarcaDeEstado } from '../../ui/componentes/Sello.tsx'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
 
 /**
- * Detalle del comprobante + anulación (T104–T106).
+ * Detalle del comprobante + anulación (T104–T106) + reutilizar pedido (FR-056).
  */
 export const Route = createFileRoute('/comprobantes/$comprobanteId')({
   component: DetalleConGuarda,
@@ -28,6 +34,10 @@ function DetalleConGuarda() {
 
 function DetalleDeComprobante() {
   const { comprobanteId } = Route.useParams()
+  const navigate = useNavigate()
+  const cargarDesdeComprobante = usarPedido((s) => s.cargarDesdeComprobante)
+  const lineasEnCurso = usarPedido((s) => s.lineas.length)
+  const mostrar = usarNotificaciones((s) => s.mostrar)
   const [comprobante, setComprobante] = useState<Comprobante | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [confirmarAbierta, setConfirmarAbierta] = useState(false)
@@ -75,10 +85,7 @@ function DetalleDeComprobante() {
   }
 
   const nombreTipo = REGLAS[comprobante.tipoDocumento].nombre
-  const numeracion =
-    comprobante.numero === null
-      ? comprobante.serie
-      : `${comprobante.serie}-${String(comprobante.numero).padStart(8, '0')}`
+  const numeracion = etiquetaDeComprobante(comprobante)
 
   const ventana = estaDentroDeLaVentanaDeAnulacion(
     comprobante.emitidoEn,
@@ -88,6 +95,26 @@ function DetalleDeComprobante() {
     estadoEsAnulable(comprobante.estado) && ventana.dentroDeVentana
   const fueraDeVentana =
     estadoEsAnulable(comprobante.estado) && !ventana.dentroDeVentana
+  const puedeReutilizar = comprobante.lineas.length > 0
+  const documento = comprobante
+
+  function reutilizarPedido(): void {
+    const preparado = confirmarYPrepararReutilizacion(
+      documento,
+      lineasEnCurso,
+    )
+    if (preparado === null) return
+
+    cargarDesdeComprobante({
+      lineas: preparado.lineas,
+      cliente: preparado.cliente,
+    })
+    mostrar({
+      tono: 'info',
+      mensaje: `Pedido cargado desde ${preparado.etiqueta}. El comprobante original no se modifica.`,
+    })
+    void navigate({ to: '/' })
+  }
 
   return (
     <section className="flex min-h-full flex-col px-4 py-6 sm:px-8">
@@ -174,16 +201,21 @@ function DetalleDeComprobante() {
         <FueraDeVentana diaDeEmision={ventana.diaDeEmision} />
       ) : null}
 
-      {anulable ? (
-        <div className="mt-4">
+      <div className="mt-4 flex flex-wrap gap-3">
+        {puedeReutilizar ? (
+          <Boton variante="secundario" onClick={reutilizarPedido}>
+            Reutilizar pedido
+          </Boton>
+        ) : null}
+        {anulable ? (
           <Boton
             variante="peligro"
             onClick={() => setConfirmarAbierta(true)}
           >
             Anular comprobante
           </Boton>
-        </div>
-      ) : null}
+        ) : null}
+      </div>
 
       <ConfirmarAnulacion
         abierta={confirmarAbierta}

@@ -16,8 +16,8 @@ import { sembrarSesionDeVendedor } from './ayudas-sesion.ts'
  * en que está escrito, y una búsqueda que exige el orden obliga a mirar la pantalla
  * mientras se escribe, que es exactamente lo que este sistema existe para evitar.
  *
- * **El precio se ajusta en el sitio.** FR-012. En una ferretería el precio se
- * negocia, y si ajustarlo costara abrir un diálogo, el vendedor haría la cuenta a
+ * **El precio se ajusta en el sitio.** FR-012. Se negocia al alza (o igual al
+ * mayorista); si ajustarlo costara abrir un diálogo, el vendedor haría la cuenta a
  * mano y teclearía el total, que es como se pierde el detalle de la venta.
  *
  * **Cambiar de tipo no destruye el pedido.** FR-014. El cliente dice «mejor con
@@ -168,12 +168,12 @@ async function armarPedido(pagina: Page): Promise<void> {
   // 12,50 + 1,80 + 8,50 son 22,80.
   await expect(pagina.getByLabel('Total del pedido')).toHaveText('22.80')
 
-  // El campo del precio está en soles, que es como el vendedor lo dice en voz alta.
+  // Negociación al alza: el piso es el mayorista (12,50); 13,00 es válido.
   const precio = pagina.getByLabel('Precio de TUBO PVC 1/2 PULGADA X 3M')
-  await precio.fill('11.00')
+  await precio.fill('13.00')
   await precio.blur()
 
-  await expect(pagina.getByLabel('Total del pedido')).toHaveText('21.30')
+  await expect(pagina.getByLabel('Total del pedido')).toHaveText('23.30')
 }
 
 test.beforeEach(async ({ page }) => {
@@ -188,14 +188,13 @@ test('el pedido se toma escribiendo y sobrevive al cambio de tipo', async ({
   const lineas = page.getByRole('listitem')
   const total = page.getByLabel('Total del pedido')
 
-  // El precio de catálogo queda tachado al lado, para que el ajuste se vea y no
-  // haya que recordar cuál era.
-  await expect(lineas.first().getByText('12.50')).toBeVisible()
+  // Negociación al alza: el aviso de catálogo tachado solo sale bajo el piso.
+  await expect(lineas.first().getByText(/catálogo/i)).toHaveCount(0)
 
   // --- Cambiar de boleta a factura conserva el pedido (FR-014) --------------
   await page.getByRole('radio', { name: 'Factura' }).click()
   await expect(lineas).toHaveCount(3)
-  await expect(total).toHaveText('21.30')
+  await expect(total).toHaveText('23.30')
 
   // Y ahora pide RUC, que es la otra mitad de FR-014: el pedido sobrevive y la
   // exigencia del tipo nuevo se aplica de inmediato.
@@ -204,7 +203,7 @@ test('el pedido se toma escribiendo y sobrevive al cambio de tipo', async ({
   // El viaje de vuelta tampoco destruye nada.
   await page.getByRole('radio', { name: 'Boleta de venta' }).click()
   await expect(lineas).toHaveCount(3)
-  await expect(total).toHaveText('21.30')
+  await expect(total).toHaveText('23.30')
 })
 
 test('la doble pulsación produce un solo comprobante', async ({ page }) => {

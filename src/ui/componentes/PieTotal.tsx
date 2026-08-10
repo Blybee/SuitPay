@@ -63,9 +63,10 @@ export function PieTotal({
 
   return (
     <div className="sticky bottom-0 z-20 w-full border-t border-borde bg-papel shadow-md">
-      {motivoDeBloqueo !== null && !modoCotizacion && (
+      {motivoDeBloqueo !== null && (
         <p
           role="status"
+          id="motivo-de-bloqueo"
           className="w-full border-b border-aviso px-4 py-1.5 text-cuerpo font-bold text-aviso"
         >
           {motivoDeBloqueo}

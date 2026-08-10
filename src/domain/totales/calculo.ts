@@ -107,6 +107,35 @@ export function pedidoEsEmitible(lineas: readonly LineaDePedido[]): boolean {
   return lineas.length > 0 && lineas.every(lineaEsEmitible)
 }
 
+/** True si ya hay una línea con ese código de producto. */
+export function pedidoTieneCodigo(
+  lineas: readonly LineaDePedido[],
+  codigo: string,
+): boolean {
+  return lineas.some((linea) => linea.codigo === codigo)
+}
+
+/**
+ * Precio por debajo del mayorista de catálogo (piso de negociación).
+ * Sin precio de catálogo no se puede aplicar el piso: la línea no se marca.
+ */
+export function precioEsMenorQueCatalogo(
+  precio: Centimos,
+  precioCatalogo: Centimos | undefined,
+): boolean {
+  return precioCatalogo !== undefined && precio < precioCatalogo
+}
+
+/** True si alguna línea negoció por debajo del precio mayorista vigente. */
+export function pedidoTienePrecioBajoCatalogo(
+  lineas: readonly LineaDePedido[],
+  precioDeCatalogo: (codigo: string) => Centimos | undefined,
+): boolean {
+  return lineas.some((linea) =>
+    precioEsMenorQueCatalogo(linea.precio, precioDeCatalogo(linea.codigo)),
+  )
+}
+
 const FORMATO_DE_MILES = new Intl.NumberFormat('es-PE', {
   useGrouping: true,
   maximumFractionDigits: 0,

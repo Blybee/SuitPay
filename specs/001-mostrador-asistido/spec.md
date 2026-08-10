@@ -27,7 +27,8 @@ Un vendedor abre el navegador en su puesto o en su teléfono y ya está dentro, 
 1. **Given** un vendedor que ya inició sesión en este dispositivo alguna vez, **When** abre la aplicación al día siguiente, **Then** entra directamente al mostrador (Inicio, tab Pedido) sin volver a escribir credenciales, con tipo de documento Nota de Venta.
 2. **Given** un catálogo que contiene "CODO FG 1/2", **When** el vendedor escribe "1/2 codo fierro", **Then** el producto aparece entre los resultados.
 3. **Given** un pedido con tres productos, **When** el vendedor cambia el tipo de documento de boleta a factura, **Then** el pedido se conserva íntegro sin volver a capturarse.
-4. **Given** un producto con precio mayorista de referencia, **When** el vendedor escribe un precio distinto sobre ese valor, **Then** el sistema lo acepta sin validarlo y el total se recalcula.
+4. **Given** un producto con precio mayorista de referencia, **When** el vendedor escribe un precio igual o mayor, **Then** el sistema lo acepta y el total se recalcula.
+5. **Given** un producto con precio mayorista de referencia, **When** el vendedor escribe un precio menor, **Then** la línea se marca, el total se recalcula, y emitir o guardar quedan bloqueados hasta corregirlo.
 5. **Given** un pedido listo y un cliente eventual por defecto, **When** el vendedor confirma la emisión, **Then** el comprobante se emite, queda atribuido a ese vendedor y el diálogo de éxito ofrece imprimir, guardar/descargar o compartir el PDF del proveedor cuando exista (sin reemitir).
 6. **Given** un pedido en curso, **When** el vendedor pierde la conexión y la recupera en el mismo dispositivo, **Then** el pedido sigue ahí sin pérdida de líneas.
 7. **Given** una emisión en curso, **When** el vendedor pulsa confirmar dos veces seguidas, **Then** se emite un único comprobante.
@@ -177,6 +178,22 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 
 ---
 
+### User Story 10 - Reutilizar el pedido de un comprobante emitido (Priority: P6)
+
+Tras emitir una boleta o factura, el cliente —al recoger— indica que es de provincia y necesita también una guía de remisión con la misma mercadería. El vendedor abre el comprobante, reutiliza las líneas en el mostrador y arma el documento adicional (p. ej. guía vía `002-guias-remision`) sin volver a capturar el pedido. El comprobante original permanece intacto.
+
+**Why this priority**: evita recaptura en un caso real del mostrador; no toca la emisión del documento origen (principio II).
+
+**Independent Test**: desde el detalle de un comprobante emitido con líneas, «Reutilizar pedido» deja esas líneas (y cliente) en el tab Pedido con nueva intención de venta.
+
+**Acceptance Scenarios**:
+
+1. **Given** un comprobante emitido con líneas, **When** el vendedor pulsa «Reutilizar pedido», **Then** el mostrador muestra esas líneas y el cliente del documento, sin modificar el comprobante origen.
+2. **Given** un pedido en curso en el dispositivo, **When** el vendedor reutiliza otro comprobante, **Then** el sistema pide confirmación antes de reemplazar el pedido actual.
+3. **Given** un pedido reutilizado, **When** el vendedor emite un documento nuevo, **Then** se usa una clave de idempotencia distinta a la del comprobante origen.
+
+---
+
 ### Edge Cases
 
 - **La emisión se confirma y la respuesta nunca llega.** El sistema no debe reintentar a ciegas: debe poder averiguar si el documento existe antes de volver a intentarlo, y mientras no lo sepa, no debe presentar la venta como emitida ni como fallida.
@@ -186,7 +203,8 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **Corte de red con el pedido a medio armar.** El pedido sobrevive en el dispositivo; al recuperar la conexión continúa.
 - **Cambio de dispositivo con un pedido en curso.** Se acepta que el pedido en curso no viaje: el vendedor lo rehace. Las cotizaciones guardadas sí viajan.
 - **Producto que no existe en el catálogo.** La búsqueda no debe devolver un resultado aproximado como si fuera exacto; debe quedar claro que no hay coincidencia.
-- **Precio editado a cero o negativo.** No hay validación de precio por decisión del negocio, pero un importe no positivo no puede convertirse en comprobante.
+- **Precio editado a cero o negativo.** Un importe no positivo no puede convertirse en comprobante (FR-013).
+- **Precio por debajo del mayorista.** La línea se marca y emitir/guardar quedan bloqueados hasta subir el precio al de catálogo o más (FR-012).
 - **Boleta que supera el importe que obliga a identificar al comprador.** El sistema debe exigir los datos del cliente antes de permitir la emisión.
 - **Serie del vendedor no configurada.** El sistema debe impedir la venta con un mensaje que diga qué falta, en lugar de fallar al emitir.
 - **Sesión revocada o vendedor desactivado.** La aplicación no debe permitir emitir con una sesión que ya no es válida.
@@ -217,7 +235,7 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **FR-009**: El administrador MUST poder cargar el catálogo desde un archivo estructurado o un documento, revisando el resultado antes de confirmarlo.
 - **FR-010**: El sistema MUST señalar los conflictos de una carga —códigos repetidos, precios ausentes, unidades desconocidas— sin resolverlos por su cuenta.
 - **FR-011**: Ante una recarga del catálogo, el sistema MUST mostrar qué productos son nuevos, cuáles cambian y cuáles desaparecen, antes de aplicar los cambios.
-- **FR-012**: El sistema MUST mostrar el precio mayorista como referencia y MUST permitir sustituirlo en el momento de la venta sin validar el nuevo valor.
+- **FR-012**: El sistema MUST mostrar el precio mayorista como referencia y MUST permitir sustituirlo en el momento de la venta solo si el nuevo valor es **mayor o igual** al de catálogo. Un precio menor MUST marcarse y MUST impedir emitir y guardar cotización (piso acordado con gerencia).
 - **FR-013**: El sistema MUST impedir convertir en comprobante una línea cuyo importe no sea positivo.
 
 **Pedido**
@@ -230,12 +248,13 @@ En lugar de navegar, el vendedor escribe una instrucción corta en el mismo busc
 - **FR-018**: Al recuperar una cotización, el sistema MUST advertir de los productos que cambiaron de precio o dejaron de existir.
 - **FR-019**: Al convertir una cotización en boleta, factura o nota de venta, el sistema MUST eliminar en duro el documento de cotización en la misma transacción que crea el comprobante. Si la cotización ya no existe, MUST impedir una segunda conversión.
 - **FR-019a**: El tab Cotizaciones MUST ofrecer eliminar una cotización pendiente mediante un control explícito que exige confirmación del vendedor; tras confirmar, el documento MUST eliminarse en duro de Firestore. Cancelar el diálogo MUST dejar la cotización intacta.
+- **FR-056**: Desde el detalle de un comprobante con líneas, el sistema MUST ofrecer «Reutilizar pedido»: cargar esas líneas (y el cliente, si lo había) en el mostrador como un pedido nuevo, con nueva clave de idempotencia, **sin modificar ni anular** el comprobante origen. Si ya hay un pedido en curso, MUST pedir confirmación antes de reemplazarlo. Al recuperar, SHOULD advertir diferencias de catálogo cuando aplique el mismo criterio que FR-018. Caso de uso: emitir boleta/factura y, al recoger, necesitar además una guía de remisión con la misma lista (ver feature `002-guias-remision`).
 
 **Clientes**
 
 - **FR-020**: El sistema MUST ofrecer como opción por defecto un cliente eventual, sin exigir datos para una venta ordinaria.
 - **FR-021**: El sistema MUST exigir los datos identificatorios del cliente cuando el importe de una boleta supere los 700 soles, e impedir la emisión mientras falten.
-- **FR-022**: El campo de cliente en cabecera MUST admitir, según el tipo: RUC (factura), DNI o Nombre (boleta), y RUC/DNI/Nombre (cotización). Con documento, MUST resolver primero clientes ya registrados; si no está registrado, tras confirmación explícita del documento (Enter o control de confirmar) MUST consultar el padrón y abrir el diálogo de alta con los datos precargados — MUST NOT exigir un paso intermedio de morph «Agregar». Con Nombre, MUST permitir fijar la denominación en el pedido/cotización sin abandonar la venta. El control «+» MAY seguir abriendo el alta vacía a demanda.
+- **FR-022**: El campo de cliente en cabecera MUST admitir, según el tipo: RUC (factura), DNI o Nombre (boleta), y RUC/DNI/Nombre (cotización). Con documento, MUST resolver primero clientes ya registrados; si no está registrado, tras confirmación explícita del documento (Enter o control de confirmar) MUST consultar el padrón y abrir el diálogo de alta con los datos precargados — MUST NOT exigir un paso intermedio de morph «Agregar». Mientras consulta el padrón, MUST mostrar feedback visual inmediato en el campo (p. ej. indicador de carga). Con Nombre, MUST fijar la denominación en el pedido/cotización de inmediato al confirmar (Enter o «Usar»), sin panel intermedio de confirmación y sin abandonar la venta. El control «+» MAY seguir abriendo el alta vacía a demanda.
 - **FR-023**: El sistema MUST poder traer los datos de un contribuyente a partir de su RUC o DNI, presentarlos para revisión en el diálogo de alta (como mínimo razón social/denominación y dirección cuando exista) y guardarlos solo tras la confirmación del vendedor.
 - **FR-024**: El sistema MUST advertir de forma visible cuando el registro oficial señale al contribuyente como no habido, dejando la decisión al vendedor.
 - **FR-025**: Cuando una razón social parcial coincida con varios clientes, el sistema MUST presentar las coincidencias para que el vendedor elija.
