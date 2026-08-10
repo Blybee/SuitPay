@@ -135,7 +135,13 @@ export const usarCatalogo = create<AlmacenDelCatalogo>((set, get) => ({
 
   incorporarCliente(entrada) {
     const actuales = get().clientes
-    if (actuales.some((c) => c.numeroDocumento === entrada.numeroDocumento)) {
+    const indice = actuales.findIndex(
+      (c) => c.numeroDocumento === entrada.numeroDocumento,
+    )
+    if (indice >= 0) {
+      const siguientes = [...actuales]
+      siguientes[indice] = entrada
+      set({ clientes: siguientes })
       return
     }
     set({ clientes: [...actuales, entrada] })

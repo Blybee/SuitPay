@@ -63,9 +63,10 @@ Llega un cliente con RUC que nunca compró aquí. El vendedor escribe el número
 
 **Acceptance Scenarios**:
 
-1. **Given** un RUC o DNI que no está registrado, **When** el vendedor lo confirma con Enter (o el control de confirmar documento), **Then** el sistema consulta el padrón y abre el diálogo de alta con los datos precargados, sin paso intermedio de morph «Agregar».
+1. **Given** un RUC o DNI que no está registrado, **When** el vendedor lo confirma con Enter en cabecera, **Then** el sistema consulta el padrón y abre el diálogo de alta con los datos precargados, sin paso intermedio de morph «Agregar».
 2. **Given** un RUC o DNI válido no registrado y respuesta del padrón, **When** se abre el diálogo de alta, **Then** el sistema presenta los datos para revisión y el vendedor confirma antes de guardarlos.
-3. **Given** una razón social parcial que coincide con varios clientes registrados, **When** el vendedor la escribe, **Then** el sistema presenta las coincidencias para que seleccione una.
+3. **Given** una búsqueda (razón social, RUC o DNI) que coincide con clientes registrados en el diálogo «Buscar o Agregar cliente», **When** el sistema lista resultados, **Then** cada fila ofrece «Usar» y «Editar».
+4. **Given** un RUC o DNI ya registrado, **When** el vendedor lo confirma con Enter en cabecera, **Then** el sistema fija ese cliente al pedido de inmediato, sin panel de confirmación.
 4. **Given** un RUC que el registro oficial marca como no habido, **When** se traen sus datos, **Then** el sistema lo advierte de forma visible y deja la decisión al vendedor.
 5. **Given** una consulta de datos que no obtiene respuesta, **When** el vendedor necesita continuar, **Then** puede escribir los datos a mano y la venta no se bloquea.
 
@@ -254,10 +255,10 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 
 - **FR-020**: El sistema MUST ofrecer como opción por defecto un cliente eventual, sin exigir datos para una venta ordinaria.
 - **FR-021**: El sistema MUST exigir los datos identificatorios del cliente cuando el importe de una boleta supere los 700 soles, e impedir la emisión mientras falten.
-- **FR-022**: El campo de cliente en cabecera MUST admitir, según el tipo: RUC (factura), DNI o Nombre (boleta), y RUC/DNI/Nombre (cotización). Con documento, MUST resolver primero clientes ya registrados; si no está registrado, tras confirmación explícita del documento (Enter o control de confirmar) MUST consultar el padrón y abrir el diálogo de alta con los datos precargados — MUST NOT exigir un paso intermedio de morph «Agregar». Mientras consulta el padrón, MUST mostrar feedback visual inmediato en el campo (p. ej. indicador de carga). Con Nombre, MUST fijar la denominación en el pedido/cotización de inmediato al confirmar (Enter o «Usar»), sin panel intermedio de confirmación y sin abandonar la venta. El control «+» MAY seguir abriendo el alta vacía a demanda.
+- **FR-022**: El campo de cliente en cabecera MUST admitir, según el tipo: RUC (factura), DNI o Nombre (boleta), y RUC/DNI/Nombre (cotización). Con documento, MUST resolver primero clientes ya registrados y, si existe, MUST fijarlo al pedido de inmediato sin panel de confirmación; si no está registrado, tras Enter MUST consultar el padrón y abrir el diálogo de alta con los datos precargados — MUST NOT exigir un paso intermedio de morph «Agregar». Mientras consulta (registro o padrón), MUST mostrar feedback visual inmediato en el campo (p. ej. indicador de carga). Con Nombre, MUST fijar la denominación en el pedido/cotización de inmediato al confirmar (Enter o «Usar»), sin panel intermedio de confirmación y sin abandonar la venta. El control «+» MUST abrir el diálogo «Buscar o Agregar cliente» (búsqueda por RUC/DNI/razón social o alta) y MUST NOT confirmar el campo inline. En ese diálogo, MUST NOT permitir usar un cliente cuyo documento sea incompatible con el tipo actual (factura ↔ solo RUC; boleta ↔ solo DNI).
 - **FR-023**: El sistema MUST poder traer los datos de un contribuyente a partir de su RUC o DNI, presentarlos para revisión en el diálogo de alta (como mínimo razón social/denominación y dirección cuando exista) y guardarlos solo tras la confirmación del vendedor.
 - **FR-024**: El sistema MUST advertir de forma visible cuando el registro oficial señale al contribuyente como no habido, dejando la decisión al vendedor.
-- **FR-025**: Cuando una razón social parcial coincida con varios clientes, el sistema MUST presentar las coincidencias para que el vendedor elija.
+- **FR-025**: Cuando una búsqueda por razón social, RUC o DNI coincida con clientes registrados, el sistema MUST presentar la lista de resultados. Cada resultado MUST ofrecer «Usar» (fijar al pedido) y «Editar» (corregir datos antes de usar).
 - **FR-026**: Si la consulta de datos no obtiene respuesta, el sistema MUST abrir el diálogo de alta en modo manual, MUST permitir introducirlos a mano y MUST NOT bloquear la venta.
 
 **Emisión**

@@ -96,4 +96,25 @@ describe('CabeceraDocumento — campo manual con Enter', () => {
       numeroDocumento: '20123456789',
     })
   })
+
+  it('el «+» abre buscar/agregar y no confirma el documento', async () => {
+    const usuario = userEvent.setup()
+    const onDocumentoCompleto = vi.fn()
+    const onAgregarClienteNuevo = vi.fn()
+
+    render(
+      <CabeceraDocumento
+        {...base}
+        modo="boleta"
+        onDocumentoCompleto={onDocumentoCompleto}
+        onAgregarClienteNuevo={onAgregarClienteNuevo}
+      />,
+    )
+
+    const campo = screen.getByLabelText('DNI del cliente')
+    await usuario.type(campo, '12345678')
+    await usuario.click(screen.getByLabelText('Buscar o agregar cliente'))
+    expect(onAgregarClienteNuevo).toHaveBeenCalledOnce()
+    expect(onDocumentoCompleto).not.toHaveBeenCalled()
+  })
 })

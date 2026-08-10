@@ -13,6 +13,8 @@ import {
 import type { TipoElegible } from '../../domain/documentos/tipos.ts'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type { Centimos } from '../../domain/totales/calculo.ts'
+import { modosCampoClientePermitidos } from '../../features/clientes/compatibilidad-documento.ts'
+import type { ModoCampoCliente } from '../../features/clientes/compatibilidad-documento.ts'
 import { esClientePorNombre } from '../../features/clientes/documento-marcador.ts'
 import { EtiquetaSinValor } from './EtiquetaSinValor.tsx'
 import { Boton, Campo } from './primitivas.tsx'
@@ -21,23 +23,14 @@ import { Selector } from './Selector.tsx'
 /**
  * Cabecera del documento: tipo (con serie en la etiqueta) y cliente.
  *
- * Campo inline RUC/DNI/Nombre con chevrons. La búsqueda/validación es manual
- * (Enter o morph Usar/Agregar): no se dispara al llegar a N dígitos.
+ * Campo inline RUC/DNI/Nombre con chevrons. La búsqueda/validación del documento
+ * es manual con Enter; el «+» abre el modal Buscar o Agregar (no confirma el
+ * campo). En modo Nombre, «Usar» aplica la denominación.
  */
 
 export type ModoDeCabecera = TipoElegible | 'cotizacion'
 
-export type ModoDeCampoCliente = 'ruc' | 'dni' | 'nombre'
-
-export interface ClienteParaConfirmar {
-  readonly tipoDocumento: 'DNI' | 'RUC' | 'NOMBRE'
-  readonly numeroDocumento: string
-  readonly denominacion: string
-  readonly direccion?: string
-  readonly condicion?: string
-  readonly noHabido?: boolean
-  readonly origen: 'registrado' | 'consulta'
-}
+export type ModoDeCampoCliente = ModoCampoCliente
 
 export interface SeriesEnCabecera {
   readonly boleta: string | null
@@ -50,16 +43,8 @@ const ETIQUETA_CAMPO: Record<ModoDeCampoCliente, string> = {
   nombre: 'Nombre',
 }
 
-function modosCampoPermitidos(modo: ModoDeCabecera): readonly ModoDeCampoCliente[] {
-  if (modo === 'factura') return ['ruc']
-  if (modo === 'boleta') return ['dni', 'nombre']
-  // Cotización: Nombre primero (uso más frecuente al cotizar).
-  if (modo === 'cotizacion') return ['nombre', 'dni', 'ruc']
-  return []
-}
-
 function modoCampoPorDefecto(modo: ModoDeCabecera): ModoDeCampoCliente | null {
-  const permitidos = modosCampoPermitidos(modo)
+  const permitidos = modosCampoClientePermitidos(modo)
   return permitidos[0] ?? null
 }
 
@@ -116,12 +101,8 @@ export interface PropsDeCabecera {
     readonly tipoDocumento: 'RUC' | 'DNI'
     readonly numeroDocumento: string
   }) => void
-  readonly onDocumentoIncompleto?: () => void
   readonly onNombreListo?: (nombre: string) => void
   readonly consultandoPadron?: boolean
-  readonly clienteParaConfirmar?: ClienteParaConfirmar | null
-  readonly onConfirmarCliente?: () => void
-  readonly onCancelarConfirmacion?: () => void
   readonly total: Centimos
   readonly umbral: Centimos
 }
@@ -134,18 +115,14 @@ export function CabeceraDocumento({
   onAgregarClienteNuevo,
   onQuitarCliente,
   onDocumentoCompleto,
-  onDocumentoIncompleto,
   onNombreListo,
   consultandoPadron = false,
-  clienteParaConfirmar = null,
-  onConfirmarCliente,
-  onCancelarConfirmacion,
   total,
   umbral,
 }: PropsDeCabecera) {
   const esCotizacion = modo === 'cotizacion'
   const reglas = esCotizacion ? null : REGLAS[modo]
-  const permitidos = modosCampoPermitidos(modo)
+  const permitidos = modosCampoClientePermitidos(modo)
   const [modoCampo, setModoCampo] = useState<ModoDeCampoCliente | null>(
     modoCampoPorDefecto(modo),
   )
@@ -173,7 +150,6 @@ export function CabeceraDocumento({
   const exigeCliente =
     !esCotizacion &&
     cliente === null &&
-    clienteParaConfirmar === null &&
     reglas !== null &&
     (reglas.exigeClienteIdentificado ||
       (reglas.sujetoAUmbralDeIdentificacion && total > umbral))
@@ -181,7 +157,6 @@ export function CabeceraDocumento({
   const nombreTrim = textoCampo.trim()
   const morphUsarNombre =
     cliente === null &&
-    clienteParaConfirmar === null &&
     modoCampo === 'nombre' &&
     nombreTrim.length >= 2 &&
     onNombreListo !== undefined
@@ -194,13 +169,11 @@ export function CabeceraDocumento({
     setModoCampo(siguiente)
     setTextoCampo('')
     setCampoMarcadoInvalido(false)
-    onDocumentoIncompleto?.()
   }
 
   function alCambiarTexto(valor: string): void {
     if (modoCampo === null) return
     setCampoMarcadoInvalido(false)
-    onDocumentoIncompleto?.()
 
     if (modoCampo === 'nombre') {
       setTextoCampo(valor.slice(0, 120))
@@ -237,8 +210,7 @@ export function CabeceraDocumento({
     confirmarCampo()
   }
 
-  const mostrarCampo =
-    cliente === null && clienteParaConfirmar === null && modoCampo !== null
+  const mostrarCampo = cliente === null && modoCampo !== null
 
   return (
     <header
@@ -377,114 +349,39 @@ export function CabeceraDocumento({
                 <UserRoundPen className="size-5" aria-hidden />
               </button>
             </>
-          ) : clienteParaConfirmar === null ? (
-            <button
-              type="button"
-              onClick={() => {
-                if (modoCampo === 'nombre' && onNombreListo) {
-                  confirmarCampo()
-                  return
-                }
-                if (modoCampo === 'ruc' || modoCampo === 'dni') {
-                  confirmarCampo()
-                  return
-                }
-                onAgregarClienteNuevo()
-              }}
-              disabled={consultandoPadron}
-              title={
-                consultandoPadron
-                  ? 'Consultando padrón…'
-                  : morphUsarNombre
-                    ? 'Usar este nombre en el documento'
-                    : modoCampo === 'ruc' || modoCampo === 'dni'
-                      ? 'Confirmar documento'
-                      : 'Agregar cliente nuevo'
-              }
-              aria-label={
-                consultandoPadron
-                  ? 'Consultando padrón'
-                  : morphUsarNombre
-                    ? 'Usar nombre del cliente'
-                    : modoCampo === 'ruc' || modoCampo === 'dni'
-                      ? 'Confirmar documento del cliente'
-                      : 'Agregar cliente nuevo'
-              }
-              className={[
-                'inline-flex min-h-11 items-center justify-center gap-2 font-bold transition-all',
-                'focus-visible:outline-none focus-visible:border-tinta',
-                'disabled:cursor-not-allowed disabled:opacity-60',
-                morphUsarNombre
-                  ? 'rounded-full border border-tinta bg-tinta px-5 text-papel'
-                  : [
-                      'size-11 rounded-full border',
-                      exigeCliente && !mostrarCampo
-                        ? 'border-aviso text-aviso'
-                        : 'border-borde bg-papel text-tinta hover:bg-mesa',
-                    ].join(' '),
-              ].join(' ')}
-            >
-              <UserPlus className="size-5 shrink-0" aria-hidden />
-              {morphUsarNombre ? <span>Usar</span> : null}
-            </button>
-          ) : null}
+          ) : (
+            <>
+              {morphUsarNombre ? (
+                <Boton
+                  variante="principal"
+                  onClick={() => confirmarCampo()}
+                  title="Usar este nombre en el documento"
+                  aria-label="Usar nombre del cliente"
+                >
+                  Usar
+                </Boton>
+              ) : null}
+              <button
+                type="button"
+                onClick={onAgregarClienteNuevo}
+                disabled={consultandoPadron}
+                title="Buscar o agregar cliente"
+                aria-label="Buscar o agregar cliente"
+                className={[
+                  'inline-flex size-11 shrink-0 items-center justify-center rounded-full border font-bold transition-colors',
+                  'focus-visible:outline-none focus-visible:border-tinta',
+                  'disabled:cursor-not-allowed disabled:opacity-60',
+                  exigeCliente && !mostrarCampo
+                    ? 'border-aviso text-aviso'
+                    : 'border-borde bg-papel text-tinta hover:bg-mesa',
+                ].join(' ')}
+              >
+                <UserPlus className="size-5" aria-hidden />
+              </button>
+            </>
+          )}
         </div>
       </div>
-
-      {clienteParaConfirmar !== null ? (
-        <div
-          className="mt-3 rounded-2xl border border-borde bg-mesa px-4 py-3"
-          data-testid="confirmacion-cliente"
-        >
-          <p className="font-mono text-etiqueta uppercase text-desvaida">
-            {clienteParaConfirmar.origen === 'registrado'
-              ? 'Cliente registrado — confirma los datos'
-              : 'Datos del padrón — confirma antes de usar'}
-          </p>
-          <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 text-cuerpo">
-            <dt className="font-mono text-etiqueta uppercase text-desvaida">
-              Documento
-            </dt>
-            <dd className="font-mono text-tinta">
-              {clienteParaConfirmar.tipoDocumento}{' '}
-              {clienteParaConfirmar.numeroDocumento}
-            </dd>
-            <dt className="font-mono text-etiqueta uppercase text-desvaida">
-              Razón social
-            </dt>
-            <dd className="text-tinta">{clienteParaConfirmar.denominacion}</dd>
-            <dt className="font-mono text-etiqueta uppercase text-desvaida">
-              Dirección
-            </dt>
-            <dd className="text-tinta">
-              {clienteParaConfirmar.direccion?.trim()
-                ? clienteParaConfirmar.direccion
-                : '—'}
-            </dd>
-          </dl>
-          {clienteParaConfirmar.noHabido ? (
-            <p className="mt-2 text-cuerpo font-bold text-aviso">
-              Condición: {clienteParaConfirmar.condicion ?? 'NO HABIDO'}
-            </p>
-          ) : null}
-          <div className="mt-3 flex flex-wrap gap-2">
-            <Boton
-              variante="discreto"
-              onClick={onCancelarConfirmacion}
-              disabled={consultandoPadron}
-            >
-              Cancelar
-            </Boton>
-            <Boton
-              variante="principal"
-              onClick={onConfirmarCliente}
-              disabled={consultandoPadron}
-            >
-              Confirmar
-            </Boton>
-          </div>
-        </div>
-      ) : null}
 
       {exigeCliente && (
         <p className="mt-1.5 text-cuerpo font-bold text-aviso">

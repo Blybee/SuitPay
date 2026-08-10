@@ -49,10 +49,7 @@ import type {
   ArranqueManualDeCliente,
   ArranqueRevisionDeCliente,
 } from '../features/clientes/alta-en-contexto.tsx'
-import {
-  consultarContribuyenteFn,
-  crearClienteFn,
-} from '../features/clientes/clientes.funciones.ts'
+import { consultarContribuyenteFn } from '../features/clientes/clientes.funciones.ts'
 import { leerClientePorDocumento } from '../features/clientes/existencia.ts'
 import {
   decidirTrasConsultaContribuyente,
@@ -64,7 +61,6 @@ import { CLAVES_DE_CONSULTA } from '../infra/consultas/cliente.ts'
 import { DOCUMENTO_CLIENTE_POR_NOMBRE } from '../features/clientes/documento-marcador.ts'
 import {
   CabeceraDocumento,
-  type ClienteParaConfirmar,
   type ModoDeCabecera,
   type SeriesEnCabecera,
 } from '../ui/componentes/CabeceraDocumento.tsx'
@@ -121,8 +117,6 @@ function Mostrador() {
   const [altaRevisionInicial, setAltaRevisionInicial] =
     useState<ArranqueRevisionDeCliente | null>(null)
   const [modoCotizacion, setModoCotizacion] = useState(false)
-  const [clienteParaConfirmar, setClienteParaConfirmar] =
-    useState<ClienteParaConfirmar | null>(null)
   const [consultandoPadron, setConsultandoPadron] = useState(false)
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false)
   const [avisoCotizacion, setAvisoCotizacion] = useState<string | null>(null)
@@ -396,7 +390,6 @@ function Mostrador() {
 
   function limpiarContextoDeCotizacionEnCabecera(): void {
     setModoCotizacion(false)
-    setClienteParaConfirmar(null)
   }
 
   async function lanzarGuardadoDeCotizacion(): Promise<void> {
@@ -446,7 +439,6 @@ function Mostrador() {
   function abrirAltaRevisionTrasConsulta(
     datos: ArranqueRevisionDeCliente,
   ): void {
-    setClienteParaConfirmar(null)
     setConsultaClienteInicial(null)
     setAltaManualInicial(null)
     setAltaRevisionInicial(datos)
@@ -458,7 +450,6 @@ function Mostrador() {
     readonly numeroDocumento: string
     readonly mensaje: string
   }): void {
-    setClienteParaConfirmar(null)
     setConsultaClienteInicial(null)
     setAltaRevisionInicial(null)
     setAltaManualInicial({
@@ -475,20 +466,20 @@ function Mostrador() {
   }): Promise<void> {
     if (consultandoPadron) return
     setConsultandoPadron(true)
-    setClienteParaConfirmar(null)
     try {
       const existente = await leerClientePorDocumento(datos.numeroDocumento)
       if (existente !== null) {
-        setClienteParaConfirmar({
+        // Registrado: fijar al pedido de inmediato (sin panel de confirmación).
+        pedido.fijarCliente({
           tipoDocumento:
             existente.tipoDocumento === 'RUC' || existente.tipoDocumento === 'DNI'
               ? existente.tipoDocumento
               : datos.tipoDocumento,
           numeroDocumento: existente.numeroDocumento,
           denominacion: existente.denominacion,
-          direccion: existente.direccion,
-          condicion: existente.condicion,
-          origen: 'registrado',
+          ...(existente.direccion !== undefined && existente.direccion.trim() !== ''
+            ? { direccion: existente.direccion }
+            : {}),
         })
         return
       }
@@ -531,66 +522,6 @@ function Mostrador() {
       numeroDocumento: DOCUMENTO_CLIENTE_POR_NOMBRE,
       denominacion: nombre.trim(),
     })
-    setClienteParaConfirmar(null)
-  }
-
-  async function confirmarClientePendiente(): Promise<void> {
-    if (clienteParaConfirmar === null || consultandoPadron) return
-    const pendiente = clienteParaConfirmar
-
-    if (pendiente.origen === 'registrado') {
-      pedido.fijarCliente({
-        tipoDocumento: pendiente.tipoDocumento === 'NOMBRE' ? 'DNI' : pendiente.tipoDocumento,
-        numeroDocumento: pendiente.numeroDocumento,
-        denominacion: pendiente.denominacion,
-        ...(pendiente.direccion !== undefined && pendiente.direccion.trim() !== ''
-          ? { direccion: pendiente.direccion }
-          : {}),
-      })
-      setClienteParaConfirmar(null)
-      return
-    }
-
-    if (pendiente.tipoDocumento !== 'DNI' && pendiente.tipoDocumento !== 'RUC') {
-      setClienteParaConfirmar(null)
-      return
-    }
-    const tipoDocumento = pendiente.tipoDocumento
-
-    setConsultandoPadron(true)
-    try {
-      const respuesta = await crearClienteFn({
-        data: {
-          tipoDocumento,
-          numeroDocumento: pendiente.numeroDocumento,
-          denominacion: pendiente.denominacion,
-          direccion: pendiente.direccion,
-          condicion: pendiente.condicion,
-          consultadoEn: new Date().toISOString(),
-        },
-      })
-      if (!respuesta.ok || respuesta.cliente === undefined) {
-        setAltaManualInicial(null)
-        setAltaRevisionInicial(null)
-        setConsultaClienteInicial(pendiente.numeroDocumento)
-        setAltaClienteAbierta(true)
-        setClienteParaConfirmar(null)
-        return
-      }
-      usarCatalogo.getState().incorporarCliente({
-        numeroDocumento: respuesta.cliente.numeroDocumento,
-        denominacion: respuesta.cliente.denominacion,
-      })
-      pedido.fijarCliente({
-        tipoDocumento,
-        numeroDocumento: pendiente.numeroDocumento,
-        denominacion: pendiente.denominacion,
-        direccion: pendiente.direccion,
-      })
-      setClienteParaConfirmar(null)
-    } finally {
-      setConsultandoPadron(false)
-    }
   }
 
   const faseDelBoton: FaseDelBoton =
@@ -703,28 +634,16 @@ function Mostrador() {
               setConsultaClienteInicial(null)
               setAltaManualInicial(null)
               setAltaRevisionInicial(null)
-              setClienteParaConfirmar(null)
               setAltaClienteAbierta(true)
             }}
             onQuitarCliente={() => {
               pedido.fijarCliente(null)
-              setClienteParaConfirmar(null)
             }}
             onDocumentoCompleto={(datos) => {
               void alDocumentoCompleto(datos)
             }}
-            onDocumentoIncompleto={() => {
-              setClienteParaConfirmar(null)
-            }}
             onNombreListo={alNombreListo}
             consultandoPadron={consultandoPadron}
-            clienteParaConfirmar={clienteParaConfirmar}
-            onConfirmarCliente={() => {
-              void confirmarClientePendiente()
-            }}
-            onCancelarConfirmacion={() => {
-              setClienteParaConfirmar(null)
-            }}
             total={total}
             umbral={umbral}
           />
@@ -824,6 +743,9 @@ function Mostrador() {
           setAltaRevisionInicial(null)
           setPendienteAltaVecino(null)
         }}
+        modoDocumento={
+          pendienteAltaVecino !== null ? 'cotizacion' : modoCabecera
+        }
         indiceDeClientes={catalogo.clientes}
         onClienteElegido={(cliente) => {
           if (pendienteAltaVecino !== null && sesion.uid !== null) {

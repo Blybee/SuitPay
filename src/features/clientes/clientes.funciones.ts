@@ -9,6 +9,8 @@ import { exigirIdentidad } from '../../server/auth/verificar.ts'
 import { ErrorDeSuitPay, esErrorDeSuitPay } from '../../server/errores.ts'
 import { consultarContribuyente } from '../../server/contribuyentes/consultar.ts'
 import type { DatosDeContribuyenteParaRevision } from '../../server/contribuyentes/consultar.ts'
+import { actualizarCliente } from '../../server/clientes/actualizar.ts'
+import type { ClienteActualizado } from '../../server/clientes/actualizar.ts'
 import { crearCliente } from '../../server/clientes/crear.ts'
 import type { ClienteCreado } from '../../server/clientes/crear.ts'
 import { proveedorActual } from '../../server/proveedor/actual.ts'
@@ -16,6 +18,7 @@ import { respuestaDeFalloDeConsulta } from './fallo-consulta.ts'
 
 export type { DatosDeContribuyenteParaRevision } from '../../server/contribuyentes/consultar.ts'
 export type { ClienteCreado } from '../../server/clientes/crear.ts'
+export type { ClienteActualizado } from '../../server/clientes/actualizar.ts'
 
 const esquemaConsulta = z.object({
   tipoDocumento: z.enum(['DNI', 'RUC']),
@@ -35,6 +38,12 @@ export interface RespuestaDeConsultaContribuyente {
 export interface RespuestaDeCrearCliente {
   readonly ok: boolean
   readonly cliente?: ClienteCreado
+  readonly error?: ReturnType<ErrorDeSuitPay['aRespuesta']>
+}
+
+export interface RespuestaDeActualizarCliente {
+  readonly ok: boolean
+  readonly cliente?: ClienteActualizado
   readonly error?: ReturnType<ErrorDeSuitPay['aRespuesta']>
 }
 
@@ -68,6 +77,34 @@ export const crearClienteFn = createServerFn({ method: 'POST' })
         return { ok: false, error: error.aRespuesta() }
       }
       console.error('[SuitPay] fallo al crear cliente', error)
+      return {
+        ok: false,
+        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
+      }
+    }
+  })
+
+const esquemaActualizar = esquemaDeCliente.pick({
+  tipoDocumento: true,
+  numeroDocumento: true,
+  denominacion: true,
+  direccion: true,
+  ubigeo: true,
+  condicion: true,
+})
+
+export const actualizarClienteFn = createServerFn({ method: 'POST' })
+  .validator(esquemaActualizar)
+  .handler(async ({ data }): Promise<RespuestaDeActualizarCliente> => {
+    try {
+      await exigirIdentidad(getRequestHeaders(), ['vendedor', 'administrador'])
+      const cliente = await actualizarCliente(data)
+      return { ok: true, cliente }
+    } catch (error) {
+      if (esErrorDeSuitPay(error)) {
+        return { ok: false, error: error.aRespuesta() }
+      }
+      console.error('[SuitPay] fallo al actualizar cliente', error)
       return {
         ok: false,
         error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),

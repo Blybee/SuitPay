@@ -11,17 +11,36 @@ export type DatosManualesDeCliente = Pick<
   'tipoDocumento' | 'numeroDocumento' | 'denominacion' | 'direccion'
 >
 
+const TIPOS_MANUALES_POR_DEFECTO: readonly Cliente['tipoDocumento'][] = [
+  'RUC',
+  'DNI',
+  'CE',
+  'PAS',
+]
+
 export function FormularioManualDeCliente({
   valor,
   onCambiar,
+  modo = 'alta',
+  documentoBloqueado = false,
+  tiposPermitidos = TIPOS_MANUALES_POR_DEFECTO,
 }: {
   readonly valor: DatosManualesDeCliente
   readonly onCambiar: (valor: DatosManualesDeCliente) => void
+  /** Alta por fallo de padrón vs edición de un cliente ya listado. */
+  readonly modo?: 'alta' | 'edicion'
+  readonly documentoBloqueado?: boolean
+  readonly tiposPermitidos?: readonly Cliente['tipoDocumento'][]
 }) {
+  const opciones =
+    tiposPermitidos.length > 0 ? tiposPermitidos : TIPOS_MANUALES_POR_DEFECTO
+
   return (
     <div className="flex flex-col gap-3">
       <p className="text-cuerpo text-desvaida">
-        La consulta oficial no responde. Escribe los datos y continúa la venta.
+        {modo === 'edicion'
+          ? 'Corrige los datos del cliente. El documento no se puede cambiar.'
+          : 'La consulta oficial no responde. Escribe los datos y continúa la venta.'}
       </p>
       <div>
         <Etiqueta htmlFor="cliente-tipo">Tipo</Etiqueta>
@@ -29,6 +48,7 @@ export function FormularioManualDeCliente({
           id="cliente-tipo"
           className="selector-suitpay mt-1 w-full"
           value={valor.tipoDocumento}
+          disabled={documentoBloqueado || opciones.length === 1}
           onChange={(evento) =>
             onCambiar({
               ...valor,
@@ -36,10 +56,11 @@ export function FormularioManualDeCliente({
             })
           }
         >
-          <option value="RUC">RUC</option>
-          <option value="DNI">DNI</option>
-          <option value="CE">CE</option>
-          <option value="PAS">PAS</option>
+          {opciones.map((tipo) => (
+            <option key={tipo} value={tipo}>
+              {tipo}
+            </option>
+          ))}
         </select>
       </div>
       <div>
@@ -48,6 +69,7 @@ export function FormularioManualDeCliente({
           id="cliente-numero"
           className="mt-1"
           value={valor.numeroDocumento}
+          disabled={documentoBloqueado}
           onChange={(evento) =>
             onCambiar({ ...valor, numeroDocumento: evento.target.value })
           }
