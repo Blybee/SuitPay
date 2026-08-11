@@ -90,14 +90,14 @@ describe('lo que el vendedor puede elegir', () => {
 })
 
 describe('qué estados admiten anulación', () => {
-  it('solo un comprobante aceptado', () => {
+  it('aceptado y enviado (documento ya existe; no espera constancia)', () => {
     expect(estadoEsAnulable('aceptado')).toBe(true)
+    expect(estadoEsAnulable('enviado')).toBe(true)
   })
 
   it('ninguno de los demás', () => {
     for (const estado of [
       'reclamado',
-      'enviado',
       'rechazado',
       'indeterminado',
       'pendiente',

@@ -1,6 +1,6 @@
 # Implementation Plan: Mostrador asistido — primera entrega de SuitPay
 
-**Branch**: `001-mostrador-asistido` | **Date**: 2026-07-28 | **Updated**: 2026-07-29 (volcado 5) | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-mostrador-asistido` | **Date**: 2026-07-28 | **Updated**: 2026-08-10 (US4b comprobantes colaborativos) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-mostrador-asistido/spec.md`
 
@@ -47,7 +47,7 @@ El enfoque técnico se apoya en tres decisiones que atraviesan todo el diseño. 
 
 **Constraints**: ningún secreto en el cliente; la búsqueda de productos no depende de servicios externos (FR-007); el pedido en curso sobrevive a la pérdida de conexión (FR-015); ningún dato identificatorio de clientes llega al servicio de asistencia (FR-045, principio IV); el cliente no puede escribir comprobantes directamente en la base de datos.
 
-**Scale/Scope**: 5 vendedores concurrentes, ~500 productos, un local, volumen diario modesto que cabe con holgura en la cuota gratuita de Firestore. 9 historias de usuario, 57 requisitos funcionales.
+**Scale/Scope**: 5 vendedores concurrentes, ~500 productos, un local, volumen diario modesto que cabe con holgura en la cuota gratuita de Firestore. Historias US1–US10 + US4b; requisitos FR-001…FR-059 (inventario en `003`, ranking en `004`).
 
 ## Constitution Check
 
@@ -86,6 +86,17 @@ Dos verificaciones quedaron formuladas como comprobaciones ejecutables en lugar 
 
 Las ocho puertas siguen pasando. Cambios de superficie (sidebar, Soft-Pill, tabs, full-bleed) y de origen del correlativo (`numeroInicial`) no debilitan I–VI. La puerta II se refuerza al explicitar que el contador se alinea al número inicial de la serie antes de reclamar. La implementación del pivote visual y del shell queda documentada en `design.md` / `DESIGN.md` y se descompone en tareas nuevas; **no se ha ejecutado código de producto en esta enmienda**.
 
+### Reevaluación tras enmienda US4b (2026-08-10)
+
+Las ocho puertas siguen pasando.
+
+- **I**: anular y reutilizar siguen exigiendo confirmación explícita; la ACL colaborativa no delega la decisión a un comando NL.
+- **II**: imprimir/reconsultar PDF usa `consultarDocumento` o la URL ya guardada; nunca reemite.
+- **III**: la URL PDF vive en `comprobantes.proveedor` (objeto aislado); el mapeo de `archivos.pdf` de la consulta queda en el módulo frontera. **No** se guarda el binario en Cloud Storage.
+- **V**: la página Comprobantes es bajo demanda (sin lista al montar); Hoy carga el día completo para cierre de caja; el rango pagina por cursores (20).
+- **ACL**: `listar` / `leer` / `anular` / reutilizar / imprimir ya no filtran por `vendedorId` del emisor. La atribución del emisor y del autor de anulación se conserva.
+- **Fuera de esta feature**: inventario → `003-inventario-almacen`; ranking → `004-ranking-productos`; login por alias fuera (correo + contraseña).
+
 ## Project Structure
 
 ### Documentation (this feature)
@@ -114,7 +125,7 @@ src/
 │   ├── __root.tsx            # Shell: sidebar (SuitPay, nav, perfil al pie) + outlet
 │   ├── index.tsx             # Mostrador (Inicio) con tabs Pedido|Cotizaciones|Vecinos|Lista
 │   ├── configuracion/        # Ítem del sidebar (alcance por rol TBD)
-│   ├── comprobantes/         # Consulta y anulación
+│   ├── comprobantes/         # Resumen Hoy, filtros, búsqueda, impresión; anulación en detalle
 │   ├── cotizaciones/         # También alcanzable vía tab Cotizaciones
 │   ├── administracion/       # Catálogo, series (con numeroInicial), usuarios, parámetros
 │   └── api/                  # Sin jobs (Scheduler fuera de diseño; decisión 10)

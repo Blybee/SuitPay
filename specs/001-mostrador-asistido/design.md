@@ -144,7 +144,7 @@ Sin cambio de gramática: tachado + propuesta; mismas columnas al aprobar.
 Modal suave (`rounded-2xl` + `shadow-md`). Única elevación fuerte. Nunca decisión irreversible.
 
 ### Sello (`Sello`)
-Solo sobre emitidos. Regla literal: si tiene sello, existe ante SUNAT.
+Sobre comprobantes que ya existen en el proveedor. Textos: **REGISTRADO** (`enviado`, tramitado) vs **ACEPTADO** (constancia de la autoridad). Ambos llevan sello violeta; el texto no los mezcla.
 
 ### Marca de estado / Banda / Cabecera
 Misma semántica; sin bordes gruesos ni radio cero.
@@ -193,7 +193,7 @@ Poco y con propósito. Línea nueva casi inmediata. Sello sin deslizamiento. Bot
 ## Decisiones que un implementador no debe inventar
 
 - **La pantalla no imita un comprobante.**
-- **El sello solo toca lo ya emitido.**
+- **El sello solo toca lo ya emitido en el proveedor** (REGISTRADO / ACEPTADO; textos distintos).
 - **El verde no existe.**
 - **Soft-Pill obligatorio:** cápsulas en controles; radios amplios en paneles; sin `rounded-none` / `rounded-sm` como carácter.
 - **Sin bordes gruesos ni sombras brutales.**

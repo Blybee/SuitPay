@@ -299,19 +299,40 @@ export class AlmacenFirestore implements AlmacenDeEmision {
   }
 
   async listarComprobantes(opciones: {
-    readonly vendedorId: string | null
+    readonly emitidoDesde?: Date
+    readonly emitidoHastaExclusivo?: Date
+    readonly clienteNumeroDocumento?: string
     readonly limite: number
-    readonly cursorEmitidoEn?: Date
     readonly cursorId?: string
   }): Promise<{
     readonly items: readonly Comprobante[]
     readonly hayMas: boolean
   }> {
-    // Índice: vendedorId ASC + emitidoEn DESC (data-model.md / US4).
+    // US4b: universo colaborativo; filtros por día/rango ± cliente (data-model.md).
     let armada: Query = this.base.collection(COLECCIONES.comprobantes)
-    if (opciones.vendedorId !== null) {
-      armada = armada.where('vendedorId', '==', opciones.vendedorId)
+
+    if (opciones.clienteNumeroDocumento !== undefined) {
+      armada = armada.where(
+        'cliente.numeroDocumento',
+        '==',
+        opciones.clienteNumeroDocumento,
+      )
     }
+    if (opciones.emitidoDesde !== undefined) {
+      armada = armada.where(
+        'emitidoEn',
+        '>=',
+        Timestamp.fromDate(opciones.emitidoDesde),
+      )
+    }
+    if (opciones.emitidoHastaExclusivo !== undefined) {
+      armada = armada.where(
+        'emitidoEn',
+        '<',
+        Timestamp.fromDate(opciones.emitidoHastaExclusivo),
+      )
+    }
+
     armada = armada.orderBy('emitidoEn', 'desc')
 
     if (opciones.cursorId !== undefined) {
@@ -334,5 +355,20 @@ export class AlmacenFirestore implements AlmacenDeEmision {
       ),
       hayMas,
     }
+  }
+
+  async buscarComprobantePorSerieNumero(
+    serie: string,
+    numero: number,
+  ): Promise<Comprobante | undefined> {
+    const instantanea = await this.base
+      .collection(COLECCIONES.comprobantes)
+      .where('serie', '==', serie)
+      .where('numero', '==', numero)
+      .limit(1)
+      .get()
+    const documento = instantanea.docs[0]
+    if (documento === undefined) return undefined
+    return aComprobante(documento.id, documento.data())
   }
 }

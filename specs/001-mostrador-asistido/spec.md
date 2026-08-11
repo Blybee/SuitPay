@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-28
 
-**Updated**: 2026-08-09 (enmienda: alta cliente auto-modal, PDF post-emisión, catálogo de comandos seleccionable, UI menor; GRE → feature 002)
+**Updated**: 2026-08-10 (enmienda: US4b resumen/filtros/impresión colaborativa de comprobantes; inventario → `003`; ranking → `004`; login por alias fuera)
 
 **Status**: Draft
 
@@ -74,7 +74,7 @@ Llega un cliente con RUC que nunca compró aquí. El vendedor escribe el número
 
 ### User Story 4 - Anular un comprobante dentro de plazo (Priority: P4)
 
-Un cliente vuelve porque su boleta salió con una cantidad equivocada. El vendedor localiza el comprobante, ve claramente que va a anularlo y qué implica, indica el motivo y confirma. El sistema deja constancia de quién lo anuló y cuándo.
+Un cliente vuelve porque su boleta salió con una cantidad equivocada. El vendedor localiza el comprobante (el suyo o el de un compañero), abre el detalle, ve claramente que va a anularlo y qué implica, indica el motivo y confirma. El sistema deja constancia de quién lo anuló y cuándo. La anulación ocurre en el detalle del comprobante; la lista solo localiza y enlaza.
 
 **Why this priority**: ocurre a diario y hoy ya se hace en el sistema anterior. Es la primera operación irreversible del sistema, y por eso su diseño debe fijarse temprano.
 
@@ -82,10 +82,31 @@ Un cliente vuelve porque su boleta salió con una cantidad equivocada. El vended
 
 **Acceptance Scenarios**:
 
-1. **Given** un comprobante emitido hoy, **When** el vendedor solicita anularlo, **Then** el sistema muestra qué documento se va a anular y exige confirmación explícita antes de proceder.
+1. **Given** un comprobante emitido hoy, **When** el vendedor solicita anularlo desde el detalle, **Then** el sistema muestra qué documento se va a anular y exige confirmación explícita antes de proceder.
 2. **Given** un comprobante emitido ayer o antes, **When** el vendedor intenta anularlo, **Then** el sistema lo impide y explica que corresponde una nota de crédito.
 3. **Given** una anulación confirmada, **When** se consulta el comprobante después, **Then** aparece como anulado, con el motivo, el autor y el momento.
 4. **Given** cualquier pantalla del sistema, **When** se ofrece esta operación, **Then** en ningún lugar se la denomina "eliminar".
+5. **Given** un comprobante emitido hoy por el vendedor A, **When** el vendedor B lo anula dentro de plazo con motivo y confirmación, **Then** la anulación procede y queda atribuida al vendedor B (el emisor original permanece en la traza).
+
+---
+
+### User Story 4b - Resumen, filtros e impresión de comprobantes (Priority: P4)
+
+Al cierre o durante el día, la encargada de caja o cualquier vendedor abre Comprobantes. La página no descarga la lista al entrar: ofrece **Hoy** (todos los del día, con total de ventas para cierre de caja), un **rango de fechas** paginado, un **filtro por cliente** (combinable con Hoy o con el rango) y una **búsqueda por serie y número**. Cada documento visible ofrece imprimir el PDF (URL del proveedor) y reutilizar el pedido; el detalle sigue siendo el lugar para anular.
+
+**Why this priority**: el listado actual no sirve para cierre de caja ni para el trabajo colaborativo del mostrador; sin filtros bajo demanda el coste de lecturas y la fricción crecen.
+
+**Independent Test**: con varios comprobantes del día de distintos vendedores, pulsar Hoy muestra todos y un total que excluye anulados; un rango pagina de 20 en 20; buscar por serie-número abre el documento con opción de imprimir.
+
+**Acceptance Scenarios**:
+
+1. **Given** la página Comprobantes recién abierta, **When** no se ha pulsado ningún filtro, **Then** no se muestra lista de comprobantes (solo controles).
+2. **Given** comprobantes emitidos hoy por varios vendedores, **When** se pulsa **Hoy**, **Then** se cargan todos los del día (zona America/Lima) sin paginación y se muestra el **total de ventas** del día (comprobantes emitidos; los anulados no suman).
+3. **Given** el modo **Hoy** activo, **When** se elige un cliente, **Then** la lista y el resumen se restringen a ese cliente **y** al día de hoy.
+4. **Given** un rango de fechas `{inicio, fin}`, **When** se aplica, **Then** se desactiva Hoy, se lista con paginación por cursores (página de 20) y, si hay cliente elegido, se exige que cumplan rango **y** cliente.
+5. **Given** serie y número de un comprobante conocido, **When** se usa la búsqueda exacta, **Then** se muestra ese documento con opción de **Imprimir** (URL PDF del proveedor persistida o reconsultada).
+6. **Given** una fila visible en la lista, **When** el vendedor pulsa Imprimir, **Then** se abre/usa la URL PDF del comprobante sin reemitir; si no hay URL, el sistema la obtiene por consulta al proveedor y puede guardarla en el documento.
+7. **Given** un comprobante emitido por el vendedor A, **When** el vendedor B lo busca, imprime o reutiliza, **Then** puede hacerlo sin restricción por autor (mismo universo de documentos para vendedor, admin y jefe).
 
 ---
 
@@ -213,6 +234,10 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **El servicio de asistencia responde con lentitud.** El vendedor debe poder abandonar la espera y seguir escribiendo.
 - **Fotografía de una guía con renglones tachados o ilegibles.** Deben quedar señalados como pendientes, nunca descartados en silencio.
 - **Impresora sin papel o no disponible.** El comprobante ya emitido debe poder reimprimirse o compartirse como archivo; la falla de impresión no invalida la emisión.
+- **Hoy activo y luego se elige un rango de fechas.** Se desactiva Hoy; manda el rango (y el cliente si aplica).
+- **URL PDF ausente o rota.** Se reconsulta al proveedor; no se reemite; no se sube el PDF a Storage.
+- **Nota de venta sin PDF del proveedor.** Imprimir lo indica con claridad; no falla la consulta de lista ni el resumen.
+- **Resumen del día con anulados.** Los anulados aparecen en la lista de Hoy si existen, pero no suman al total de cierre.
 
 ## Requirements *(mandatory)*
 
@@ -282,9 +307,20 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 
 **Anulación**
 
-- **FR-037**: El sistema MUST permitir anular un comprobante el mismo día de su emisión, exigiendo un motivo y una confirmación explícita que muestre qué documento se va a anular.
+- **FR-037**: El sistema MUST permitir anular un comprobante el mismo día de su emisión, exigiendo un motivo y una confirmación explícita que muestre qué documento se va a anular. La anulación MUST realizarse desde el detalle del comprobante.
 - **FR-038**: El sistema MUST impedir la anulación de un comprobante emitido en una fecha anterior y MUST indicar que corresponde una nota de crédito.
 - **FR-039**: El sistema MUST NOT usar la palabra "eliminar" para referirse a un comprobante emitido, en ninguna parte de la interfaz.
+- **FR-037a**: Cualquier vendedor, administrador o jefe autenticado y activo MUST poder anular (dentro de plazo) un comprobante emitido por otro vendedor. La anulación MUST atribuirse a quien confirma, sin borrar la atribución del emisor original.
+
+**Consulta y resumen de comprobantes**
+
+- **FR-057**: La página Comprobantes MUST NOT cargar la lista al montar. MUST ofrecer controles bajo demanda: **Hoy**, rango de fechas `{inicio, fin}`, filtro por cliente y búsqueda por serie y número.
+- **FR-057a**: **Hoy** MUST cargar todos los comprobantes del día calendario America/Lima **sin paginación**, MUST mostrar un resumen con el total de ventas del conjunto cargado, y MUST permitir combinar Hoy + cliente. Los comprobantes en estado anulado MUST NOT sumar al total del resumen.
+- **FR-057b**: El filtro por rango de fechas MUST desactivar Hoy, MUST paginar por cursores (página de 20, nunca por desplazamiento) y, con cliente seleccionado, MUST exigir que cada resultado cumpla rango **y** cliente (AND).
+- **FR-057c**: En esta página, vendedor, administrador y jefe MUST ver el mismo universo de comprobantes de la empresa. El `vendedorId` del emisor es atribución, no filtro de acceso para listar, leer, imprimir, anular (dentro de plazo) ni reutilizar.
+- **FR-058**: El sistema MUST admitir búsqueda exacta por serie y número de comprobante, mostrando el resultado con opción de imprimir.
+- **FR-059**: Cada comprobante visible en la lista MUST ofrecer Imprimir PDF junto a Reutilizar, con el mismo estilo de control. Imprimir MUST usar la URL PDF persistida en el documento; si falta, MUST consultarla al proveedor vía la frontera, MAY persistir esa URL en el documento y MUST NOT subir el binario a almacenamiento de archivos propio. MUST NOT reemitir.
+- **FR-056a**: «Reutilizar pedido» MUST estar disponible también desde la lista de comprobantes y MUST aplicar a comprobantes de cualquier emisor (mismas reglas de confirmación que FR-056).
 
 **Captura asistida**
 
@@ -316,7 +352,7 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 
 - **FR-053**: El sistema MUST permitir imprimir el comprobante en formato A4 desde los puestos de escritorio.
 - **FR-054**: El sistema MUST permitir obtener el comprobante como archivo para compartirlo con el cliente, especialmente desde el móvil.
-- **FR-054a**: Tras una emisión exitosa con valor tributario, el diálogo de éxito MUST ofrecer de inmediato imprimir, guardar/descargar y compartir usando la URL de PDF devuelta por el proveedor en la respuesta de emisión cuando exista; MUST NOT exigir una nueva emisión. Si no hay PDF (p. ej. nota de venta interna), MUST indicarlo con claridad.
+- **FR-054a**: Tras una emisión exitosa con valor tributario, el diálogo de éxito MUST ofrecer de inmediato imprimir, guardar/descargar y compartir usando la URL de PDF devuelta por el proveedor en la respuesta de emisión cuando exista; MUST NOT exigir una nueva emisión. Si no hay PDF (p. ej. nota de venta interna), MUST indicarlo con claridad. Esa URL MUST persistirse en el documento del comprobante (enlace, no archivo binario).
 - **FR-055**: Un fallo de impresión MUST NOT invalidar ni repetir una emisión ya realizada; el comprobante MUST poder reimprimirse o compartirse.
 
 ### Key Entities
@@ -350,6 +386,8 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **SC-011**: El 100% de las emisiones, anulaciones e intentos fallidos son atribuibles a un vendedor identificado y a un momento concreto.
 - **SC-012**: Ningún dato identificatorio de clientes aparece en el tráfico hacia servicios de asistencia automática, verificable por inspección.
 - **SC-013**: Señal cualitativa, declarada como tal: los 5 vendedores manifiestan preferir SuitPay al sistema anterior tras dos semanas de uso. Es el criterio de aceptación del dueño y no sustituye a las métricas anteriores.
+- **SC-014**: En Comprobantes, un vendedor obtiene el resumen del día (Hoy) con el total de ventas de la empresa en menos de 10 segundos en una jornada ordinaria, sin paginar.
+- **SC-015**: El 100% de las operaciones de listar, leer, imprimir, anular (mismo día) y reutilizar sobre comprobantes de otro emisor están permitidas a cualquier vendedor activo (trabajo colaborativo).
 
 ## Assumptions
 
@@ -363,8 +401,8 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **Los precios del catálogo incluyen el impuesto** y el desglose lo realiza el proveedor de emisión.
 - **El catálogo ronda los 500 productos** con nombres estructurados por material, medida y marca, lo que favorece tanto la búsqueda tolerante como el emparejamiento de las capturas.
 - **La empresa dispone de conexión estable** y, ante caída del router, los vendedores pueden usar la red de sus teléfonos.
-- **El alcance de esta entrega no incluye** contabilidad, cobranzas como módulo (incluido registro de cobro / ventas a crédito como UX), panel del jefe ni alertas de mercadería por agotarse, sugerencias de compra, notas de crédito como flujo completo, migración masiva de clientes, aplicación nativa, impresión desde el móvil, ni la implementación completa de todos los parsers de consulta del catálogo (las pistas y la lista seleccionable sí). **La guía de remisión electrónica** y el alta de transportistas se especifican en la feature `002-guias-remision` (fuera del código de esta entrega). Las únicas escrituras por comando implementadas aquí siguen el principio I (propuesta a confirmar). Ver `concept.md`.
-- **El inventario no forma parte de esta entrega.** Mientras SuitPay y el sistema anterior operen aislados, cualquier cifra de stock sería inconsistente por diseño. El momento en que SuitPay tome el control del inventario es una decisión posterior.
+- **El alcance de esta entrega no incluye** contabilidad, cobranzas como módulo (incluido registro de cobro / ventas a crédito como UX), sugerencias de compra, notas de crédito como flujo completo, migración masiva de clientes, aplicación nativa, impresión desde el móvil, login por alias/usuario (se mantiene correo + contraseña), ni la implementación completa de todos los parsers de consulta del catálogo (las pistas y la lista seleccionable sí). **La guía de remisión electrónica** se especifica en `002-guias-remision`. **Inventario y alertas de stock** en `003-inventario-almacen`. **Ranking / estadísticas de productos** en `004-ranking-productos`. Las únicas escrituras por comando implementadas aquí siguen el principio I (propuesta a confirmar). Ver `concept.md`.
+- **El inventario no se implementa en esta feature (`001`).** Queda especificado en `003-inventario-almacen`; mientras SuitPay y el sistema anterior operen aislados, la fuente de verdad de stock es una pregunta abierta de producto que bloquea la implementación de `003`.
 - **La captura por voz y fotografía reutiliza herramientas ya existentes** en el proyecto de la tienda virtual de la empresa. Están funcionando pero acopladas a ese proyecto, y el grado de reelaboración necesario está sin evaluar. Si resultara profundo, las historias 6 y 7 deberían replantearse.
 - **El pedido en curso no viaja entre dispositivos.** Cambiar de dispositivo obliga a rehacerlo, y el negocio lo acepta.
 - **La impresión en formato de rollo**: el proveedor documenta `formato_pdf: ticket` además de `a4`. Esta entrega sigue cubriendo A4 y archivo compartible; la validación de maquetación/ancho del ticket queda por probar en demo.

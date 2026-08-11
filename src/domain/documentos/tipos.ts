@@ -133,9 +133,12 @@ export const ESTADOS_DE_COMPROBANTE = [
 export type EstadoDeComprobante = (typeof ESTADOS_DE_COMPROBANTE)[number]
 
 /**
- * Solo un comprobante aceptado puede anularse. La comprobación de la ventana
- * temporal es aparte, en `src/domain/anulacion/`.
+ * Un comprobante puede anularse cuando ya existe ante el proveedor: `enviado`
+ * (registrado / sin respuesta de la autoridad) o `aceptado`. No hace falta
+ * esperar la constancia de la autoridad — la máquina de estados ya permite
+ * `enviado → anulado` el mismo día. La ventana temporal es aparte, en
+ * `src/domain/anulacion/`.
  */
 export function estadoEsAnulable(estado: EstadoDeComprobante): boolean {
-  return estado === 'aceptado'
+  return estado === 'aceptado' || estado === 'enviado'
 }

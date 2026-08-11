@@ -12,7 +12,7 @@ El módulo que implementa esta interfaz es el **único** lugar del sistema que c
 |-----------|----------------------------------|--------|
 | `emitir` | tipo de documento, serie, número (o indicación de que lo asigne el proveedor), cliente, líneas con precio con impuesto incluido, condición de pago, formato de impresión | identificación del documento, estado normalizado, enlaces a los archivos generados, o un fallo clasificado |
 | `anular` | serie, número, motivo | estado normalizado o fallo clasificado |
-| `consultarDocumento` | serie, número | estado normalizado, contenido suficiente para reconciliar (cliente, total, fecha), enlaces a archivos |
+| `consultarDocumento` | serie, número | estado normalizado, contenido suficiente para reconciliar (cliente, total, fecha), **enlaces a archivos** (`pdf` / xml / cdr cuando el proveedor los exponga). El adaptador MUST mapear esos enlaces al vocabulario SuitPay; no dejar `pdf` vacío si la respuesta del proveedor lo trae. SuitPay persiste la URL en el comprobante; **no** descarga ni sube el binario a Storage. |
 | `consultarContribuyente` | tipo y número de documento de identidad | denominación, dirección, ubigeo, condición ante el registro |
 | `emitirNotaCredito` | documento de referencia, motivo, líneas | igual que `emitir` |
 | `emitirGuiaRemision` | datos del traslado | igual que `emitir`. **Implementación en feature `002-guias-remision`**; declarada aquí para que la frontera no haya que rediseñarla. |

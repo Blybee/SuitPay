@@ -7,6 +7,7 @@ import { ConfirmarAnulacion } from '../../features/emision/confirmar-anulacion.t
 import { leerComprobante } from '../../features/emision/emitir.funciones.ts'
 import type { Comprobante } from '../../features/emision/emitir.funciones.ts'
 import { FueraDeVentana } from '../../features/emision/fuera-de-ventana.tsx'
+import { reimprimir } from '../../features/emision/reimprimir.ts'
 import { usarPedido } from '../../features/pedido/almacen.ts'
 import {
   confirmarYPrepararReutilizacion,
@@ -201,7 +202,38 @@ function DetalleDeComprobante() {
         <FueraDeVentana diaDeEmision={ventana.diaDeEmision} />
       ) : null}
 
+      {!estadoEsAnulable(comprobante.estado) &&
+      comprobante.estado !== 'anulado' ? (
+        <p className="mb-2 text-cuerpo text-desvaida" role="status">
+          Este comprobante no se puede anular en su estado actual (
+          {comprobante.estado}).
+        </p>
+      ) : null}
+
       <div className="mt-4 flex flex-wrap gap-3">
+        <Boton
+          variante="secundario"
+          onClick={() => {
+            void reimprimir(comprobante.id).then((resultado) => {
+              if (!resultado.ok) {
+                mostrar({
+                  tono: 'error',
+                  mensaje:
+                    resultado.motivo === 'sin_archivo_todavia'
+                      ? 'Este comprobante no tiene PDF del proveedor para imprimir.'
+                      : 'No se pudo abrir el PDF.',
+                })
+                return
+              }
+              mostrar({
+                tono: 'exito',
+                mensaje: `Abriendo PDF de ${resultado.nombre}.`,
+              })
+            })
+          }}
+        >
+          Imprimir PDF
+        </Boton>
         {puedeReutilizar ? (
           <Boton variante="secundario" onClick={reutilizarPedido}>
             Reutilizar pedido

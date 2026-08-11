@@ -257,39 +257,58 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
   }
 
   async listarComprobantes(opciones: {
-    readonly vendedorId: string | null
+    readonly emitidoDesde?: Date
+    readonly emitidoHastaExclusivo?: Date
+    readonly clienteNumeroDocumento?: string
     readonly limite: number
-    readonly cursorEmitidoEn?: Date
     readonly cursorId?: string
   }): Promise<{
     readonly items: readonly Comprobante[]
     readonly hayMas: boolean
   }> {
     let items = [...this.comprobantes.values()].map((cada) => cada.valor)
-    if (opciones.vendedorId !== null) {
-      items = items.filter((cada) => cada.vendedorId === opciones.vendedorId)
+
+    if (opciones.clienteNumeroDocumento !== undefined) {
+      const doc = opciones.clienteNumeroDocumento
+      items = items.filter(
+        (cada) => cada.cliente?.numeroDocumento === doc,
+      )
     }
+    if (opciones.emitidoDesde !== undefined) {
+      const desde = opciones.emitidoDesde.getTime()
+      items = items.filter((cada) => cada.emitidoEn.getTime() >= desde)
+    }
+    if (opciones.emitidoHastaExclusivo !== undefined) {
+      const hasta = opciones.emitidoHastaExclusivo.getTime()
+      items = items.filter((cada) => cada.emitidoEn.getTime() < hasta)
+    }
+
     items.sort((uno, otro) => {
       const porFecha = otro.emitidoEn.getTime() - uno.emitidoEn.getTime()
       if (porFecha !== 0) return porFecha
       return otro.id.localeCompare(uno.id)
     })
 
-    if (
-      opciones.cursorEmitidoEn !== undefined &&
-      opciones.cursorId !== undefined
-    ) {
-      const cursorMs = opciones.cursorEmitidoEn.getTime()
-      const cursorId = opciones.cursorId
-      items = items.filter((cada) => {
-        const ms = cada.emitidoEn.getTime()
-        if (ms < cursorMs) return true
-        if (ms > cursorMs) return false
-        return cada.id < cursorId
-      })
+    if (opciones.cursorId !== undefined) {
+      const indice = items.findIndex((cada) => cada.id === opciones.cursorId)
+      if (indice >= 0) {
+        items = items.slice(indice + 1)
+      }
     }
 
     const pagina = items.slice(0, opciones.limite)
     return { items: pagina, hayMas: items.length > opciones.limite }
+  }
+
+  async buscarComprobantePorSerieNumero(
+    serie: string,
+    numero: number,
+  ): Promise<Comprobante | undefined> {
+    for (const cada of this.comprobantes.values()) {
+      if (cada.valor.serie === serie && cada.valor.numero === numero) {
+        return cada.valor
+      }
+    }
+    return undefined
   }
 }

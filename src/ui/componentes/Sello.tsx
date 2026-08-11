@@ -5,16 +5,14 @@ import type { EstadoDeComprobante } from '../../domain/documentos/tipos.ts'
  *
  * ## La regla del sello
  *
- * **Si tiene sello, existe ante SUNAT.** Es literal y es la única concesión que
- * el sistema hace a la estética del documento: el sello violeta aparece
- * únicamente sobre un comprobante ya emitido y aceptado, nunca sobre la hoja de
- * trabajo ni sobre un pedido en curso.
+ * El sello violeta marca un comprobante que **ya existe en el proveedor** (se
+ * puede entregar e imprimir). El texto distingue el matiz:
+ * - **REGISTRADO** (`enviado`): firmado/tramitado; la autoridad aún no confirma.
+ * - **ACEPTADO** (`aceptado`): confirmado por la autoridad.
  *
- * Es también la razón de que el sistema no tenga verde. Un estado positivo no se
- * marca con color de éxito; se marca con el sello. Y no hay verde porque rojo y
- * verde es el peor par posible para el porcentaje nada pequeño de hombres con
- * deficiencia rojo-verde, en un sistema donde "no definitivo" y "validado" no
- * pueden confundirse nunca.
+ * Nunca sobre la hoja de trabajo ni un pedido en curso. No hay verde: rojo y
+ * verde es el peor par para deficiencia rojo-verde, donde "no definitivo" y
+ * "validado" no pueden confundirse.
  *
  * La rotación ligera y la tinta desigual —una opacidad por debajo de uno— son lo
  * que lo hace leer como algo estampado y no como una insignia de interfaz.
@@ -58,13 +56,10 @@ export function MarcaEstado({ children }: { readonly children: string }) {
 }
 
 const TEXTOS: Partial<Record<EstadoDeComprobante, string>> = {
-  // `enviado` lleva sello igual que `aceptado`, y esto no es laxitud. Significa
-  // que el proveedor tiene el documento, lo firmó y lo está tramitando: el papel
-  // existe y el vendedor puede entregarlo. Además es la respuesta inmediata más
-  // frecuente, así que dejarlo sin sello habría hecho que el vendedor creyera que
-  // no pasó nada en la mayoría de las ventas.
-  enviado: 'EMITIDO',
-  aceptado: 'EMITIDO',
+  // Ambos llevan sello violeta (el documento existe y se puede entregar), pero
+  // el texto no miente: REGISTRADO ≠ ACEPTADO ante la autoridad.
+  enviado: 'REGISTRADO',
+  aceptado: 'ACEPTADO',
   anulado: 'ANULADO',
   rechazado: 'RECHAZADO',
   pendiente: 'PENDIENTE DE COMPROBANTE',

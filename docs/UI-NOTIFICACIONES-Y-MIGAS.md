@@ -6,24 +6,29 @@ SuitPay usa [`sileo`](https://sileo.aaryan.design/docs) para los toasts: animaci
 
 ### Montaje
 
-En `src/routes/__root.tsx` (una sola vez):
+En `src/routes/__root.tsx` (una sola vez), dentro de `CapaDeToasts` para que
+los toasts vivan en la **top layer** (Popover API) y no queden detrás del
+backdrop de un `<dialog showModal()>`:
 
 ```tsx
 import { Toaster } from 'sileo'
+import { CapaDeToasts } from '../ui/componentes/CapaDeToasts.tsx'
 
-<Toaster
-  position="top-right"
-  theme="dark"
-  options={{
-    fill: '#171717',
-    styles: {
-      title: 'text-white!',
-      description: 'text-white/75!',
-      badge: 'bg-white/10!',
-      button: 'bg-white/10! hover:bg-white/15!',
-    },
-  }}
-/>
+<CapaDeToasts>
+  <Toaster
+    position="top-right"
+    theme="dark"
+    options={{
+      fill: '#171717',
+      styles: {
+        title: 'text-white!',
+        description: 'text-white/75!',
+        badge: 'bg-white/10!',
+        button: 'bg-white/10! hover:bg-white/15!',
+      },
+    }}
+  />
+</CapaDeToasts>
 ```
 
 Estilos globales: `@import 'sileo/styles.css'` en `src/styles.css`.

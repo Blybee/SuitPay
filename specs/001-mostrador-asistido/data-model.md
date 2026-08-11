@@ -88,7 +88,7 @@ El documento central del sistema. **Su identificador es la clave de idempotencia
 | `condicionPago` | objeto | `tipo` (contado o crédito), `fechaVencimiento`, `estadoCobro`, `pagos` como arreglo. Embebido, no en colección aparte. El esquema admite crédito a nivel de emisión; **la UX de crédito/cobro y el canal vecinos como módulo de cobranzas quedan fuera de esta entrega** (US8 = cotizaciones de vecino). |
 | `medioPago` | objeto | `medio` y `montoRecibido`. Referencial, sin conciliación. |
 | `vendedorId`, `emitidoEn` | cadena, marca de tiempo | Atribución exigida por el principio I y FR-027. |
-| `proveedor` | objeto | Referencias externas aisladas: identificadores, enlaces a los archivos generados, estado informado, código y mensaje de error. **Ningún campo del proveedor se usa como campo propio**, por el principio III. |
+| `proveedor` | objeto | Referencias externas aisladas: identificadores, **URL del PDF** y demás enlaces generados por el proveedor, estado informado, código y mensaje de error. Se persiste el **enlace** (cadena), nunca el binario del PDF en Storage. **Ningún campo del proveedor se usa como campo propio**, por el principio III. |
 | `anulacion` | objeto | `motivo`, `autor`, `momento`, `estado`. Embebido. Nulo si no se anuló. |
 | `cotizacionId` | cadena | Origen, si vino de una cotización. |
 | `capturaId` | cadena | Origen, si vino de un dictado o una fotografía. |
@@ -221,8 +221,10 @@ Con la edición Standard los índices de campo único se crean automáticamente;
 
 | Colección | Campos | Para |
 |-----------|--------|------|
-| `comprobantes` | `cliente.numeroDocumento` asc, `emitidoEn` desc | Últimos comprobantes de un cliente (US9). |
-| `comprobantes` | `vendedorId` asc, `emitidoEn` desc | Comprobantes del día de un vendedor, para localizar el que se va a anular. |
+| `comprobantes` | `emitidoEn` desc | Listado colaborativo por día/rango (US4b); página Hoy y rango sin filtro de autor. |
+| `comprobantes` | `cliente.numeroDocumento` asc, `emitidoEn` desc | Últimos comprobantes de un cliente (US9) y filtro cliente ± Hoy/rango (US4b). |
+| `comprobantes` | `serie` asc, `numero` asc | Búsqueda exacta por serie y número (US4b). Si el id del doc no es serie-número, este índice (o un campo `claveSerieNumero`) lo habilita. |
+| `comprobantes` | `vendedorId` asc, `emitidoEn` desc | Atribución / reportes por emisor; **ya no** es el camino de ACL del listado US4b. |
 | `comprobantes` | `estado` asc, `emitidoEn` asc | Consultas administrativas por estado (no hay barrido programado; decisión 10). |
 | `comprobantes` | `cliente.numeroDocumento` asc, `condicionPago.estadoCobro` asc | Reservado si más adelante se consulta cobro embebido; **no usado por US8 en esta entrega**. |
 | `cotizaciones` | `canal` asc, `estado` asc, `creadoEn` desc | Listar pendientes por canal (tab Cotizaciones = `general`; tab Vecinos = `vecino`). |
@@ -246,5 +248,8 @@ El coste de arrancar y operar una jornada, expresado en lecturas de documentos:
 | Armar el pedido | 0 | IndexedDB. |
 | Emitir | 2 escrituras en una transacción | Comprobante y contador de serie. |
 | Consultar comprobantes de un cliente | 1 por comprobante mostrado | Con cursor y página corta. |
+| Comprobantes → Hoy | 1 por comprobante del día | Sin paginar; necesario para el total de cierre (US4b). |
+| Comprobantes → rango | 20 por página | Cursores; cliente opcional (AND). |
+| Comprobantes → serie/número | 1 | Lectura exacta; si falta URL PDF, 0 lecturas extra de Firestore + 1 consulta al proveedor. |
 
 La consecuencia práctica es que un día completo de venta consume del orden de unas pocas decenas de lecturas por dispositivo, muy dentro de la cuota gratuita diaria. El diseño no está optimizado por avaricia sino porque la alternativa —consultar el catálogo en cada tecleo— habría sido a la vez más lenta, más cara y dependiente de la red donde el principio V exige que no lo sea.

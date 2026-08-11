@@ -229,3 +229,31 @@
     }
   }
 }
+
+/*
+ * Host de toasts en top layer (popover). Resetea el estilo por defecto del UA
+ * para que Sileo siga posicionando `top-right` sobre el viewport.
+ */
+.suitpay-toast-layer {
+  inset: unset;
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: auto;
+  left: auto;
+  margin: 0;
+  padding: 0;
+  border: none;
+  background: transparent;
+  overflow: visible;
+  width: auto;
+  height: auto;
+  max-width: none;
+  max-height: none;
+  pointer-events: none;
+  color: inherit;
+}
+
+.suitpay-toast-layer > * {
+  pointer-events: auto;
+}

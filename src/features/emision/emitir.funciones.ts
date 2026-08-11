@@ -1,7 +1,15 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 import { z } from 'zod'
-import { TIPOS_ELEGIBLES } from '../../domain/documentos/tipos.ts'
+import {
+  TIPOS_ELEGIBLES,
+  tieneValorTributario,
+} from '../../domain/documentos/tipos.ts'
+import {
+  comienzoDelDiaEnLima,
+  diaEnLima,
+  finExclusivoDelDiaEnLima,
+} from '../../domain/anulacion/ventana.ts'
 import { exigirIdentidad } from '../../server/auth/verificar.ts'
 import { COLECCIONES, DOCUMENTOS, bd } from '../../server/firebase/admin.ts'
 import { ErrorDeSuitPay, esErrorDeSuitPay, fallar } from '../../server/errores.ts'
@@ -182,13 +190,13 @@ export const emitir = createServerFn({ method: 'POST' })
  * Lee un comprobante ya emitido. Sirve para la reimpresión y para consultar el
  * estado de una venta que quedó en verificación.
  *
- * Un vendedor solo puede leer los suyos; un administrador, cualquiera. La
- * comprobación es aquí y no en las reglas porque el Admin SDK las salta.
+ * ACL colaborativa (US4b / FR-057c): cualquier vendedor, admin o jefe activo
+ * puede leer cualquier comprobante de la empresa.
  */
 export const leerComprobante = createServerFn({ method: 'GET' })
   .validator(z.object({ comprobanteId: z.string().min(1) }))
   .handler(async ({ data }) => {
-    const identidad = await exigirIdentidad(getRequestHeaders(), [
+    await exigirIdentidad(getRequestHeaders(), [
       'vendedor',
       'administrador',
       'jefe',
@@ -199,13 +207,6 @@ export const leerComprobante = createServerFn({ method: 'GET' })
     )
 
     if (comprobante === undefined) {
-      fallar('comprobante_no_encontrado')
-    }
-
-    if (
-      identidad.rol === 'vendedor' &&
-      comprobante.vendedorId !== identidad.uid
-    ) {
       fallar('comprobante_no_encontrado')
     }
 
@@ -224,17 +225,15 @@ export interface RespuestaDeConsultaParaCliente {
 export const consultarEstado = createServerFn({ method: 'POST' })
   .validator(z.object({ comprobanteId: z.string().min(1) }))
   .handler(async ({ data }): Promise<RespuestaDeConsultaParaCliente> => {
-    const identidad = await exigirIdentidad(getRequestHeaders(), [
+    await exigirIdentidad(getRequestHeaders(), [
       'vendedor',
       'administrador',
+      'jefe',
     ])
 
     const almacen = new AlmacenFirestore()
     const previo = await almacen.leerComprobante(data.comprobanteId)
     if (previo === undefined) {
-      fallar('comprobante_no_encontrado')
-    }
-    if (identidad.rol === 'vendedor' && previo.vendedorId !== identidad.uid) {
       fallar('comprobante_no_encontrado')
     }
 
@@ -274,6 +273,7 @@ export const anular = createServerFn({ method: 'POST' })
     const identidad = await exigirIdentidad(getRequestHeaders(), [
       'vendedor',
       'administrador',
+      'jefe',
     ])
 
     try {
@@ -308,33 +308,84 @@ export interface RespuestaDeListadoParaCliente {
   readonly error?: ReturnType<ErrorDeSuitPay['aRespuesta']>
 }
 
-/** Listado con cursor (nunca offset). Vendedor: solo los suyos. */
+const esquemaDiaLima = z
+  .string()
+  .regex(/^\d{4}-\d{2}-\d{2}$/, 'fecha AAAA-MM-DD')
+
+/** Listado colaborativo (US4b): Hoy sin paginar; rango con cursor de 20. */
 export const listarComprobantes = createServerFn({ method: 'GET' })
   .validator(
-    z.object({
-      limite: z.number().int().min(1).max(50).optional(),
-      cursorId: z.string().min(1).optional(),
-      cursorEmitidoEn: z.string().datetime().optional(),
-    }),
+    z
+      .object({
+        modo: z.enum(['hoy', 'rango']),
+        fechaInicio: esquemaDiaLima.optional(),
+        fechaFin: esquemaDiaLima.optional(),
+        clienteNumeroDocumento: z.string().min(1).optional(),
+        limite: z.number().int().min(1).max(50).optional(),
+        cursorId: z.string().min(1).optional(),
+      })
+      .superRefine((valor, ctx) => {
+        if (valor.modo === 'rango') {
+          if (valor.fechaInicio === undefined || valor.fechaFin === undefined) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'rango exige fechaInicio y fechaFin',
+            })
+          } else if (valor.fechaInicio > valor.fechaFin) {
+            ctx.addIssue({
+              code: 'custom',
+              message: 'fechaInicio no puede ser posterior a fechaFin',
+            })
+          }
+        }
+      }),
   )
   .handler(async ({ data }): Promise<RespuestaDeListadoParaCliente> => {
-    const identidad = await exigirIdentidad(getRequestHeaders(), [
+    await exigirIdentidad(getRequestHeaders(), [
       'vendedor',
       'administrador',
       'jefe',
     ])
 
-    const vendedorId = identidad.rol === 'vendedor' ? identidad.uid : null
+    const almacen = new AlmacenFirestore()
+    const ahora = new Date()
+    const diaInicio =
+      data.modo === 'hoy' ? diaEnLima(ahora) : data.fechaInicio!
+    const diaFin = data.modo === 'hoy' ? diaInicio : data.fechaFin!
+    const emitidoDesde = comienzoDelDiaEnLima(diaInicio)
+    const emitidoHastaExclusivo = finExclusivoDelDiaEnLima(diaFin)
+    const filtroCliente =
+      data.clienteNumeroDocumento === undefined
+        ? {}
+        : { clienteNumeroDocumento: data.clienteNumeroDocumento }
 
     try {
-      const pagina = await new AlmacenFirestore().listarComprobantes({
-        vendedorId,
+      if (data.modo === 'hoy') {
+        const acumulados: Comprobante[] = []
+        let cursorId: string | undefined
+        let hayMas = true
+        while (hayMas) {
+          const pagina = await almacen.listarComprobantes({
+            emitidoDesde,
+            emitidoHastaExclusivo,
+            ...filtroCliente,
+            limite: 100,
+            cursorId,
+          })
+          acumulados.push(...pagina.items)
+          hayMas = pagina.hayMas
+          cursorId = pagina.items[pagina.items.length - 1]?.id
+          if (!hayMas || cursorId === undefined) break
+        }
+        return { ok: true, items: acumulados, hayMas: false }
+      }
+
+      const pagina = await almacen.listarComprobantes({
+        emitidoDesde,
+        emitidoHastaExclusivo,
+        ...filtroCliente,
         limite: data.limite ?? 20,
         cursorId: data.cursorId,
-        cursorEmitidoEn:
-          data.cursorEmitidoEn === undefined
-            ? undefined
-            : new Date(data.cursorEmitidoEn),
       })
       return { ok: true, items: pagina.items, hayMas: pagina.hayMas }
     } catch (error) {
@@ -344,4 +395,116 @@ export const listarComprobantes = createServerFn({ method: 'GET' })
         error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
       }
     }
+  })
+
+export interface RespuestaDeBusquedaParaCliente {
+  readonly ok: boolean
+  readonly comprobante?: Comprobante
+  readonly error?: ReturnType<ErrorDeSuitPay['aRespuesta']>
+}
+
+export const buscarComprobantePorSerieNumero = createServerFn({ method: 'GET' })
+  .validator(
+    z.object({
+      serie: z.string().trim().min(1).max(8),
+      numero: z.number().int().min(0),
+    }),
+  )
+  .handler(async ({ data }): Promise<RespuestaDeBusquedaParaCliente> => {
+    await exigirIdentidad(getRequestHeaders(), [
+      'vendedor',
+      'administrador',
+      'jefe',
+    ])
+
+    try {
+      const comprobante =
+        await new AlmacenFirestore().buscarComprobantePorSerieNumero(
+          data.serie.trim().toUpperCase(),
+          data.numero,
+        )
+      if (comprobante === undefined) {
+        return {
+          ok: false,
+          error: new ErrorDeSuitPay('comprobante_no_encontrado').aRespuesta(),
+        }
+      }
+      return { ok: true, comprobante }
+    } catch (error) {
+      console.error('[SuitPay] fallo al buscar comprobante', error)
+      return {
+        ok: false,
+        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
+      }
+    }
+  })
+
+export interface RespuestaDeUrlPdf {
+  readonly ok: boolean
+  readonly urlPdf?: string | null
+  readonly motivo?: 'no_encontrado' | 'sin_archivo' | 'consulta_fallida'
+  readonly error?: ReturnType<ErrorDeSuitPay['aRespuesta']>
+}
+
+/**
+ * Devuelve la URL PDF del comprobante. Si falta y el doc es tributario,
+ * consulta al proveedor, persiste el enlace y lo devuelve. Nunca emite ni
+ * sube binarios a Storage (FR-059).
+ */
+export const obtenerUrlPdfComprobante = createServerFn({ method: 'POST' })
+  .validator(z.object({ comprobanteId: z.string().min(1) }))
+  .handler(async ({ data }): Promise<RespuestaDeUrlPdf> => {
+    await exigirIdentidad(getRequestHeaders(), [
+      'vendedor',
+      'administrador',
+      'jefe',
+    ])
+
+    const almacen = new AlmacenFirestore()
+    const comprobante = await almacen.leerComprobante(data.comprobanteId)
+    if (comprobante === undefined) {
+      return { ok: false, motivo: 'no_encontrado' }
+    }
+
+    const existente = comprobante.proveedor?.pdf
+    if (existente !== undefined && existente !== null && existente !== '') {
+      return { ok: true, urlPdf: existente }
+    }
+
+    if (
+      !tieneValorTributario(comprobante.tipoDocumento) ||
+      comprobante.numero === null ||
+      comprobante.serie === ''
+    ) {
+      return { ok: true, urlPdf: null, motivo: 'sin_archivo' }
+    }
+
+    const proveedor = proveedorActual()
+    const consulta = await proveedor.consultarDocumento({
+      tipoDocumento: comprobante.tipoDocumento,
+      serie: comprobante.serie,
+      numero: comprobante.numero,
+    })
+
+    if (!consulta.ok) {
+      return { ok: false, motivo: 'consulta_fallida' }
+    }
+
+    const pdf = consulta.valor.archivos.pdf
+    if (pdf === undefined || pdf === '') {
+      return { ok: true, urlPdf: null, motivo: 'sin_archivo' }
+    }
+
+    await almacen.actualizarComprobante(comprobante.id, {
+      proveedor: {
+        nombre: comprobante.proveedor?.nombre ?? proveedor.nombre,
+        referenciaExterna: comprobante.proveedor?.referenciaExterna ?? null,
+        estadoInformado: comprobante.proveedor?.estadoInformado ?? null,
+        pdf,
+        xml: consulta.valor.archivos.xml ?? comprobante.proveedor?.xml ?? null,
+        cdr: consulta.valor.archivos.cdr ?? comprobante.proveedor?.cdr ?? null,
+      },
+    })
+
+    return { ok: true, urlPdf: pdf }
   })

@@ -408,7 +408,7 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 - [ ] T163 [P] Ejercitar la integración completa contra el **entorno de demostración** del proveedor antes de tocar el entorno real, como exige la disciplina de desarrollo de la constitución
 - [ ] T164 [P] Desplegar en Firebase App Hosting y verificar el adaptador de Nitro. **Si el adaptador ha dejado de funcionar**, aplicar la contingencia de la decisión 1b de `research.md`: Cloud Run con el mismo artefacto
 - [ ] T165 [P] Verificar el coste real de lecturas de una jornada contra la estimación de `data-model.md`, para confirmar que el diseño de una lectura por sesión se sostiene en la práctica
-- [ ] T166 Revisar que el alcance excluido no se haya colado: sin contabilidad, sin cobranzas/crédito como UX, sin guía de remisión, sin panel del jefe, sin alertas de stock, sin notas de crédito como flujo, sin comandos que escriban **salvo** `/crear vecino` con confirmación (FR-034a)
+- [ ] T166 Revisar que el alcance excluido no se haya colado: sin contabilidad, sin cobranzas/crédito como UX, sin guía de remisión en este código (vive en `002`), sin notas de crédito como flujo, sin login por alias, sin comandos que escriban **salvo** `/crear vecino` con confirmación (FR-034a). Inventario/alertas → `003-inventario-almacen`; ranking/estadísticas → `004-ranking-productos` (no “colados” en `001` si solo hay enlaces)
 
 ---
 
@@ -584,6 +584,34 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 
 ---
 
+## Phase C10: Converge — US4b resumen, filtros, impresión colaborativa (2026-08-10)
+
+**Propósito**: FR-037a, FR-057…FR-059, FR-056a. Listado bajo demanda, ACL colaborativa, PDF como URL (sin Storage). Inventario/ranking fuera (`003`/`004`).
+
+**Dependencias**: US4 (T101–T106) y reutilizar (T183) hechos.
+
+### Pruebas obligatorias ⚠️
+
+- [x] T185 [P] [US4b] Prueba de ACL colaborativa: listado memoria sin filtro por emisor (`tests/unit/server/listar-comprobantes-filtros.test.ts`); anulación colaborativa cubierta por ACL serverFn sin check de emisor
+- [x] T186 [P] [US4b] Prueba de resumen Hoy: anulados no suman (`tests/unit/domain/resumen-comprobantes.test.ts`); Hoy carga completo / rango pagina 20 en serverFn
+- [x] T187 [P] [US4b] Prueba rango+cliente (AND) en almacén memoria; UI desactiva Hoy al aplicar rango
+- [x] T188 [P] [US4b] Prueba búsqueda serie+número + URL PDF: mapeo/persistencia en `obtenerUrlPdfComprobante`; `imprimirDocumento` no marca error falso por `noopener` (`tests/unit/features/impresion-ventana.test.ts`); toasts sobre modal vía `CapaDeToasts`
+
+### Implementación
+
+- [x] T189 [US4b] Quitar filtro por `vendedorId` del emisor en `listarComprobantes` / `leerComprobante` / `anular` (sesión + rol activo sí). Archivos: `src/features/emision/emitir.funciones.ts`, almacén Firestore, reglas/ACL de serverFn
+- [x] T190 [US4b] Extender listado: modos `hoy` \| `rango`, filtro cliente, cursores solo en rango, día America/Lima. Índices en `firestore.indexes.json` + `data-model.md`
+- [x] T191 [US4b] Rediseñar `src/routes/comprobantes/index.tsx`: sin lista al montar; controles Hoy / rango / cliente / búsqueda; resumen de ventas en Hoy; Imprimir + Reutilizar por fila
+- [x] T192 [US4b] Búsqueda exacta serie+número (UI + `buscarComprobantePorSerieNumero`) con opción Imprimir
+- [x] T193 [US4b] Mapear `archivos.pdf` en `src/server/proveedor/*/consultar.ts`; `obtenerUrlPdfComprobante` persiste URL en el doc; cablear Imprimir en lista/detalle
+- [x] T194 [P] [US4b] Actualizar copy de la página (consulta/anulación colaborativa; sin “eliminar”)
+
+**Checkpoint C10**: cierre de caja con Hoy; filtros bajo demanda; cualquier vendedor opera sobre cualquier comprobante; PDF por URL.
+
+**Puerta de implementación**: tras C10 en código, **no** implementar `003` hasta cerrar fuente de verdad de stock; `004` puede especificarse completo (empujón diferido) e implementarse con defaults (top 20 por unidades, 7/30 días) cuando se priorice.
+
+---
+
 ## Notas
 
 - Las tareas marcadas [P] tocan archivos distintos y no tienen dependencias pendientes.
@@ -593,3 +621,4 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 - Confirma en cada punto de control antes de seguir.
 - **Volcado 5**: no se tocó `src/` en la enmienda documental; T160–T169 son el backlog de converge.
 - **2026-08-09**: guía de remisión → `specs/002-guias-remision/`; T178–T181 son el backlog de esta enmienda.
+- **2026-08-10**: US4b → T185–T194; inventario → `003`; ranking → `004`.

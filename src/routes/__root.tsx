@@ -21,6 +21,7 @@ import { usarSesion } from '../features/sesion/almacen.ts'
 import { Toaster } from 'sileo'
 import { BandaDegradacion } from '../ui/componentes/BandaDegradacion.tsx'
 import { BarraLateral } from '../ui/componentes/BarraLateral.tsx'
+import { CapaDeToasts } from '../ui/componentes/CapaDeToasts.tsx'
 import hojaDeEstilos from '../styles.css?url'
 
 /**
@@ -99,19 +100,21 @@ function Mostrador() {
               : undefined
           }
         />
-        <Toaster
-          position="top-right"
-          theme="dark"
-          options={{
-            fill: '#171717',
-            styles: {
-              title: 'text-white!',
-              description: 'text-white/75!',
-              badge: 'bg-white/10!',
-              button: 'bg-white/10! hover:bg-white/15!',
-            },
-          }}
-        />
+        <CapaDeToasts>
+          <Toaster
+            position="top-right"
+            theme="dark"
+            options={{
+              fill: '#171717',
+              styles: {
+                title: 'text-white!',
+                description: 'text-white/75!',
+                badge: 'bg-white/10!',
+                button: 'bg-white/10! hover:bg-white/15!',
+              },
+            }}
+          />
+        </CapaDeToasts>
 
         {enAcceso ? (
           <Outlet />

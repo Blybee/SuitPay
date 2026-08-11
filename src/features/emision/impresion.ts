@@ -41,12 +41,17 @@ export function imprimirDocumento(urlDelPdf: string | null): ResultadoDeImpresio
     return { ok: false, motivo: 'sin_archivo' }
   }
 
-  const ventana = window.open(urlDelPdf, '_blank', 'noopener,noreferrer')
+  // No pasar `noopener` en el tercer argumento: con esa feature `window.open`
+  // **devuelve null aunque la pestaña abra** (el opener no recibe referencia).
+  // Eso hacía saltar el toast de error con el PDF ya visible. Cortamos la
+  // relación nosotros con `opener = null` + `noreferrer` vía meta si hace falta.
+  const ventana = window.open(urlDelPdf, '_blank')
   if (ventana === null) {
     // Bloqueador de ventanas emergentes. Se informa en lugar de fallar en
     // silencio, porque el vendedor está esperando ver salir un papel.
     return { ok: false, motivo: 'no_se_pudo_abrir' }
   }
 
+  ventana.opener = null
   return { ok: true }
 }

@@ -48,6 +48,11 @@ interface RespuestaDeConsulta {
     readonly cliente?: { readonly numero_documento?: string }
     readonly fecha_emision?: string
   }
+  readonly archivos?: {
+    readonly pdf?: string
+    readonly xml?: string
+    readonly cdr?: string
+  }
 }
 
 /** Convierte un importe del proveedor a céntimos. Llega como texto decimal. */
@@ -119,6 +124,12 @@ export async function consultarDocumento(
 
   const traducido = traducirEstado(datos.estado)
 
+  const archivos = {
+    pdf: cuerpo.archivos?.pdf,
+    xml: cuerpo.archivos?.xml,
+    cdr: cuerpo.archivos?.cdr,
+  }
+
   if (traducido.codigoDesconocido && datos.estado !== undefined) {
     // El documento está ahí pero no entendemos su estado. Se informa como
     // existente sin estado, para que la reconciliación lo mande a intervención
@@ -132,7 +143,7 @@ export async function consultarDocumento(
       total: aCentimos(datos.total),
       numeroDocumentoCliente: datos.cliente?.numero_documento,
       emitidoEn: aFecha(datos.fecha_emision),
-      archivos: { pdf: undefined, xml: undefined, cdr: undefined },
+      archivos,
       rastro: respuesta.valor.rastro,
     })
   }
@@ -149,7 +160,7 @@ export async function consultarDocumento(
     total: aCentimos(datos.total),
     numeroDocumentoCliente: datos.cliente?.numero_documento,
     emitidoEn: aFecha(datos.fecha_emision),
-    archivos: { pdf: undefined, xml: undefined, cdr: undefined },
+    archivos,
     rastro: respuesta.valor.rastro,
   })
 }

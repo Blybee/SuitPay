@@ -201,16 +201,23 @@ export interface AlmacenDeEmision {
   leerSerie: (serieId: string) => Promise<Serie | undefined>
 
   /**
-   * Lista comprobantes por vendedor con paginación por cursor (nunca offset).
-   * Orden: `emitidoEn` descendente. `vendedorId` nulo = todos (admin/jefe).
+   * Lista comprobantes de la empresa con paginación por cursor (nunca offset).
+   * Orden: `emitidoEn` descendente. Sin filtro por emisor (US4b / FR-057c).
    */
   listarComprobantes: (opciones: {
-    readonly vendedorId: string | null
+    readonly emitidoDesde?: Date
+    readonly emitidoHastaExclusivo?: Date
+    readonly clienteNumeroDocumento?: string
     readonly limite: number
-    readonly cursorEmitidoEn?: Date
     readonly cursorId?: string
   }) => Promise<{
     readonly items: readonly Comprobante[]
     readonly hayMas: boolean
   }>
+
+  /** Búsqueda exacta por serie + número (US4b). */
+  buscarComprobantePorSerieNumero: (
+    serie: string,
+    numero: number,
+  ) => Promise<Comprobante | undefined>
 }

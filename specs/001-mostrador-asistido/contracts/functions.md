@@ -63,15 +63,57 @@ La función más importante del sistema. Es el único camino por el que nace un 
 
 ## `anularComprobante`
 
-**Rol**: vendedor o administrador.
+**Rol**: vendedor, administrador o jefe (FR-037a).
 
 **Petición**: `comprobanteId`, `motivo`.
 
-**Comportamiento**: verifica que el comprobante esté aceptado y que se haya emitido el mismo día; si no, rechaza indicando que corresponde una nota de crédito. Solicita la baja al proveedor, registra motivo, autor y momento en el propio documento, y cambia su estado. **No borra nada.**
+**Comportamiento**: verifica que el comprobante esté en estado anulable y que se haya emitido el mismo día (America/Lima); si no, rechaza indicando que corresponde una nota de crédito. **No exige** que el solicitante sea el emisor. Solicita la baja al proveedor (si tiene valor tributario), registra motivo, autor (quien confirma) y momento en el propio documento, y cambia su estado. **No borra nada.**
 
 **Respuesta**: `estado`, `anulacion`.
 
 **Errores**: `fuera_de_ventana_anulacion` (FR-038), `estado_no_anulable`.
+
+---
+
+## `listarComprobantes`
+
+**Rol**: vendedor, administrador o jefe.
+
+**Petición**
+
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `modo` | cadena | `hoy` \| `rango`. |
+| `fechaInicio`, `fechaFin` | fecha (día Lima) | Obligatorias si `modo = rango`. Ignoradas si `modo = hoy` (se calcula el día actual America/Lima). |
+| `clienteNumeroDocumento` | cadena o nulo | Filtro opcional (AND con el intervalo). |
+| `limite` | número | Solo en `rango`; default 20, máximo 50. En `hoy` el servidor MUST devolver el conjunto completo del día (sin paginar). |
+| `cursorEmitidoEn`, `cursorId` | opcionales | Solo `rango`; paginación por cursor, nunca por offset. |
+
+**Comportamiento**: lista comprobantes de **toda la empresa** (sin filtrar por `vendedorId` del emisor). Orden `emitidoEn` desc. El cliente calcula el resumen de ventas del modo Hoy sumando totales de no anulados.
+
+**Respuesta**: `items`, `hayMas` (siempre falso en `hoy`).
+
+---
+
+## `buscarComprobantePorSerieNumero`
+
+**Rol**: vendedor, administrador o jefe.
+
+**Petición**: `serie`, `numero`.
+
+**Comportamiento**: localiza el comprobante exacto en Firestore. Si existe y falta la URL PDF en `proveedor`, MAY invocar `consultarDocumento` en la frontera, persistir el enlace y devolverlo. **Nunca emite.**
+
+**Respuesta**: `comprobante` (o `no_encontrado`), `urlPdf` si aplica.
+
+---
+
+## `obtenerUrlPdfComprobante`
+
+**Rol**: vendedor, administrador o jefe.
+
+**Petición**: `comprobanteId`.
+
+**Comportamiento**: si el documento ya tiene URL PDF, la devuelve. Si no, consulta al proveedor por serie/número, persiste el enlace cuando exista y lo devuelve. Notas de venta internas sin PDF del proveedor → respuesta clara sin error de emisión. **Nunca emite ni sube binarios a Storage.**
 
 ---
 

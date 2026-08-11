@@ -20,6 +20,14 @@
       "collectionGroup": "comprobantes",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "serie", "order": "ASCENDING" },
+        { "fieldPath": "numero", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "comprobantes",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "estado", "order": "ASCENDING" },
         { "fieldPath": "emitidoEn", "order": "ASCENDING" }
       ]

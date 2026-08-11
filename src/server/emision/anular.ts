@@ -9,7 +9,8 @@ import type { AlmacenDeEmision, Comprobante } from './almacen.ts'
 import { exigirTransicion } from './estados.ts'
 
 /**
- * `anularComprobante`: baja de un comprobante aceptado el mismo día (Lima).
+ * `anularComprobante`: baja de un comprobante emitido (`enviado` o `aceptado`)
+ * el mismo día (Lima).
  *
  * Orden: validar existencia → estado anulable → ventana → (si tiene valor
  * tributario) proveedor → solo entonces persistir `anulado` + `anulacion`.

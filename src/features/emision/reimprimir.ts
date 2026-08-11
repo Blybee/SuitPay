@@ -1,29 +1,17 @@
-import { leerComprobante } from './emitir.funciones.ts'
+import {
+  leerComprobante,
+  obtenerUrlPdfComprobante,
+} from './emitir.funciones.ts'
 import { compartirDocumento, nombreDelComprobante } from './compartir.ts'
 import { imprimirDocumento } from './impresion.ts'
 import type { ResultadoDeCompartir } from './compartir.ts'
 import type { ResultadoDeImpresion } from './impresion.ts'
 
 /**
- * Reimprimir un comprobante ya emitido (FR-055).
+ * Reimprimir un comprobante ya emitido (FR-055 / FR-059).
  *
- * ## Por qué esto es una lectura y nada más
- *
- * Es la garantía entera del módulo: reimprimir **no escribe nada**. No cambia el
- * estado, no anota un intento, no toca el correlativo. Se lee el comprobante, se
- * abre su archivo, y si la impresora falla lo único que ocurre es que no sale el
- * papel.
- *
- * Escrito de otro modo —por ejemplo, "si no hay PDF, vuelve a pedirlo al
- * proveedor"— la reimpresión se habría convertido en un segundo camino de emisión.
- * Cuando no hay archivo se dice que no hay archivo.
- *
- * ## El caso del documento sin archivo
- *
- * Ocurre de verdad: una venta en espera tiene comprobante pero todavía no tiene
- * PDF, porque el proveedor no lo ha generado. Se distingue de un error, y lo que
- * se ofrece es el documento interno de contingencia, que no es lo mismo y tiene que
- * decirlo en la cara.
+ * Usa la URL PDF persistida en el documento. Si falta, obtiene el enlace por
+ * consulta al proveedor (nunca reemite; nunca sube el binario a Storage).
  */
 
 export type ResultadoDeReimpresion =
@@ -49,10 +37,17 @@ export async function reimprimir(
   }
 
   const nombre = nombreDelComprobante(comprobante.serie, comprobante.numero)
-  const pdf = comprobante.proveedor?.pdf ?? null
 
-  if (pdf === null) {
-    // No se pide nada al proveedor. Que falte el archivo no autoriza a emitir.
+  const url = await obtenerUrlPdfComprobante({
+    data: { comprobanteId },
+  }).catch(() => undefined)
+
+  const pdf =
+    url?.ok === true && url.urlPdf !== undefined && url.urlPdf !== null
+      ? url.urlPdf
+      : null
+
+  if (pdf === null || pdf === '') {
     return { ok: false, motivo: 'sin_archivo_todavia', nombre }
   }
 

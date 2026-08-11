@@ -101,7 +101,29 @@ export function milisegundosRestantesDeVentana(
  * cambio de norma y falla en silencio.
  */
 function comienzoDelDiaSiguienteEnLima(instante: Date): Date {
-  const dia = diaEnLima(instante)
+  return finExclusivoDelDiaEnLima(diaEnLima(instante))
+}
+
+/**
+ * Inicio inclusive del día civil `AAAA-MM-DD` en America/Lima (como instante UTC).
+ * Sirve para consultas de listado US4b (Hoy / rango).
+ */
+export function comienzoDelDiaEnLima(dia: string): Date {
+  const partes = dia.split('-').map(Number)
+  const anio = partes[0]
+  const mes = partes[1]
+  const numeroDeDia = partes[2]
+  if (anio === undefined || mes === undefined || numeroDeDia === undefined) {
+    throw new Error(`Día de Lima con forma inesperada: ${dia}`)
+  }
+
+  const medianocheComoSiFueraUtc = Date.UTC(anio, mes - 1, numeroDeDia)
+  const desplazamiento = desplazamientoDeLima(new Date(medianocheComoSiFueraUtc))
+  return new Date(medianocheComoSiFueraUtc + desplazamiento)
+}
+
+/** Fin exclusivo del día civil `AAAA-MM-DD` en America/Lima (= inicio del día siguiente). */
+export function finExclusivoDelDiaEnLima(dia: string): Date {
   const partes = dia.split('-').map(Number)
   const anio = partes[0]
   const mes = partes[1]
