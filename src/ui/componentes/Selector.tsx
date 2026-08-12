@@ -51,11 +51,11 @@ export function Selector<T extends string>({
   const idCampo = id ?? generado
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       {ocultarEtiqueta ? null : (
         <label
           htmlFor={idCampo}
-          className="font-mono text-etiqueta uppercase text-desvaida"
+          className="shrink-0 font-mono text-etiqueta uppercase text-desvaida"
         >
           {etiqueta}
         </label>
@@ -66,7 +66,7 @@ export function Selector<T extends string>({
         disabled={disabled}
         aria-label={ocultarEtiqueta ? etiqueta : undefined}
         onChange={(evento) => onCambiar(evento.target.value as T)}
-        className={unir('selector-suitpay', className)}
+        className={unir('selector-suitpay min-w-0', className)}
         {...resto}
       >
         {opciones.map((opcion) => (

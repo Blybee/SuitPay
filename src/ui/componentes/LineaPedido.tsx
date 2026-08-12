@@ -58,6 +58,16 @@ function aTexto(centimos: Centimos): string {
   return (centimos / 100).toFixed(2)
 }
 
+/**
+ * Misma plantilla en cabecera y filas (evita desfase).
+ * Móvil: columnas numéricas más estrechas + producto con minmax(0,1fr).
+ */
+const REJILLA_LINEA = [
+  'grid grid-cols-[minmax(0,1fr)_2.75rem_3.5rem_3.5rem_2rem] gap-1 px-2',
+  'sm:grid-cols-[minmax(0,1fr)_3.25rem_4.25rem_4.25rem_2rem] sm:gap-1.5 sm:px-3',
+  'md:grid-cols-[minmax(0,1fr)_5rem_7rem_7rem_2.5rem] md:gap-2 md:px-4',
+].join(' ')
+
 export function LineaPedido({
   linea,
   precioDeCatalogo,
@@ -144,8 +154,8 @@ export function LineaPedido({
     <li
       ref={fila}
       className={[
-        'grid grid-cols-[1fr_5rem_7rem_7rem_2.5rem] items-baseline gap-2',
-        'border-b border-borde px-4 py-1.5',
+        REJILLA_LINEA,
+        'items-baseline border-b border-borde py-1.5',
         // El estado no se distingue solo por color: además del borde rojo, abajo
         // se escribe el motivo.
         lineaEnAviso && 'border-l-4 border-l-aviso bg-aviso/5',
@@ -153,14 +163,18 @@ export function LineaPedido({
         .filter(Boolean)
         .join(' ')}
     >
-      <div className="min-w-0">
+      <div className="min-w-0 overflow-hidden">
         <p
           className="truncate text-cuerpo uppercase text-tinta"
-          title={linea.descripcion}
+          title={`${linea.descripcion} · ${linea.codigo} · ${linea.unidad}`}
         >
           {linea.descripcion}
         </p>
-        <p className="font-mono text-etiqueta uppercase text-desvaida">
+        {/* En móvil el código compite con el nombre y desborda la grilla. */}
+        <p className="hidden min-w-0 truncate font-mono text-etiqueta uppercase text-desvaida md:block">
+          {linea.codigo} · {linea.unidad}
+        </p>
+        <p className="sr-only md:hidden">
           {linea.codigo} · {linea.unidad}
         </p>
         {!emitible && (
@@ -191,14 +205,14 @@ export function LineaPedido({
           if (evento.key === 'Enter') evento.currentTarget.blur()
         }}
         className={[
-          'min-h-11 w-full rounded-full border border-transparent bg-transparent px-2',
+          'min-h-11 min-w-0 w-full rounded-full border border-transparent bg-transparent px-0.5 md:px-2',
           'font-mono tabular-nums text-right text-cuerpo text-tinta',
           'hover:border-borde',
           'focus-visible:border-borde focus-visible:bg-mesa focus-visible:outline-none',
         ].join(' ')}
       />
 
-      <div>
+      <div className="min-w-0">
         <input
           aria-label={`Precio de ${linea.descripcion}`}
           aria-invalid={bajoPiso || undefined}
@@ -216,7 +230,7 @@ export function LineaPedido({
             if (evento.key === 'Enter') evento.currentTarget.blur()
           }}
           className={[
-            'min-h-11 w-full rounded-full border bg-transparent px-2',
+            'min-h-11 min-w-0 w-full rounded-full border bg-transparent px-0.5 md:px-2',
             'font-mono tabular-nums text-right text-cuerpo',
             'focus-visible:outline-none focus-visible:bg-mesa',
             bajoPiso
@@ -225,7 +239,7 @@ export function LineaPedido({
           ].join(' ')}
         />
         {bajoPiso && precioDeCatalogo !== undefined && (
-          <p className="px-1 text-right font-mono text-etiqueta text-desvaida">
+          <p className="hidden px-1 text-right font-mono text-etiqueta text-desvaida md:block">
             <span className="line-through">
               {formatearImporte(precioDeCatalogo)}
             </span>{' '}
@@ -234,7 +248,7 @@ export function LineaPedido({
         )}
       </div>
 
-      <p className="font-mono tabular-nums text-right text-cuerpo font-bold text-tinta">
+      <p className="min-w-0 truncate font-mono tabular-nums text-right text-cuerpo font-bold text-tinta">
         {formatearImporte(importe)}
       </p>
 
@@ -272,20 +286,28 @@ export function CabecerasDeColumna({
   return (
     <div
       className={[
-        'grid grid-cols-[1fr_5rem_7rem_7rem_2.5rem] gap-2',
-        'border-b border-borde px-4 pb-1',
+        REJILLA_LINEA,
+        'border-b border-borde pb-1',
         'font-mono text-etiqueta uppercase text-desvaida',
       ].join(' ')}
     >
-      <span>
+      <span className="min-w-0 truncate">
         Producto
         {numeroDeLineas > 0 ? (
-          <span className="ml-1 normal-case text-desvaida">({numeroDeLineas})</span>
+          <span className="ml-1 normal-case text-desvaida">
+            ({numeroDeLineas})
+          </span>
         ) : null}
       </span>
-      <span className="text-right">Cant.</span>
-      <span className="text-right">Precio</span>
-      <span className="text-right">Importe</span>
+      <span className="min-w-0 text-right">Cant.</span>
+      <span className="min-w-0 truncate text-right">
+        <span className="md:hidden">P.U.</span>
+        <span className="hidden md:inline">Precio</span>
+      </span>
+      <span className="min-w-0 truncate text-right">
+        <span className="md:hidden">Imp.</span>
+        <span className="hidden md:inline">Importe</span>
+      </span>
       <span />
     </div>
   )

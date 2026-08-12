@@ -31,6 +31,7 @@ Glosario vivo para prompts y diseño en SuitPay. Usa el **término preciso** en 
 | **Espejo IndexedDB** | Copia local del catálogo/sesión para búsqueda offline | `infra/local`, principio V | «La búsqueda debe ir contra el espejo, no a la red» |
 | **Return focus to search** | Tras confirmar un campo secundario (cantidad/precio), devolver el foco al buscador principal para el siguiente producto; no robar el Tab entre campos de la misma línea | `LineaPedido` → `Entrada.enfocar` (`MangoDeEntrada`) | «Return focus to search al confirmar cantidad/precio con Enter» |
 | **Invoker (Popover)** | Botón ligado con `popoverTarget` / `popoverTargetAction`; evita la carrera light-dismiss + `togglePopover` en el mismo clic | `BarraLateral` menú móvil | «El hamburger debe ser invoker del popover, no onClick + toggle» |
+| **Responsive density** | Misma información con menos chrome en viewports estrechos (columnas más cortas, labels abreviados, CTA compacto, sin wrap inútil) | `LineaPedido`, `PieTotal` | «Aplica responsive density al pie y a la grilla del pedido» |
 
 ## Cómo ampliar
 

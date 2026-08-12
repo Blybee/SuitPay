@@ -117,6 +117,34 @@
     cursor: pointer;
   }
 
+  /* Pie del mostrador en móvil: cabe en una fila con Total + Emitir. */
+  .selector-suitpay.selector-suitpay--compacto {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+    min-height: 2.75rem;
+    height: 2.75rem;
+    padding: 0 0.65rem;
+    font-size: var(--text-etiqueta);
+    line-height: 1;
+    vertical-align: middle;
+  }
+
+  @media (min-width: 768px) {
+    .selector-suitpay.selector-suitpay--compacto {
+      display: inline-flex;
+      width: auto;
+      min-width: 10rem;
+      min-height: 2.75rem;
+      height: auto;
+      padding: 0.5rem 1rem;
+      font-size: var(--text-cuerpo);
+      line-height: inherit;
+    }
+  }
+
   .selector-suitpay:focus-visible {
     outline: none;
     border-color: var(--color-tinta);

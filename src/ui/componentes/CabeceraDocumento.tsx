@@ -16,7 +16,6 @@ import type { Centimos } from '../../domain/totales/calculo.ts'
 import { modosCampoClientePermitidos } from '../../features/clientes/compatibilidad-documento.ts'
 import type { ModoCampoCliente } from '../../features/clientes/compatibilidad-documento.ts'
 import { esClientePorNombre } from '../../features/clientes/documento-marcador.ts'
-import { EtiquetaSinValor } from './EtiquetaSinValor.tsx'
 import { Boton, Campo } from './primitivas.tsx'
 import { Selector } from './Selector.tsx'
 
@@ -227,8 +226,6 @@ export function CabeceraDocumento({
           onCambiar={(valor) => onCambiarModo(valor as ModoDeCabecera)}
           opciones={opcionesTipo}
         />
-
-        {!esCotizacion ? <EtiquetaSinValor tipo={modo} /> : null}
 
         {mostrarCampo ? (
           <div className="flex min-w-[12rem] flex-1 flex-col gap-1 sm:max-w-xs">

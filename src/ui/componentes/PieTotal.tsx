@@ -83,23 +83,35 @@ export function PieTotal({
         </p>
       )}
 
-      <div className="flex w-full flex-wrap items-center gap-4 px-4 py-3">
+      <div
+        className={[
+          // Una sola fila en móvil: pago | total | CTA (sin wrap disperso).
+          'grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2',
+          'md:flex md:flex-wrap md:gap-4 md:px-4 md:py-3',
+        ].join(' ')}
+      >
         {!modoCotizacion ? (
-          <Selector
-            etiqueta="Pago"
-            valor={medioPago}
-            onCambiar={onCambiarMedioPago}
-            opciones={OPCIONES_PAGO}
-          />
-        ) : null}
+          <div className="flex min-h-11 min-w-0 items-center md:contents">
+            <Selector
+              etiqueta="Pago"
+              ocultarEtiqueta
+              valor={medioPago}
+              onCambiar={onCambiarMedioPago}
+              opciones={OPCIONES_PAGO}
+              className="selector-suitpay--compacto"
+            />
+          </div>
+        ) : (
+          <span className="min-w-0 md:hidden" aria-hidden />
+        )}
 
-        <div className="ml-auto flex items-baseline gap-3">
+        <div className="flex min-h-11 shrink-0 items-center gap-1.5 md:ml-auto md:gap-3">
           <span className="font-mono text-etiqueta uppercase text-desvaida">
             Total
           </span>
           <output
             aria-label="Total del pedido"
-            className="font-mono tabular-nums text-total font-bold leading-none text-tinta"
+            className="font-mono tabular-nums text-entrada font-bold leading-none text-tinta md:text-total"
           >
             {formatearImporte(total)}
           </output>
@@ -111,7 +123,8 @@ export function PieTotal({
             onClick={onGuardarCotizacion}
             disabled={!puedeGuardar}
             className={[
-              'min-h-14 shrink-0 rounded-full px-8 text-entrada font-bold uppercase',
+              'min-h-11 shrink-0 rounded-full px-4 text-cuerpo font-bold uppercase',
+              'md:min-h-14 md:px-8 md:text-entrada',
               'focus-visible:outline-none focus-visible:border-tinta',
               'disabled:cursor-not-allowed',
               puedeGuardar
@@ -130,7 +143,8 @@ export function PieTotal({
               motivoDeBloqueo !== null ? 'motivo-de-bloqueo' : undefined
             }
             className={[
-              'min-h-14 shrink-0 rounded-full px-8 text-entrada font-bold uppercase',
+              'min-h-11 shrink-0 rounded-full px-4 text-cuerpo font-bold uppercase',
+              'md:min-h-14 md:px-8 md:text-entrada',
               'focus-visible:outline-none focus-visible:border-tinta',
               'disabled:cursor-not-allowed',
               bloqueado || enVuelo || estado === 'emitido'
