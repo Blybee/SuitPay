@@ -257,3 +257,30 @@
 .suitpay-toast-layer > * {
   pointer-events: auto;
 }
+
+/*
+ * Menú móvil de la barra lateral (Popover API). Resetea el UA popover
+ * (centrado/auto-size) y lo ancla bajo la barra superior.
+ */
+.barra-lateral-menu-movil {
+  inset: unset;
+  position: fixed;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: none;
+  max-height: min(80dvh, 100%);
+  margin: 0;
+  overflow: auto;
+  color: inherit;
+}
+
+.barra-lateral-menu-movil:not(:popover-open) {
+  display: none;
+}
+
+@media (min-width: 768px) {
+  .barra-lateral-menu-movil {
+    display: none !important;
+  }
+}

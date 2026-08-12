@@ -3,13 +3,15 @@ import {
   FileText,
   LayoutDashboard,
   LogOut,
+  Menu,
   PanelLeftClose,
   PanelLeftOpen,
   Settings,
   Store,
+  X,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { usarSesion } from '../../features/sesion/almacen.ts'
 import type { Rol } from '../../features/sesion/almacen.ts'
 import { MarcaSuitPay } from './MarcaSuitPay.tsx'
@@ -17,8 +19,8 @@ import { Boton } from './primitivas.tsx'
 
 /**
  * Sidebar Soft-Pill colapsable: marca arriba, nav, usuario + logout al pie
- * (FR-005a). Reutilizable: el mostrador y la administración pasan sus ítems
- * (o se eligen según el rol).
+ * (FR-005a). En móvil: IconButton centrado + menú vertical (Popover API,
+ * light-dismiss / Esc). Desktop sin cambios.
  */
 
 const CLAVE_COLAPSADA = 'suitpay.sidebar.colapsada'
@@ -109,8 +111,14 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
   const cargando = usarSesion((s) => s.cargando)
   const salir = usarSesion((s) => s.salir)
   const [colapsada, setColapsada] = useState(false)
+  const [menuMovilAbierto, setMenuMovilAbierto] = useState(false)
+  const [topeMenuMovil, setTopeMenuMovil] = useState(56)
+  const idMenuMovil = useId()
+  const menuMovilRef = useRef<HTMLDivElement>(null)
+  const barraMovilRef = useRef<HTMLDivElement>(null)
 
   async function cerrarSesion(): Promise<void> {
+    cerrarMenuMovil()
     await salir()
     await navigate({ to: '/acceso' })
   }
@@ -121,6 +129,46 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
   useEffect(() => {
     setColapsada(leerColapsada())
   }, [])
+
+  useEffect(() => {
+    const barra = barraMovilRef.current
+    if (barra === null) return
+    const medir = () => {
+      setTopeMenuMovil(barra.getBoundingClientRect().bottom)
+    }
+    medir()
+    const observador = new ResizeObserver(medir)
+    observador.observe(barra)
+    window.addEventListener('resize', medir)
+    return () => {
+      observador.disconnect()
+      window.removeEventListener('resize', medir)
+    }
+  }, [])
+
+  useEffect(() => {
+    const nodo = menuMovilRef.current
+    if (nodo !== null && typeof nodo.hidePopover === 'function') {
+      try {
+        if (nodo.matches(':popover-open')) nodo.hidePopover()
+      } catch {
+        /* sin Popover */
+      }
+    }
+    setMenuMovilAbierto(false)
+  }, [pathname])
+
+  function cerrarMenuMovil(): void {
+    const nodo = menuMovilRef.current
+    if (nodo !== null && typeof nodo.hidePopover === 'function') {
+      try {
+        if (nodo.matches(':popover-open')) nodo.hidePopover()
+      } catch {
+        /* entorno sin Popover completo */
+      }
+    }
+    setMenuMovilAbierto(false)
+  }
 
   function alternar(): void {
     setColapsada((actual) => {
@@ -136,36 +184,89 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
 
   return (
     <>
-      <div className="flex items-center gap-2 border-b border-borde bg-papel px-3 py-2 md:hidden">
-        <p className="mr-1 shrink-0 text-cuerpo font-bold text-tinta">SuitPay</p>
-        <nav className="flex min-w-0 flex-1 gap-1" aria-label="Menú">
+      <div
+        ref={barraMovilRef}
+        className="grid grid-cols-[1fr_auto_1fr] items-center border-b border-borde bg-papel px-3 py-2 md:hidden"
+      >
+        <p className="justify-self-start text-cuerpo font-bold text-tinta">
+          SuitPay
+        </p>
+        <button
+          type="button"
+          className={unir(
+            'inline-flex size-11 items-center justify-center justify-self-center rounded-full',
+            'text-tinta transition-colors hover:bg-mesa',
+            'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
+          )}
+          aria-label={menuMovilAbierto ? 'Cerrar menú' : 'Abrir menú'}
+          aria-expanded={menuMovilAbierto}
+          aria-controls={idMenuMovil}
+          // Invoker declarativo: evita la carrera light-dismiss + togglePopover
+          // (el clic en X cerraba y el onClick lo volvía a abrir).
+          popoverTarget={idMenuMovil}
+          popoverTargetAction="toggle"
+        >
+          {menuMovilAbierto ? (
+            <X className="size-6" aria-hidden />
+          ) : (
+            <Menu className="size-6" aria-hidden />
+          )}
+        </button>
+        <span className="justify-self-end" aria-hidden />
+      </div>
+
+      <div
+        ref={menuMovilRef}
+        id={idMenuMovil}
+        popover="auto"
+        onToggle={(evento) => {
+          const toggle = evento as ToggleEvent
+          setMenuMovilAbierto(toggle.newState === 'open')
+        }}
+        className="barra-lateral-menu-movil border-b border-borde bg-papel shadow-md"
+        style={{ top: topeMenuMovil }}
+      >
+        <nav
+          className="flex flex-col gap-1 px-3 py-3"
+          aria-label="Menú"
+        >
           {menu.map((item) => {
             const activo = itemActivo(pathname, item)
+            const Icono = item.icono
             return (
               <Link
                 key={`${item.to}-${item.etiqueta}`}
                 to={item.to}
+                onClick={cerrarMenuMovil}
                 className={unir(
-                  'min-h-11 rounded-full px-3 text-etiqueta font-bold uppercase',
+                  'flex min-h-11 items-center gap-3 rounded-full px-4 text-cuerpo font-bold',
                   'focus-visible:outline-none focus-visible:border-tinta',
-                  activo ? 'bg-tinta text-papel' : 'bg-mesa text-desvaida',
+                  activo
+                    ? 'bg-tinta text-papel'
+                    : 'text-desvaida hover:bg-mesa hover:text-tinta',
                 )}
                 aria-current={activo ? 'page' : undefined}
               >
+                <Icono className="size-5 shrink-0" aria-hidden />
                 {item.etiqueta}
               </Link>
             )
           })}
         </nav>
-        <Boton
-          variante="discreto"
-          className="shrink-0 px-2"
-          onClick={() => void cerrarSesion()}
-          disabled={cargando || nombre === null}
-          aria-label="Cerrar sesión"
-        >
-          <LogOut className="size-4" aria-hidden />
-        </Boton>
+        <div className="flex items-center gap-2 border-t border-borde px-3 py-3">
+          <p className="min-w-0 flex-1 truncate text-cuerpo font-bold text-tinta">
+            {cargando ? '…' : (nombre ?? 'Sin sesión')}
+          </p>
+          <Boton
+            variante="discreto"
+            className="shrink-0 px-2"
+            onClick={() => void cerrarSesion()}
+            disabled={cargando || nombre === null}
+            aria-label="Cerrar sesión"
+          >
+            <LogOut className="size-4" aria-hidden />
+          </Boton>
+        </div>
       </div>
 
       <aside

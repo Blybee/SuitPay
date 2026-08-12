@@ -15,6 +15,14 @@ const producto: ProductoBuscable = {
   activo: true,
 }
 
+const productoB: ProductoBuscable = {
+  codigo: 'P-2',
+  descripcion: 'Valvula check bronce',
+  unidad: 'UND',
+  precio: 900,
+  activo: true,
+}
+
 function resultadoCon(
   termino: string,
   coincidencias: readonly ProductoBuscable[],
@@ -71,6 +79,46 @@ describe('Entrada — panel flotante', () => {
       screen.getByRole('button', { name: /Valvula FV cromada/i }),
     )
     expect(onElegirProducto).toHaveBeenCalledWith(producto)
+    expect(onTerminoCambia).toHaveBeenCalledWith('')
+  })
+
+  it('permite multi-select y agrega el lote con «Agregar X productos»', async () => {
+    const usuario = userEvent.setup()
+    const onTerminoCambia = vi.fn()
+    const onElegirProducto = vi.fn()
+    const onElegirProductos = vi.fn()
+
+    render(
+      <Entrada
+        termino="valvula"
+        onTerminoCambia={onTerminoCambia}
+        resultado={resultadoCon('valvula', [producto, productoB])}
+        onElegirProducto={onElegirProducto}
+        onElegirProductos={onElegirProductos}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    await usuario.click(
+      screen.getByRole('checkbox', { name: /Seleccionar Valvula FV cromada/i }),
+    )
+    await usuario.click(
+      screen.getByRole('checkbox', {
+        name: /Seleccionar Valvula check bronce/i,
+      }),
+    )
+
+    expect(
+      screen.getByRole('button', { name: 'Agregar 2 productos' }),
+    ).toBeInTheDocument()
+
+    await usuario.click(
+      screen.getByRole('button', { name: 'Agregar 2 productos' }),
+    )
+
+    expect(onElegirProductos).toHaveBeenCalledWith([producto, productoB])
+    expect(onElegirProducto).not.toHaveBeenCalled()
     expect(onTerminoCambia).toHaveBeenCalledWith('')
   })
 })

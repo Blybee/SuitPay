@@ -38,6 +38,11 @@ export interface PropsDeLineaPedido {
   readonly onCambiarCantidad: (cantidad: number) => void
   readonly onCambiarPrecio: (precio: Centimos) => void
   readonly onQuitar: () => void
+  /**
+   * Return focus to search: tras confirmar cantidad/precio (blur/Enter), si el
+   * foco no quedó en otro control de la misma línea, vuelve al buscador.
+   */
+  readonly onVolverAlBuscador?: () => void
 }
 
 /** Convierte lo tecleado a céntimos. Acepta coma o punto, como se escriba. */
@@ -60,12 +65,40 @@ export function LineaPedido({
   onCambiarCantidad,
   onCambiarPrecio,
   onQuitar,
+  onVolverAlBuscador,
 }: PropsDeLineaPedido) {
   const [precioTecleado, setPrecioTecleado] = useState(() => aTexto(linea.precio))
   const [cantidadTecleada, setCantidadTecleada] = useState(() =>
     String(linea.cantidad),
   )
   const editando = useRef(false)
+  const fila = useRef<HTMLLIElement>(null)
+
+  function intentarVolverAlBuscador(
+    relatedTarget: EventTarget | null,
+  ): void {
+    if (onVolverAlBuscador === undefined) return
+    const destino = relatedTarget
+    if (
+      destino instanceof Node &&
+      fila.current !== null &&
+      fila.current.contains(destino)
+    ) {
+      // Tab entre cantidad ↔ precio (u otro control de la fila): no robar foco.
+      return
+    }
+    // Tras blur/Enter el foco a veces cae en body un frame; entonces sí.
+    requestAnimationFrame(() => {
+      const activo = document.activeElement
+      if (
+        activo === null ||
+        activo === document.body ||
+        activo === document.documentElement
+      ) {
+        onVolverAlBuscador()
+      }
+    })
+  }
 
   // Si la línea cambia por fuera —al restaurar el pedido, o al aprobar una
   // captura— el campo tiene que reflejarlo. Pero no mientras se está tecleando,
@@ -109,6 +142,7 @@ export function LineaPedido({
 
   return (
     <li
+      ref={fila}
       className={[
         'grid grid-cols-[1fr_5rem_7rem_7rem_2.5rem] items-baseline gap-2',
         'border-b border-borde px-4 py-1.5',
@@ -149,7 +183,10 @@ export function LineaPedido({
           editando.current = true
         }}
         onChange={(evento) => setCantidadTecleada(evento.target.value)}
-        onBlur={confirmarCantidad}
+        onBlur={(evento) => {
+          confirmarCantidad()
+          intentarVolverAlBuscador(evento.relatedTarget)
+        }}
         onKeyDown={(evento) => {
           if (evento.key === 'Enter') evento.currentTarget.blur()
         }}
@@ -171,7 +208,10 @@ export function LineaPedido({
             editando.current = true
           }}
           onChange={(evento) => setPrecioTecleado(evento.target.value)}
-          onBlur={confirmarPrecio}
+          onBlur={(evento) => {
+            confirmarPrecio()
+            intentarVolverAlBuscador(evento.relatedTarget)
+          }}
           onKeyDown={(evento) => {
             if (evento.key === 'Enter') evento.currentTarget.blur()
           }}

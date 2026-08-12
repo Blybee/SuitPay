@@ -153,7 +153,7 @@ Ante error de cuota o límite de solicitudes, conmuta a la segunda credencial co
 
 **Rol**: administrador exclusivamente.
 
-**Petición**: `contenido` (texto del archivo), `formato` (`json_tienda` | `json` | `documento`), `modo` (`validar` o `publicar`).
+**Petición**: `contenido` (texto del archivo, o JSON de productos ya revisados), `formato` (`json_tienda` | `json` | `documento` | `productos_revisados`), `modo` (`validar` o `publicar`).
 
 **Formato `json_tienda`** (migración desde la tienda virtual):
 
@@ -164,13 +164,31 @@ Ante error de cuota o límite de solicitudes, conmuta a la segunda credencial co
 - Precio en céntimos (`wholesale × 100`). Si falta wholesale → `0`.
 - Unidad: `NIU`. Paquetes/cajas de la tienda se ignoran.
 
-**Comportamiento**: en modo validar, interpreta y devuelve el resumen sin escribir nada: cuántos productos se reconocieron, cuáles presentan conflicto y, si ya hay catálogo publicado, qué productos son nuevos, cuáles cambian de precio y cuáles desaparecen. En modo publicar, escribe el catálogo **en una sola escritura** e incrementa su versión. Los códigos duplicados **bloquean** la publicación (FR-010).
+**Formato `productos_revisados`**: arreglo JSON de productos SuitPay (`codigo`, `descripcion`, `unidad`, `precio` en céntimos, `activo`) tras la grilla de revisión del PDF (o edición manual). No re-parsea el PDF.
 
-Escribir los ~700 ítems (tras expandir variantes) como una única escritura no es una optimización menor: escrituras individuales sobre el mismo recurso serían más caras y chocarían con los límites de escritura por documento.
+**Comportamiento**: en modo validar, interpreta y devuelve el resumen sin escribir nada: cuántos productos se reconocieron, cuáles presentan conflicto y, si ya hay catálogo publicado, qué productos son nuevos, cuáles cambian de precio y cuáles desaparecen. En modo publicar, escribe el catálogo **en una sola escritura** e incrementa su versión. Los códigos duplicados **bloquean** la publicación (FR-010). El formato `documento` en esta función **no** acepta el binario PDF (usar `interpretarCatalogoDocumento`).
+
+Escribir miles de ítems como una única escritura no es una optimización menor: escrituras individuales sobre el mismo recurso serían más caras y chocarían con los límites de escritura por documento.
 
 **Respuesta**: `resumen` con los recuentos y las diferencias, `conflictos` con su motivo, y `version` cuando se publica.
 
 **Errores**: `archivo_no_interpretable`, `codigos_duplicados` — este último no se resuelve automáticamente, se informa (FR-010).
+
+---
+
+## `interpretarCatalogoDocumento`
+
+**Rol**: administrador exclusivamente. **Decisión 13** / FR-009b.
+
+**Petición**: `contenidoBase64` (PDF), opcionalmente `nombreArchivo`.
+
+**Comportamiento**: interpreta el PDF con `unpdf` (`extractTextItems`) + reglas de columnas en `lector-documento.ts`. Devuelve **filas candidatas** `{ codigo, descripcion, unidad, precio, marca?, activo }` **sin escribir** Firestore. La marca proviene de `LINEA: …` y solo sirve a la UI de revisión. No llama al LLM.
+
+**Respuesta**: `filas`, `reconocidos`, `omitidos` (cabeceras/ruido), errores de parseo por fila si aplica.
+
+**Errores**: `archivo_no_interpretable` (PDF ilegible o sin columnas reconocibles).
+
+Tras la grilla, el cliente llama a `importarCatalogo` con `formato: productos_revisados` en modo `validar` y luego `publicar`.
 
 ---
 

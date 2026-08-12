@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-28
 
-**Updated**: 2026-08-10 (enmienda: US4b resumen/filtros/impresión colaborativa de comprobantes; inventario → `003`; ranking → `004`; login por alias fuera)
+**Updated**: 2026-08-11 (enmienda: US2 importación PDF lista de precios con `unpdf`, grilla de revisión admin; T078 desglosada)
 
 **Status**: Draft
 
@@ -39,17 +39,20 @@ Un vendedor abre el navegador en su puesto o en su teléfono y ya está dentro, 
 
 ### User Story 2 - Poner el catálogo en producción (Priority: P2)
 
-El administrador carga el catálogo de productos que hoy vive en el proyecto de la tienda virtual, entregado como archivo estructurado o como documento. Revisa en pantalla lo que el sistema entendió, corrige o descarta lo que no cuadra, y confirma. A partir de ese momento los vendedores encuentran esos productos.
+El administrador carga el catálogo desde el JSON de la tienda virtual **o** desde el PDF de lista de precios del proveedor (columnas CODIGO | PRODUCTO | U.M. | PRECIO S/; se ignoran % DCT.). Tras interpretar un PDF, revisa en una grilla editable lo que el sistema entendió: puede seleccionar filas, eliminar, autoseleccionar por marca (`LINEA`), editar en línea y solo entonces validar el resumen/conflictos/diff y confirmar la publicación. Nada se aplica al catálogo vivo hasta esa confirmación. A partir de ese momento los vendedores encuentran esos productos.
 
 **Why this priority**: habilita todo lo demás. Se ordena después de P1 porque el valor está en vender, no en cargar, y porque P1 puede demostrarse con un subconjunto cargado a mano.
 
-**Independent Test**: el administrador carga un archivo con productos y comprueba que quedan disponibles en la búsqueda, con sus precios y unidades.
+**Independent Test**: el administrador carga un archivo (JSON o PDF de prueba) y comprueba que quedan disponibles en la búsqueda, con sus precios y unidades.
 
 **Acceptance Scenarios**:
 
 1. **Given** un archivo con el catálogo, **When** el administrador lo carga, **Then** el sistema muestra un resumen de cuántos productos se reconocieron y cuántos presentan problemas, antes de confirmar nada.
 2. **Given** un archivo con dos productos que comparten el mismo código, **When** el administrador lo carga, **Then** el sistema señala el conflicto y no lo resuelve por su cuenta.
 3. **Given** un catálogo ya cargado, **When** el administrador carga una versión actualizada, **Then** puede ver qué productos son nuevos, cuáles cambian de precio y cuáles desaparecen, antes de aplicar los cambios.
+4. **Given** el PDF de lista de precios del proveedor (`docs/LISTAS.pdf` o equivalente), **When** el administrador lo interpreta, **Then** ve una grilla con las filas reconocidas (código, producto, U.M., precio) y metadato de marca desde `LINEA`, sin haber escrito aún en Firestore.
+5. **Given** la grilla de revisión con filas de varias marcas, **When** el administrador autoselecciona una marca y elimina la selección, **Then** esas filas salen de la importación pendiente y no forman parte del validar/publicar.
+6. **Given** una fila con unidad o descripción incorrecta, **When** el administrador la edita en línea y valida, **Then** el resumen refleja el valor corregido; la publicación sigue bloqueada si quedan conflictos no resueltos.
 
 ---
 
@@ -259,6 +262,7 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **FR-007**: La búsqueda de productos MUST funcionar sin depender de ningún servicio externo de asistencia.
 - **FR-008**: El sistema MUST distinguir con claridad la ausencia de coincidencias de una coincidencia aproximada.
 - **FR-009**: El administrador MUST poder cargar el catálogo desde un archivo estructurado o un documento, revisando el resultado antes de confirmarlo.
+- **FR-009b**: Ante un PDF de lista de precios, el sistema MUST interpretar las columnas CODIGO, PRODUCTO, U.M. y PRECIO (ignorando % DCT.), MUST presentar una grilla de revisión editable (selección, eliminación, autoselección por marca `LINEA`, edición inline) y MUST NOT escribir `catalogo/actual` hasta que el administrador confirme publicar tras validar. El parseo MUST ser determinista en servidor (`unpdf` + reglas de columnas); MUST NOT delegar la extracción tabular a un LLM.
 - **FR-010**: El sistema MUST señalar los conflictos de una carga —códigos repetidos, precios ausentes, unidades desconocidas— sin resolverlos por su cuenta.
 - **FR-011**: Ante una recarga del catálogo, el sistema MUST mostrar qué productos son nuevos, cuáles cambian y cuáles desaparecen, antes de aplicar los cambios.
 - **FR-012**: El sistema MUST mostrar el precio mayorista como referencia y MUST permitir sustituirlo en el momento de la venta solo si el nuevo valor es **mayor o igual** al de catálogo. Un precio menor MUST marcarse y MUST impedir emitir y guardar cotización (piso acordado con gerencia).
@@ -399,7 +403,7 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **Cada vendedor opera con series propias**, creadas de antemano para cada tipo de documento que vaya a emitir, cada una con un **número inicial** configurado (alineado con el panel del proveedor).
 - **La dirección visual es Modern Soft-Pill** (`DESIGN.md` enmendado 2026-07-29): cápsulas, radios amplios, lienzo gris/blanco; no papel cálido ni radio cero.
 - **Los precios del catálogo incluyen el impuesto** y el desglose lo realiza el proveedor de emisión.
-- **El catálogo ronda los 500 productos** con nombres estructurados por material, medida y marca, lo que favorece tanto la búsqueda tolerante como el emparejamiento de las capturas.
+- **El catálogo puede ir de cientos a ~3000 productos** (lista PDF del proveedor) con nombres estructurados por material, medida y marca; sigue cabiendo en un solo documento `catalogo/actual` bajo 1 MiB (decisión 2 / 13). La búsqueda tolerante y el emparejamiento de capturas siguen aplicando.
 - **La empresa dispone de conexión estable** y, ante caída del router, los vendedores pueden usar la red de sus teléfonos.
 - **El alcance de esta entrega no incluye** contabilidad, cobranzas como módulo (incluido registro de cobro / ventas a crédito como UX), sugerencias de compra, notas de crédito como flujo completo, migración masiva de clientes, aplicación nativa, impresión desde el móvil, login por alias/usuario (se mantiene correo + contraseña), ni la implementación completa de todos los parsers de consulta del catálogo (las pistas y la lista seleccionable sí). **La guía de remisión electrónica** se especifica en `002-guias-remision`. **Inventario y alertas de stock** en `003-inventario-almacen`. **Ranking / estadísticas de productos** en `004-ranking-productos`. Las únicas escrituras por comando implementadas aquí siguen el principio I (propuesta a confirmar). Ver `concept.md`.
 - **El inventario no se implementa en esta feature (`001`).** Queda especificado en `003-inventario-almacen`; mientras SuitPay y el sistema anterior operen aislados, la fuente de verdad de stock es una pregunta abierta de producto que bloquea la implementación de `003`.

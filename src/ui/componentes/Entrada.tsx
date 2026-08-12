@@ -1,4 +1,5 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useImperativeHandle, useRef, useState } from 'react'
+import type { Ref } from 'react'
 import { Camera, Eye, Mic, Search } from 'lucide-react'
 import {
   comandosCoincidentes,
@@ -13,6 +14,7 @@ import type {
   ProductoBuscable,
   ResultadoDeBusqueda,
 } from '../../domain/busqueda/productos.ts'
+import { Casilla } from './primitivas.tsx'
 
 /**
  * Cinta de herramientas del mostrador: un campo + dictado/foto.
@@ -24,17 +26,25 @@ import type {
  * Con `/` (modo comando): lista seleccionable del catálogo + fantasma de parámetros.
  */
 
+export interface MangoDeEntrada {
+  readonly enfocar: () => void
+}
+
 export interface PropsDeEntrada {
   readonly resultado: ResultadoDeBusqueda<ProductoBuscable>
   readonly termino: string
   readonly onTerminoCambia: (termino: string) => void
   readonly onElegirProducto: (producto: ProductoBuscable) => void
+  /** Lote desde multi-select; si falta, se llama `onElegirProducto` por cada uno. */
+  readonly onElegirProductos?: (productos: readonly ProductoBuscable[]) => void
   readonly asistenciaDisponible: boolean
   /** Motivo visible cuando mic/cámara están inertes (T127). */
   readonly motivoAsistenciaInerte?: string | null
   readonly onDictar?: () => void
   readonly onFotografiar?: () => void
   readonly enfocarAlMontar?: boolean
+  /** Imperative handle (React 19 ref-as-prop) para return focus to search. */
+  readonly ref?: Ref<MangoDeEntrada>
 }
 
 export function Entrada({
@@ -42,15 +52,26 @@ export function Entrada({
   termino,
   onTerminoCambia,
   onElegirProducto,
+  onElegirProductos,
   asistenciaDisponible,
   motivoAsistenciaInerte = null,
   onDictar,
   onFotografiar,
   enfocarAlMontar = true,
+  ref,
 }: PropsDeEntrada) {
   const campo = useRef<HTMLInputElement>(null)
   const [resaltado, setResaltado] = useState(0)
   const [minimizado, setMinimizado] = useState(false)
+  const [seleccionados, setSeleccionados] = useState<ReadonlySet<string>>(
+    () => new Set(),
+  )
+
+  useImperativeHandle(ref, () => ({
+    enfocar: () => {
+      campo.current?.focus()
+    },
+  }))
 
   useEffect(() => {
     if (enfocarAlMontar) campo.current?.focus()
@@ -59,6 +80,7 @@ export function Entrada({
   useEffect(() => {
     setResaltado(0)
     setMinimizado(false)
+    setSeleccionados(new Set())
   }, [termino])
 
   const modoComando = esModoComando(termino)
@@ -73,12 +95,39 @@ export function Entrada({
   const mostrarOjo =
     (sugiriendoProducto || sugiriendoComando) && minimizado
   const placeholder = placeholderDelBuscador(termino)
+  const cantidadSeleccionada = seleccionados.size
 
   function elegirProducto(indice: number): void {
     const elegida = coincidencias[indice]
     if (elegida === undefined) return
     onElegirProducto(elegida.elemento)
     onTerminoCambia('')
+    setSeleccionados(new Set())
+    setMinimizado(false)
+    campo.current?.focus()
+  }
+
+  function alternarSeleccion(codigo: string): void {
+    setSeleccionados((actual) => {
+      const siguiente = new Set(actual)
+      if (siguiente.has(codigo)) siguiente.delete(codigo)
+      else siguiente.add(codigo)
+      return siguiente
+    })
+  }
+
+  function agregarSeleccionados(): void {
+    if (cantidadSeleccionada === 0) return
+    const productos = coincidencias
+      .filter((cada) => seleccionados.has(cada.elemento.codigo))
+      .map((cada) => cada.elemento)
+    if (onElegirProductos !== undefined) {
+      onElegirProductos(productos)
+    } else {
+      for (const producto of productos) onElegirProducto(producto)
+    }
+    onTerminoCambia('')
+    setSeleccionados(new Set())
     setMinimizado(false)
     campo.current?.focus()
   }
@@ -158,6 +207,11 @@ export function Entrada({
       setResaltado(
         (actual) => (actual - 1 + coincidencias.length) % coincidencias.length,
       )
+    } else if (evento.key === ' ' || evento.key === 'Spacebar') {
+      const resaltada = coincidencias[resaltado]
+      if (resaltada === undefined) return
+      evento.preventDefault()
+      alternarSeleccion(resaltada.elemento.codigo)
     } else if (evento.key === 'Enter') {
       evento.preventDefault()
       elegirProducto(resaltado)
@@ -292,7 +346,22 @@ export function Entrada({
               'border-b border-borde bg-papel shadow-lg',
             ].join(' ')}
           >
-            <div className="flex items-center justify-center border-b border-borde px-2 py-1">
+            <div className="relative flex items-center justify-center border-b border-borde px-2 py-1">
+              {panelProductoAbierto && cantidadSeleccionada > 0 ? (
+                <button
+                  type="button"
+                  onClick={agregarSeleccionados}
+                  className={[
+                    'absolute left-2 inline-flex min-h-9 items-center rounded-full',
+                    'bg-tinta px-3 text-etiqueta font-bold text-papel',
+                    'hover:opacity-90',
+                    'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
+                  ].join(' ')}
+                >
+                  Agregar {cantidadSeleccionada}{' '}
+                  {cantidadSeleccionada === 1 ? 'producto' : 'productos'}
+                </button>
+              ) : null}
               <button
                 type="button"
                 aria-label="Ocultar resultados de búsqueda"
@@ -321,6 +390,8 @@ export function Entrada({
               <Sugerencias
                 resultado={resultado}
                 resaltado={resaltado}
+                seleccionados={seleccionados}
+                onAlternarSeleccion={alternarSeleccion}
                 onElegir={elegirProducto}
                 onResaltar={setResaltado}
               />
@@ -446,11 +517,15 @@ function SugerenciasDeComando({
 function Sugerencias({
   resultado,
   resaltado,
+  seleccionados,
+  onAlternarSeleccion,
   onElegir,
   onResaltar,
 }: {
   readonly resultado: ResultadoDeBusqueda<ProductoBuscable>
   readonly resaltado: number
+  readonly seleccionados: ReadonlySet<string>
+  readonly onAlternarSeleccion: (codigo: string) => void
   readonly onElegir: (indice: number) => void
   readonly onResaltar: (indice: number) => void
 }) {
@@ -477,47 +552,68 @@ function Sugerencias({
       <ul
         id="sugerencias-de-producto"
         role="listbox"
+        aria-multiselectable="true"
         className="max-h-80 overflow-y-auto"
       >
-        {resultado.coincidencias.map((coincidencia, indice) => (
-          <li
-            key={coincidencia.elemento.codigo}
-            id={`sugerencia-${indice}`}
-            role="option"
-            aria-selected={indice === resaltado}
-          >
-            <button
-              type="button"
-              onMouseEnter={() => onResaltar(indice)}
-              onClick={() => onElegir(indice)}
-              className={[
-                'flex min-h-11 w-full items-baseline justify-between gap-3 px-4 py-2 text-left',
-                indice === resaltado
-                  ? 'bg-tinta text-papel'
-                  : 'text-tinta hover:bg-mesa',
-              ].join(' ')}
+        {resultado.coincidencias.map((coincidencia, indice) => {
+          const codigo = coincidencia.elemento.codigo
+          const marcado = seleccionados.has(codigo)
+          const activo = indice === resaltado
+          return (
+            <li
+              key={codigo}
+              id={`sugerencia-${indice}`}
+              role="option"
+              aria-selected={marcado || activo}
             >
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-cuerpo uppercase">
-                  {coincidencia.elemento.descripcion}
-                </span>
-                <span
+              <div
+                onMouseEnter={() => onResaltar(indice)}
+                className={[
+                  'flex min-h-11 w-full items-center gap-2 px-2 py-2',
+                  activo ? 'bg-tinta text-papel' : 'text-tinta hover:bg-mesa',
+                ].join(' ')}
+              >
+                <Casilla
+                  checked={marcado}
+                  onCheckedChange={() => onAlternarSeleccion(codigo)}
+                  onClick={(evento) => evento.stopPropagation()}
+                  aria-label={`Seleccionar ${coincidencia.elemento.descripcion}`}
+                  className={
+                    activo
+                      ? 'border-papel/40 bg-papel/10 data-[state=checked]:bg-papel'
+                      : undefined
+                  }
+                />
+                <button
+                  type="button"
+                  onClick={() => onElegir(indice)}
                   className={[
-                    'block font-mono text-etiqueta uppercase',
-                    indice === resaltado ? 'text-papel/70' : 'text-desvaida',
+                    'flex min-w-0 flex-1 items-baseline justify-between gap-3 px-2 text-left',
+                    'focus-visible:outline-none',
                   ].join(' ')}
                 >
-                  {coincidencia.elemento.codigo} ·{' '}
-                  {coincidencia.elemento.unidad}
-                  {coincidencia.grado === 'aproximada' && ' · aproximado'}
-                </span>
-              </span>
-              <span className="font-mono tabular-nums text-cuerpo font-bold">
-                {formatearImporte(coincidencia.elemento.precio)}
-              </span>
-            </button>
-          </li>
-        ))}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-cuerpo uppercase">
+                      {coincidencia.elemento.descripcion}
+                    </span>
+                    <span
+                      className={[
+                        'block font-mono text-etiqueta uppercase',
+                        activo ? 'text-papel/70' : 'text-desvaida',
+                      ].join(' ')}
+                    >
+                      {codigo} · {coincidencia.elemento.unidad}
+                      {coincidencia.grado === 'aproximada' && ' · aproximado'}
+                    </span>
+                  </span>
+                  <span className="font-mono tabular-nums text-cuerpo font-bold">
+                    {formatearImporte(coincidencia.elemento.precio)}
+                  </span>
+                </button>
+              </div>
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

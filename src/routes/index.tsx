@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { REGLAS } from '../domain/documentos/tipos.ts'
 import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
 import { pedidoTienePrecioBajoCatalogo } from '../domain/totales/calculo.ts'
@@ -64,7 +64,10 @@ import {
   type ModoDeCabecera,
   type SeriesEnCabecera,
 } from '../ui/componentes/CabeceraDocumento.tsx'
-import { Entrada } from '../ui/componentes/Entrada.tsx'
+import {
+  Entrada,
+  type MangoDeEntrada,
+} from '../ui/componentes/Entrada.tsx'
 import {
   CabecerasDeColumna,
   LineaPedido,
@@ -101,6 +104,7 @@ function MostradorConGuarda() {
 
 function Mostrador() {
   const queryClient = useQueryClient()
+  const entradaRef = useRef<MangoDeEntrada>(null)
   const [pestana, setPestana] = useState<PestanaMostrador>('pedido')
   const [termino, setTermino] = useState('')
   const [medioPago, setMedioPago] = useState('efectivo')
@@ -291,6 +295,37 @@ function Mostrador() {
       usarNotificaciones.getState().mostrar({
         tono: 'info',
         mensaje: `${producto.descripcion} ya está en el pedido.`,
+      })
+    }
+  }
+
+  function agregarVarios(productos: readonly ProductoBuscable[]): void {
+    if (productos.length === 0) return
+    if (pestana === 'vecinos' && vecinoActivoId !== null) {
+      for (const producto of productos) agregar(producto)
+      return
+    }
+
+    let añadidos = 0
+    let omitidos = 0
+    for (const producto of productos) {
+      const agregada = pedido.agregarLinea({
+        codigo: producto.codigo,
+        descripcion: producto.descripcion,
+        unidad: producto.unidad,
+        cantidad: 1,
+        precio: producto.precio,
+      })
+      if (agregada) añadidos += 1
+      else omitidos += 1
+    }
+    if (omitidos > 0) {
+      usarNotificaciones.getState().mostrar({
+        tono: 'info',
+        mensaje:
+          añadidos === 0
+            ? `${omitidos === 1 ? 'Ese producto ya estaba' : `${omitidos} productos ya estaban`} en el pedido.`
+            : `Se añadieron ${añadidos}; ${omitidos} ya estaban en el pedido.`,
       })
     }
   }
@@ -538,6 +573,7 @@ function Mostrador() {
       {/* Buscador + tabs: un solo bloque sticky, sin borde/hueco entre ambos. */}
       <div className="sticky top-0 z-20 w-full border-b border-borde bg-papel">
         <Entrada
+          ref={entradaRef}
           termino={termino}
           onTerminoCambia={(siguiente) => {
             setTermino(siguiente)
@@ -548,6 +584,7 @@ function Mostrador() {
           }}
           resultado={resultado}
           onElegirProducto={agregar}
+          onElegirProductos={agregarVarios}
           asistenciaDisponible={asistenciaDisponible}
           motivoAsistenciaInerte={motivoAsistenciaInerte}
           onDictar={() => {
@@ -666,6 +703,7 @@ function Mostrador() {
                     pedido.cambiarPrecio(indice, precio)
                   }
                   onQuitar={() => pedido.quitarLinea(indice)}
+                  onVolverAlBuscador={() => entradaRef.current?.enfocar()}
                 />
               ))}
             </ul>
@@ -724,6 +762,7 @@ function Mostrador() {
           onCambiarActiva={setVecinoActivoId}
           onConvertir={convertirVecinoEnPedido}
           aviso={avisoVecino}
+          onVolverAlBuscador={() => entradaRef.current?.enfocar()}
         />
       )}
 

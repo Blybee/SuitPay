@@ -1,6 +1,6 @@
 # Implementation Plan: Mostrador asistido — primera entrega de SuitPay
 
-**Branch**: `001-mostrador-asistido` | **Date**: 2026-07-28 | **Updated**: 2026-08-10 (US4b comprobantes colaborativos) | **Spec**: [spec.md](./spec.md)
+**Branch**: `001-mostrador-asistido` | **Date**: 2026-07-28 | **Updated**: 2026-08-11 (US2 PDF lista de precios / decisión 13) | **Spec**: [spec.md](./spec.md)
 
 **Input**: Feature specification from `/specs/001-mostrador-asistido/spec.md`
 
@@ -135,7 +135,7 @@ src/
 │   ├── proveedor/            # Frontera del proveedor (ÚNICO módulo que lo conoce)
 │   ├── asistencia/           # Punto único de salida hacia el servicio de IA
 │   ├── contribuyentes/       # Consulta de RUC y DNI
-│   ├── catalogo/             # Importación y publicación
+│   ├── catalogo/             # Importación JSON + PDF (unpdf / T078); publicación
 │   ├── auth/                 # Verificación de sesión y rol (sin App Check)
 │   └── firebase/             # Admin SDK
 │

@@ -315,9 +315,30 @@ Reglas confirmadas con el dueño del producto:
 2. Cada variante es un ítem; con variantes se **ignora** el `unitConfig` del padre.
 3. Sin wholesale → precio `0` (no bloquea; el vendedor corrige al vender).
 4. Paquetes/cajas de la tienda fuera de alcance en esta importación.
-5. El PDF (`lector-documento`) queda pendiente; la migración operativa usa JSON.
+5. El PDF queda cubierto por la **decisión 13** (no por este lector JSON).
 
 **Rationale**: el catálogo de mostrador no necesita imágenes, categorías ni precios físico/virtual. Expandir variantes evita que el vendedor busque un genérico sin medida.
+
+---
+
+## Decisión 13 — Importación PDF de lista de precios (`unpdf`, sin LLM)
+
+**Fecha**: 2026-08-11 · **Contexto**: US2 / T078; columnas documentadas en `docs/productos.md`; fixture `docs/LISTAS.pdf` (~315 KB, miles de filas posibles).
+
+**Decisión**: interpretar el PDF en el **servidor** con **`unpdf`** (`getDocumentProxy` + `extractTextItems`: ítems con `str`, `x`, `y`, `width`, `height` por página). Encima, reglas deterministas:
+
+1. Cluster por Y → filas; bandas X del encabezado → columnas **CODIGO | PRODUCTO | U.M. | PRECIO** (ignorar `% DCT. 1/2/3`).
+2. Cabeceras `LINEA: NNN - MARCA` → metadato efímero `marca` solo para la grilla de revisión (autoselección por marca); **no** se persiste como campo aparte en `Producto` (la marca puede seguir dentro de `descripcion`).
+3. `TIPO: …` y cabeceras de página (RUC, PUBLICO SOLES, etc.) no generan productos.
+4. Mapa U.M. → unidad SuitPay (p. ej. `UND`→`NIU`, `PAQUT`→`BX`; `MIL`/`JUEGO` y desconocidas → conflicto `unidad_desconocida` para corrección inline). Precio a céntimos (`12.5000` → `1250`).
+5. Flujo: **interpretar** (base64 → filas candidatas, sin escribir) → grilla admin (editar/eliminar) → **validar/publicar** con listado ya revisado (`productos_revisados` o equivalente), reutilizando conflictos + diff + una escritura a `catalogo/actual`.
+6. Escala ~3000 productos: unpdf en memoria; el documento `catalogo/actual` sigue siendo un solo arreglo (decisión 2). Con ~3000 ítems se estima ~0.3 MiB; si se acercara a 1 MiB, fragmentar (`catalogo/fragmento-n`) fuera de esta subtarea.
+
+**Rechazado — LLM con Zod estructurado**: códigos y precios no pueden alucinarse; 3000 filas no caben de forma fiable en una respuesta; coste/latencia y no reproducibilidad en CI. La constitución IV permite productos hacia IA, pero la extracción tabular fija no la necesita.
+
+**Alternativas descartadas**: `pdfjs-dist` crudo (más fricción serverless; `unpdf` ya empaqueta el build); parseo solo en cliente (el admin seguiría necesitando validar en servidor y el contrato de importación vive en `server/catalogo`).
+
+**Rationale**: el PDF del proveedor es tipografía de tabla, no prosa. `extractTextItems` da las coordenadas que hacen viable el parser; la grilla cumple FR-009b antes de tocar Firestore.
 
 ---
 

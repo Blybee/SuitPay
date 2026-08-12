@@ -20,11 +20,13 @@ export function PanelDeVecinos({
   onCambiarActiva,
   onConvertir,
   aviso,
+  onVolverAlBuscador,
 }: {
   readonly activaId: string | null
   readonly onCambiarActiva: (id: string) => void
   readonly onConvertir: (cotizacion: Cotizacion) => void
   readonly aviso?: string | null
+  readonly onVolverAlBuscador?: () => void
 }) {
   const queryClient = useQueryClient()
   const productoPorCodigo = usarCatalogo((s) => s.productoPorCodigo)
@@ -175,6 +177,7 @@ export function PanelDeVecinos({
                   onQuitar={() => {
                     void quitarLinea(indice)
                   }}
+                  onVolverAlBuscador={onVolverAlBuscador}
                 />
               ))}
             </ul>
