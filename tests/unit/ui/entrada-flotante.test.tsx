@@ -82,6 +82,30 @@ describe('Entrada — panel flotante', () => {
     expect(onTerminoCambia).toHaveBeenCalledWith('')
   })
 
+  it('deja que Space escriba un espacio y no marque la casilla', async () => {
+    const usuario = userEvent.setup()
+    const onTerminoCambia = vi.fn()
+
+    render(
+      <Entrada
+        termino="val"
+        onTerminoCambia={onTerminoCambia}
+        resultado={resultadoCon('val', [producto])}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    screen.getByRole('combobox').focus()
+    await usuario.keyboard(' ')
+
+    expect(onTerminoCambia).toHaveBeenCalledWith('val ')
+    expect(
+      screen.getByRole('checkbox', { name: /Seleccionar Valvula FV cromada/i }),
+    ).not.toBeChecked()
+  })
+
   it('permite multi-select y agrega el lote con «Agregar X productos»', async () => {
     const usuario = userEvent.setup()
     const onTerminoCambia = vi.fn()
@@ -120,5 +144,149 @@ describe('Entrada — panel flotante', () => {
     expect(onElegirProductos).toHaveBeenCalledWith([producto, productoB])
     expect(onElegirProducto).not.toHaveBeenCalled()
     expect(onTerminoCambia).toHaveBeenCalledWith('')
+  })
+
+  it('no restaura al hacer clic en el campo vacío', async () => {
+    const usuario = userEvent.setup()
+    const onTerminoCambia = vi.fn()
+
+    render(
+      <Entrada
+        termino=""
+        ultimaBusqueda="valvula"
+        onTerminoCambia={onTerminoCambia}
+        resultado={resultadoCon('', [])}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    await usuario.click(screen.getByRole('combobox'))
+    expect(onTerminoCambia).not.toHaveBeenCalled()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('no restaura nada si no hay última búsqueda', async () => {
+    const usuario = userEvent.setup()
+    const onTerminoCambia = vi.fn()
+
+    render(
+      <Entrada
+        termino=""
+        ultimaBusqueda=""
+        onTerminoCambia={onTerminoCambia}
+        resultado={resultadoCon('', [])}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    screen.getByRole('combobox').focus()
+    await usuario.keyboard('{Enter}')
+    expect(onTerminoCambia).not.toHaveBeenCalled()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+
+  it('no reabre el panel por el foco programático al elegir un producto', async () => {
+    const usuario = userEvent.setup()
+    const onTerminoCambia = vi.fn()
+
+    const { rerender } = render(
+      <Entrada
+        termino="valvula"
+        ultimaBusqueda="valvula"
+        onTerminoCambia={onTerminoCambia}
+        resultado={resultadoCon('valvula', [producto])}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    await usuario.click(
+      screen.getByRole('button', { name: /Valvula FV cromada/i }),
+    )
+    expect(onTerminoCambia).toHaveBeenCalledWith('')
+    expect(onTerminoCambia).not.toHaveBeenCalledWith('valvula')
+
+    rerender(
+      <Entrada
+        termino=""
+        ultimaBusqueda="valvula"
+        onTerminoCambia={onTerminoCambia}
+        resultado={resultadoCon('', [])}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+    expect(onTerminoCambia).not.toHaveBeenCalledWith('valvula')
+  })
+
+  it('restaura la última búsqueda al pulsar Enter en el campo vacío', async () => {
+    const usuario = userEvent.setup()
+    const onTerminoCambia = vi.fn()
+
+    render(
+      <Entrada
+        termino=""
+        ultimaBusqueda="valvula"
+        onTerminoCambia={onTerminoCambia}
+        resultado={resultadoCon('', [])}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    screen.getByRole('combobox').focus()
+    await usuario.keyboard('{Enter}')
+    expect(onTerminoCambia).toHaveBeenCalledWith('valvula')
+  })
+
+  it('no restaura al pulsar flecha abajo en el campo vacío', async () => {
+    const usuario = userEvent.setup()
+    const onTerminoCambia = vi.fn()
+
+    render(
+      <Entrada
+        termino=""
+        ultimaBusqueda="valvula"
+        onTerminoCambia={onTerminoCambia}
+        resultado={resultadoCon('', [])}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    screen.getByRole('combobox').focus()
+    await usuario.keyboard('{ArrowDown}')
+    expect(onTerminoCambia).not.toHaveBeenCalled()
+  })
+
+  it('no restaura un último término que era comando', async () => {
+    const usuario = userEvent.setup()
+    const onTerminoCambia = vi.fn()
+
+    render(
+      <Entrada
+        termino=""
+        ultimaBusqueda="/guia"
+        onTerminoCambia={onTerminoCambia}
+        resultado={resultadoCon('', [])}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    screen.getByRole('combobox').focus()
+    await usuario.keyboard('{Enter}')
+    expect(onTerminoCambia).not.toHaveBeenCalled()
+    expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 })

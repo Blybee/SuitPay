@@ -43,6 +43,8 @@ export interface PropsDeEntrada {
   readonly onDictar?: () => void
   readonly onFotografiar?: () => void
   readonly enfocarAlMontar?: boolean
+  /** Último término de producto de la sesión; se restaura con Enter en vacío. */
+  readonly ultimaBusqueda?: string
   /** Imperative handle (React 19 ref-as-prop) para return focus to search. */
   readonly ref?: Ref<MangoDeEntrada>
 }
@@ -58,6 +60,7 @@ export function Entrada({
   onDictar,
   onFotografiar,
   enfocarAlMontar = true,
+  ultimaBusqueda = '',
   ref,
 }: PropsDeEntrada) {
   const campo = useRef<HTMLInputElement>(null)
@@ -96,6 +99,13 @@ export function Entrada({
     (sugiriendoProducto || sugiriendoComando) && minimizado
   const placeholder = placeholderDelBuscador(termino)
   const cantidadSeleccionada = seleccionados.size
+
+  function restaurarUltimaSiVacio(): void {
+    if (termino.length > 0) return
+    if (ultimaBusqueda.trim().length === 0) return
+    if (esModoComando(ultimaBusqueda)) return
+    onTerminoCambia(ultimaBusqueda)
+  }
 
   function elegirProducto(indice: number): void {
     const elegida = coincidencias[indice]
@@ -181,7 +191,18 @@ export function Entrada({
       return
     }
 
-    if (!sugiriendoProducto) return
+    if (!sugiriendoProducto) {
+      if (evento.key === 'Enter' && termino.length === 0) {
+        if (
+          ultimaBusqueda.trim().length > 0 &&
+          !esModoComando(ultimaBusqueda)
+        ) {
+          evento.preventDefault()
+          restaurarUltimaSiVacio()
+        }
+      }
+      return
+    }
 
     if (evento.key === 'Escape') {
       onTerminoCambia('')
@@ -207,11 +228,6 @@ export function Entrada({
       setResaltado(
         (actual) => (actual - 1 + coincidencias.length) % coincidencias.length,
       )
-    } else if (evento.key === ' ' || evento.key === 'Spacebar') {
-      const resaltada = coincidencias[resaltado]
-      if (resaltada === undefined) return
-      evento.preventDefault()
-      alternarSeleccion(resaltada.elemento.codigo)
     } else if (evento.key === 'Enter') {
       evento.preventDefault()
       elegirProducto(resaltado)

@@ -103,6 +103,22 @@ El cliente ya tiene boleta o factura y, al recoger, pide además la guía porque
 
 ---
 
+### User Story 7 - Recuperar una guía rechazada por SUNAT (Priority: P2)
+
+La guía se rechazó (clasificación `rechazo_definitivo` / `emision_rechazada`). El vendedor no debe copiar de nuevo la boleta/factura ni los datos de traslado. Un toast Sileo con acción «Volver a Generar» reabre la papeleta precargada; el vendedor confirma Emitir. No aplica a `indeterminado` (hay que consultar estado) ni a `indisponible` (es la misma intención).
+
+**Why this priority**: un rechazo deja el correlativo consumido y el trabajo de captura perdido si no se recupera; el mostrador no puede exigir reescribir el mismo traslado.
+
+**Independent Test**: emitir guía → rechazo definitivo → toast «Volver a Generar» → papeleta con bol/fact + traslado → Emitir crea una guía nueva.
+
+**Acceptance Scenarios**:
+
+1. **Given** una guía rechazada de forma definitiva, **When** el vendedor pulsa «Volver a Generar» en el toast, **Then** se abre la papeleta editable con las líneas y el cliente de la boleta/factura origen (si existe) y los campos de traslado de la guía rechazada, y MUST NOT haberse emitido ni invocado al proveedor.
+2. **Given** esa papeleta recuperada, **When** el vendedor confirma Emitir, **Then** se reclama una clave de idempotencia nueva (el documento rechazado queda cerrado) y solo entonces se consume un correlativo.
+3. **Given** una guía en estado indeterminado o proveedor indisponible, **When** termina el intento, **Then** el sistema MUST NOT mostrar este toast de regenerar (consultar estado o reintentar la misma intención, según el contrato).
+
+---
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -118,6 +134,7 @@ El cliente ya tiene boleta o factura y, al recoger, pide además la guía porque
 - **FR-009**: MUST existir serie configurada para tipo guía; sin serie, impedir emisión con mensaje claro.
 - **FR-010**: MUST NOT añadir un tab permanente «Guías» en esta entrega; la superficie es comando + papeleta/modal.
 - **FR-011**: El flujo de guía MUST poder partir de un pedido ya cargado en el mostrador, incluida la carga vía «Reutilizar pedido» de un comprobante emitido (FR-056 de 001). MUST NOT modificar ni anular el comprobante origen al emitir la guía.
+- **FR-012**: Ante `rechazo_definitivo` / `emision_rechazada` de una guía, el sistema MUST mostrar un toast Sileo `action` persistente (o sin auto-cierre) con botón «Volver a Generar». El clic MUST recuperar líneas y cliente de la boleta/factura origen (si existe; US6) y los campos de traslado de la guía rechazada (direcciones, modo, transportista/conductor, peso/bultos, ítems); MUST abrir la papeleta editable; MUST reclamar una clave de idempotencia nueva (el documento rechazado queda cerrado); MUST NOT emitir ni invocar al proveedor. MUST NOT usarse este toast en `indeterminado` (consultar estado) ni en `indisponible` (reintento de la misma intención).
 
 ### Key Entities
 

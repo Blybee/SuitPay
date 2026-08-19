@@ -38,6 +38,12 @@
 - [ ] T016a [US6] Precargar ítems de la papeleta desde el pedido del mostrador (incluye pedido cargado con «Reutilizar pedido» / FR-056 de 001) (FR-011)
 - [ ] T017 Diálogo post-emisión: Imprimir / Guardar / Compartir PDF (patrón 001)
 
+## Phase 4b: Rechazo SUNAT y recuperación (US7)
+
+- [ ] T017b [US7] Cablear toast `sileo.action` al clasificar rechazo definitivo de guía (no en indeterminado ni indisponible). Botón «Volver a Generar». Duración persistente o `0` (FR-012)
+- [ ] T017c [US7] Recuperar bol/fact + datos de guía en la papeleta; nueva idempotencia; no emitir. Reutilizar el espíritu de `pedidoDesdeComprobante` / FR-056 + campos de traslado del data-model (FR-012)
+- [ ] T017d [US7] Pruebas: rechazo → toast → recuperar sin emitir; doble clic del toast no duplica intención; indeterminado no muestra este toast; fallo de proveedor / respuesta ausente siguen el contrato de T010 (constitución)
+
 ## Phase 5: Verificación punta a punta
 
 - [ ] T018 Emulador: emitir guía pública con transportista sembrado
@@ -46,4 +52,4 @@
 
 ## Checkpoint
 
-GRE emitible por papeleta y comando; transportistas reutilizables; frontera sustituible; cero tabs nuevos; principios I–III verificados en pruebas.
+GRE emitible por papeleta y comando; transportistas reutilizables; frontera sustituible; cero tabs nuevos; rechazo SUNAT recupera papeleta vía toast, sin emitir; principios I–III verificados en pruebas.

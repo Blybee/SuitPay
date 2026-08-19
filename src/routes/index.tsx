@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { REGLAS } from '../domain/documentos/tipos.ts'
 import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
 import { pedidoTienePrecioBajoCatalogo } from '../domain/totales/calculo.ts'
+import { usarBusqueda } from '../features/busqueda/almacen.ts'
 import { usarCatalogo, umbralVigente } from '../features/catalogo/almacen.ts'
 import { PanelDictado } from '../features/captura/audio.tsx'
 import {
@@ -135,6 +136,7 @@ function Mostrador() {
   const [avisoVecino, setAvisoVecino] = useState<string | null>(null)
 
   const catalogo = usarCatalogo()
+  const ultimaBusqueda = usarBusqueda((estado) => estado.ultima)
   const sesion = usarSesion()
   const pedido = usarPedido()
   const fase = usarEmision((estado) => estado.fase)
@@ -577,11 +579,13 @@ function Mostrador() {
           termino={termino}
           onTerminoCambia={(siguiente) => {
             setTermino(siguiente)
+            usarBusqueda.getState().recordar(siguiente)
             const propuesta = reconocerCrearVecino(siguiente)
             if (propuesta !== null) {
               setPropuestaVecino(propuesta)
             }
           }}
+          ultimaBusqueda={ultimaBusqueda}
           resultado={resultado}
           onElegirProducto={agregar}
           onElegirProductos={agregarVarios}
