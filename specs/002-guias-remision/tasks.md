@@ -3,13 +3,13 @@
 **Input**: [spec.md](./spec.md), [plan.md](./plan.md)  
 **Prereq**: feature 001 operativa (emisión, clientes, comandos, frontera).
 
-**Tests**: toda tarea de emisión MUST cubrir reintento, respuesta ausente y fallo del proveedor (constitución).
+**Tests**: toda tarea de emisión MUST cubrir reintento, respuesta ausente y fallo del proveedor (constitución). La cascada de anulación (US8) igual, **en ambos sentidos**.
 
 ## Phase 0: Contrato y dominio
 
 - [ ] T001 Definir tipos SuitPay de guía (modo, motivo, direcciones, transportista, conductor, ítems) en dominio/servidor
 - [ ] T002 Extender contrato `proveedor-emision` / interfaz TS: entrada/salida de `emitirGuiaRemision` en vocabulario SuitPay
-- [ ] T003 Modelo Firestore: `transportistas`, `indices/transportistas`; campos de guía en comprobante; series tipo guía
+- [ ] T003 Modelo Firestore: `transportistas`, `indices/transportistas`; campos de guía en comprobante; `comprobanteOrigenId` / `guiaAsociadaId`; series tipo guía
 - [ ] T004 Reglas Firestore + pruebas emulador para transportistas (vendedor lee; escribe solo backend/alta controlada)
 
 ## Phase 1: Frontera proveedor
@@ -50,6 +50,14 @@
 - [ ] T019 Emulador: privado + indeterminado → consultar estado
 - [ ] T020 E2E mínimo Playwright (serie demo + `PROVEEDOR_SIMULADO`)
 
+## Phase 6: Asociación y anulación en cascada bidireccional (US8, 2026-08-18)
+
+- [ ] T021 [US6/US8] Al emitir guía desde pedido reutilizado de boleta/factura, persistir `comprobanteOrigenId` en la guía y `guiaAsociadaId` en el origen. MUST NOT asociar nota de venta. MUST NOT haber segunda guía vigente sobre el mismo origen (FR-011, FR-013)
+- [ ] T022 [US8] Extender `anularComprobante` (`src/server/emision/anular.ts`) con cascada bidireccional: anular boleta/factura anula la guía; anular guía anula el comprobante. Mismo motivo y autor. Guía sin par se anula sola (FR-013, FR-015)
+- [ ] T023 [US8] Toast informativo (Sileo / `usarNotificaciones`, sin segundo OK) en detalle de boleta/factura **y** de guía al confirmar anular el par (FR-014). Archivos: `src/routes/comprobantes/$comprobanteId.tsx`
+- [ ] T024 [US8] Pruebas constitución **ambos sentidos**: reintento, respuesta ausente, fallo del proveedor; par `indeterminado` no se presenta como anulado; segundo anular es no-op (FR-015, FR-016)
+- [ ] T025 [P] [US8] Prueba de no-asociación: nota de venta + guía independiente no escribe el par; traslado entre almacenes se anula solo
+
 ## Checkpoint
 
-GRE emitible por papeleta y comando; transportistas reutilizables; frontera sustituible; cero tabs nuevos; rechazo SUNAT recupera papeleta vía toast, sin emitir; principios I–III verificados en pruebas.
+GRE emitible por papeleta y comando; transportistas reutilizables; frontera sustituible; cero tabs nuevos; rechazo SUNAT recupera papeleta vía toast, sin emitir; par boleta/factura ↔ guía se anula en cascada bidireccional con toast informativo; principios I–III verificados en pruebas.

@@ -6,7 +6,7 @@
 
 ## Summary
 
-Añadir existencias por producto, descuento idempotente al emitir, restauración al anular, alertas de stock bajo y ajuste admin. **No implementar código** hasta cerrar si SuitPay es fuente de verdad durante la convivencia.
+Añadir existencias por producto, descuento idempotente al emitir (NV/bol/fact), herencia del movimiento cuando hay guía asociada, restauración una vez al anular el par, alertas de stock bajo y ajuste admin. **No implementar código** hasta cerrar si SuitPay es fuente de verdad durante la convivencia (FR-007).
 
 ## Technical Context
 

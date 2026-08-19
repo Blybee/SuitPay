@@ -616,6 +616,28 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 
 ---
 
+## Phase C11: Converge — marca persistida y categorías de un nivel (2026-08-18)
+
+**Propósito**: FR-009c, FR-009d, decisión 14. Taxonomía de un nivel + `marca` como campo; filtros facetados (global o dentro de una marca) sobre el espejo local de `catalogo/actual`. Origen: notas de conversación con la empresa.
+
+**Dependencias**: US2 JSON (T077/T082) hecho. T078 (PDF) sigue pendiente: C11 cubre JSON ahora y se cablea a la grilla PDF cuando exista T078d.
+
+### Pruebas obligatorias ⚠️
+
+- [ ] T195 [P] [US2] Prueba de esquema y publicación: `marca` persistida, `categorias[]` en el documento, `categoriaId` opcional; producto sin categoría publica; recarga conserva ids (FR-009c, FR-009d). Archivos: `tests/unit/server/importar-categorias.test.ts` (o extender `importar-diferencias` / esquemas)
+- [ ] T196 [P] [US2] Prueba de filtros facetados sobre el catálogo en memoria: categoría global vs categoría ∩ marca; producto sin categoría no entra al filtro de categoría (FR-009d)
+
+### Implementación
+
+- [ ] T197 [US2] Ampliar `esquemaDeProducto` y `catalogo/actual`: `marca`, `categoriaId?`, arreglo `categorias: { id, nombre }[]`. Lector JSON (`lector-json.ts`) persiste `brand` → `marca`. Contrato `importarCatalogo` / `productos_revisados` según `contracts/functions.md`. Archivos: `src/domain/esquemas/comunes.ts`, `src/server/catalogo/`
+- [ ] T198 [US2] UI de importación en `src/routes/administracion/catalogo.tsx` (y T078d cuando exista): crear categoría de un nivel, asignar en lote a la selección, filtrar por marca y por categoría **antes** de publicar. Nada se escribe hasta confirmar.
+- [ ] T199 [P] [US2] Filtros locales marca + categoría en mostrador (búsqueda / listado) sobre el catálogo ya espejado; cero lecturas extra (FR-009d)
+- [ ] T200 [P] [US2] Extender T078d (PDF): `LINEA` → `marca` persistida al publicar, no solo metadato de grilla (decisión 13 enmendada / FR-009c)
+
+**Checkpoint C11**: catálogo publicado con marca y categorías de un nivel; filtros en importación, admin y mostrador; T078 PDF sigue su propio backlog.
+
+---
+
 ## Notas
 
 - Las tareas marcadas [P] tocan archivos distintos y no tienen dependencias pendientes.
@@ -626,3 +648,4 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 - **Volcado 5**: no se tocó `src/` en la enmienda documental; T160–T169 son el backlog de converge.
 - **2026-08-09**: guía de remisión → `specs/002-guias-remision/`; T178–T181 son el backlog de esta enmienda.
 - **2026-08-10**: US4b → T185–T194; inventario → `003`; ranking → `004`.
+- **2026-08-18**: marca persistida + categorías de un nivel → C11 / T195–T200 (FR-009c, FR-009d). Stock y cascada de guías → `003` / `002`.

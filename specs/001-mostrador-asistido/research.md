@@ -306,8 +306,10 @@ responden a `DELETE …/{id}` con `{"message":"… eliminado."}`. El adaptador u
 | `brand` + `name` [+ `variant.name`] | `descripcion` |
 | `unitPrices.wholesale` (o el de la variante) | `precio` en céntimos |
 | `id` / `{id}__{variantId}` | `codigo` |
+| `brand` | `marca` (campo persistido; también se concatena en `descripcion`) |
 | (fijo) | `unidad = NIU` |
 | `stock` | `activo` |
+| (asignación en grilla, FR-009d) | `categoriaId` opcional |
 
 Reglas confirmadas con el dueño del producto:
 
@@ -317,7 +319,9 @@ Reglas confirmadas con el dueño del producto:
 4. Paquetes/cajas de la tienda fuera de alcance en esta importación.
 5. El PDF queda cubierto por la **decisión 13** (no por este lector JSON).
 
-**Rationale**: el catálogo de mostrador no necesita imágenes, categorías ni precios físico/virtual. Expandir variantes evita que el vendedor busque un genérico sin medida.
+**Rationale (2026-07-29)**: el catálogo de mostrador no necesita imágenes ni precios físico/virtual. Expandir variantes evita que el vendedor busque un genérico sin medida.
+
+**Enmienda 2026-08-18**: `marca` **sí** se persiste como campo (además de ir en `descripcion`). Las categorías de un nivel (decisión 14 / FR-009d) **sí** forman parte del catálogo publicado. Lo que sigue fuera son imágenes, precios físico/virtual y jerarquía familia/grupo.
 
 ---
 
@@ -328,7 +332,7 @@ Reglas confirmadas con el dueño del producto:
 **Decisión**: interpretar el PDF en el **servidor** con **`unpdf`** (`getDocumentProxy` + `extractTextItems`: ítems con `str`, `x`, `y`, `width`, `height` por página). Encima, reglas deterministas:
 
 1. Cluster por Y → filas; bandas X del encabezado → columnas **CODIGO | PRODUCTO | U.M. | PRECIO** (ignorar `% DCT. 1/2/3`).
-2. Cabeceras `LINEA: NNN - MARCA` → metadato efímero `marca` solo para la grilla de revisión (autoselección por marca); **no** se persiste como campo aparte en `Producto` (la marca puede seguir dentro de `descripcion`).
+2. Cabeceras `LINEA: NNN - MARCA` → `marca` en cada fila de esa línea. **Enmienda 2026-08-18**: `marca` se persiste en `Producto` (FR-009c), no solo como metadato efímero de la grilla. Sigue sirviendo para autoselección y para el filtro facetado. La marca también permanece dentro de `descripcion`.
 3. `TIPO: …` y cabeceras de página (RUC, PUBLICO SOLES, etc.) no generan productos.
 4. Mapa U.M. → unidad SuitPay (p. ej. `UND`→`NIU`, `PAQUT`→`BX`; `MIL`/`JUEGO` y desconocidas → conflicto `unidad_desconocida` para corrección inline). Precio a céntimos (`12.5000` → `1250`).
 5. Flujo: **interpretar** (base64 → filas candidatas, sin escribir) → grilla admin (editar/eliminar) → **validar/publicar** con listado ya revisado (`productos_revisados` o equivalente), reutilizando conflictos + diff + una escritura a `catalogo/actual`.
@@ -339,6 +343,24 @@ Reglas confirmadas con el dueño del producto:
 **Alternativas descartadas**: `pdfjs-dist` crudo (más fricción serverless; `unpdf` ya empaqueta el build); parseo solo en cliente (el admin seguiría necesitando validar en servidor y el contrato de importación vive en `server/catalogo`).
 
 **Rationale**: el PDF del proveedor es tipografía de tabla, no prosa. `extractTextItems` da las coordenadas que hacen viable el parser; la grilla cumple FR-009b antes de tocar Firestore.
+
+---
+
+## Decisión 14 — Categorías de un nivel (taxonomía + filtro facetado)
+
+**Fecha**: 2026-08-18 · **Contexto**: US2 / FR-009c–d; notas de conversación con la empresa.
+
+**Decisión**:
+
+1. Un solo nivel llamado **categoría** (no familia/grupo/jerarquía).
+2. El arreglo `categorias: { id, nombre }[]` vive **dentro** de `catalogo/actual` (misma lectura que el catálogo).
+3. Cada producto tiene `marca` persistida y `categoriaId` opcional. La misma categoría sirve en todo el catálogo y para filtrar **dentro de una marca**.
+4. Crear y asignar ocurre en la grilla de importación **antes** de publicar (JSON o PDF). No hay CRUD de categorías fuera de ese flujo en esta entrega.
+5. Filtros en importación, admin y mostrador: locales sobre el espejo del catálogo.
+
+**Rechazado**: taxonomía de tres niveles; dos taxonomías distintas (global vs por marca); colección Firestore aparte de categorías (añadiría lecturas).
+
+**Rationale**: agrupar dentro de cada marca sin inflar lecturas ni romper el documento único del catálogo.
 
 ---
 

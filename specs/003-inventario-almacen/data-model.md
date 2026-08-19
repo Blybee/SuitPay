@@ -1,6 +1,6 @@
 # Data Model: Inventario y almacén
 
-**Feature**: `003-inventario-almacen` | **Date**: 2026-08-10
+**Feature**: `003-inventario-almacen` | **Date**: 2026-08-10 | **Updated**: 2026-08-18 (dueño del movimiento / herencia)
 
 ## Opción preferida (borrador)
 
@@ -17,8 +17,10 @@ Documento satélite `inventario/actual` (o `inventario/{codigo}`) separado de `c
 
 ## Integración con comprobantes
 
-- Tras emisión exitosa: aplicar deltas negativos una vez (marcar `inventarioAplicado: true` en el comprobante o ledger por `comprobanteId`).
-- Tras anulación: deltas positivos una vez (`inventarioRestaurado: true`).
+- Tras emisión exitosa de nota de venta, boleta o factura: aplicar deltas negativos una vez. Marcar `inventarioAplicado: true` y `inventarioAplicadoPor` = id de ese comprobante (o ledger por `comprobanteId`).
+- Al emitir una guía **asociada** a una boleta/factura que ya aplicó inventario: **no** aplicar deltas otra vez. Actualizar `inventarioAplicadoPor` al id de la guía (herencia). La boleta/factura conserva `inventarioAplicado: true`.
+- Tras anulación del dueño actual (o del par en cascada): deltas positivos **una vez** (`inventarioRestaurado: true` en el dueño). El segundo documento del par no vuelve a restaurar.
+- Guía sin par (traslado entre almacenes): no mueve stock en esta feature.
 
 ## Índices
 

@@ -15,14 +15,14 @@
 
 ## Phase 1: Modelo y dominio (bloqueado hasta T001)
 
-- [ ] T010 Dominio: tipos stock, umbral, aplicación idempotente por comprobante
+- [ ] T010 Dominio: tipos stock, umbral, aplicación idempotente por comprobante; campo `inventarioAplicadoPor`
 - [ ] T011 Almacén Firestore + reglas (solo backend escribe cantidades)
 - [ ] T012 Admin: carga/ajuste con motivo y traza
 
 ## Phase 2: Emisión y anulación
 
-- [ ] T013 Descontar en flujo de emisión (idempotente; cubrir reintento / indeterminado)
-- [ ] T014 Restaurar en anulación (idempotente)
+- [ ] T013 Descontar en flujo de emisión de NV/bol/fact (idempotente; cubrir reintento / indeterminado). MUST NOT descontar al emitir guía asociada (FR-008)
+- [ ] T014 Restaurar en anulación del dueño actual (idempotente). Cascada bol/fact ↔ guía = un solo reintegro (FR-009)
 - [ ] T015 Pruebas emulador: doble emisión, anular restaura, segunda anulación no-op
 
 ## Phase 3: Alertas y UI
@@ -31,6 +31,12 @@
 - [ ] T017 Aviso no bloqueante en mostrador al agregar/emitir
 - [ ] T018 Quickstart de validación de inventario
 
+## Phase 4: Herencia y cascada (2026-08-18; bloqueado hasta T001)
+
+- [ ] T019 Dominio: `inventarioAplicadoPor`; al emitir guía asociada, heredar titularidad sin segundo descuento (FR-008). Depende de asociación `002` T021
+- [ ] T020 Pruebas: boleta descuenta → guía asociada no descuenta; anular desde boleta o desde guía reintegra una vez; segundo del par no suma (FR-009)
+- [ ] T021 NV sin guía: descuenta y restaura como dueña propia; no escribe asociación
+
 ## Checkpoint final
 
-Stock consistente con emisiones/anulaciones; alertas visibles; mostrador no detenido por defecto.
+Stock consistente con emisiones/anulaciones; nota de venta mueve stock; guía asociada hereda el movimiento; cascada bidireccional reintegra una vez; alertas visibles; mostrador no detenido por defecto. **FR-007 sigue abierto: no implementar T010+.**

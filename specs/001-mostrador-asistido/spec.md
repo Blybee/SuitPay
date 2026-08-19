@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-28
 
-**Updated**: 2026-08-11 (enmienda: US2 importación PDF lista de precios con `unpdf`, grilla de revisión admin; T078 desglosada)
+**Updated**: 2026-08-18 (enmienda: US2 marca persistida + categoría de un nivel en importación; nota de venta interna confirmada; stock en `003`)
 
 **Status**: Draft
 
@@ -39,11 +39,11 @@ Un vendedor abre el navegador en su puesto o en su teléfono y ya está dentro, 
 
 ### User Story 2 - Poner el catálogo en producción (Priority: P2)
 
-El administrador carga el catálogo desde el JSON de la tienda virtual **o** desde el PDF de lista de precios del proveedor (columnas CODIGO | PRODUCTO | U.M. | PRECIO S/; se ignoran % DCT.). Tras interpretar un PDF, revisa en una grilla editable lo que el sistema entendió: puede seleccionar filas, eliminar, autoseleccionar por marca (`LINEA`), editar en línea y solo entonces validar el resumen/conflictos/diff y confirmar la publicación. Nada se aplica al catálogo vivo hasta esa confirmación. A partir de ese momento los vendedores encuentran esos productos.
+El administrador carga el catálogo desde el JSON de la tienda virtual **o** desde el PDF de lista de precios del proveedor (columnas CODIGO | PRODUCTO | U.M. | PRECIO S/; se ignoran % DCT.). Tras interpretar un PDF, revisa en una grilla editable lo que el sistema entendió: puede seleccionar filas, eliminar, autoseleccionar por marca (`LINEA`), editar en línea, **crear categorías de un nivel y asignarlas a filas** (también en lote, p. ej. tras filtrar por marca) y solo entonces validar el resumen/conflictos/diff y confirmar la publicación. Nada se aplica al catálogo vivo hasta esa confirmación. A partir de ese momento los vendedores encuentran esos productos y pueden filtrarlos por marca y por categoría —en todo el catálogo o dentro de una marca.
 
 **Why this priority**: habilita todo lo demás. Se ordena después de P1 porque el valor está en vender, no en cargar, y porque P1 puede demostrarse con un subconjunto cargado a mano.
 
-**Independent Test**: el administrador carga un archivo (JSON o PDF de prueba) y comprueba que quedan disponibles en la búsqueda, con sus precios y unidades.
+**Independent Test**: el administrador carga un archivo (JSON o PDF de prueba), crea al menos una categoría, asigna productos (incluido filtrar por marca) y comprueba que quedan disponibles en la búsqueda, con precios, unidades, marca persistida y filtro por categoría.
 
 **Acceptance Scenarios**:
 
@@ -53,6 +53,9 @@ El administrador carga el catálogo desde el JSON de la tienda virtual **o** des
 4. **Given** el PDF de lista de precios del proveedor (`docs/LISTAS.pdf` o equivalente), **When** el administrador lo interpreta, **Then** ve una grilla con las filas reconocidas (código, producto, U.M., precio) y metadato de marca desde `LINEA`, sin haber escrito aún en Firestore.
 5. **Given** la grilla de revisión con filas de varias marcas, **When** el administrador autoselecciona una marca y elimina la selección, **Then** esas filas salen de la importación pendiente y no forman parte del validar/publicar.
 6. **Given** una fila con unidad o descripción incorrecta, **When** el administrador la edita en línea y valida, **Then** el resumen refleja el valor corregido; la publicación sigue bloqueada si quedan conflictos no resueltos.
+7. **Given** la grilla de revisión, **When** el administrador crea una categoría (un solo nivel) y la asigna a una o más filas, **Then** esas filas quedan agrupadas bajo esa categoría y la publicación la persiste junto con el catálogo.
+8. **Given** productos de varias marcas en la grilla, **When** el administrador filtra por una marca y asigna una categoría a la selección, **Then** solo esas filas de esa marca quedan asignadas; la misma categoría sigue siendo usable en el resto del catálogo.
+9. **Given** un catálogo publicado con marcas y categorías, **When** el vendedor o el administrador filtra por categoría (global) o por categoría dentro de una marca, **Then** solo se listan los productos que cumplen ese criterio. Un producto sin categoría permanece visible en el listado sin filtro.
 
 ---
 
@@ -263,6 +266,8 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **FR-008**: El sistema MUST distinguir con claridad la ausencia de coincidencias de una coincidencia aproximada.
 - **FR-009**: El administrador MUST poder cargar el catálogo desde un archivo estructurado o un documento, revisando el resultado antes de confirmarlo.
 - **FR-009b**: Ante un PDF de lista de precios, el sistema MUST interpretar las columnas CODIGO, PRODUCTO, U.M. y PRECIO (ignorando % DCT.), MUST presentar una grilla de revisión editable (selección, eliminación, autoselección por marca `LINEA`, edición inline) y MUST NOT escribir `catalogo/actual` hasta que el administrador confirme publicar tras validar. El parseo MUST ser determinista en servidor (`unpdf` + reglas de columnas); MUST NOT delegar la extracción tabular a un LLM.
+- **FR-009c**: Cada producto del catálogo publicado MUST persistir `marca` como campo propio (JSON de tienda: `brand`; PDF: cabecera `LINEA`). La marca MUST seguir formando parte de `descripcion` para la búsqueda. Un producto sin marca reconocida MUST publicarse con `marca` vacío, no inventar una.
+- **FR-009d**: El administrador MUST poder crear y asignar **categorías de un solo nivel** durante la importación, antes de publicar. El documento `catalogo/actual` MUST incluir el arreglo `categorias: { id, nombre }[]`. Cada producto MAY tener `categoriaId` opcional. La misma categoría MUST servir para filtrar/agrupar en todo el catálogo y dentro de una marca (filtros combinables). MUST NOT exigirse jerarquía familia/grupo. MUST NOT bloquear la publicación si un producto no tiene categoría. Los filtros MUST estar disponibles en la grilla de importación, en la administración del catálogo y en la búsqueda del mostrador, sobre el catálogo ya cargado en el dispositivo (sin lecturas extra).
 - **FR-010**: El sistema MUST señalar los conflictos de una carga —códigos repetidos, precios ausentes, unidades desconocidas— sin resolverlos por su cuenta.
 - **FR-011**: Ante una recarga del catálogo, el sistema MUST mostrar qué productos son nuevos, cuáles cambian y cuáles desaparecen, antes de aplicar los cambios.
 - **FR-012**: El sistema MUST mostrar el precio mayorista como referencia y MUST permitir sustituirlo en el momento de la venta solo si el nuevo valor es **mayor o igual** al de catálogo. Un precio menor MUST marcarse y MUST impedir emitir y guardar cotización (piso acordado con gerencia).
@@ -311,7 +316,7 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 
 **Anulación**
 
-- **FR-037**: El sistema MUST permitir anular un comprobante el mismo día de su emisión, exigiendo un motivo y una confirmación explícita que muestre qué documento se va a anular. La anulación MUST realizarse desde el detalle del comprobante.
+- **FR-037**: El sistema MUST permitir anular un comprobante el mismo día de su emisión, exigiendo un motivo y una confirmación explícita que muestre qué documento se va a anular. La anulación MUST realizarse desde el detalle del comprobante. Si hay guía asociada, la cascada bidireccional (toast informativo, mismo motivo/autor) se especifica en `002-guias-remision` FR-013–016.
 - **FR-038**: El sistema MUST impedir la anulación de un comprobante emitido en una fecha anterior y MUST indicar que corresponde una nota de crédito.
 - **FR-039**: El sistema MUST NOT usar la palabra "eliminar" para referirse a un comprobante emitido, en ninguna parte de la interfaz.
 - **FR-037a**: Cualquier vendedor, administrador o jefe autenticado y activo MUST poder anular (dentro de plazo) un comprobante emitido por otro vendedor. La anulación MUST atribuirse a quien confirma, sin borrar la atribución del emisor original.
@@ -361,7 +366,8 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 
 ### Key Entities
 
-- **Producto**: lo que se vende. Nombre descriptivo que incorpora material, medida y marca; código; unidad de medida; precio mayorista de referencia con impuesto incluido.
+- **Producto**: lo que se vende. Código; descripción (material, medida y marca en el texto); `marca` persistida; unidad; precio mayorista de referencia con impuesto incluido; `categoriaId` opcional.
+- **Categoría**: agrupación de un solo nivel, creada en la importación, reusable en todo el catálogo y para filtrar dentro de una marca.
 - **Cliente**: quien compra. Tipo y número de documento de identidad, denominación, dirección, contacto y condición ante el registro oficial. Incluye el cliente eventual como caso por defecto.
 - **Pedido en curso**: la lista que el vendedor está armando. Vive en el dispositivo, no ha producido ningún documento y puede convertirse en cualquiera de ellos.
 - **Cotización**: un pedido guardado con número propio, accesible desde cualquier dispositivo, con `canal` `general` o `vecino`. Mientras está pendiente puede editarse o eliminarse; al convertirse en comprobante se elimina en duro.
@@ -406,7 +412,9 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **El catálogo puede ir de cientos a ~3000 productos** (lista PDF del proveedor) con nombres estructurados por material, medida y marca; sigue cabiendo en un solo documento `catalogo/actual` bajo 1 MiB (decisión 2 / 13). La búsqueda tolerante y el emparejamiento de capturas siguen aplicando.
 - **La empresa dispone de conexión estable** y, ante caída del router, los vendedores pueden usar la red de sus teléfonos.
 - **El alcance de esta entrega no incluye** contabilidad, cobranzas como módulo (incluido registro de cobro / ventas a crédito como UX), sugerencias de compra, notas de crédito como flujo completo, migración masiva de clientes, aplicación nativa, impresión desde el móvil, login por alias/usuario (se mantiene correo + contraseña), ni la implementación completa de todos los parsers de consulta del catálogo (las pistas y la lista seleccionable sí). **La guía de remisión electrónica** se especifica en `002-guias-remision`. **Inventario y alertas de stock** en `003-inventario-almacen`. **Ranking / estadísticas de productos** en `004-ranking-productos`. Las únicas escrituras por comando implementadas aquí siguen el principio I (propuesta a confirmar). Ver `concept.md`.
+- **La nota de venta es documento interno** (confirmado 2026-08-18): se aloja solo en SuitPay, no se crea en el proveedor ni consume serie regulada, y se distingue en pantalla e impresión (FR-036). **Sí mueve stock**, igual que boleta/factura sin guía; el descuento y el reintegro viven en `003-inventario-almacen`. **No se asocia a guía de remisión** (la guía es documento regulado de traslado sobre boleta/factura; ver `002`).
 - **El inventario no se implementa en esta feature (`001`).** Queda especificado en `003-inventario-almacen`; mientras SuitPay y el sistema anterior operen aislados, la fuente de verdad de stock es una pregunta abierta de producto que bloquea la implementación de `003`.
+- **Las categorías se crean y asignan en la importación** (FR-009d). No hay CRUD de categorías fuera de ese flujo en esta entrega. No hay jerarquía familia/grupo.
 - **La captura por voz y fotografía reutiliza herramientas ya existentes** en el proyecto de la tienda virtual de la empresa. Están funcionando pero acopladas a ese proyecto, y el grado de reelaboración necesario está sin evaluar. Si resultara profundo, las historias 6 y 7 deberían replantearse.
 - **El pedido en curso no viaja entre dispositivos.** Cambiar de dispositivo obliga a rehacerlo, y el negocio lo acepta.
 - **La impresión en formato de rollo**: el proveedor documenta `formato_pdf: ticket` además de `a4`. Esta entrega sigue cubriendo A4 y archivo compartible; la validación de maquetación/ancho del ticket queda por probar en demo.

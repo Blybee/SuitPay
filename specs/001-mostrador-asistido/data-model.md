@@ -1,6 +1,6 @@
 # Phase 1 — Modelo de datos: Mostrador asistido
 
-**Feature**: 001-mostrador-asistido | **Fecha**: 2026-07-28
+**Feature**: 001-mostrador-asistido | **Fecha**: 2026-07-28 | **Updated**: 2026-08-18 (marca persistida + `categorias` en el mismo documento)
 **Almacenamiento**: Cloud Firestore edición Standard, proyecto Firebase independiente
 
 ## Principios de modelado aplicados
@@ -27,9 +27,10 @@ Documento único con el catálogo completo. Escrito solo por el backend.
 | `publicadoEn` | marca de tiempo | |
 | `publicadoPor` | cadena | Identificador del administrador. |
 | `totalProductos` | número | Para mostrar en la administración sin recorrer el arreglo. |
-| `productos` | arreglo de objetos | El catálogo. Cada elemento: `codigo`, `descripcion` (`{marca} {nombre} [{variante}]`), `unidad` (p. ej. `NIU`), `precio` mayorista en céntimos con impuesto incluido, `activo`. La marca no es un campo aparte: va en la descripción (decisión 11). |
+| `categorias` | arreglo de objetos | Taxonomía de un nivel: `{ id, nombre }`. Vive en el mismo documento para no añadir lecturas (FR-009d, enmienda 2026-08-18). |
+| `productos` | arreglo de objetos | El catálogo. Cada elemento: `codigo`, `descripcion` (`{marca} {nombre} [{variante}]`), `marca` (campo persistido; JSON `brand` / PDF `LINEA`; puede ser cadena vacía), `unidad` (p. ej. `NIU`), `precio` mayorista en céntimos con impuesto incluido, `activo`, `categoriaId` (opcional, referencia a `categorias[].id`). |
 
-**Acceso**: una lectura por sesión y dispositivo. El cliente espeja el documento en IndexedDB con su `version` y busca localmente.
+**Acceso**: una lectura por sesión y dispositivo. El cliente espeja el documento en IndexedDB con su `version` y busca localmente. Los filtros por marca y categoría (global o dentro de una marca) corren sobre ese espejo: cero lecturas extra.
 
 **Límites**: el documento no puede superar 1 MiB. Con ~500 productos se ocupan unos 50 KB, así que hay margen para varios miles. Si algún día se acercara al límite, la salida es fragmentar en `catalogo/fragmento-1..n` manteniendo el mismo patrón de una lectura por fragmento.
 

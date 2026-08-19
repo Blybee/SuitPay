@@ -67,9 +67,9 @@ La función más importante del sistema. Es el único camino por el que nace un 
 
 **Petición**: `comprobanteId`, `motivo`.
 
-**Comportamiento**: verifica que el comprobante esté en estado anulable y que se haya emitido el mismo día (America/Lima); si no, rechaza indicando que corresponde una nota de crédito. **No exige** que el solicitante sea el emisor. Solicita la baja al proveedor (si tiene valor tributario), registra motivo, autor (quien confirma) y momento en el propio documento, y cambia su estado. **No borra nada.**
+**Comportamiento**: verifica que el comprobante esté en estado anulable y que se haya emitido el mismo día (America/Lima); si no, rechaza indicando que corresponde una nota de crédito. **No exige** que el solicitante sea el emisor. Solicita la baja al proveedor (si tiene valor tributario), registra motivo, autor (quien confirma) y momento en el propio documento, y cambia su estado. **No borra nada.** Si el documento forma parte de un par boleta/factura ↔ guía (`guiaAsociadaId` / `comprobanteOrigenId` vigentes), la anulación arrastra al asociado (FR-013–016 de `002-guias-remision`): mismo motivo y autor; toast informativo en el cliente; si cualquiera queda `indeterminado`, el par no se presenta como anulado.
 
-**Respuesta**: `estado`, `anulacion`.
+**Respuesta**: `estado`, `anulacion`. MAY incluir `asociadoAnuladoId` cuando hubo cascada.
 
 **Errores**: `fuera_de_ventana_anulacion` (FR-038), `estado_no_anulable`.
 
@@ -160,13 +160,14 @@ Ante error de cuota o límite de solicitudes, conmuta a la segunda credencial co
 - Solo se toman marca (`brand`), nombre, variantes y precio **mayorista** (`wholesale`).
 - Cada variante es un producto distinto; si hay variantes, se ignora el `unitConfig` del padre.
 - Descripción: `{marca} {producto} [{variante}]`. El precio **no** va en el texto.
+- `marca` se persiste como campo (FR-009c). `categoriaId` es opcional y se asigna en la grilla antes de publicar (FR-009d); el JSON de tienda no trae categorías.
 - Código: `id` de la tienda, o `{id}__{variantId}` si hay variante.
 - Precio en céntimos (`wholesale × 100`). Si falta wholesale → `0`.
 - Unidad: `NIU`. Paquetes/cajas de la tienda se ignoran.
 
-**Formato `productos_revisados`**: arreglo JSON de productos SuitPay (`codigo`, `descripcion`, `unidad`, `precio` en céntimos, `activo`) tras la grilla de revisión del PDF (o edición manual). No re-parsea el PDF.
+**Formato `productos_revisados`**: arreglo JSON de productos SuitPay (`codigo`, `descripcion`, `unidad`, `precio` en céntimos, `activo`, `marca`, `categoriaId?`) más, a nivel de publicación, el arreglo `categorias: { id, nombre }[]` del documento `catalogo/actual`. Tras la grilla de revisión del PDF (o edición manual). No re-parsea el PDF.
 
-**Comportamiento**: en modo validar, interpreta y devuelve el resumen sin escribir nada: cuántos productos se reconocieron, cuáles presentan conflicto y, si ya hay catálogo publicado, qué productos son nuevos, cuáles cambian de precio y cuáles desaparecen. En modo publicar, escribe el catálogo **en una sola escritura** e incrementa su versión. Los códigos duplicados **bloquean** la publicación (FR-010). El formato `documento` en esta función **no** acepta el binario PDF (usar `interpretarCatalogoDocumento`).
+**Comportamiento**: en modo validar, interpreta y devuelve el resumen sin escribir nada: cuántos productos se reconocieron, cuáles presentan conflicto y, si ya hay catálogo publicado, qué productos son nuevos, cuáles cambian de precio y cuáles desaparecen. En modo publicar, escribe el catálogo **en una sola escritura** (productos + `categorias`) e incrementa su versión. Los códigos duplicados **bloquean** la publicación (FR-010). El formato `documento` en esta función **no** acepta el binario PDF (usar `interpretarCatalogoDocumento`).
 
 Escribir miles de ítems como una única escritura no es una optimización menor: escrituras individuales sobre el mismo recurso serían más caras y chocarían con los límites de escritura por documento.
 
@@ -182,7 +183,7 @@ Escribir miles de ítems como una única escritura no es una optimización menor
 
 **Petición**: `contenidoBase64` (PDF), opcionalmente `nombreArchivo`.
 
-**Comportamiento**: interpreta el PDF con `unpdf` (`extractTextItems`) + reglas de columnas en `lector-documento.ts`. Devuelve **filas candidatas** `{ codigo, descripcion, unidad, precio, marca?, activo }` **sin escribir** Firestore. La marca proviene de `LINEA: …` y solo sirve a la UI de revisión. No llama al LLM.
+**Comportamiento**: interpreta el PDF con `unpdf` (`extractTextItems`) + reglas de columnas en `lector-documento.ts`. Devuelve **filas candidatas** `{ codigo, descripcion, unidad, precio, marca, activo }` **sin escribir** Firestore. La marca proviene de `LINEA: …`, se usa en la UI de revisión (autoselección / filtro) y **se persiste** al publicar (FR-009c). No llama al LLM.
 
 **Respuesta**: `filas`, `reconocidos`, `omitidos` (cabeceras/ruido), errores de parseo por fila si aplica.
 
