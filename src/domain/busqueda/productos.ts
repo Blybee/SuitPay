@@ -41,6 +41,8 @@ export interface ProductoBuscable {
   readonly unidad: string
   readonly precio: number
   readonly activo: boolean
+  readonly marca?: string
+  readonly categoriaId?: string
 }
 
 export type GradoDeCoincidencia = 'exacta' | 'fuerte' | 'aproximada'

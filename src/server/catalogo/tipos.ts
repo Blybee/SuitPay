@@ -1,11 +1,15 @@
-import type { Producto } from '../../domain/esquemas/comunes.ts'
+import type {
+  CategoriaDeCatalogo,
+  Producto,
+} from '../../domain/esquemas/comunes.ts'
 
 /**
  * Tipos del catálogo en el servidor. El producto publicado es el mismo esquema
- * del dominio: código, descripción, unidad, precio en céntimos, activo.
+ * del dominio: código, descripción, unidad, precio, activo, marca, categoriaId.
  */
 
 export type ProductoDeCatalogo = Producto
+export type { CategoriaDeCatalogo }
 
 export type ModoDeImportacion = 'validar' | 'publicar'
 
@@ -36,6 +40,9 @@ export interface ResumenDeImportacion {
   /** Presente solo tras `publicar`. */
   readonly version: number | null
   readonly publicado: boolean
+  /** Filas propuestas (para la grilla de revisión; no se escriben en validar). */
+  readonly propuestos: readonly ProductoDeCatalogo[]
+  readonly categorias: readonly CategoriaDeCatalogo[]
 }
 
 export interface CatalogoPublicado {
@@ -44,4 +51,5 @@ export interface CatalogoPublicado {
   readonly publicadoPor: string
   readonly totalProductos: number
   readonly productos: readonly ProductoDeCatalogo[]
+  readonly categorias: readonly CategoriaDeCatalogo[]
 }

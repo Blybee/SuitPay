@@ -5,7 +5,7 @@ import { REGLAS } from '../domain/documentos/tipos.ts'
 import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
 import { pedidoTienePrecioBajoCatalogo } from '../domain/totales/calculo.ts'
 import { usarBusqueda } from '../features/busqueda/almacen.ts'
-import { usarCatalogo, umbralVigente } from '../features/catalogo/almacen.ts'
+import { usarCatalogo, umbralVigente, marcasDelCatalogo, productosVisibles } from '../features/catalogo/almacen.ts'
 import { PanelDictado } from '../features/captura/audio.tsx'
 import {
   extraerMencionDeCliente,
@@ -17,15 +17,25 @@ import { EstadoIlegible } from '../features/captura/ilegible.tsx'
 import { PanelFotografia } from '../features/captura/imagen.tsx'
 import { motivoBloqueoPorCaptura } from '../features/captura/pendientes.ts'
 import { PasoTextoExtraido } from '../features/captura/revision-imagen.tsx'
+import { reconocerCrearVecino, type PropuestaCrearVecino } from '../features/comandos/crear-vecino.ts'
+import { despacharComando, mensajeDeProhibido } from '../features/comandos/ejecutar.ts'
+import { InstruccionIncompleta } from '../features/comandos/incompletas.tsx'
+import { comandoDesdeDictado } from '../features/comandos/por-voz.ts'
 import {
-  reconocerCrearVecino,
-  type PropuestaCrearVecino,
-} from '../features/comandos/crear-vecino.ts'
+  ResultadosDeComando,
+  type ResultadoDeComando,
+} from '../features/comandos/resultados.tsx'
+import type { OperacionDeConsulta } from '../features/comandos/catalogo.ts'
+import { PapeletaDeGuia } from '../features/guia/papeleta.tsx'
+import type { BorradorDeGuia } from '../features/guia/papeleta.tsx'
+import { AltaTransportista } from '../features/transportistas/alta.tsx'
 import { guardarCotizacion } from '../features/cotizaciones/guardar.ts'
 import { PanelDeCotizaciones } from '../features/cotizaciones/panel.tsx'
 import { crearCotizacionVecino } from '../features/vecinos/crear.ts'
 import { agregarProductoAVecino } from '../features/vecinos/lineas.ts'
 import { PanelDeVecinos } from '../features/vecinos/panel.tsx'
+import { PanelDeListaCatalogo } from '../features/catalogo/panel-lista.tsx'
+import { FiltrosDeCatalogo } from '../ui/componentes/FiltrosDeCatalogo.tsx'
 import {
   alRecuperarConectividad,
   usarDegradacion,
@@ -134,6 +144,18 @@ function Mostrador() {
     useState<PropuestaCrearVecino | null>(null)
   const [creandoVecino, setCreandoVecino] = useState(false)
   const [avisoVecino, setAvisoVecino] = useState<string | null>(null)
+  const [resultadoComando, setResultadoComando] =
+    useState<ResultadoDeComando | null>(null)
+  const [comandoIncompleto, setComandoIncompleto] = useState<{
+    readonly operacion: OperacionDeConsulta
+    readonly faltantes: readonly string[]
+    readonly prefijo: string
+  } | null>(null)
+  const [papeletaGuiaAbierta, setPapeletaGuiaAbierta] = useState(false)
+  const [borradorGuia, setBorradorGuia] = useState<BorradorDeGuia | null>(null)
+  const [altaTransportistaRuc, setAltaTransportistaRuc] = useState<
+    string | null
+  >(null)
 
   const catalogo = usarCatalogo()
   const ultimaBusqueda = usarBusqueda((estado) => estado.ultima)
@@ -243,6 +265,12 @@ function Mostrador() {
   function alAprobarCaptura(textosOriginales: readonly string[]): void {
     setPanelDictado(false)
     setPanelFoto(false)
+    const hablado = textosOriginales.join(' ')
+    const comando = comandoDesdeDictado(hablado)
+    if (comando !== null) {
+      void ejecutarComando(comando)
+      return
+    }
     const mencion = extraerMencionDeCliente(textosOriginales)
     if (mencion === null || usarPedido.getState().cliente !== null) return
     const local = resolverClienteLocal(mencion, usarCatalogo.getState().clientes)
@@ -257,6 +285,49 @@ function Mostrador() {
       setAltaRevisionInicial(null)
       setConsultaClienteInicial(mencion)
       setAltaClienteAbierta(true)
+    }
+  }
+
+  async function ejecutarComando(texto: string): Promise<void> {
+    const recortado = texto.trim()
+    const clave = recortado.toLowerCase()
+    if (clave === '/guia' || clave.startsWith('/guia ')) {
+      setBorradorGuia(null)
+      setPapeletaGuiaAbierta(true)
+      setTermino('')
+      return
+    }
+    if (
+      clave === '/crear transportista' ||
+      clave.startsWith('/crear transportista ')
+    ) {
+      const ruc = recortado.slice('/crear transportista'.length).trim()
+      setAltaTransportistaRuc(ruc)
+      setTermino('')
+      return
+    }
+
+    const despacho = await despacharComando(texto)
+    if (despacho.reconocer.tipo === 'escritura_prohibida') {
+      setResultadoComando(mensajeDeProhibido(despacho.reconocer))
+      return
+    }
+    if (despacho.reconocer.tipo === 'incompleto') {
+      setComandoIncompleto({
+        operacion: despacho.reconocer.operacion,
+        faltantes: despacho.reconocer.faltantes,
+        prefijo: despacho.reconocer.operacion.prefijo,
+      })
+      return
+    }
+    if (despacho.pestana !== undefined) {
+      setPestana(despacho.pestana)
+      setTermino('')
+      return
+    }
+    if (despacho.resultado !== undefined) {
+      setResultadoComando(despacho.resultado)
+      setTermino('')
     }
   }
 
@@ -589,6 +660,7 @@ function Mostrador() {
           resultado={resultado}
           onElegirProducto={agregar}
           onElegirProductos={agregarVarios}
+          onEjecutarComando={(texto) => void ejecutarComando(texto)}
           asistenciaDisponible={asistenciaDisponible}
           motivoAsistenciaInerte={motivoAsistenciaInerte}
           onDictar={() => {
@@ -608,6 +680,12 @@ function Mostrador() {
             setAvisoCotizacion(null)
             setPestana(siguiente)
           }}
+        />
+        <FiltrosDeCatalogo
+          marcas={marcasDelCatalogo(catalogo)}
+          categorias={catalogo.categorias}
+          facetas={catalogo.facetas}
+          onCambiar={(facetas) => catalogo.fijarFacetas(facetas)}
         />
       </div>
 
@@ -771,12 +849,56 @@ function Mostrador() {
       )}
 
       {pestana === 'lista' && (
-        <PanelPlaceholder
-          titulo="Lista"
-          texto="Contenido por definir (clarify del intake). Placeholder hasta entonces."
+        <PanelDeListaCatalogo
+          productos={productosVisibles(catalogo)}
+          onElegir={agregar}
         />
       )}
 
+      <ResultadosDeComando
+        resultado={resultadoComando}
+        onCerrar={() => setResultadoComando(null)}
+      />
+      <InstruccionIncompleta
+        abierta={comandoIncompleto !== null}
+        operacion={comandoIncompleto?.operacion ?? null}
+        faltantes={comandoIncompleto?.faltantes ?? []}
+        onCerrar={() => setComandoIncompleto(null)}
+        onCompletar={(argumentos) => {
+          const prefijo = comandoIncompleto?.prefijo ?? ''
+          setComandoIncompleto(null)
+          void ejecutarComando(`${prefijo} ${argumentos.join(' ')}`)
+        }}
+      />
+      <PapeletaDeGuia
+        abierta={papeletaGuiaAbierta}
+        onCerrar={() => {
+          setPapeletaGuiaAbierta(false)
+          setBorradorGuia(null)
+        }}
+        cliente={pedido.cliente}
+        lineas={pedido.lineas}
+        comprobanteOrigenId={pedido.comprobanteOrigenId}
+        borradorInicial={borradorGuia}
+        onEmitida={(respuesta) => {
+          resolverEmision(respuesta)
+        }}
+        onRechazoDefinitivo={(borrador) => {
+          setBorradorGuia(borrador)
+          setPapeletaGuiaAbierta(true)
+        }}
+      />
+      <AltaTransportista
+        abierta={altaTransportistaRuc !== null}
+        rucInicial={altaTransportistaRuc ?? ''}
+        onCerrar={() => setAltaTransportistaRuc(null)}
+        onCreado={(denominacion, ruc) => {
+          usarNotificaciones.getState().mostrar({
+            tono: 'exito',
+            mensaje: `Transportista ${denominacion} (${ruc}) listo para la guía.`,
+          })
+        }}
+      />
       <AltaClienteEnContexto
         abierta={altaClienteAbierta}
         onCerrar={() => {
@@ -884,26 +1006,6 @@ function Mostrador() {
           </dl>
         ) : null}
       </Modal>
-    </div>
-  )
-}
-
-function PanelPlaceholder({
-  titulo,
-  texto,
-}: {
-  readonly titulo: string
-  readonly texto: string
-}) {
-  return (
-    <div className="flex flex-1 flex-col px-6 py-10">
-      <h2 className="text-cabecera font-bold text-tinta">{titulo}</h2>
-      <p className="mt-2 max-w-lg text-cuerpo text-desvaida">{texto}</p>
-      <div className="mt-8 rounded-3xl border border-borde bg-papel p-6 shadow-sm">
-        <p className="font-mono text-etiqueta uppercase text-desvaida">
-          En construcción
-        </p>
-      </div>
     </div>
   )
 }

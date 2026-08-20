@@ -1,4 +1,5 @@
 import type { EstadoDeComprobante, TipoDeDocumento  } from '../../domain/documentos/tipos.ts'
+import type { TrasladoDeGuia } from '../../domain/guia/tipos.ts'
 import type { ClaseDeFallo, RastroDelProveedor } from '../proveedor/interfaz.ts'
 
 /**
@@ -100,6 +101,9 @@ export interface Comprobante {
     readonly momento: Date
     readonly estado: string
   } | null
+  readonly traslado?: TrasladoDeGuia | null
+  readonly comprobanteOrigenId?: string | null
+  readonly guiaAsociadaId?: string | null
 }
 
 export interface Serie {
@@ -153,6 +157,11 @@ export interface TransaccionDeEmision {
    */
   consumirCorrelativo: (serieId: string, ultimoNumero: number) => void
   crearComprobante: (comprobante: Comprobante) => void
+  /**
+   * Actualiza un comprobante ya leído en esta transacción (p. ej. escribir
+   * `guiaAsociadaId` en el origen). No crea documentos nuevos.
+   */
+  actualizarComprobanteEnTransaccion: (comprobante: Comprobante) => void
   /** Borrado duro en la misma transacción que crea el comprobante (FR-019). */
   eliminarCotizacion: (cotizacionId: string) => void
 }
@@ -165,6 +174,8 @@ export interface CambiosDelComprobante {
   readonly anulacion?: Comprobante['anulacion']
   /** Se añade a la traza; no la reemplaza. */
   readonly nuevoIntento?: IntentoDeEmision
+  readonly guiaAsociadaId?: string | null
+  readonly comprobanteOrigenId?: string | null
 }
 
 export interface AlmacenDeEmision {

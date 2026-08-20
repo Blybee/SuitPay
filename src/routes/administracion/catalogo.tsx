@@ -1,17 +1,22 @@
 import { useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
-import { importarCatalogoFn } from '../../features/catalogo/importar.funciones.ts'
+import { GrillaRevision } from '../../features/catalogo/grilla-revision.tsx'
+import {
+  importarCatalogoFn,
+  interpretarCatalogoDocumentoFn,
+} from '../../features/catalogo/importar.funciones.ts'
 import type { ResumenDeImportacion } from '../../features/catalogo/importar.funciones.ts'
 import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
+import type { CategoriaDeCatalogo, Producto } from '../../domain/esquemas/comunes.ts'
 
 /**
- * Carga del catálogo (US2 / FR-009, FR-010, FR-011).
+ * Carga del catálogo (US2 / FR-009, FR-009b, FR-010, FR-011, FR-009c, FR-009d).
  *
- * El administrador sube el JSON de la tienda, revisa el resumen y las
- * diferencias, y solo entonces confirma la publicación.
+ * El administrador sube el JSON de la tienda o el PDF de lista de precios,
+ * revisa filas y categorías, y solo entonces confirma la publicación.
  */
 
 export const Route = createFileRoute('/administracion/catalogo')({
@@ -24,41 +29,28 @@ export const Route = createFileRoute('/administracion/catalogo')({
 
 function PantallaDeCatalogo() {
   const [archivoNombre, setArchivoNombre] = useState<string | null>(null)
-  const [contenido, setContenido] = useState<string | null>(null)
   const [resumen, setResumen] = useState<ResumenDeImportacion | null>(null)
+  const [productos, setProductos] = useState<readonly Producto[]>([])
+  const [categorias, setCategorias] = useState<readonly CategoriaDeCatalogo[]>(
+    [],
+  )
   const [ocupado, setOcupado] = useState(false)
 
   async function leerArchivo(archivo: File): Promise<void> {
     setResumen(null)
+    setProductos([])
+    setCategorias([])
     setArchivoNombre(archivo.name)
-    const texto = await archivo.text()
-    setContenido(texto)
-  }
-
-  async function validar(): Promise<void> {
-    if (contenido === null) return
+    const esPdf =
+      archivo.type === 'application/pdf' ||
+      archivo.name.toLowerCase().endsWith('.pdf')
     setOcupado(true)
     try {
-      const resultado = await importarCatalogoFn({
-        data: {
-          contenido,
-          formato: 'json_tienda',
-          modo: 'validar',
-        },
-      })
-      if (!resultado.ok || resultado.resumen === undefined) {
-        usarNotificaciones.getState().mostrar({
-          tono: 'error',
-          mensaje:
-            resultado.error?.mensaje ?? 'No se pudo validar el catálogo.',
-        })
+      if (esPdf) {
+        await leerPdf(archivo)
         return
       }
-      setResumen(resultado.resumen)
-      usarNotificaciones.getState().mostrar({
-        tono: 'info',
-        mensaje: 'Validación lista. Revisa el resumen antes de publicar.',
-      })
+      await leerJson(archivo)
     } catch (err) {
       usarNotificaciones.getState().mostrar({
         tono: 'error',
@@ -69,14 +61,83 @@ function PantallaDeCatalogo() {
     }
   }
 
+  async function leerJson(archivo: File): Promise<void> {
+    const texto = await archivo.text()
+    const resultado = await importarCatalogoFn({
+      data: {
+        contenido: texto,
+        formato: 'json_tienda',
+        modo: 'validar',
+      },
+    })
+    if (!resultado.ok || resultado.resumen === undefined) {
+      usarNotificaciones.getState().mostrar({
+        tono: 'error',
+        mensaje: resultado.error?.mensaje ?? 'No se pudo validar el catálogo.',
+      })
+      return
+    }
+    aplicarValidacion(resultado.resumen)
+    usarNotificaciones.getState().mostrar({
+      tono: 'info',
+      mensaje: 'Validación lista. Revisa y asigna categorías antes de publicar.',
+    })
+  }
+
+  async function leerPdf(archivo: File): Promise<void> {
+    const contenidoBase64 = await archivoABase64(archivo)
+    const interpretado = await interpretarCatalogoDocumentoFn({
+      data: { contenidoBase64, nombreArchivo: archivo.name },
+    })
+    if (!interpretado.ok || interpretado.filas === undefined) {
+      usarNotificaciones.getState().mostrar({
+        tono: 'error',
+        mensaje:
+          interpretado.error?.mensaje ?? 'No se pudo interpretar el PDF.',
+      })
+      return
+    }
+    const resultado = await importarCatalogoFn({
+      data: {
+        contenido: JSON.stringify({
+          productos: interpretado.filas,
+          categorias: [],
+        }),
+        formato: 'productos_revisados',
+        modo: 'validar',
+      },
+    })
+    if (!resultado.ok || resultado.resumen === undefined) {
+      setProductos(interpretado.filas)
+      usarNotificaciones.getState().mostrar({
+        tono: 'error',
+        mensaje:
+          resultado.error?.mensaje ??
+          'El PDF se interpretó, pero no se pudo validar.',
+      })
+      return
+    }
+    aplicarValidacion(resultado.resumen)
+    usarNotificaciones.getState().mostrar({
+      tono: 'info',
+      mensaje: `PDF: ${interpretado.reconocidos ?? interpretado.filas.length} filas, ${interpretado.omitidos ?? 0} omitidas. Revisa unidades desconocidas antes de publicar.`,
+    })
+  }
+
+  function aplicarValidacion(resumen: ResumenDeImportacion): void {
+    setResumen(resumen)
+    setProductos(resumen.propuestos)
+    setCategorias(resumen.categorias)
+  }
+
   async function publicar(): Promise<void> {
-    if (contenido === null) return
+    if (productos.length === 0) return
     setOcupado(true)
     try {
       const resultado = await importarCatalogoFn({
         data: {
-          contenido,
-          formato: 'json_tienda',
+          contenido: JSON.stringify({ productos, categorias }),
+          formato: 'productos_revisados',
           modo: 'publicar',
         },
       })
@@ -111,17 +172,17 @@ function PantallaDeCatalogo() {
     <div className="flex min-h-full flex-col gap-6 px-6 py-8">
       <CabeceraAdmin
         titulo="Catálogo"
-        descripcion="Carga el JSON exportado de la tienda. Revisa el resumen antes de publicar: nada se aplica hasta que confirmes."
+        descripcion="Carga el JSON de la tienda o el PDF de lista de precios. Revisa el resumen y las categorías antes de publicar: nada se aplica hasta que confirmes."
       />
 
       <section className="rounded-3xl border border-borde bg-papel p-6 shadow-sm">
         <label className="flex cursor-pointer flex-col gap-2">
           <span className="font-mono text-etiqueta uppercase text-desvaida">
-            Archivo JSON
+            Archivo JSON o PDF
           </span>
           <input
             type="file"
-            accept="application/json,.json,.js"
+            accept="application/json,.json,.js,application/pdf,.pdf"
             className="text-cuerpo text-tinta file:mr-4 file:rounded-full file:border-0 file:bg-marca/15 file:px-4 file:py-2 file:font-bold file:text-marca"
             onChange={(evento) => {
               const archivo = evento.target.files?.[0]
@@ -138,22 +199,23 @@ function PantallaDeCatalogo() {
         <div className="mt-6 flex flex-wrap gap-3">
           <button
             type="button"
-            disabled={contenido === null || ocupado}
-            onClick={() => void validar()}
+            disabled={productos.length === 0 || ocupado || bloqueado}
+            onClick={() => void publicar()}
             className="rounded-full bg-marca px-5 py-2.5 font-bold text-papel disabled:opacity-40"
           >
-            {ocupado ? 'Procesando…' : 'Validar'}
-          </button>
-          <button
-            type="button"
-            disabled={contenido === null || ocupado || bloqueado}
-            onClick={() => void publicar()}
-            className="rounded-full border border-borde px-5 py-2.5 font-bold text-tinta disabled:opacity-40"
-          >
-            Publicar
+            {ocupado ? 'Procesando…' : 'Publicar'}
           </button>
         </div>
       </section>
+
+      {productos.length > 0 && (
+        <GrillaRevision
+          productos={productos}
+          categorias={categorias}
+          onProductos={setProductos}
+          onCategorias={setCategorias}
+        />
+      )}
 
       {resumen !== null && <Resumen resumen={resumen} />}
     </div>
@@ -191,7 +253,7 @@ function Resumen({ resumen }: { readonly resumen: ResumenDeImportacion }) {
             validar.
           </p>
           <ul className="mt-3 space-y-2 text-cuerpo text-tinta">
-            {resumen.conflictos.map((conflicto) => (
+            {resumen.conflictos.slice(0, 60).map((conflicto) => (
               <li key={`${conflicto.tipo}-${conflicto.codigo}`}>
                 <span className="font-mono text-etiqueta">
                   {conflicto.codigo}
@@ -201,6 +263,12 @@ function Resumen({ resumen }: { readonly resumen: ResumenDeImportacion }) {
               </li>
             ))}
           </ul>
+          {resumen.conflictos.length > 60 ? (
+            <p className="mt-2 font-mono text-etiqueta text-desvaida">
+              … y {resumen.conflictos.length - 60} más. Corrígelos en la grilla
+              (unidad o duplicado) antes de publicar.
+            </p>
+          ) : null}
         </div>
       )}
 
@@ -242,6 +310,19 @@ function Resumen({ resumen }: { readonly resumen: ResumenDeImportacion }) {
       )}
     </section>
   )
+}
+
+function archivoABase64(archivo: File): Promise<string> {
+  return new Promise((resolver, rechazar) => {
+    const lector = new FileReader()
+    lector.onload = () => {
+      const bruto = String(lector.result ?? '')
+      const coma = bruto.indexOf(',')
+      resolver(coma >= 0 ? bruto.slice(coma + 1) : bruto)
+    }
+    lector.onerror = () => rechazar(lector.error ?? new Error('lectura'))
+    lector.readAsDataURL(archivo)
+  })
 }
 
 function mensajeDeError(error: unknown): string {

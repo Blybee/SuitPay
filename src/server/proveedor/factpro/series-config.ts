@@ -31,6 +31,8 @@ function codigoTipoDocumento(tipo: TipoDeDocumento): number | undefined {
       return 7
     case 'boleta':
       return 8
+    case 'guia':
+      return 11
     default:
       return undefined
   }

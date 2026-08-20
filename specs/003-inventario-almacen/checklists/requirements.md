@@ -8,7 +8,7 @@
 
 - [x] Focused on user value and business needs
 - [x] All mandatory sections completed
-- [ ] No [NEEDS CLARIFICATION] markers remain — **FR-007 abierto a propósito (bloqueo)**
+- [x] No [NEEDS CLARIFICATION] markers remain — FR-007 cerrado (contadores orientativos; T010+ sigue bloqueado hasta go-live)
 
 ## Requirement Completeness
 
@@ -19,5 +19,5 @@
 
 ## Feature Readiness
 
-- [ ] Ready for implementation — **NO**, pending FR-007
+- [ ] Ready for implementation — **NO**: FR-007 cerrado, pero `T010+` espera go-live de almacén y `002` T021
 - [x] Ready for product clarification / plan freeze of blocked tasks

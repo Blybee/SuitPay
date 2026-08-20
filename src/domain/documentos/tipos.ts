@@ -11,6 +11,7 @@
 export const TIPOS_DE_DOCUMENTO = [
   'boleta',
   'factura',
+  'guia',
   'nota_venta',
   'interno_contingencia',
 ] as const
@@ -59,6 +60,14 @@ export const REGLAS: Record<TipoDeDocumento, ReglasDelTipo> = {
     sujetoAUmbralDeIdentificacion: false,
     prefijoDeSerie: 'F',
   },
+  guia: {
+    nombre: 'Guía de remisión',
+    valorTributario: true,
+    consumeSerieRegulada: true,
+    exigeClienteIdentificado: false,
+    sujetoAUmbralDeIdentificacion: false,
+    prefijoDeSerie: 'T',
+  },
   nota_venta: {
     nombre: 'Nota de venta',
     valorTributario: false,
@@ -97,6 +106,16 @@ export const TIPOS_ELEGIBLES = [
 ] as const satisfies readonly TipoDeDocumento[]
 
 export type TipoElegible = (typeof TIPOS_ELEGIBLES)[number]
+
+/** Tipos a los que el administrador asigna serie regulada (incluye guía). */
+export const TIPOS_CON_SERIE_ADMINISTRABLE = [
+  'boleta',
+  'factura',
+  'guia',
+] as const satisfies readonly TipoDeDocumento[]
+
+export type TipoConSerieAdministrable =
+  (typeof TIPOS_CON_SERIE_ADMINISTRABLE)[number]
 
 /**
  * Todo documento sin valor tributario tiene que declararlo en la interfaz. La

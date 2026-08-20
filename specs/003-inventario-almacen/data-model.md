@@ -10,8 +10,8 @@ Documento satélite `inventario/actual` (o `inventario/{codigo}`) separado de `c
 |-------|------|-------|
 | `codigo` | string | Misma clave que producto del catálogo |
 | `cantidad` | number | Entero ≥ 0 (o permitir negativo solo si se decide aviso-only) |
-| `maximo` | number | Para umbral %; opcional si umbral es absoluto |
-| `umbral` | number | Opcional override por SKU |
+| `maximo` | number | Base del umbral: alerta si `cantidad < 0.10 * maximo` (T003, 2026-08-19) |
+| `umbral` | number | Override opcional por SKU; si falta, rige el 10% de `maximo` |
 | `alerta` | boolean | Derivado o persistido |
 | `ajustes` | subcolección o arreglo acotado | motivo, delta, autor, momento |
 

@@ -40,6 +40,7 @@ describe('interpretarJsonDeTienda', () => {
       unidad: 'NIU',
       precio: 650,
       activo: true,
+      marca: 'Fipalsa',
     })
   })
 

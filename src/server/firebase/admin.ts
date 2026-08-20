@@ -124,11 +124,13 @@ export const COLECCIONES = {
   capturas: 'capturas',
   usuarios: 'usuarios',
   config: 'config',
+  transportistas: 'transportistas',
 } as const
 
 export const DOCUMENTOS = {
   catalogoActual: 'catalogo/actual',
   indiceDeClientes: 'indices/clientes',
+  indiceDeTransportistas: 'indices/transportistas',
   parametros: 'config/parametros',
   contadorCotizaciones: 'config/contadorCotizaciones',
 } as const

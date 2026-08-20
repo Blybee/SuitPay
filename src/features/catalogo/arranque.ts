@@ -10,6 +10,7 @@ import {
 } from '../../infra/local/catalogo.ts'
 import type {
   ClienteEnIndice,
+  CategoriaEnCatalogo,
   ProductoEnCatalogo,
 } from '../../infra/local/catalogo.ts'
 
@@ -53,6 +54,7 @@ export interface ResultadoDelArranque {
   readonly catalogo: {
     readonly version: number
     readonly productos: readonly ProductoEnCatalogo[]
+    readonly categorias: readonly CategoriaEnCatalogo[]
   }
   readonly clientes: {
     readonly version: number
@@ -95,7 +97,11 @@ export async function arrancarDesdeCache(): Promise<ResultadoDelArranque | null>
   if (catalogo === undefined) return null
 
   return {
-    catalogo: { version: catalogo.version, productos: catalogo.productos },
+    catalogo: {
+      version: catalogo.version,
+      productos: catalogo.productos,
+      categorias: catalogo.categorias ?? [],
+    },
     clientes: {
       version: clientes?.version ?? 0,
       lista: clientes?.clientes ?? [],
@@ -109,6 +115,7 @@ export async function arrancarDesdeCache(): Promise<ResultadoDelArranque | null>
 interface DocumentoDeCatalogo {
   readonly version?: number
   readonly productos?: readonly ProductoEnCatalogo[]
+  readonly categorias?: readonly CategoriaEnCatalogo[]
 }
 
 interface DocumentoDeIndice {
@@ -145,6 +152,7 @@ export async function arrancarDesdeServidor(): Promise<ResultadoDelArranque> {
   const versionPublicada = datosCatalogo?.version ?? 0
 
   let productos: readonly ProductoEnCatalogo[]
+  let categorias: readonly CategoriaEnCatalogo[]
   let catalogoDesdeCache = false
 
   if (
@@ -153,10 +161,12 @@ export async function arrancarDesdeServidor(): Promise<ResultadoDelArranque> {
     versionPublicada > 0
   ) {
     productos = enCache.productos
+    categorias = enCache.categorias ?? []
     catalogoDesdeCache = true
   } else {
     productos = datosCatalogo?.productos ?? []
-    await guardarCatalogo(versionPublicada, productos)
+    categorias = datosCatalogo?.categorias ?? []
+    await guardarCatalogo(versionPublicada, productos, categorias)
   }
 
   const datosIndice = instantaneaIndice.data() as DocumentoDeIndice | undefined
@@ -196,7 +206,7 @@ export async function arrancarDesdeServidor(): Promise<ResultadoDelArranque> {
   await guardarParametros(parametros)
 
   return {
-    catalogo: { version: versionPublicada, productos },
+    catalogo: { version: versionPublicada, productos, categorias },
     clientes: { version: versionDelIndice, lista: listaDeClientes },
     parametros,
     desdeCache: { catalogo: catalogoDesdeCache, clientes: clientesDesdeCache },

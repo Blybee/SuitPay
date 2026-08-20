@@ -45,6 +45,8 @@ export interface PropsDeEntrada {
   readonly enfocarAlMontar?: boolean
   /** Último término de producto de la sesión; se restaura con Enter en vacío. */
   readonly ultimaBusqueda?: string
+  /** Ejecuta un comando ya escrito (no completa el prefijo). */
+  readonly onEjecutarComando?: (texto: string) => void
   /** Imperative handle (React 19 ref-as-prop) para return focus to search. */
   readonly ref?: Ref<MangoDeEntrada>
 }
@@ -61,6 +63,7 @@ export function Entrada({
   onFotografiar,
   enfocarAlMontar = true,
   ultimaBusqueda = '',
+  onEjecutarComando,
   ref,
 }: PropsDeEntrada) {
   const campo = useRef<HTMLInputElement>(null)
@@ -186,6 +189,9 @@ export function Entrada({
         ) {
           evento.preventDefault()
           elegirComando(resaltado)
+        } else if (evento.key === 'Enter') {
+          evento.preventDefault()
+          onEjecutarComando?.(termino)
         }
       }
       return

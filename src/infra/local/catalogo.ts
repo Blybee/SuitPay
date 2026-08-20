@@ -15,11 +15,19 @@ export interface ProductoEnCatalogo {
   readonly unidad: string
   readonly precio: number
   readonly activo: boolean
+  readonly marca?: string
+  readonly categoriaId?: string
+}
+
+export interface CategoriaEnCatalogo {
+  readonly id: string
+  readonly nombre: string
 }
 
 export interface CatalogoEnCache {
   readonly version: number
   readonly productos: readonly ProductoEnCatalogo[]
+  readonly categorias?: readonly CategoriaEnCatalogo[]
   readonly guardadoEn: number
 }
 
@@ -48,10 +56,12 @@ export function leerCatalogo(): Promise<CatalogoEnCache | undefined> {
 export function guardarCatalogo(
   version: number,
   productos: readonly ProductoEnCatalogo[],
+  categorias: readonly CategoriaEnCatalogo[] = [],
 ): Promise<void> {
   return guardar<CatalogoEnCache>('catalogo', CLAVES.catalogo, {
     version,
     productos,
+    categorias,
     guardadoEn: Date.now(),
   })
 }

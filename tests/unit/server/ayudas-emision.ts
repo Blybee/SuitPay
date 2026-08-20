@@ -45,6 +45,7 @@ export function montarEscenario(
   const prefijos: Partial<Record<TipoDeDocumento, string>> = {
     boleta: 'B001',
     factura: 'F001',
+    guia: 'T001',
   }
 
   for (const tipo of opciones.series ?? ['boleta', 'factura']) {

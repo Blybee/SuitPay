@@ -7,7 +7,12 @@ import {
   
 } from '../../domain/busqueda/productos.ts'
 import type {IndiceDeProductos, ProductoBuscable, ResultadoDeBusqueda} from '../../domain/busqueda/productos.ts';
-import type { ClienteEnIndice } from '../../infra/local/catalogo.ts'
+import {
+  filtrarPorFacetas,
+  marcasDe,
+} from '../../domain/catalogo/filtros.ts'
+import type { FacetasDeCatalogo } from '../../domain/catalogo/filtros.ts'
+import type { ClienteEnIndice, CategoriaEnCatalogo } from '../../infra/local/catalogo.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
 import { arrancar  } from './arranque.ts'
 import type {ResultadoDelArranque} from './arranque.ts';
@@ -41,6 +46,9 @@ import type {ResultadoDelArranque} from './arranque.ts';
 
 interface EstadoDelCatalogo {
   readonly indice: IndiceDeProductos | null
+  readonly productos: readonly ProductoBuscable[]
+  readonly categorias: readonly CategoriaEnCatalogo[]
+  readonly facetas: FacetasDeCatalogo
   readonly version: number
   readonly cargando: boolean
   readonly listo: boolean
@@ -61,6 +69,7 @@ interface AccionesDelCatalogo {
   productoPorCodigo: (codigo: string) => ProductoBuscable | undefined
   /** Actualiza el índice en memoria tras un alta (sin lectura extra). */
   incorporarCliente: (entrada: ClienteEnIndice) => void
+  fijarFacetas: (facetas: FacetasDeCatalogo) => void
 }
 
 export type AlmacenDelCatalogo = EstadoDelCatalogo & AccionesDelCatalogo
@@ -74,6 +83,9 @@ const VACIO: ResultadoDeBusqueda<ProductoBuscable> = {
 
 export const usarCatalogo = create<AlmacenDelCatalogo>((set, get) => ({
   indice: null,
+  productos: [],
+  categorias: [],
+  facetas: {},
   version: 0,
   cargando: false,
   listo: false,
@@ -90,8 +102,11 @@ export const usarCatalogo = create<AlmacenDelCatalogo>((set, get) => ({
 
     try {
       const resultado = await arrancar()
+      const productos = resultado.catalogo.productos
       set({
-        indice: crearIndice(resultado.catalogo.productos),
+        indice: crearIndice(productos),
+        productos,
+        categorias: resultado.catalogo.categorias,
         version: resultado.catalogo.version,
         parametros: resultado.parametros,
         clientes: resultado.clientes.lista,
@@ -121,7 +136,23 @@ export const usarCatalogo = create<AlmacenDelCatalogo>((set, get) => ({
   buscar(termino, limite = 12) {
     const indice = get().indice
     if (indice === null) return { ...VACIO, termino }
-    return buscarProductos(indice, termino, limite)
+    const crudo = buscarProductos(indice, termino, limite * 4)
+    const visibles = filtrarPorFacetas(
+      crudo.coincidencias.map((c) => c.elemento),
+      get().facetas,
+    )
+    const permitidos = new Set(visibles.map((p) => p.codigo))
+    const coincidencias = crudo.coincidencias
+      .filter((c) => permitidos.has(c.elemento.codigo))
+      .slice(0, limite)
+    return {
+      coincidencias,
+      sinCoincidencias: coincidencias.length === 0,
+      soloAproximadas:
+        coincidencias.length > 0 &&
+        coincidencias.every((c) => c.grado === 'aproximada'),
+      termino: crudo.termino,
+    }
   },
 
   productoPorCodigo(codigo) {
@@ -146,7 +177,24 @@ export const usarCatalogo = create<AlmacenDelCatalogo>((set, get) => ({
     }
     set({ clientes: [...actuales, entrada] })
   },
+
+  fijarFacetas(facetas) {
+    set({ facetas })
+  },
 }))
+
+export function marcasDelCatalogo(estado: AlmacenDelCatalogo): readonly string[] {
+  return marcasDe(estado.productos)
+}
+
+export function productosVisibles(
+  estado: AlmacenDelCatalogo,
+): readonly ProductoBuscable[] {
+  return filtrarPorFacetas(
+    estado.productos.filter((p) => p.activo),
+    estado.facetas,
+  )
+}
 
 /** El umbral vigente, con el respaldo conservador si aún no se leyó. */
 export function umbralVigente(estado: AlmacenDelCatalogo): number {

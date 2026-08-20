@@ -86,8 +86,16 @@ const productos = [
   { codigo: 'LLA-PASO-12', descripcion: 'LLAVE DE PASO 1/2 FV', unidad: 'UND', precio: 1800, activo: true },
 ]
 
-await db.collection('catalogo').doc('actual').set({ version: 1, productos })
+await db.collection('catalogo').doc('actual').set({
+  version: 1,
+  productos,
+  categorias: [],
+})
 await db.collection('indices').doc('clientes').set({ version: 1, clientes: [] })
+await db.collection('indices').doc('transportistas').set({
+  version: 1,
+  transportistas: [],
+})
 await db.collection('config').doc('parametros').set({
   umbralIdentificacionBoleta: 70000,
   ventanaAnulacion: 'mismo_dia',

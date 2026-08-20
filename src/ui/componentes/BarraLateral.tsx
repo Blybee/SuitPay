@@ -220,8 +220,7 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
         id={idMenuMovil}
         popover="auto"
         onToggle={(evento) => {
-          const toggle = evento as ToggleEvent
-          setMenuMovilAbierto(toggle.newState === 'open')
+          setMenuMovilAbierto(evento.newState === 'open')
         }}
         className="barra-lateral-menu-movil border-b border-borde bg-papel shadow-md"
         style={{ top: topeMenuMovil }}

@@ -25,6 +25,13 @@ export const numeroDeDocumentoIdentidad = z
   .max(15)
   .regex(/^[0-9A-Za-z]+$/, 'Sin espacios ni signos')
 
+export const esquemaDeCategoria = z.object({
+  id: z.string().trim().min(1).max(40),
+  nombre: z.string().trim().min(1).max(80),
+})
+
+export type CategoriaDeCatalogo = z.infer<typeof esquemaDeCategoria>
+
 export const esquemaDeProducto = z.object({
   codigo: z.string().trim().min(1).max(40),
   descripcion: z.string().trim().min(1).max(300),
@@ -35,6 +42,10 @@ export const esquemaDeProducto = z.object({
     'El precio del catálogo no puede ser negativo',
   ),
   activo: z.boolean(),
+  /** Persistida (JSON `brand` / PDF `LINEA`). Vacía si el origen no trae marca. */
+  marca: z.string().trim().max(120).default(''),
+  /** Opcional: referencia a `categorias[].id` del mismo documento. */
+  categoriaId: z.string().trim().min(1).max(40).optional(),
 })
 
 export type Producto = z.infer<typeof esquemaDeProducto>

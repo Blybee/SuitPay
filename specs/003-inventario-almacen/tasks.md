@@ -3,15 +3,15 @@
 **Input**: [spec.md](./spec.md), [plan.md](./plan.md)  
 **Prereq**: `001-mostrador-asistido` emisión/anulación operativas.
 
-**BLOQUEO**: ninguna tarea de implementación de código (`T010+`) se ejecuta hasta cerrar FR-007 (fuente de verdad en convivencia). Las tareas T001–T009 son solo Speckit/diseño o quedan en espera.
+**BLOQUEO**: FR-007 está cerrado en spec (contadores orientativos). `T010+` sigue sin código hasta el corte de go-live de almacén y hasta `002` T021 (T019).
 
 ## Phase 0: Desbloqueo de producto
 
-- [ ] T001 Resolver FR-007 con el negocio: SuitPay fuente de verdad vs contadores orientativos
-- [ ] T002 Decidir si stock 0 bloquea emisión o solo avisa (default spec: solo avisa)
-- [ ] T003 Fijar umbral default (10% de `maximo` vs mínimo absoluto) en plan/data-model
+- [x] T001 Resolver FR-007 con el negocio: SuitPay fuente de verdad vs contadores orientativos
+- [x] T002 Decidir si stock 0 bloquea emisión o solo avisa (default spec: solo avisa)
+- [x] T003 Fijar umbral default (10% de `maximo` vs mínimo absoluto) en plan/data-model
 
-**Checkpoint**: FR-007 cerrado por escrito en spec (sin NEEDS CLARIFICATION).
+**Checkpoint**: FR-007 cerrado por escrito en spec (sin NEEDS CLARIFICATION). Decisión: convivencia = contadores orientativos; stock 0 solo avisa (principio V); umbral = 10% de `maximo`.
 
 ## Phase 1: Modelo y dominio (bloqueado hasta T001)
 
@@ -39,4 +39,4 @@
 
 ## Checkpoint final
 
-Stock consistente con emisiones/anulaciones; nota de venta mueve stock; guía asociada hereda el movimiento; cascada bidireccional reintegra una vez; alertas visibles; mostrador no detenido por defecto. **FR-007 sigue abierto: no implementar T010+.**
+Stock consistente con emisiones/anulaciones; nota de venta mueve stock; guía asociada hereda el movimiento; cascada bidireccional reintegra una vez; alertas visibles; mostrador no detenido por defecto. **FR-007 cerrado** (contadores orientativos); **no implementar T010+** hasta go-live de almacén y `002` T021.

@@ -112,6 +112,10 @@ beforeEach(async () => {
     const bd = contexto.firestore()
     await setDoc(doc(bd, 'catalogo/actual'), { version: 1, productos: [] })
     await setDoc(doc(bd, 'indices/clientes'), { version: 1, clientes: [] })
+    await setDoc(doc(bd, 'indices/transportistas'), {
+      version: 1,
+      transportistas: [],
+    })
     await setDoc(doc(bd, 'config/parametros'), {
       umbralIdentificacionBoleta: 70_000,
       ventanaAnulacion: 'mismo_dia',
@@ -426,6 +430,43 @@ describeConEmulador('clientes', () => {
 
   it('nadie puede borrar un cliente', async () => {
     await assertFails(deleteDoc(doc(comoAdministrador(), 'clientes/20999999999')))
+  })
+})
+
+describeConEmulador('transportistas', () => {
+  it('un vendedor crea un transportista con forma válida', async () => {
+    await assertSucceeds(
+      setDoc(doc(comoVendedor(), 'transportistas/20123456789'), {
+        tipoDocumento: 'RUC',
+        numeroDocumento: '20123456789',
+        denominacion: 'Transportes Demo',
+        creadoPor: 'vendedor-1',
+        creadoEn: serverTimestamp(),
+      }),
+    )
+  })
+
+  it('un vendedor NO escribe el índice de transportistas', async () => {
+    await assertFails(
+      setDoc(doc(comoVendedor(), 'indices/transportistas'), {
+        version: 2,
+        transportistas: [],
+      }),
+    )
+  })
+
+  it('un vendedor lee el maestro y el índice', async () => {
+    await entorno.withSecurityRulesDisabled(async (contexto) => {
+      await setDoc(doc(contexto.firestore(), 'transportistas/20999999999'), {
+        tipoDocumento: 'RUC',
+        numeroDocumento: '20999999999',
+        denominacion: 'Sembrado',
+        creadoPor: 'backend',
+        creadoEn: serverTimestamp(),
+      })
+    })
+    await assertSucceeds(getDoc(doc(comoVendedor(), 'transportistas/20999999999')))
+    await assertSucceeds(getDoc(doc(comoVendedor(), 'indices/transportistas')))
   })
 })
 

@@ -52,9 +52,9 @@ function PantallaDeSeries() {
   const [nombreEst, setNombreEst] = useState('')
 
   const [vendedorId, setVendedorId] = useState('')
-  const [tipoDocumento, setTipoDocumento] = useState<'boleta' | 'factura'>(
-    'boleta',
-  )
+  const [tipoDocumento, setTipoDocumento] = useState<
+    'boleta' | 'factura' | 'guia'
+  >('boleta')
   const [serie, setSerie] = useState('B001')
   const [numeroInicial, setNumeroInicial] = useState(1)
   const [establecimientoId, setEstablecimientoId] = useState('')
@@ -105,7 +105,13 @@ function PantallaDeSeries() {
   }, [])
 
   useEffect(() => {
-    setSerie(tipoDocumento === 'boleta' ? 'B001' : 'F001')
+    setSerie(
+      tipoDocumento === 'boleta'
+        ? 'B001'
+        : tipoDocumento === 'factura'
+          ? 'F001'
+          : 'T001',
+    )
   }, [tipoDocumento])
 
   async function crearEst(evento: FormEvent): Promise<void> {
@@ -285,16 +291,19 @@ function PantallaDeSeries() {
               className="min-h-11 w-full rounded-full border border-borde bg-papel px-4"
               value={tipoDocumento}
               onChange={(e) =>
-                setTipoDocumento(e.target.value as 'boleta' | 'factura')
+                setTipoDocumento(
+                  e.target.value as 'boleta' | 'factura' | 'guia',
+                )
               }
               disabled={ocupado}
             >
               <option value="boleta">Boleta</option>
               <option value="factura">Factura</option>
+              <option value="guia">Guía de remisión</option>
             </select>
           </div>
           <div>
-            <Etiqueta htmlFor="serie">Serie (máx. 4, prefijo B/F)</Etiqueta>
+            <Etiqueta htmlFor="serie">Serie (máx. 4, prefijo B/F/T)</Etiqueta>
             <Campo
               id="serie"
               required

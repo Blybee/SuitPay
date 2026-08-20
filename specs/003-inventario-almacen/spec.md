@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-10
 
-**Updated**: 2026-08-18 (enmienda: nota de venta confirma stock; la guía asociada hereda el movimiento; cascada bidireccional reintegra una sola vez)
+**Updated**: 2026-08-19 (FR-007 cerrado: contadores orientativos en convivencia)
 
 **Status**: Draft — **implementación bloqueada** hasta cerrar la fuente de verdad en convivencia con el sistema anterior
 
@@ -81,7 +81,7 @@ El administrador carga existencias iniciales y puede ajustar cantidades con moti
 
 - Emisión indeterminada: no descontar hasta conocer el resultado (alineado al principio II).
 - Producto sin campo de stock (aún no cargado): tratar como “sin control” y no inventar cantidades.
-- Convivencia con sistema anterior: ver Assumptions / NEEDS CLARIFICATION.
+- Convivencia con sistema anterior: SuitPay muestra contadores **orientativos**; el sistema previo sigue siendo la fuente de verdad hasta el go-live de almacén (FR-007).
 - Guía de traslado entre almacenes (sin boleta/factura): fuera de esta regla de stock; `003` es un solo almacén.
 - Nota de venta: nunca tiene guía asociada; siempre es dueña de su propio movimiento.
 
@@ -95,7 +95,7 @@ El administrador carga existencias iniciales y puede ajustar cantidades con moti
 - **FR-004**: El sistema MUST advertir stock bajo según umbral configurable (default documentado en plan: 10% del máximo o mínimo absoluto).
 - **FR-005**: El aviso de stock bajo en mostrador MUST NOT bloquear la emisión por defecto (principio V), salvo decisión explícita posterior.
 - **FR-006**: Solo administrador (o rol con permiso de almacén) MUST poder cargar/ajustar stock con motivo y traza.
-- **FR-007**: [NEEDS CLARIFICATION: ¿SuitPay es fuente de verdad de stock durante la convivencia con el sistema anterior, o los contadores son solo orientativos?]
+- **FR-007**: Durante la convivencia con el sistema anterior, los contadores de SuitPay son **orientativos** (indicative inventory), no la fuente de verdad del almacén. El almacenero no opera en SuitPay (`PRODUCT.md`); el stock físico y los ajustes oficiales siguen en el sistema previo. SuitPay puede mostrar existencias y alertas para apoyar al mostrador, pero MUST NOT afirmarse como inventario de registro hasta que el negocio declare el corte (go-live de almacén). Esta decisión **cierra** el `NEEDS CLARIFICATION` de 2026-08-10; el código de `T010+` sigue bloqueado hasta ese corte y hasta `002` T021.
 - **FR-008**: Si una boleta o factura ya descontó stock y después se asocia una guía, el sistema MUST NOT descontar otra vez. MUST transferir la titularidad del movimiento a la guía (`inventarioAplicadoPor` = id de la guía).
 - **FR-009**: La anulación en cascada del par boleta/factura ↔ guía (`002` FR-013) MUST reintegrar stock **una sola vez**, da igual por cuál documento se inició. MUST NOT reintegrar al anular el segundo del par.
 
@@ -109,7 +109,7 @@ El administrador carga existencias iniciales y puede ajustar cantidades con moti
 ## Assumptions
 
 - Depende de emisión/anulación de `001` y de la asociación/cascada de `002`.
-- **Implementación bloqueada** hasta resolver FR-007 (fuente de verdad). Esta enmienda (2026-08-18) **no** cierra FR-007 ni desbloquea código.
+- **Implementación bloqueada** hasta el corte de go-live de almacén (FR-007 cerrado: contadores orientativos en convivencia). Esta enmienda (2026-08-19) cierra FR-007 por escrito; **no** desbloquea `T010+`.
 - El almacenero no usa SuitPay (`PRODUCT.md`); la carga la hace admin.
 - Ranking de ventas es feature `004` y no sustituye al inventario.
 - Traslado entre almacenes (guía sin venta) queda fuera del movimiento de stock de esta feature.

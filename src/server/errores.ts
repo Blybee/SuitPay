@@ -34,6 +34,7 @@ export const CODIGOS_DE_ERROR = {
   emision_indeterminada: 'emision_indeterminada',
   proveedor_no_disponible: 'proveedor_no_disponible',
   emision_rechazada: 'emision_rechazada',
+  guia_asociada_existente: 'guia_asociada_existente',
 
   // --- Anulación -----------------------------------------------------------
   fuera_de_ventana_anulacion: 'fuera_de_ventana_anulacion',
@@ -94,6 +95,8 @@ const MENSAJES: Record<CodigoDeError, string> = {
     'El servicio de emisión no responde. El pedido se conserva: inténtalo de nuevo en unos minutos.',
   emision_rechazada:
     'El comprobante fue rechazado. Revisa el motivo en su detalle antes de volver a intentarlo.',
+  guia_asociada_existente:
+    'Ese comprobante ya tiene una guía vigente. Anúlala antes de emitir otra.',
 
   fuera_de_ventana_anulacion:
     'Este comprobante es de un día anterior y ya no puede anularse. Corresponde una nota de crédito.',
@@ -145,6 +148,7 @@ const REINTENTABLE: Record<CodigoDeError, boolean> = {
   emision_indeterminada: false,
   proveedor_no_disponible: true,
   emision_rechazada: false,
+  guia_asociada_existente: false,
 
   fuera_de_ventana_anulacion: false,
   estado_no_anulable: false,

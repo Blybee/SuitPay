@@ -92,6 +92,7 @@ function expandirProducto(origen: ProductoDeTienda): readonly ProductoDeCatalogo
         unidad: UNIDAD_POR_DEFECTO,
         precio: aCentimos(variante.unitPrices?.wholesale),
         activo: variante.stock ?? origen.stock ?? true,
+        marca,
       })
     }
     return items
@@ -104,6 +105,7 @@ function expandirProducto(origen: ProductoDeTienda): readonly ProductoDeCatalogo
       unidad: UNIDAD_POR_DEFECTO,
       precio: aCentimos(origen.unitConfig?.unitPrices?.wholesale),
       activo: origen.stock ?? true,
+      marca,
     },
   ]
 }

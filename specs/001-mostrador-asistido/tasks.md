@@ -198,11 +198,11 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 - [x] T075 [P] [US2] Prueba de códigos duplicados en `tests/unit/server/importar-duplicados.test.ts`: el conflicto se informa y **no se resuelve por cuenta del sistema** (FR-010)
 - [x] T076 [P] [US2] Prueba de comparación en `tests/unit/server/importar-diferencias.test.ts`: sobre un catálogo ya publicado, la validación distingue productos nuevos, cambios de precio y desapariciones (FR-011)
 - [x] T077 [P] [US2] Implementar la interpretación de archivos estructurados en `src/server/catalogo/lector-json.ts` — formato `json_tienda` (decisión 11 de `research.md`); fixture `tests/fixtures/productos-tienda-muestra.json`
-- [ ] T078 [US2] Importación PDF lista de precios (FR-009b, decisión 13). El JSON de tienda (T077/T082) sigue siendo camino paralelo válido. Desglose:
-  - [ ] T078a [P] Añadir dependencia `unpdf` y sustituir el stub de `src/server/catalogo/lector-documento.ts` por extracción con `extractTextItems` + reconstrucción de filas (CODIGO | PRODUCTO | U.M. | PRECIO; ignorar % DCT.; `LINEA` → `marca` efímera)
-  - [ ] T078b [P] Mapa U.M. → unidad SuitPay y precio a céntimos; ruido/cabeceras omitidos; tests unitarios contra `docs/LISTAS.pdf` (y/o fixture recortado) en `tests/unit/server/lector-documento.test.ts`
-  - [ ] T078c Server fn `interpretarCatalogoDocumento` (base64 → filas, sin escribir) + extensión de `importarCatalogo` con formato `productos_revisados` (`contracts/functions.md`)
-  - [ ] T078d UI en `src/routes/administracion/catalogo.tsx`: aceptar `.pdf`; grilla de revisión (virtualizada si hace falta) con selección, eliminar, autoselección por marca, edición inline; luego validar/publicar sin aplicar nada hasta confirmar
+- [x] T078 [US2] Importación PDF lista de precios (FR-009b, decisión 13).
+  - [x] T078a [P] Añadir dependencia `unpdf` y sustituir el stub de `src/server/catalogo/lector-documento.ts` por extracción con `extractTextItems` + reconstrucción de filas (CODIGO | PRODUCTO | U.M. | PRECIO; ignorar % DCT.; `LINEA` → `marca` efímera)
+  - [x] T078b [P] Mapa U.M. → unidad SuitPay y precio a céntimos; ruido/cabeceras omitidos; tests unitarios contra `docs/LISTAS.pdf` (y/o fixture recortado) en `tests/unit/server/lector-documento.test.ts`
+  - [x] T078c Server fn `interpretarCatalogoDocumento` (base64 → filas, sin escribir) + extensión de `importarCatalogo` con formato `productos_revisados` (`contracts/functions.md`)
+  - [x] T078d UI en `src/routes/administracion/catalogo.tsx`: aceptar `.pdf`; grilla de revisión (virtualizada si hace falta) con selección, eliminar, autoselección por marca, edición inline; luego validar/publicar sin aplicar nada hasta confirmar
 - [x] T079 [US2] Implementar la detección de conflictos en `src/server/catalogo/conflictos.ts`: códigos repetidos y unidades desconocidas (precio ausente → 0, no bloquea; decisión 11)
 - [x] T080 [US2] Implementar la comparación contra el catálogo publicado en `src/server/catalogo/diferencias.ts`
 - [x] T081 [US2] Implementar la función de servidor `importarCatalogo` en `src/server/catalogo/importar.ts` con sus modos `validar` y `publicar`, escribiendo el catálogo completo **en una sola escritura** e incrementando su versión
@@ -359,7 +359,7 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 - [x] T142 [US8] Implementar UI del tab Vecinos en `src/features/vecinos/panel.tsx`: sub-tabs solo con alias; cuerpo = líneas + total reutilizando `LineaPedido` / pie; vacío con pista del comando (FR-034)
 - [x] T143 [US8] Enrutar altas de producto desde Entrada al vecino activo y persistir la cotización viva (create/update) mientras el sub-tab esté seleccionado (FR-035)
 - [x] T143a [P] [US8] Permitir convertir/emitir la cotización del vecino activo a boleta, factura o nota de venta reutilizando el flujo de emisión + borrado T174 (FR-035a)
-- [ ] T143b [P] [US8] Prueba e2e o de integración del flujo vecino en `tests/e2e/vecinos.spec.ts` (o emulador): crear → agregar líneas → emitir → cotización ausente
+- [x] T143b [P] [US8] Prueba e2e o de integración del flujo vecino en `tests/e2e/vecinos.spec.ts` (o emulador): crear → agregar líneas → emitir → cotización ausente
 
 **Checkpoint**: el canal de vecinos queda documentado el mismo día de la entrega como cotización; el comprobante nace al convertir cuando el vecino paga.
 
@@ -373,14 +373,14 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 
 **Independent Test**: se pide por comando la lista de comprobantes de un cliente y se obtiene sin salir de la pantalla de venta.
 
-- [ ] T144 [P] [US9] **Prueba de la frontera de los comandos** en `tests/unit/features/comandos-solo-lectura.test.ts`: ninguna instrucción en lenguaje natural puede crear, modificar, anular o dar de baja un **comprobante**, y el intento **indica dónde se realiza esa operación** (FR-048, principio I). `/crear vecino` es de US8 (T140) y queda fuera de este catálogo de solo-consulta
-- [ ] T145 [US9] Implementar el catálogo cerrado de operaciones de consulta en `src/features/comandos/catalogo.ts`. Es un catálogo cerrado por diseño: **no hay interpretación libre de intenciones**. **Cada comando nuevo MUST también registrarse** en `src/features/comandos/pistas.ts` → `CATALOGO_DE_COMANDOS` (`prefijo` + `parametros`) para las pistas del buscador (FR-047a); `/crear vecino` ya está
-- [ ] T146 [US9] Extender el reconocimiento de comandos reutilizando modo `/` de `Entrada` + `pistas.ts` (ya oculta sugerencias de producto y muestra parámetros fantasma). Completar en `src/features/comandos/reconocer.ts` el despacho a consultas; no reinventar el catálogo de pistas
-- [ ] T147 [P] [US9] Implementar la consulta de últimos comprobantes de un cliente en `src/features/comandos/comprobantes-cliente.ts`, con cursor y página corta; **añadir** su entrada en `CATALOGO_DE_COMANDOS`
-- [ ] T148 [P] [US9] Implementar la consulta de cotización por número en `src/features/comandos/cotizacion.ts`; **añadir** su entrada en `CATALOGO_DE_COMANDOS`
-- [ ] T149 [US9] Implementar la resolución de instrucciones incompletas en `src/features/comandos/incompletas.tsx` mediante la papeleta de contexto, que **pide lo que falta en lugar de fallar** (FR-049)
-- [ ] T150 [P] [US9] Implementar la presentación de resultados sin abandonar la pantalla de venta en `src/features/comandos/resultados.tsx` (FR-047)
-- [ ] T151 [US9] Extender el dictado para admitir comandos hablados en `src/features/comandos/por-voz.ts`, con la misma frontera: consultas sí; escritura de comprobantes no
+- [x] T144 [P] [US9] **Prueba de la frontera de los comandos** en `tests/unit/features/comandos-solo-lectura.test.ts`: ninguna instrucción en lenguaje natural puede crear, modificar, anular o dar de baja un **comprobante**, y el intento **indica dónde se realiza esa operación** (FR-048, principio I). `/crear vecino` es de US8 (T140) y queda fuera de este catálogo de solo-consulta
+- [x] T145 [US9] Implementar el catálogo cerrado de operaciones de consulta en `src/features/comandos/catalogo.ts`. Es un catálogo cerrado por diseño: **no hay interpretación libre de intenciones**. **Cada comando nuevo MUST también registrarse** en `src/features/comandos/pistas.ts` → `CATALOGO_DE_COMANDOS` (`prefijo` + `parametros`) para las pistas del buscador (FR-047a); `/crear vecino` ya está
+- [x] T146 [US9] Extender el reconocimiento de comandos reutilizando modo `/` de `Entrada` + `pistas.ts` (ya oculta sugerencias de producto y muestra parámetros fantasma). Completar en `src/features/comandos/reconocer.ts` el despacho a consultas; no reinventar el catálogo de pistas
+- [x] T147 [P] [US9] Implementar la consulta de últimos comprobantes de un cliente en `src/features/comandos/comprobantes-cliente.ts`, con cursor y página corta; **añadir** su entrada en `CATALOGO_DE_COMANDOS`
+- [x] T148 [P] [US9] Implementar la consulta de cotización por número en `src/features/comandos/cotizacion.ts`; **añadir** su entrada en `CATALOGO_DE_COMANDOS`
+- [x] T149 [US9] Implementar la resolución de instrucciones incompletas en `src/features/comandos/incompletas.tsx` mediante la papeleta de contexto, que **pide lo que falta en lugar de fallar** (FR-049)
+- [x] T150 [P] [US9] Implementar la presentación de resultados sin abandonar la pantalla de venta en `src/features/comandos/resultados.tsx` (FR-047)
+- [x] T151 [US9] Extender el dictado para admitir comandos hablados en `src/features/comandos/por-voz.ts`, con la misma frontera: consultas sí; escritura de comprobantes no
 
 **Checkpoint**: las consultas se resuelven sin navegar, y ninguna instrucción hablada o escrita puede escribir.
 
@@ -393,11 +393,13 @@ Lo que falta para poder decir que la empresa vende, y en este orden:
 ### Verificaciones constitucionales ejecutables
 
 - [x] T152 **Verificación del principio III** en `tests/constitucion/proveedor-aislado.test.ts`: el nombre del proveedor **no aparece** en `domain`/`features`/`ui`/`routes`/`infra` (sí puede vivir en `src/server/proveedor/**` y tooling de frontera)
-- [ ] T153 **Verificación del principio IV** en `tests/constitucion/asistencia-sin-clientes.test.ts`: inspeccionar el payload de la única función que habla con el servicio de asistencia y comprobar que ningún dato identificatorio de cliente aparece en él (SC-012)
+- [x] T153 **Verificación del principio IV** en `tests/constitucion/asistencia-sin-clientes.test.ts`: inspeccionar el payload de la única función que habla con el servicio de asistencia y comprobar que ningún dato identificatorio de cliente aparece en él (SC-012)
 - [x] T154 [P] **Verificación del principio I** en `tests/constitucion/emision-con-confirmacion.test.ts`: no existe ningún camino que emita sin clave de idempotencia ni sin confirmación explícita atribuida a un vendedor identificado
-- [ ] T155 [P] Verificación de trazabilidad en `tests/constitucion/trazabilidad.test.ts`: toda emisión, anulación e intento fallido queda atribuido a un vendedor y a un momento (SC-011)
+- [x] T155 [P] Verificación de trazabilidad en `tests/constitucion/trazabilidad.test.ts`: toda emisión, anulación e intento fallido queda atribuido a un vendedor y a un momento (SC-011)
 
 ### Accesibilidad y escena de uso
+
+**Diferido (2026-08-19)**: T156–T159 (y el polish T161–T166 original de Phase 12) van después de entregar GRE (`002` US1), no en el camino crítico. Los IDs T160–T166 de esta sección chocan con C5 Soft-Pill; no reabrirlos con el significado original.
 
 - [ ] T156 **Prueba de venta solo con teclado** en `tests/e2e/solo-teclado.spec.ts`: una venta completa, incluida la emisión, sin usar el puntero. La escena es un vendedor de pie y no se puede depender de la precisión del ratón
 - [ ] T157 [P] Auditoría de contraste y tamaños en `tests/a11y/`, verificando los tamaños generosos que exige un monitor a distancia y una vista cansada
@@ -624,17 +626,17 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 
 ### Pruebas obligatorias ⚠️
 
-- [ ] T195 [P] [US2] Prueba de esquema y publicación: `marca` persistida, `categorias[]` en el documento, `categoriaId` opcional; producto sin categoría publica; recarga conserva ids (FR-009c, FR-009d). Archivos: `tests/unit/server/importar-categorias.test.ts` (o extender `importar-diferencias` / esquemas)
-- [ ] T196 [P] [US2] Prueba de filtros facetados sobre el catálogo en memoria: categoría global vs categoría ∩ marca; producto sin categoría no entra al filtro de categoría (FR-009d)
+- [x] T195 [P] [US2] Prueba de esquema y publicación: `marca` persistida, `categorias[]` en el documento, `categoriaId` opcional; producto sin categoría publica; recarga conserva ids (FR-009c, FR-009d). Archivos: `tests/unit/server/importar-categorias.test.ts` (o extender `importar-diferencias` / esquemas)
+- [x] T196 [P] [US2] Prueba de filtros facetados sobre el catálogo en memoria: categoría global vs categoría ∩ marca; producto sin categoría no entra al filtro de categoría (FR-009d)
 
 ### Implementación
 
-- [ ] T197 [US2] Ampliar `esquemaDeProducto` y `catalogo/actual`: `marca`, `categoriaId?`, arreglo `categorias: { id, nombre }[]`. Lector JSON (`lector-json.ts`) persiste `brand` → `marca`. Contrato `importarCatalogo` / `productos_revisados` según `contracts/functions.md`. Archivos: `src/domain/esquemas/comunes.ts`, `src/server/catalogo/`
-- [ ] T198 [US2] UI de importación en `src/routes/administracion/catalogo.tsx` (y T078d cuando exista): crear categoría de un nivel, asignar en lote a la selección, filtrar por marca y por categoría **antes** de publicar. Nada se escribe hasta confirmar.
-- [ ] T199 [P] [US2] Filtros locales marca + categoría en mostrador (búsqueda / listado) sobre el catálogo ya espejado; cero lecturas extra (FR-009d)
-- [ ] T200 [P] [US2] Extender T078d (PDF): `LINEA` → `marca` persistida al publicar, no solo metadato de grilla (decisión 13 enmendada / FR-009c)
+- [x] T197 [US2] Ampliar `esquemaDeProducto` y `catalogo/actual`: `marca`, `categoriaId?`, arreglo `categorias: { id, nombre }[]`. Lector JSON (`lector-json.ts`) persiste `brand` → `marca`. Contrato `importarCatalogo` / `productos_revisados` según `contracts/functions.md`. Archivos: `src/domain/esquemas/comunes.ts`, `src/server/catalogo/`
+- [x] T198 [US2] UI de importación en `src/routes/administracion/catalogo.tsx` (y T078d cuando exista): crear categoría de un nivel, asignar en lote a la selección, filtrar por marca y por categoría **antes** de publicar. Nada se escribe hasta confirmar.
+- [x] T199 [P] [US2] Filtros locales marca + categoría en mostrador (búsqueda / listado) sobre el catálogo ya espejado; cero lecturas extra (FR-009d)
+- [x] T200 [P] [US2] Extender T078d (PDF): `LINEA` → `marca` persistida al publicar, no solo metadato de grilla (decisión 13 enmendada / FR-009c).
 
-**Checkpoint C11**: catálogo publicado con marca y categorías de un nivel; filtros en importación, admin y mostrador; T078 PDF sigue su propio backlog.
+**Checkpoint C11**: catálogo publicado con marca y categorías de un nivel; filtros en importación, admin y mostrador; T078 PDF y T200 cerrados.
 
 ---
 

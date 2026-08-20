@@ -1,5 +1,9 @@
 import type { AlmacenDeCatalogo } from './almacen.ts'
-import type { CatalogoPublicado, ProductoDeCatalogo } from './tipos.ts'
+import type {
+  CatalogoPublicado,
+  CategoriaDeCatalogo,
+  ProductoDeCatalogo,
+} from './tipos.ts'
 
 /** Almacén en memoria para pruebas unitarias de importación. */
 export class AlmacenDeCatalogoEnMemoria implements AlmacenDeCatalogo {
@@ -15,6 +19,7 @@ export class AlmacenDeCatalogoEnMemoria implements AlmacenDeCatalogo {
 
   async publicar(entrada: {
     readonly productos: readonly ProductoDeCatalogo[]
+    readonly categorias: readonly CategoriaDeCatalogo[]
     readonly publicadoPor: string
     readonly momento: Date
   }): Promise<CatalogoPublicado> {
@@ -25,6 +30,7 @@ export class AlmacenDeCatalogoEnMemoria implements AlmacenDeCatalogo {
       publicadoPor: entrada.publicadoPor,
       totalProductos: entrada.productos.length,
       productos: [...entrada.productos],
+      categorias: [...entrada.categorias],
     }
     return this.publicado
   }

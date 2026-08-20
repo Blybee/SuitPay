@@ -14,6 +14,7 @@ const base = (codigo: string, precio: number): ProductoDeCatalogo => ({
   unidad: 'NIU',
   precio,
   activo: true,
+  marca: '',
 })
 
 describe('diferencias de importación', () => {
@@ -40,6 +41,7 @@ describe('diferencias de importación', () => {
       publicadoPor: 'admin',
       totalProductos: 1,
       productos: [base('viejo', 100)],
+      categorias: [],
     })
 
     const resumen = await importarCatalogo(almacen, {

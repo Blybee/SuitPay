@@ -16,6 +16,7 @@ function producto(
     unidad: parcial.unidad ?? 'NIU',
     precio: parcial.precio ?? 100,
     activo: parcial.activo ?? true,
+    marca: parcial.marca ?? '',
     codigo: parcial.codigo,
   }
 }

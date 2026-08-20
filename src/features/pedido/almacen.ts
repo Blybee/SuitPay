@@ -51,7 +51,8 @@ interface EstadoDelPedido {
   readonly cotizacionId: string | null
   readonly capturaId: string | null
   readonly claveIdempotencia: string | null
-  /** Verdadero mientras se lee lo que hubiera guardado en el dispositivo. */
+  /** Comprobante (boleta/factura) desde el que se reutilizó el pedido. */
+  readonly comprobanteOrigenId: string | null
   readonly restaurando: boolean
 }
 
@@ -88,6 +89,7 @@ interface AccionesDelPedido {
   cargarDesdeComprobante: (datos: {
     readonly lineas: readonly LineaDePedido[]
     readonly cliente: ClienteDelPedido | null
+    readonly comprobanteOrigenId: string
   }) => void
   /**
    * Reclama la clave de idempotencia con la que se confirmará la venta. Es
@@ -110,6 +112,7 @@ const ESTADO_INICIAL: EstadoDelPedido = {
   cotizacionId: null,
   capturaId: null,
   claveIdempotencia: null,
+  comprobanteOrigenId: null,
   restaurando: true,
 }
 
@@ -124,6 +127,7 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
       cotizacionId: estado.cotizacionId,
       capturaId: estado.capturaId,
       claveIdempotencia: estado.claveIdempotencia,
+      comprobanteOrigenId: estado.comprobanteOrigenId,
     })
   }
 
@@ -202,6 +206,7 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         cliente: datos.cliente,
         cotizacionId: datos.cotizacionId,
         capturaId: null,
+        comprobanteOrigenId: null,
       })
     },
 
@@ -214,6 +219,7 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         cliente: datos.cliente,
         cotizacionId: null,
         capturaId: null,
+        comprobanteOrigenId: datos.comprobanteOrigenId,
       })
     },
 
@@ -249,6 +255,7 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         cotizacionId: guardado.cotizacionId,
         capturaId: guardado.capturaId,
         claveIdempotencia: guardado.claveIdempotencia,
+        comprobanteOrigenId: guardado.comprobanteOrigenId ?? null,
         restaurando: false,
       })
     },

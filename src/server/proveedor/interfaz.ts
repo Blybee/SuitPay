@@ -16,6 +16,7 @@
  */
 
 import type { TipoDeDocumento } from '../../domain/documentos/tipos.ts'
+import type { TrasladoDeGuia } from '../../domain/guia/tipos.ts'
 
 /** Un importe en céntimos. Ver src/domain/totales/. */
 type Centimos = number
@@ -172,6 +173,19 @@ export interface DocumentoEmitido {
 }
 
 // ---------------------------------------------------------------------------
+// Guía de remisión (vocabulario SuitPay; códigos del proveedor solo en adaptador)
+// ---------------------------------------------------------------------------
+
+export interface PeticionDeGuiaRemision {
+  readonly serie: string
+  readonly numero: number | null
+  readonly destinatario: ClienteParaEmitir | null
+  readonly traslado: TrasladoDeGuia
+  readonly formatoImpresion: 'a4' | 'rollo'
+  readonly emitidoEn: Date
+}
+
+// ---------------------------------------------------------------------------
 // Anular
 // ---------------------------------------------------------------------------
 
@@ -316,6 +330,10 @@ export interface ProveedorDeEmision {
   readonly nombre: string
 
   emitir: (peticion: PeticionDeEmision) => Promise<Resultado<DocumentoEmitido>>
+
+  emitirGuiaRemision: (
+    peticion: PeticionDeGuiaRemision,
+  ) => Promise<Resultado<DocumentoEmitido>>
 
   anular: (peticion: PeticionDeAnulacion) => Promise<Resultado<DocumentoAnulado>>
 

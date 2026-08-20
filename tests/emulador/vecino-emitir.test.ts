@@ -146,7 +146,7 @@ function contexto(): ContextoDeEmision {
 }
 
 describeConEmulador('emisión desde cotización de vecino', () => {
-  it('emite y borra la cotización; el segundo intento falla', async () => {
+  it('flujo vecino: líneas en cotización → emitir borra el documento', async () => {
     const primero = await emitirComprobante(contexto(), {
       claveIdempotencia: 'clave-vecino-a',
       tipoDocumento: 'boleta',

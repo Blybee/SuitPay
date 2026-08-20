@@ -16,10 +16,22 @@ export interface DefinicionDeComando {
 /** Más específico primero (prefijos más largos). */
 export const CATALOGO_DE_COMANDOS: readonly DefinicionDeComando[] = [
   {
+    id: 'crear-transportista',
+    prefijo: '/crear transportista',
+    parametros: ['{RUC}'],
+    descripcion: 'Alta de transportista con confirmación',
+  },
+  {
     id: 'crear-vecino',
     prefijo: '/crear vecino',
     parametros: ['{alias}', '{DNI/RUC}'],
     descripcion: 'Alta de vecino con cotización',
+  },
+  {
+    id: 'guia',
+    prefijo: '/guia',
+    parametros: [],
+    descripcion: 'Abrir papeleta de guía de remisión',
   },
   {
     id: 'usar-cotizacion',

@@ -141,6 +141,10 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
         borrador.comprobantes.set(comprobante.id, comprobante)
       },
 
+      actualizarComprobanteEnTransaccion: (comprobante) => {
+        borrador.comprobantes.set(comprobante.id, comprobante)
+      },
+
       eliminarCotizacion: (cotizacionId) => {
         borrador.cotizacionesEliminadas.add(cotizacionId)
         borrador.cotizaciones.delete(cotizacionId)

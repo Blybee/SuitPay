@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
+import { usarNotificaciones } from '../notificaciones/almacen.ts'
 import { anular } from './emitir.funciones.ts'
 
 /**
@@ -14,6 +15,7 @@ export function ConfirmarAnulacion({
   serie,
   numero,
   tipoNombre,
+  avisoDeCascada,
   onAnulado,
 }: {
   readonly abierta: boolean
@@ -22,6 +24,8 @@ export function ConfirmarAnulacion({
   readonly serie: string
   readonly numero: number | null
   readonly tipoNombre: string
+  /** FR-014: toast informativo; no pide un segundo OK. */
+  readonly avisoDeCascada?: string
   readonly onAnulado: () => void
 }) {
   const [motivo, setMotivo] = useState('')
@@ -38,6 +42,12 @@ export function ConfirmarAnulacion({
     }
     setEnviando(true)
     setError(null)
+    if (avisoDeCascada !== undefined) {
+      usarNotificaciones.getState().mostrar({
+        tono: 'info',
+        mensaje: avisoDeCascada,
+      })
+    }
     try {
       const respuesta = await anular({
         data: { comprobanteId, motivo: motivo.trim() },

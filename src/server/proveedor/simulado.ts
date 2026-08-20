@@ -12,6 +12,7 @@ import type {
   PeticionDeCrearEstablecimiento,
   PeticionDeCrearSerieEnProveedor,
   PeticionDeEmision,
+  PeticionDeGuiaRemision,
   PeticionDeNotaDeCredito,
   ProveedorDeEmision,
   Resultado,
@@ -57,6 +58,7 @@ export type Comportamiento =
 export interface RegistroDeLlamada {
   readonly operacion:
     | 'emitir'
+    | 'emitir_guia'
     | 'anular'
     | 'consultar'
     | 'contribuyente'
@@ -247,6 +249,92 @@ export class ProveedorSimulado implements ProveedorDeEmision {
           rastro: { ...RASTRO_VACIO, estadoHttp: 200 },
         })
       }
+    }
+  }
+
+  async emitirGuiaRemision(
+    peticion: PeticionDeGuiaRemision,
+  ): Promise<Resultado<DocumentoEmitido>> {
+    this.llamadas.push({
+      operacion: 'emitir_guia',
+      serie: peticion.serie,
+      numero: peticion.numero,
+      momento: new Date(),
+    })
+
+    const comportamiento = this.colaDeEmision.shift() ?? this.comportamientoDeEmision
+    const numero = peticion.numero ?? this.siguienteNumeroAsignado
+
+    switch (comportamiento.tipo) {
+      case 'rechazo_definitivo':
+        return fallo(
+          'rechazo_definitivo',
+          comportamiento.motivo ?? 'guia_invalida',
+          {
+            ...RASTRO_VACIO,
+            codigoOriginal: '2027',
+            mensajeOriginal: 'La guía no cumple la estructura exigida',
+            estadoHttp: 422,
+          },
+        )
+      case 'indisponible':
+        return fallo('indisponible', 'no_se_pudo_contactar', {
+          ...RASTRO_VACIO,
+          mensajeOriginal: 'fetch failed',
+        })
+      case 'indeterminado':
+        return fallo('indeterminado', 'tiempo_de_espera_agotado', {
+          ...RASTRO_VACIO,
+          mensajeOriginal: 'The operation was aborted due to timeout',
+        })
+      case 'respuesta_ambigua':
+        return fallo('indeterminado', 'respuesta_sin_forma_reconocible', {
+          ...RASTRO_VACIO,
+          cuerpoOriginal: '<html>502 Bad Gateway</html>',
+          estadoHttp: 502,
+        })
+      case 'acepta_pero_no_contesta': {
+        this.registrarGuia(peticion, numero, 'registrado')
+        return fallo('indeterminado', 'conexion_cortada_tras_enviar', {
+          ...RASTRO_VACIO,
+          mensajeOriginal: 'socket hang up',
+        })
+      }
+      case 'exito': {
+        const estado = comportamiento.estado ?? 'aceptado'
+        this.registrarGuia(peticion, numero, estado)
+        return exito({
+          serie: peticion.serie,
+          numero,
+          estado,
+          archivos: {
+            pdf: `https://simulado.invalido/${peticion.serie}-${numero}.pdf`,
+            xml: `https://simulado.invalido/${peticion.serie}-${numero}.xml`,
+            cdr: `https://simulado.invalido/R-${peticion.serie}-${numero}.zip`,
+          },
+          referenciaExterna: `sim-guia-${peticion.serie}-${numero}`,
+          rastro: { ...RASTRO_VACIO, estadoHttp: 200 },
+        })
+      }
+    }
+  }
+
+  private registrarGuia(
+    peticion: PeticionDeGuiaRemision,
+    numero: number,
+    estado: EstadoNormalizado,
+  ): void {
+    const clave = `${peticion.serie}-${numero}`
+    this.emitidos.set(clave, {
+      serie: peticion.serie,
+      numero,
+      estado,
+      total: 0,
+      numeroDocumentoCliente: peticion.destinatario?.numeroDocumento,
+      emitidoEn: peticion.emitidoEn,
+    })
+    if (peticion.numero === null) {
+      this.siguienteNumeroAsignado = numero + 1
     }
   }
 
@@ -483,7 +571,8 @@ export class ProveedorSimulado implements ProveedorDeEmision {
 
     if (
       peticion.tipoDocumento !== 'boleta' &&
-      peticion.tipoDocumento !== 'factura'
+      peticion.tipoDocumento !== 'factura' &&
+      peticion.tipoDocumento !== 'guia'
     ) {
       return fallo('rechazo_definitivo', 'tipo_sin_serie_en_proveedor', RASTRO_VACIO)
     }

@@ -34,6 +34,7 @@ export interface PedidoPersistido {
    * el reintento en un segundo comprobante.
    */
   readonly claveIdempotencia: string | null
+  readonly comprobanteOrigenId?: string | null
   readonly guardadoEn: number
 }
 

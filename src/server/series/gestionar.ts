@@ -1,4 +1,7 @@
-import { serieEsValida } from '../../domain/documentos/tipos.ts'
+import {
+  consumeSerieRegulada,
+  serieEsValida,
+} from '../../domain/documentos/tipos.ts'
 import type { TipoDeDocumento } from '../../domain/documentos/tipos.ts'
 import { fallar } from '../errores.ts'
 import { esFaseDemo, PREFIJO_ID_DEMO } from '../fase-operacion.ts'
@@ -14,7 +17,7 @@ import type {
 /**
  * Alta administrativa de establecimientos y series (T083 / decisión 12).
  *
- * Serie regulada (boleta/factura): Firestore + sync al proveedor.
+ * Serie regulada (boleta/factura/guía): Firestore + sync al proveedor.
  * Nota de venta: solo Firestore si se pide (serie vacía; no va al proveedor).
  *
  * En fase DEMO (`SUITPAY_FASE=DEMO`), si el proveedor no acepta series se
@@ -148,6 +151,7 @@ export async function crearSerieAdministrativa(
   if (
     alta.tipoDocumento !== 'boleta' &&
     alta.tipoDocumento !== 'factura' &&
+    alta.tipoDocumento !== 'guia' &&
     alta.tipoDocumento !== 'nota_venta'
   ) {
     fallar('peticion_invalida', { campo: 'tipoDocumento' })
@@ -168,8 +172,7 @@ export async function crearSerieAdministrativa(
   }
 
   let serieIdEnProveedor: string | null = null
-  const regulada =
-    alta.tipoDocumento === 'boleta' || alta.tipoDocumento === 'factura'
+  const regulada = consumeSerieRegulada(alta.tipoDocumento)
 
   if (regulada) {
     if (alta.establecimientoId.trim() === '') {

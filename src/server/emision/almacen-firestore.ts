@@ -41,12 +41,21 @@ function aFecha(valor: unknown): Date {
   return new Date(0)
 }
 
+function esOpacoParaFirestore(valor: object): boolean {
+  return valor instanceof Timestamp || valor instanceof Date
+}
+
 /** Firestore rechaza `undefined`; el rastro del proveedor lo usa a menudo. */
 function sinUndefined<T extends Record<string, unknown>>(objeto: T): DocumentData {
   const limpio: DocumentData = {}
   for (const [clave, valor] of Object.entries(objeto)) {
     if (valor === undefined) continue
-    if (valor !== null && typeof valor === 'object' && !Array.isArray(valor)) {
+    if (
+      valor !== null &&
+      typeof valor === 'object' &&
+      !Array.isArray(valor) &&
+      !esOpacoParaFirestore(valor)
+    ) {
       limpio[clave] = sinUndefined(valor as Record<string, unknown>)
     } else {
       limpio[clave] = valor
@@ -90,18 +99,27 @@ function aComprobante(id: string, datos: DocumentData): Comprobante {
         rastro: intento['rastro'] ?? null,
       }),
     ),
-    anulacion:
+        anulacion:
       datos['anulacion'] === undefined || datos['anulacion'] === null
         ? null
         : {
             ...datos['anulacion'],
             momento: aFecha(datos['anulacion']['momento']),
           },
+    traslado: (datos['traslado'] as Comprobante['traslado']) ?? null,
+    comprobanteOrigenId:
+      typeof datos['comprobanteOrigenId'] === 'string'
+        ? datos['comprobanteOrigenId']
+        : null,
+    guiaAsociadaId:
+      typeof datos['guiaAsociadaId'] === 'string'
+        ? datos['guiaAsociadaId']
+        : null,
   }
 }
 
 function desdeComprobante(comprobante: Comprobante): DocumentData {
-  return {
+  return sinUndefined({
     estado: comprobante.estado,
     tipoDocumento: comprobante.tipoDocumento,
     serie: comprobante.serie,
@@ -122,7 +140,10 @@ function desdeComprobante(comprobante: Comprobante): DocumentData {
       momento: Timestamp.fromDate(intento.momento),
     })),
     anulacion: comprobante.anulacion,
-  }
+    traslado: comprobante.traslado ?? null,
+    comprobanteOrigenId: comprobante.comprobanteOrigenId ?? null,
+    guiaAsociadaId: comprobante.guiaAsociadaId ?? null,
+  })
 }
 
 export class AlmacenFirestore implements AlmacenDeEmision {
@@ -190,6 +211,13 @@ export class AlmacenFirestore implements AlmacenDeEmision {
 
         crearComprobante: (comprobante) => {
           tx.create(
+            this.base.collection(COLECCIONES.comprobantes).doc(comprobante.id),
+            desdeComprobante(comprobante),
+          )
+        },
+
+        actualizarComprobanteEnTransaccion: (comprobante) => {
+          tx.set(
             this.base.collection(COLECCIONES.comprobantes).doc(comprobante.id),
             desdeComprobante(comprobante),
           )

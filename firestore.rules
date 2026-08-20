@@ -205,6 +205,33 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // --- Transportistas --------------------------------------------------
+    //
+    // El vendedor da de alta (RUC) pero no edita ni borra. El índice lo escribe
+    // solo el backend.
+
+    match /transportistas/{numeroDocumento} {
+      function transportistaBienFormado() {
+        return request.resource.data.numeroDocumento == numeroDocumento
+               && request.resource.data.creadoPor == uid()
+               && request.resource.data.tipoDocumento == 'RUC'
+               && request.resource.data.denominacion is string
+               && request.resource.data.denominacion.size() > 0
+               && soloEstosCampos([
+                    'tipoDocumento', 'numeroDocumento', 'denominacion',
+                    'numeroRegistroMtc', 'direccion',
+                    'consultadoEn', 'creadoPor', 'creadoEn'
+                  ]);
+      }
+
+      allow read: if personalDeLaEmpresa();
+      allow create: if (esVendedor() || esAdministrador()) && transportistaBienFormado();
+      allow update: if esAdministrador()
+                    && sinCambiar('numeroDocumento')
+                    && sinCambiar('creadoPor');
+      allow delete: if false;
+    }
+
     // --- Usuarios --------------------------------------------------------
     //
     // Un vendedor solo lee su propio documento y no puede modificar su rol ni

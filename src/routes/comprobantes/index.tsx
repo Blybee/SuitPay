@@ -178,6 +178,7 @@ function ListaDeComprobantes() {
     cargarDesdeComprobante({
       lineas: preparado.lineas,
       cliente: preparado.cliente,
+      comprobanteOrigenId: comprobante.id,
     })
     mostrar({
       tono: 'info',
@@ -486,6 +487,15 @@ function ListaDeComprobantes() {
           serie={anulando.serie}
           numero={anulando.numero}
           tipoNombre={nombreDeTipo(anulando.tipoDocumento)}
+          avisoDeCascada={
+            anulando.tipoDocumento === 'guia' && anulando.comprobanteOrigenId
+              ? 'También se anulará el comprobante asociado.'
+              : (anulando.tipoDocumento === 'boleta' ||
+                    anulando.tipoDocumento === 'factura') &&
+                  anulando.guiaAsociadaId
+                ? 'También se anulará la guía asociada.'
+                : undefined
+          }
           onAnulado={() => {
             mostrar({
               tono: 'exito',

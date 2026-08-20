@@ -1,7 +1,15 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
+import {
+  esquemaDeCategoria,
+  esquemaDeProducto,
+} from '../../domain/esquemas/comunes.ts'
 import { COLECCIONES, bd } from '../firebase/admin.ts'
 import type { AlmacenDeCatalogo } from './almacen.ts'
-import type { CatalogoPublicado, ProductoDeCatalogo } from './tipos.ts'
+import type {
+  CatalogoPublicado,
+  CategoriaDeCatalogo,
+  ProductoDeCatalogo,
+} from './tipos.ts'
 
 /**
  * Una sola escritura sobre `catalogo/actual`. No hay una escritura por producto.
@@ -18,7 +26,8 @@ export class AlmacenDeCatalogoFirestore implements AlmacenDeCatalogo {
 
     if (!instantanea.exists) return null
     const datos = instantanea.data() ?? {}
-    const productos = (datos['productos'] ?? []) as ProductoDeCatalogo[]
+    const productos = hidratarProductos(datos['productos'])
+    const categorias = hidratarCategorias(datos['categorias'])
     const publicadoEn = datos['publicadoEn']
     return {
       version: typeof datos['version'] === 'number' ? datos['version'] : 0,
@@ -33,11 +42,13 @@ export class AlmacenDeCatalogoFirestore implements AlmacenDeCatalogo {
           ? datos['totalProductos']
           : productos.length,
       productos,
+      categorias,
     }
   }
 
   async publicar(entrada: {
     readonly productos: readonly ProductoDeCatalogo[]
+    readonly categorias: readonly CategoriaDeCatalogo[]
     readonly publicadoPor: string
     readonly momento: Date
   }): Promise<CatalogoPublicado> {
@@ -56,6 +67,7 @@ export class AlmacenDeCatalogoFirestore implements AlmacenDeCatalogo {
         publicadoPor: entrada.publicadoPor,
         totalProductos: entrada.productos.length,
         productos: [...entrada.productos],
+        categorias: [...entrada.categorias],
       }
       tx.set(referencia, {
         version: documento.version,
@@ -63,8 +75,7 @@ export class AlmacenDeCatalogoFirestore implements AlmacenDeCatalogo {
         publicadoPor: documento.publicadoPor,
         totalProductos: documento.totalProductos,
         productos: documento.productos,
-        // FieldValue no es necesario para el documento completo; se deja el
-        // timestamp explícito. Si alguien espera serverTimestamp:
+        categorias: documento.categorias,
         actualizadoEn: FieldValue.serverTimestamp(),
       })
       return documento
@@ -72,4 +83,24 @@ export class AlmacenDeCatalogoFirestore implements AlmacenDeCatalogo {
 
     return publicado
   }
+}
+
+function hidratarProductos(bruto: unknown): ProductoDeCatalogo[] {
+  if (!Array.isArray(bruto)) return []
+  const productos: ProductoDeCatalogo[] = []
+  for (const entrada of bruto) {
+    const parseado = esquemaDeProducto.safeParse(entrada)
+    if (parseado.success) productos.push(parseado.data)
+  }
+  return productos
+}
+
+function hidratarCategorias(bruto: unknown): CategoriaDeCatalogo[] {
+  if (!Array.isArray(bruto)) return []
+  const categorias: CategoriaDeCatalogo[] = []
+  for (const entrada of bruto) {
+    const parseado = esquemaDeCategoria.safeParse(entrada)
+    if (parseado.success) categorias.push(parseado.data)
+  }
+  return categorias
 }

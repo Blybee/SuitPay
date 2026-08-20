@@ -41,7 +41,7 @@ Añadir existencias por producto, descuento idempotente al emitir (NV/bol/fact),
 | — | Dominio | Anulación restaura; no “eliminar” comprobantes | **pass** |
 | — | Disciplina | Pruebas de reintento/anulación al tocar emisión | **pass** (cuando se implemente) |
 
-**Resultado**: puertas pasan; **gate de producto abierto** (FR-007) bloquea Phase de implementación.
+**Resultado**: puertas pasan; **FR-007 cerrado** (contadores orientativos en convivencia). El código (`T010+`) sigue bloqueado hasta go-live de almacén y `002` T021.
 
 ## Project Structure
 

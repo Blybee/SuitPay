@@ -11,6 +11,7 @@ import type {
   PeticionDeCrearEstablecimiento,
   PeticionDeCrearSerieEnProveedor,
   PeticionDeEmision,
+  PeticionDeGuiaRemision,
   PeticionDeNotaDeCredito,
   ProveedorDeEmision,
   Resultado,
@@ -25,6 +26,7 @@ import {
   listarEstablecimientos as listarEstablecimientosEnApi,
 } from './establecimientos.ts'
 import { emitirDocumento } from './emitir.ts'
+import { emitirGuiaRemision as emitirGuiaEnApi } from './emitir-guia.ts'
 import { traducirEstado } from './estados.ts'
 import {
   crearSerie as crearSerieEnApi,
@@ -62,6 +64,12 @@ export class ProveedorFactpro implements ProveedorDeEmision {
 
   emitir(peticion: PeticionDeEmision): Promise<Resultado<DocumentoEmitido>> {
     return emitirDocumento(this.configuracion, peticion)
+  }
+
+  emitirGuiaRemision(
+    peticion: PeticionDeGuiaRemision,
+  ): Promise<Resultado<DocumentoEmitido>> {
+    return emitirGuiaEnApi(this.configuracion, peticion)
   }
 
   consultarDocumento(

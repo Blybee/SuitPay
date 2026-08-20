@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 import { z } from 'zod'
-import { TIPOS_ELEGIBLES } from '../../domain/documentos/tipos.ts'
+import { TIPOS_CON_SERIE_ADMINISTRABLE, TIPOS_ELEGIBLES } from '../../domain/documentos/tipos.ts'
 import { exigirIdentidad } from '../../server/auth/verificar.ts'
 import { ErrorDeSuitPay, esErrorDeSuitPay } from '../../server/errores.ts'
 import {
@@ -95,7 +95,7 @@ export const crearSerieFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       vendedorId: z.string().min(1),
-      tipoDocumento: z.enum(TIPOS_ELEGIBLES),
+      tipoDocumento: z.enum(TIPOS_CON_SERIE_ADMINISTRABLE),
       serie: z.string().max(4),
       numeroInicial: z.number().int().nonnegative(),
       establecimientoId: z.string(),
