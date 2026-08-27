@@ -23,7 +23,7 @@ Define quién puede leer y escribir cada colección. Es el contrato que sostiene
 | `comprobantes/{id}` | **leer** | **leer** | **leer** | **Ningún rol escribe. Nunca.** Solo el backend. |
 | `series/{id}` | leer las propias | leer, editar | leer | El contador solo lo toca el backend, en transacción. |
 | `cotizaciones/{id}` | leer, crear, editar y **borrar** las pendientes | leer, crear, editar, borrar pendientes | leer | La conversión las borra el backend en la transacción de emisión (FR-019). El cliente puede borrar pendientes tras confirmación en UI (FR-019a). En canal `vecino` se admite `telefonoVecino` y editar `aliasVecino`. |
-| `listasRequerimiento/{uid}` | leer, crear, editar, borrar **las propias** | leer, crear, editar, borrar las propias | leer las propias | Lista de requerimiento; TTL 1 semana (`caducaEn`). |
+| `listasRequerimiento/{uid}/dias/{AAAA-MM-DD}` | leer, crear, editar, borrar **los propios** | leer, crear, editar, borrar los propios | leer los propios | Lista de requerimiento por día laboral; TTL 1 semana (`caducaEn`). |
 | `capturas/{id}` | leer, crear las propias | leer | — | El estado y las propuestas los escribe el backend. |
 | `usuarios/{uid}` | leer el propio | leer, crear, editar | leer | El rol solo lo asigna el administrador, y se propaga al token. |
 
@@ -48,7 +48,7 @@ Las reglas comprueban forma, no lógica de negocio. La lógica vive en las funci
 - Al crear un cliente: el identificador del documento coincide con el campo del número de documento, los campos obligatorios están presentes, y `creadoPor` coincide con el usuario autenticado.
 - Al crear una cotización: `creadoPor` coincide con el usuario autenticado, el estado inicial es `pendiente`, `canal` es `general` o `vecino`, y si `canal` es `vecino` entonces `aliasVecino` está presente y no vacío.
 - Al editar una cotización: el estado sigue siendo `pendiente`, no se altera la autoría ni el `canal`; `aliasVecino` y `telefonoVecino` sí pueden cambiar en canal vecino.
-- Al escribir `listasRequerimiento/{uid}`: el id coincide con el vendedor autenticado, `lineas` es un arreglo y `caducaEn` es marca de tiempo.
+- Al escribir `listasRequerimiento/{uid}/dias/{dia}`: el segmento `{uid}` coincide con el vendedor autenticado, `{dia}` tiene forma `AAAA-MM-DD`, `lineas` es un arreglo y `caducaEn` es marca de tiempo.
 - Al borrar una cotización: el documento existía en estado `pendiente` (el cliente no “borra” comprobantes disfrazados).
 - En toda escritura: se rechazan campos no previstos, para que la forma de los documentos no derive con el tiempo.
 

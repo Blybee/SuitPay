@@ -26,24 +26,30 @@ describe('pistas de comando en el buscador', () => {
     expect(lista.some((c) => c.id === 'ayuda')).toBe(true)
   })
 
-  it('tras /crear vecino pide alias y documento', () => {
+  it('tras /crear vecino pide alias, documento y teléfono', () => {
     expect(pistaDeComando('/crear vecino').fantasma.trim()).toBe(
-      '{alias} {DNI/RUC}',
+      '{alias} {DNI/RUC} {teléfono?}',
     )
     expect(pistaDeComando('/crear vecino ').fantasma.trim()).toBe(
-      '{alias} {DNI/RUC}',
+      '{alias} {DNI/RUC} {teléfono?}',
     )
   })
 
-  it('tras el alias pide solo el documento', () => {
+  it('tras el alias pide documento y teléfono', () => {
     expect(pistaDeComando('/crear vecino wilmer').fantasma.trim()).toBe(
-      '{DNI/RUC}',
+      '{DNI/RUC} {teléfono?}',
     )
+  })
+
+  it('con el documento queda solo el teléfono opcional', () => {
+    expect(
+      pistaDeComando('/crear vecino wilmer 12345678901').fantasma.trim(),
+    ).toBe('{teléfono?}')
   })
 
   it('comando completo sin fantasma', () => {
     expect(
-      pistaDeComando('/crear vecino wilmer 12345678901').fantasma,
+      pistaDeComando('/crear vecino wilmer 12345678901 987654321').fantasma,
     ).toBe('')
   })
 

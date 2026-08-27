@@ -24,8 +24,8 @@ export const CATALOGO_DE_COMANDOS: readonly DefinicionDeComando[] = [
   {
     id: 'crear-vecino',
     prefijo: '/crear vecino',
-    parametros: ['{alias}', '{DNI/RUC}'],
-    descripcion: 'Alta de vecino con cotización',
+    parametros: ['{alias}', '{DNI/RUC}', '{teléfono?}'],
+    descripcion: 'Alta de vecino con cotización (teléfono opcional)',
   },
   {
     id: 'guia',
@@ -193,7 +193,7 @@ export function textoAlElegirComando(comando: DefinicionDeComando): string {
  *
  * - `/` → fantasma del primer comando coincidente (la lista muestra el catálogo)
  * - `/crear ve` → completa el prefijo + params
- * - `/crear vecino` → ` {alias} {DNI/RUC}`
+ * - `/crear vecino` → ` {alias} {DNI/RUC} {teléfono?}`
  * - completo → ``
  */
 export function pistaDeComando(termino: string): PistaDeComando {

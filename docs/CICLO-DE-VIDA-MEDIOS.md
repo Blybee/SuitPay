@@ -23,11 +23,11 @@ El emulador no ejecuta lifecycle. En local el dropdown ya filtra al día actual 
 
 ## Firestore: lista de requerimiento
 
-Colección `listasRequerimiento/{uid}` con campo `caducaEn` (7 días desde la última escritura). Habilitar TTL:
+Un documento por vendedor y día laboral: `listasRequerimiento/{uid}/dias/{AAAA-MM-DD}`, con campo `caducaEn` (7 días desde la última escritura). Habilitar TTL sobre el grupo de subcolecciones `dias`:
 
 ```bash
 gcloud firestore fields ttls update caducaEn \
-  --collection-group=listasRequerimiento \
+  --collection-group=dias \
   --enable-ttl
 ```
 

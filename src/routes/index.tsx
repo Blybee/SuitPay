@@ -37,6 +37,7 @@ import { PanelDeVecinos } from '../features/vecinos/panel.tsx'
 import { PanelDeListaRequerimiento } from '../features/lista/panel.tsx'
 import { agregarProductosALista } from '../features/lista/persistir.ts'
 import { urgenciaDesdeTexto } from '../domain/lista/urgencia.ts'
+import { claveDeDiaLima } from '../domain/captura/hora-lima.ts'
 import { aplicarLineasAprobadasAlPedido } from '../features/captura/aprobar.ts'
 import type { LineaCapturaAprobada } from '../features/captura/aprobar.ts'
 import { resolverDestinoDeVecino } from '../domain/captura/mencion-vecino.ts'
@@ -282,8 +283,10 @@ function Mostrador() {
     }
 
     if (pestana === 'lista' && sesion.uid !== null) {
+      const hoy = claveDeDiaLima(new Date())
       const resultado = await agregarProductosALista({
         uid: sesion.uid,
+        fecha: hoy,
         productos: lineas.map((linea) => ({
           codigo: linea.codigo,
           descripcion: linea.descripcion,
@@ -299,7 +302,7 @@ function Mostrador() {
         return
       }
       void queryClient.invalidateQueries({
-        queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid),
+        queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid, hoy),
       })
       usarNotificaciones.getState().mostrar({
         tono: 'exito',
@@ -467,8 +470,10 @@ function Mostrador() {
   function agregar(producto: ProductoBuscable): void {
     if (pestana === 'lista' && sesion.uid !== null) {
       void (async () => {
+        const hoy = claveDeDiaLima(new Date())
         const resultado = await agregarProductosALista({
           uid: sesion.uid!,
+          fecha: hoy,
           productos: [
             {
               codigo: producto.codigo,
@@ -484,7 +489,7 @@ function Mostrador() {
           return
         }
         void queryClient.invalidateQueries({
-          queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid!),
+          queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid!, hoy),
         })
       })()
       return
@@ -534,8 +539,10 @@ function Mostrador() {
     if (productos.length === 0) return
     if (pestana === 'lista' && sesion.uid !== null) {
       void (async () => {
+        const hoy = claveDeDiaLima(new Date())
         const resultado = await agregarProductosALista({
           uid: sesion.uid!,
+          fecha: hoy,
           productos: productos.map((producto) => ({
             codigo: producto.codigo,
             descripcion: producto.descripcion,
@@ -549,7 +556,7 @@ function Mostrador() {
           return
         }
         void queryClient.invalidateQueries({
-          queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid!),
+          queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid!, hoy),
         })
       })()
       return

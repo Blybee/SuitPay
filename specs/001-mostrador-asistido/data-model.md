@@ -180,18 +180,19 @@ Una serie por vendedor y tipo de documento. Documentos pequeños con el contador
 
 ---
 
-### `listasRequerimiento/{vendedorId}`
+### `listasRequerimiento/{vendedorId}/dias/{AAAA-MM-DD}`
 
-Un documento por vendedor (no una fila por producto). Las líneas van embebidas porque siempre se leen y escriben juntas.
+Un documento por vendedor **y día laboral** (lunes a sábado, día civil Lima). Las líneas van embebidas porque siempre se leen y escriben juntas.
 
 | Campo | Tipo | Notas |
 |-------|------|-------|
-| `vendedorId` | cadena | Igual al id del documento. Dueño; sincroniza entre sus dispositivos. |
+| `vendedorId` | cadena | Igual al segmento del camino. Dueño; sincroniza entre sus dispositivos. |
+| `fecha` | cadena | `AAAA-MM-DD`, igual al id del documento. |
 | `lineas` | arreglo | `{ id, codigo, descripcion, cantidad, urgencia: normal\|urgente }`. |
 | `actualizadoEn` | marca de tiempo | |
 | `caducaEn` | marca de tiempo | TTL Firestore de 1 semana desde la última escritura. El cliente ignora documentos vencidos. |
 
-Carga bajo demanda al abrir el tab Lista. No se lee al arrancar la app.
+El tab Lista muestra pills lun–sáb de la semana actual (fecha corta en teléfono); abre en el día actual y **cada día se lee bajo demanda al pulsar su pill** (una lectura por día visitado, nada al arrancar la app). Las altas del buscador/dictado/foto van al día actual.
 
 ---
 

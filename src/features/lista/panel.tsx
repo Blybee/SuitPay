@@ -1,7 +1,9 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMemo, useState } from 'react'
 import { FileDown, Share2, X } from 'lucide-react'
 import { alternarUrgencia, etiquetaDeUrgencia } from '../../domain/lista/urgencia.ts'
 import { bytesDePdfDeRequerimiento } from '../../domain/lista/pdf.ts'
+import { diaPorDefecto, semanaLaboralEnLima } from '../../domain/lista/semana.ts'
 import type { LineaDeRequerimiento } from '../../domain/lista/tipos.ts'
 import { usarNotificaciones } from '../notificaciones/almacen.ts'
 import { usarSesion } from '../sesion/almacen.ts'
@@ -66,15 +68,19 @@ async function compartirPdfPorWhatsApp(
 
 /**
  * Tab Lista: lista de requerimiento (N° | Producto | Cantidad | Urgencia).
- * No es el catálogo ni el pedido. Se carga al abrir el tab.
+ * No es el catálogo ni el pedido. Un documento por día laboral (lun–sáb,
+ * semana actual en Lima); cada día se lee bajo demanda al pulsar su pill.
  */
 export function PanelDeListaRequerimiento() {
   const uid = usarSesion((s) => s.uid)
   const queryClient = useQueryClient()
 
+  const semana = useMemo(() => semanaLaboralEnLima(), [])
+  const [fechaActiva, setFechaActiva] = useState(() => diaPorDefecto(semana))
+
   const consulta = useQuery({
-    queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(uid ?? ''),
-    queryFn: () => leerListaDeRequerimiento(uid ?? ''),
+    queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(uid ?? '', fechaActiva),
+    queryFn: () => leerListaDeRequerimiento(uid ?? '', fechaActiva),
     enabled: uid !== null,
     staleTime: 15_000,
   })
@@ -83,7 +89,7 @@ export function PanelDeListaRequerimiento() {
 
   async function refrescar(): Promise<void> {
     await queryClient.invalidateQueries({
-      queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(uid ?? ''),
+      queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(uid ?? '', fechaActiva),
     })
   }
 
@@ -106,9 +112,34 @@ export function PanelDeListaRequerimiento() {
   return (
     <div className="flex min-h-0 flex-1 flex-col">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-borde px-4 py-3">
-        <p className="text-cuerpo text-desvaida">
-          Lista de requerimiento. Agrega con el buscador, el dictado o la foto.
-        </p>
+        <div
+          role="tablist"
+          aria-label="Día de la lista de requerimiento"
+          className="flex flex-wrap gap-1.5"
+        >
+          {semana.map((dia) => {
+            const seleccionado = dia.fecha === fechaActiva
+            return (
+              <button
+                key={dia.fecha}
+                type="button"
+                role="tab"
+                aria-selected={seleccionado}
+                aria-label={`${dia.etiqueta} ${dia.corta}`}
+                onClick={() => setFechaActiva(dia.fecha)}
+                className={[
+                  'min-h-9 rounded-full border px-3 font-mono text-etiqueta font-bold uppercase transition-colors',
+                  seleccionado
+                    ? 'border-tinta bg-tinta text-papel'
+                    : 'border-borde bg-papel text-desvaida hover:text-tinta',
+                ].join(' ')}
+              >
+                <span className="sm:hidden">{dia.corta}</span>
+                <span className="hidden sm:inline">{dia.etiqueta}</span>
+              </button>
+            )
+          })}
+        </div>
         <div className="flex flex-wrap gap-2">
           <Boton
             variante="secundario"
@@ -184,6 +215,7 @@ export function PanelDeListaRequerimiento() {
                         void conResultado(() =>
                           actualizarCantidadDeLista({
                             uid,
+                            fecha: fechaActiva,
                             lineasActuales: lineas,
                             id: linea.id,
                             cantidad,
@@ -202,6 +234,7 @@ export function PanelDeListaRequerimiento() {
                         void conResultado(() =>
                           actualizarUrgenciaDeLista({
                             uid,
+                            fecha: fechaActiva,
                             lineasActuales: lineas,
                             id: linea.id,
                             urgencia: alternarUrgencia(linea.urgencia),
@@ -214,6 +247,7 @@ export function PanelDeListaRequerimiento() {
                         void conResultado(() =>
                           actualizarUrgenciaDeLista({
                             uid,
+                            fecha: fechaActiva,
                             lineasActuales: lineas,
                             id: linea.id,
                             urgencia: alternarUrgencia(linea.urgencia),
@@ -237,6 +271,7 @@ export function PanelDeListaRequerimiento() {
                         void conResultado(() =>
                           quitarDeLista({
                             uid,
+                            fecha: fechaActiva,
                             lineasActuales: lineas,
                             id: linea.id,
                           }),

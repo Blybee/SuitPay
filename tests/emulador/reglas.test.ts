@@ -491,34 +491,58 @@ describeConEmulador('instantáneas de solo lectura', () => {
 })
 
 describeConEmulador('lista de requerimiento', () => {
-  it('un vendedor escribe y lee la suya', async () => {
+  it('un vendedor escribe y lee la de su día', async () => {
     await assertSucceeds(
-      setDoc(doc(comoVendedor(), 'listasRequerimiento/vendedor-1'), {
-        vendedorId: 'vendedor-1',
-        lineas: [
-          {
-            id: 'l1',
-            codigo: 'C01',
-            descripcion: 'CODO FG 1/2',
-            cantidad: 1,
-            urgencia: 'normal',
-          },
-        ],
-        actualizadoEn: serverTimestamp(),
-        caducaEn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-      }),
+      setDoc(
+        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/dias/2026-08-27'),
+        {
+          vendedorId: 'vendedor-1',
+          fecha: '2026-08-27',
+          lineas: [
+            {
+              id: 'l1',
+              codigo: 'C01',
+              descripcion: 'CODO FG 1/2',
+              cantidad: 1,
+              urgencia: 'normal',
+            },
+          ],
+          actualizadoEn: serverTimestamp(),
+          caducaEn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      ),
     )
     await assertSucceeds(
-      getDoc(doc(comoVendedor(), 'listasRequerimiento/vendedor-1')),
+      getDoc(
+        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/dias/2026-08-27'),
+      ),
+    )
+  })
+
+  it('el id del día debe ser una fecha', async () => {
+    await assertFails(
+      setDoc(
+        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/dias/no-fecha'),
+        {
+          vendedorId: 'vendedor-1',
+          lineas: [],
+          actualizadoEn: serverTimestamp(),
+          caducaEn: new Date(Date.now() + 1000),
+        },
+      ),
     )
   })
 
   it('un vendedor NO lee la lista de otro', async () => {
     await entorno.withSecurityRulesDisabled(async (contexto) => {
       await setDoc(
-        doc(contexto.firestore(), 'listasRequerimiento/vendedor-2'),
+        doc(
+          contexto.firestore(),
+          'listasRequerimiento/vendedor-2/dias/2026-08-27',
+        ),
         {
           vendedorId: 'vendedor-2',
+          fecha: '2026-08-27',
           lineas: [],
           actualizadoEn: serverTimestamp(),
           caducaEn: new Date(Date.now() + 1000),
@@ -526,7 +550,9 @@ describeConEmulador('lista de requerimiento', () => {
       )
     })
     await assertFails(
-      getDoc(doc(comoVendedor(), 'listasRequerimiento/vendedor-2')),
+      getDoc(
+        doc(comoVendedor(), 'listasRequerimiento/vendedor-2/dias/2026-08-27'),
+      ),
     )
   })
 })

@@ -23,8 +23,13 @@ export interface ResultadoLista {
   readonly mensaje?: string
 }
 
-function referencia(uid: string) {
-  return doc(obtenerBaseDeDatos(), 'listasRequerimiento', uid)
+/**
+ * Un documento por vendedor y día civil Lima:
+ * `listasRequerimiento/{uid}/dias/{AAAA-MM-DD}`. Cada día se lee bajo demanda
+ * al pulsar su pill; los días no visitados no cuestan lecturas.
+ */
+function referencia(uid: string, fecha: string) {
+  return doc(obtenerBaseDeDatos(), 'listasRequerimiento', uid, 'dias', fecha)
 }
 
 function mapearLineas(raw: unknown): LineaDeRequerimiento[] {
@@ -62,12 +67,13 @@ function caducada(datos: Record<string, unknown>, ahora: Date): boolean {
 }
 
 /**
- * Una lectura: el documento entero del vendedor. Carga bajo demanda (tab Lista).
+ * Una lectura: el documento del día pedido. Carga bajo demanda (pill del día).
  */
 export async function leerListaDeRequerimiento(
   uid: string,
+  fecha: string,
 ): Promise<readonly LineaDeRequerimiento[]> {
-  const instantanea = await getDoc(referencia(uid))
+  const instantanea = await getDoc(referencia(uid, fecha))
   if (!instantanea.exists()) return []
   const datos = instantanea.data()
   if (caducada(datos, new Date())) return []
@@ -76,11 +82,13 @@ export async function leerListaDeRequerimiento(
 
 async function persistir(
   uid: string,
+  fecha: string,
   lineas: readonly LineaDeRequerimiento[],
 ): Promise<ResultadoLista> {
   try {
-    await setDoc(referencia(uid), {
+    await setDoc(referencia(uid, fecha), {
       vendedorId: uid,
+      fecha,
       lineas: lineas.map((linea) => ({
         id: linea.id,
         codigo: linea.codigo,
@@ -103,6 +111,7 @@ async function persistir(
 
 export async function agregarProductosALista(datos: {
   readonly uid: string
+  readonly fecha: string
   readonly productos: readonly {
     readonly codigo: string
     readonly descripcion: string
@@ -111,7 +120,7 @@ export async function agregarProductosALista(datos: {
   }[]
 }): Promise<ResultadoLista> {
   try {
-    const actuales = await leerListaDeRequerimiento(datos.uid)
+    const actuales = await leerListaDeRequerimiento(datos.uid, datos.fecha)
     let lineas = actuales
     for (const producto of datos.productos) {
       lineas = fusionarLineaDeRequerimiento(lineas, {
@@ -122,7 +131,7 @@ export async function agregarProductosALista(datos: {
         urgencia: producto.urgencia,
       })
     }
-    return persistir(datos.uid, lineas)
+    return persistir(datos.uid, datos.fecha, lineas)
   } catch (error) {
     console.error('[SuitPay] agregarProductosALista', error)
     return {
@@ -134,12 +143,14 @@ export async function agregarProductosALista(datos: {
 
 export async function actualizarCantidadDeLista(datos: {
   readonly uid: string
+  readonly fecha: string
   readonly lineasActuales: readonly LineaDeRequerimiento[]
   readonly id: string
   readonly cantidad: number
 }): Promise<ResultadoLista> {
   return persistir(
     datos.uid,
+    datos.fecha,
     cambiarCantidadDeRequerimiento(
       datos.lineasActuales,
       datos.id,
@@ -150,12 +161,14 @@ export async function actualizarCantidadDeLista(datos: {
 
 export async function actualizarUrgenciaDeLista(datos: {
   readonly uid: string
+  readonly fecha: string
   readonly lineasActuales: readonly LineaDeRequerimiento[]
   readonly id: string
   readonly urgencia: UrgenciaDeRequerimiento
 }): Promise<ResultadoLista> {
   return persistir(
     datos.uid,
+    datos.fecha,
     cambiarUrgenciaDeRequerimiento(
       datos.lineasActuales,
       datos.id,
@@ -166,11 +179,13 @@ export async function actualizarUrgenciaDeLista(datos: {
 
 export async function quitarDeLista(datos: {
   readonly uid: string
+  readonly fecha: string
   readonly lineasActuales: readonly LineaDeRequerimiento[]
   readonly id: string
 }): Promise<ResultadoLista> {
   return persistir(
     datos.uid,
+    datos.fecha,
     quitarLineaDeRequerimiento(datos.lineasActuales, datos.id),
   )
 }

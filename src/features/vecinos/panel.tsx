@@ -208,7 +208,7 @@ export function PanelDeVecinos({
         <p className="px-4 py-6 text-cuerpo text-desvaida">
           No hay vecinos todavía. Pulsa + o escribe{' '}
           <span className="font-mono text-tinta">
-            /crear vecino wilmer 12345678901
+            /crear vecino wilmer 12345678901 987654321
           </span>{' '}
           y confirma la propuesta.
         </p>

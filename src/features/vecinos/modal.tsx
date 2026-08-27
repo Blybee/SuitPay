@@ -32,7 +32,7 @@ export function ModalDeVecino({
 }) {
   const [vista, setVista] = useState<Vista>('nuevo')
   const [alias, setAlias] = useState('')
-  const [tipoDocumento, setTipoDocumento] = useState<'DNI' | 'RUC'>('DNI')
+  const [tipoDocumento, setTipoDocumento] = useState<'DNI' | 'RUC'>('RUC')
   const [numeroDocumento, setNumeroDocumento] = useState('')
   const [telefono, setTelefono] = useState('')
   const [editando, setEditando] = useState<Cotizacion | null>(null)
@@ -41,7 +41,7 @@ export function ModalDeVecino({
 
   function resetearAlta(): void {
     setAlias('')
-    setTipoDocumento('DNI')
+    setTipoDocumento('RUC')
     setNumeroDocumento('')
     setTelefono('')
   }
@@ -180,8 +180,8 @@ export function ModalDeVecino({
               setNumeroDocumento('')
             }}
             opciones={[
-              { valor: 'DNI', etiqueta: 'DNI' },
               { valor: 'RUC', etiqueta: 'RUC' },
+              { valor: 'DNI', etiqueta: 'DNI' },
             ]}
           />
           <div>
