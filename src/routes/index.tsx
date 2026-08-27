@@ -427,6 +427,14 @@ function Mostrador() {
   async function ejecutarComando(texto: string): Promise<void> {
     const recortado = texto.trim()
     const clave = recortado.toLowerCase()
+    // La propuesta salta con Enter, no en cada tecla: si saltara al completar
+    // el documento, el modal interrumpiría antes de poder escribir el
+    // teléfono opcional.
+    const propuestaDeVecino = reconocerCrearVecino(recortado)
+    if (propuestaDeVecino !== null) {
+      setPropuestaVecino(propuestaDeVecino)
+      return
+    }
     if (clave === '/guia' || clave.startsWith('/guia ')) {
       setBorradorGuia(null)
       setPapeletaGuiaAbierta(true)
@@ -846,10 +854,6 @@ function Mostrador() {
           onTerminoCambia={(siguiente) => {
             setTermino(siguiente)
             usarBusqueda.getState().recordar(siguiente)
-            const propuesta = reconocerCrearVecino(siguiente)
-            if (propuesta !== null) {
-              setPropuestaVecino(propuesta)
-            }
           }}
           ultimaBusqueda={ultimaBusqueda}
           resultado={resultado}
@@ -1212,6 +1216,16 @@ function Mostrador() {
                 {propuestaVecino.numeroDocumento}
               </dd>
             </div>
+            {propuestaVecino.telefono !== undefined ? (
+              <div>
+                <dt className="font-mono text-etiqueta uppercase text-desvaida">
+                  Teléfono
+                </dt>
+                <dd className="font-mono font-bold">
+                  {propuestaVecino.telefono}
+                </dd>
+              </div>
+            ) : null}
           </dl>
         ) : null}
       </Modal>
