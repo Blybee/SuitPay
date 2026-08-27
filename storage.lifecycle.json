@@ -1,0 +1,20 @@
+{
+  "rule": [
+    {
+      "action": { "type": "Delete" },
+      "condition": {
+        "age": 1,
+        "matchesPrefix": ["capturas/"],
+        "matchesSuffix": [".webm", ".mp4", ".m4a", ".ogg"]
+      }
+    },
+    {
+      "action": { "type": "Delete" },
+      "condition": {
+        "age": 7,
+        "matchesPrefix": ["capturas/"],
+        "matchesSuffix": [".jpg", ".jpeg", ".png", ".webp"]
+      }
+    }
+  ]
+}

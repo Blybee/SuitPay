@@ -83,6 +83,10 @@ function mapearCotizacion(
       datos['actualizadoEn'] === null || datos['actualizadoEn'] === undefined
         ? null
         : aFecha(datos['actualizadoEn']),
+    telefonoVecino:
+      canal === 'vecino' && typeof datos['telefonoVecino'] === 'string'
+        ? datos['telefonoVecino'].trim() || null
+        : null,
   }
 }
 

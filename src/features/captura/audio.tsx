@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { Mic, Square, X } from 'lucide-react'
+import { ChevronDown, Mic, Square, X } from 'lucide-react'
+import { horaEnLima } from '../../domain/captura/hora-lima.ts'
 import { usarCatalogo } from '../catalogo/almacen.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
 import { usarSesion } from '../sesion/almacen.ts'
@@ -8,9 +9,11 @@ import {
   esErrorDeLoteDemasiadoGrande,
   MENSAJE_LOTE_DEMASIADO_GRANDE,
 } from './errores-inesperados.ts'
+import { audiosVisibles, usarHistorialDeAudios } from './historial.ts'
 import { construirLoteDeCandidatos } from './lote.ts'
 import { subirMedioDeCaptura } from './almacenamiento.ts'
 import { usarCaptura } from './estado.ts'
+import type { ContextoDeAudio, RegistroDeAudio } from '../../infra/local/almacenes.ts'
 
 function crearCapturaId(): string {
   return crypto.randomUUID()
@@ -30,16 +33,23 @@ export function PanelDictado({
   termino,
   abierto,
   onCerrar,
+  contexto,
+  vecinoId,
 }: {
   readonly termino: string
   readonly abierto: boolean
   readonly onCerrar: () => void
+  readonly contexto: ContextoDeAudio
+  readonly vecinoId: string | null
 }) {
   const uid = usarSesion((s) => s.uid)
   const indice = usarCatalogo((s) => s.indice)
   const captura = usarCaptura()
   const [durationSec, setDurationSec] = useState(0)
   const [errorLocal, setErrorLocal] = useState<string | null>(null)
+  const [listaAbierta, setListaAbierta] = useState(false)
+  const entradas = usarHistorialDeAudios((s) => s.entradas)
+  const visibles = audiosVisibles({ entradas, contexto, vecinoId })
 
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const chunksRef = useRef<Blob[]>([])
@@ -50,6 +60,8 @@ export function PanelDictado({
   useEffect(() => {
     if (!abierto) return
     captura.iniciarGrabacion('audio')
+    setListaAbierta(false)
+    void usarHistorialDeAudios.getState().cargar()
     void empezarGrabacion()
     return () => {
       detenerTracks()
@@ -99,6 +111,15 @@ export function PanelDictado({
     const capturaId = crearCapturaId()
     const objectUrl = URL.createObjectURL(blob)
     abortRef.current = new AbortController()
+
+    void usarHistorialDeAudios.getState().registrar({
+      id: capturaId,
+      grabadoEn: Date.now(),
+      contexto,
+      vecinoId: contexto === 'vecino' ? vecinoId : null,
+      mimeType: blob.type || 'audio/webm',
+      blob,
+    })
 
     try {
       captura.marcarSubiendo()
@@ -252,6 +273,23 @@ export function PanelDictado({
         </div>
 
         <div className="flex items-center gap-2">
+          <button
+            type="button"
+            popoverTarget="lista-audios-hoy"
+            popoverTargetAction="toggle"
+            aria-label="Audios grabados hoy"
+            className="flex min-h-12 items-center gap-1 rounded-full border border-borde px-3 text-tinta"
+            onClick={() => {
+              if (!('popover' in HTMLElement.prototype)) {
+                setListaAbierta((abierta) => !abierta)
+              }
+            }}
+          >
+            <ChevronDown className="size-4" aria-hidden />
+            <span className="font-mono text-etiqueta">
+              {visibles.length}
+            </span>
+          </button>
           {grabando && (
             <button
               type="button"
@@ -275,6 +313,20 @@ export function PanelDictado({
           </button>
         </div>
       </div>
+
+      <div
+        id="lista-audios-hoy"
+        popover="auto"
+        className="desplegable-audios w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-borde bg-papel p-3 shadow-md"
+      >
+        <ListaDeReproductores visibles={visibles} />
+      </div>
+      {listaAbierta ? (
+        <div className="mt-3 rounded-2xl border border-borde bg-papel p-3">
+          <ListaDeReproductores visibles={visibles} />
+        </div>
+      ) : null}
+
       {/* Entrada de archivo para e2e / entornos sin micrófono. */}
       <input
         type="file"
@@ -290,5 +342,52 @@ export function PanelDictado({
         }}
       />
     </div>
+  )
+}
+
+function ListaDeReproductores({
+  visibles,
+}: {
+  readonly visibles: readonly RegistroDeAudio[]
+}) {
+  if (visibles.length === 0) {
+    return (
+      <p className="text-cuerpo text-desvaida">No hay audios de hoy.</p>
+    )
+  }
+  return (
+    <ul className="max-h-64 space-y-3 overflow-y-auto">
+      {visibles
+        .slice()
+        .sort((a, b) => b.grabadoEn - a.grabadoEn)
+        .map((registro) => (
+          <ItemDeAudio key={registro.id} registro={registro} />
+        ))}
+    </ul>
+  )
+}
+
+function ItemDeAudio({ registro }: { readonly registro: RegistroDeAudio }) {
+  const urlRef = useRef<string | null>(null)
+  const [url, setUrl] = useState<string | null>(null)
+
+  useEffect(() => {
+    const creado = URL.createObjectURL(registro.blob)
+    urlRef.current = creado
+    setUrl(creado)
+    return () => {
+      if (urlRef.current !== null) URL.revokeObjectURL(urlRef.current)
+    }
+  }, [registro.blob])
+
+  return (
+    <li className="space-y-1">
+      <p className="font-mono text-etiqueta text-desvaida">
+        {horaEnLima(new Date(registro.grabadoEn))}
+      </p>
+      {url !== null ? (
+        <audio controls src={url} className="w-full" preload="metadata" />
+      ) : null}
+    </li>
   )
 }

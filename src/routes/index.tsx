@@ -5,7 +5,7 @@ import { REGLAS } from '../domain/documentos/tipos.ts'
 import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
 import { pedidoTienePrecioBajoCatalogo } from '../domain/totales/calculo.ts'
 import { usarBusqueda } from '../features/busqueda/almacen.ts'
-import { usarCatalogo, umbralVigente, marcasDelCatalogo, productosVisibles } from '../features/catalogo/almacen.ts'
+import { usarCatalogo, umbralVigente, marcasDelCatalogo } from '../features/catalogo/almacen.ts'
 import { PanelDictado } from '../features/captura/audio.tsx'
 import {
   extraerMencionDeCliente,
@@ -34,7 +34,12 @@ import { PanelDeCotizaciones } from '../features/cotizaciones/panel.tsx'
 import { crearCotizacionVecino } from '../features/vecinos/crear.ts'
 import { agregarProductoAVecino } from '../features/vecinos/lineas.ts'
 import { PanelDeVecinos } from '../features/vecinos/panel.tsx'
-import { PanelDeListaCatalogo } from '../features/catalogo/panel-lista.tsx'
+import { PanelDeListaRequerimiento } from '../features/lista/panel.tsx'
+import { agregarProductosALista } from '../features/lista/persistir.ts'
+import { urgenciaDesdeTexto } from '../domain/lista/urgencia.ts'
+import { aplicarLineasAprobadasAlPedido } from '../features/captura/aprobar.ts'
+import type { LineaCapturaAprobada } from '../features/captura/aprobar.ts'
+import { resolverDestinoDeVecino } from '../domain/captura/mencion-vecino.ts'
 import { FiltrosDeCatalogo } from '../ui/componentes/FiltrosDeCatalogo.tsx'
 import {
   alRecuperarConectividad,
@@ -262,7 +267,11 @@ function Mostrador() {
       motivoDeSesion: puedeEmitir(sesion) ? null : sesion.motivoDeBloqueo,
     })
 
-  function alAprobarCaptura(textosOriginales: readonly string[]): void {
+  async function alAprobarCaptura(
+    lineas: readonly LineaCapturaAprobada[],
+    textosOriginales: readonly string[],
+    capturaId: string | null,
+  ): Promise<void> {
     setPanelDictado(false)
     setPanelFoto(false)
     const hablado = textosOriginales.join(' ')
@@ -271,6 +280,130 @@ function Mostrador() {
       void ejecutarComando(comando)
       return
     }
+
+    if (pestana === 'lista' && sesion.uid !== null) {
+      const resultado = await agregarProductosALista({
+        uid: sesion.uid,
+        productos: lineas.map((linea) => ({
+          codigo: linea.codigo,
+          descripcion: linea.descripcion,
+          cantidad: linea.cantidad,
+          urgencia: urgenciaDesdeTexto(linea.textoOriginal),
+        })),
+      })
+      if (!resultado.ok) {
+        usarNotificaciones.getState().mostrar({
+          tono: 'error',
+          mensaje: resultado.mensaje ?? 'No se pudo agregar a la lista.',
+        })
+        return
+      }
+      void queryClient.invalidateQueries({
+        queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid),
+      })
+      usarNotificaciones.getState().mostrar({
+        tono: 'exito',
+        mensaje:
+          lineas.length === 1
+            ? 'Producto agregado a la lista de requerimiento.'
+            : `${lineas.length} productos agregados a la lista de requerimiento.`,
+      })
+      return
+    }
+
+    if (pestana === 'vecinos') {
+      const listaVecinos = await listarCotizacionesPendientes('vecino')
+      const destinoId = resolverDestinoDeVecino({
+        textos: textosOriginales,
+        vecinos: listaVecinos.map((cada) => ({
+          id: cada.id,
+          alias: cada.aliasVecino ?? '',
+        })),
+        activoId: vecinoActivoId,
+      })
+      if (destinoId === null) {
+        usarNotificaciones.getState().mostrar({
+          tono: 'error',
+          mensaje: 'No hay un vecino activo para asignar el dictado.',
+        })
+        return
+      }
+      const activa = listaVecinos.find((cada) => cada.id === destinoId)
+      if (activa === undefined) {
+        setAvisoVecino('Ese vecino ya no está disponible.')
+        return
+      }
+      let actuales = [...activa.lineas]
+      for (const linea of lineas) {
+        const producto: ProductoBuscable = {
+          codigo: linea.codigo,
+          descripcion: linea.descripcion,
+          unidad: linea.unidad,
+          precio:
+            usarCatalogo.getState().productoPorCodigo(linea.codigo)?.precio ?? 0,
+          activo: true,
+        }
+        const resultado = await agregarProductoAVecino({
+          cotizacionId: activa.id,
+          lineasActuales: actuales,
+          producto,
+          cantidad: linea.cantidad,
+        })
+        if (!resultado.ok) {
+          setAvisoVecino(resultado.mensaje ?? 'No se pudo agregar el producto.')
+          return
+        }
+        const indice = actuales.findIndex((cada) => cada.codigo === linea.codigo)
+        if (indice >= 0) {
+          const previa = actuales[indice]!
+          actuales = actuales.map((cada, i) =>
+            i === indice
+              ? { ...previa, cantidad: previa.cantidad + linea.cantidad }
+              : cada,
+          )
+        } else {
+          actuales = [
+            ...actuales,
+            {
+              codigo: linea.codigo,
+              descripcion: linea.descripcion,
+              unidad: linea.unidad,
+              cantidad: linea.cantidad,
+              precio: producto.precio,
+            },
+          ]
+        }
+      }
+      setVecinoActivoId(destinoId)
+      void queryClient.invalidateQueries({
+        queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+      })
+      usarNotificaciones.getState().mostrar({
+        tono: 'exito',
+        mensaje: `Agregado a ${activa.aliasVecino ?? `H${activa.numero}`}.`,
+      })
+      return
+    }
+
+    const aplicadas = aplicarLineasAprobadasAlPedido(lineas, capturaId)
+    if (aplicadas.agregadas > 0 && aplicadas.omitidas === 0) {
+      usarNotificaciones.getState().mostrar({
+        tono: 'exito',
+        mensaje:
+          aplicadas.agregadas === 1
+            ? 'Producto agregado al pedido.'
+            : `${aplicadas.agregadas} productos agregados al pedido.`,
+      })
+    } else if (aplicadas.omitidas > 0) {
+      usarNotificaciones.getState().mostrar({
+        tono: 'info',
+        mensaje:
+          aplicadas.omitidas === 1
+            ? 'Un producto de la captura ya estaba en el pedido; no se duplicó.'
+            : `${aplicadas.omitidas} productos de la captura ya estaban en el pedido; no se duplicaron.`,
+      })
+    }
+
     const mencion = extraerMencionDeCliente(textosOriginales)
     if (mencion === null || usarPedido.getState().cliente !== null) return
     const local = resolverClienteLocal(mencion, usarCatalogo.getState().clientes)
@@ -332,6 +465,31 @@ function Mostrador() {
   }
 
   function agregar(producto: ProductoBuscable): void {
+    if (pestana === 'lista' && sesion.uid !== null) {
+      void (async () => {
+        const resultado = await agregarProductosALista({
+          uid: sesion.uid!,
+          productos: [
+            {
+              codigo: producto.codigo,
+              descripcion: producto.descripcion,
+            },
+          ],
+        })
+        if (!resultado.ok) {
+          usarNotificaciones.getState().mostrar({
+            tono: 'error',
+            mensaje: resultado.mensaje ?? 'No se pudo agregar a la lista.',
+          })
+          return
+        }
+        void queryClient.invalidateQueries({
+          queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid!),
+        })
+      })()
+      return
+    }
+
     if (pestana === 'vecinos' && vecinoActivoId !== null) {
       void (async () => {
         const lista = await listarCotizacionesPendientes('vecino')
@@ -374,6 +532,28 @@ function Mostrador() {
 
   function agregarVarios(productos: readonly ProductoBuscable[]): void {
     if (productos.length === 0) return
+    if (pestana === 'lista' && sesion.uid !== null) {
+      void (async () => {
+        const resultado = await agregarProductosALista({
+          uid: sesion.uid!,
+          productos: productos.map((producto) => ({
+            codigo: producto.codigo,
+            descripcion: producto.descripcion,
+          })),
+        })
+        if (!resultado.ok) {
+          usarNotificaciones.getState().mostrar({
+            tono: 'error',
+            mensaje: resultado.mensaje ?? 'No se pudo agregar a la lista.',
+          })
+          return
+        }
+        void queryClient.invalidateQueries({
+          queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid!),
+        })
+      })()
+      return
+    }
     if (pestana === 'vecinos' && vecinoActivoId !== null) {
       for (const producto of productos) agregar(producto)
       return
@@ -431,6 +611,9 @@ function Mostrador() {
             ? { direccion: existente.direccion }
             : {}),
         },
+        ...(propuesta.telefono !== undefined
+          ? { telefono: propuesta.telefono }
+          : {}),
       })
       if (!resultado.ok || resultado.cotizacionId === undefined) {
         setAvisoVecino(resultado.mensaje ?? 'No se pudo crear el vecino.')
@@ -442,6 +625,10 @@ function Mostrador() {
       setPestana('vecinos')
       void queryClient.invalidateQueries({
         queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+      })
+      usarNotificaciones.getState().mostrar({
+        tono: 'exito',
+        mensaje: `Vecino ${propuesta.alias} listo.`,
       })
     } finally {
       setCreandoVecino(false)
@@ -666,12 +853,12 @@ function Mostrador() {
           onDictar={() => {
             setPanelFoto(false)
             setPanelDictado(true)
-            setPestana('pedido')
+            if (pestana === 'cotizaciones') setPestana('pedido')
           }}
           onFotografiar={() => {
             setPanelDictado(false)
             setPanelFoto(true)
-            setPestana('pedido')
+            if (pestana === 'cotizaciones') setPestana('pedido')
           }}
         />
         <PestanasMostrador
@@ -693,6 +880,14 @@ function Mostrador() {
         termino={termino}
         abierto={panelDictado}
         onCerrar={() => setPanelDictado(false)}
+        contexto={
+          pestana === 'lista'
+            ? 'lista'
+            : pestana === 'vecinos'
+              ? 'vecino'
+              : 'pedido'
+        }
+        vecinoId={pestana === 'vecinos' ? vecinoActivoId : null}
       />
       <PanelFotografia
         termino={termino}
@@ -731,9 +926,8 @@ function Mostrador() {
 
       {faseCaptura === 'revision' && (
         <RevisionCaptura
-          onAprobada={(textos) => {
-            alAprobarCaptura(textos)
-            setPestana('pedido')
+          onAprobada={(lineas, textos, capturaId) => {
+            void alAprobarCaptura(lineas, textos, capturaId)
           }}
           onDescartar={() => {
             setPanelDictado(false)
@@ -845,15 +1039,14 @@ function Mostrador() {
           onConvertir={convertirVecinoEnPedido}
           aviso={avisoVecino}
           onVolverAlBuscador={() => entradaRef.current?.enfocar()}
+          creandoVecino={creandoVecino}
+          onCrearDesdeModal={(propuesta) => {
+            void confirmarCrearVecino(propuesta)
+          }}
         />
       )}
 
-      {pestana === 'lista' && (
-        <PanelDeListaCatalogo
-          productos={productosVisibles(catalogo)}
-          onElegir={agregar}
-        />
-      )}
+      {pestana === 'lista' && <PanelDeListaRequerimiento />}
 
       <ResultadosDeComando
         resultado={resultadoComando}
@@ -928,6 +1121,9 @@ function Mostrador() {
                   uid,
                   alias: propuesta.alias,
                   cliente,
+                  ...(propuesta.telefono !== undefined
+                    ? { telefono: propuesta.telefono }
+                    : {}),
                 })
                 if (!resultado.ok || resultado.cotizacionId === undefined) {
                   setAvisoVecino(
@@ -940,6 +1136,10 @@ function Mostrador() {
                 setPestana('vecinos')
                 void queryClient.invalidateQueries({
                   queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+                })
+                usarNotificaciones.getState().mostrar({
+                  tono: 'exito',
+                  mensaje: `Vecino ${propuesta.alias} listo.`,
                 })
               } finally {
                 setCreandoVecino(false)

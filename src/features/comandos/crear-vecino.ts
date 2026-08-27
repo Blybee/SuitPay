@@ -7,6 +7,7 @@ export interface PropuestaCrearVecino {
   readonly alias: string
   readonly numeroDocumento: string
   readonly tipoDocumento: 'DNI' | 'RUC'
+  readonly telefono?: string
 }
 
 const PATRON =

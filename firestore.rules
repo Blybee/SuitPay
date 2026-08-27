@@ -157,8 +157,9 @@ service cloud.firestore {
 
       function cotizacionBienFormada() {
         return soloEstosCampos([
-                 'numero', 'estado', 'canal', 'aliasVecino', 'cliente',
-                 'lineas', 'total', 'creadoPor', 'creadoEn', 'actualizadoEn'
+                 'numero', 'estado', 'canal', 'aliasVecino', 'telefonoVecino',
+                 'cliente', 'lineas', 'total', 'creadoPor', 'creadoEn',
+                 'actualizadoEn'
                ])
                && canalValido()
                && aliasCoherente();
@@ -177,13 +178,39 @@ service cloud.firestore {
                     && sinCambiar('creadoPor')
                     && sinCambiar('numero')
                     && sinCambiar('canal')
-                    && sinCambiar('aliasVecino')
                     && cotizacionBienFormada();
 
       allow delete: if (esVendedor() || esAdministrador())
                     && resource.data.estado == 'pendiente';
     }
 
+    // --- Lista de requerimiento ------------------------------------------
+    //
+    // Un documento por vendedor. Se sincroniza entre sus dispositivos.
+    // `caducaEn` alimenta el TTL de Firestore (1 semana). El cliente también
+    // ignora documentos caducados.
+
+    match /listasRequerimiento/{vendedorId} {
+      function listaBienFormada() {
+        return request.resource.data.vendedorId == uid()
+               && request.resource.data.vendedorId == vendedorId
+               && request.resource.data.lineas is list
+               && request.resource.data.caducaEn is timestamp
+               && soloEstosCampos([
+                    'vendedorId', 'lineas', 'actualizadoEn', 'caducaEn'
+                  ]);
+      }
+
+      allow read: if (esVendedor() || esAdministrador() || esJefe())
+                  && vendedorId == uid();
+
+      allow create, update: if (esVendedor() || esAdministrador())
+                            && vendedorId == uid()
+                            && listaBienFormada();
+
+      allow delete: if (esVendedor() || esAdministrador())
+                    && vendedorId == uid();
+    }
     // --- Capturas --------------------------------------------------------
     //
     // El vendedor crea la captura; el estado y las propuestas los escribe el

@@ -131,6 +131,12 @@ Con el tab Vecinos, crear un vecino confirmado, activar su sub-tab, agregar dos 
 
 **Observar**: las líneas y el total viven en el sub-tab del alias; el buscador no ensucia el Pedido general ni otro vecino; tras emitir, la cotización de vecino desaparece de Firestore y del tab.
 
+### V14c — Lista de requerimiento, audios del día y WhatsApp de vecino
+
+En el tab Lista, agregar un producto desde el buscador y otro por dictado aprobado. Comprobar columnas N° | Producto | Cantidad | Urgencia (cantidad 1 y urgencia Normal por omisión). Pulsar Urgencia para pasar a Urgente. Exportar PDF. En Vecinos, pulsar + , dar de alta con teléfono, Ver todos, y capturar la lista del pill (toast de éxito; no hay check verde). Abrir el desplegable de audios con el micrófono en Pedido, Lista y un pill de vecino: solo aparecen los del contexto activo y del día civil Lima.
+
+**Observar**: el micrófono no cambia de tab, salvo Cotizaciones → Pedido. La UI no ofrece borrar audios. Acumular grabaciones diarias sin limpieza consumiría más recursos de los necesarios: el lifecycle del bucket caduca audio a 1 día y fotos a 7 días.
+
 ### V15 — Las reglas de acceso aguantan (contrato de reglas)
 
 Desde el emulador, con un token de vendedor, intentar: crear un comprobante, cambiar su estado a aceptado, borrarlo, incrementar el contador de una serie, escribir `estado: convertida` / `comprobanteId` en una cotización y cambiarse el rol a administrador.

@@ -187,15 +187,6 @@ export function marcasDelCatalogo(estado: AlmacenDelCatalogo): readonly string[]
   return marcasDe(estado.productos)
 }
 
-export function productosVisibles(
-  estado: AlmacenDelCatalogo,
-): readonly ProductoBuscable[] {
-  return filtrarPorFacetas(
-    estado.productos.filter((p) => p.activo),
-    estado.facetas,
-  )
-}
-
 /** El umbral vigente, con el respaldo conservador si aún no se leyó. */
 export function umbralVigente(estado: AlmacenDelCatalogo): number {
   return estado.parametros?.umbralIdentificacionBoleta ?? 70_000

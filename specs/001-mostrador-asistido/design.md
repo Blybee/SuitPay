@@ -72,7 +72,7 @@ Se conservó un tiempo el material “papel cálido / radio cero / sin sidebar�
 
 La aplicación abre en **Inicio → tab Pedido**, con tipo de documento **Nota de Venta** y la entrada enfocada.
 
-El significado exacto del tab **Lista** queda abierto en el intake (volcado 5).
+El tab **Lista** es la lista de requerimiento del vendedor (tabla N° | Producto | Cantidad | Urgencia), no el catálogo. El catálogo se busca en la Entrada.
 
 ---
 
@@ -202,6 +202,7 @@ Poco y con propósito. Línea nueva casi inmediata. Sello sin deslizamiento. Bot
 - **Contenido a todo el ancho** del área de trabajo.
 - **Tabs** Pedido | Cotizaciones | Vecinos | Lista en el mostrador.
 - **Vecinos** = cotizaciones por alias (sub-tabs + líneas + total), no módulo de crédito/cobro.
+- **Lista** = requerimiento tabular (N° | Producto | Cantidad | Urgencia); PDF interno y WhatsApp; no emite.
 - **Default de tipo:** Nota de Venta.
 - **No hay modo oscuro.**
 - **Entrada arriba, total abajo.**
@@ -217,7 +218,6 @@ Poco y con propósito. Línea nueva casi inmediata. Sello sin deslizamiento. Bot
 ## Decisiones que siguen abiertas
 
 - Nueva composición Soft-Pill + sidebar + tabs (aprobación visual).
-- Significado del tab **Lista**.
 - Quién entra a **Configuración** (solo admin vs también vendedor).
 - Valores exactos de espaciado del shell: se fijan en la primera implementación Soft-Pill y se recogen luego en `DESIGN.md`.
 - Maquetación de `formato_pdf: ticket` en impresora de rollo.

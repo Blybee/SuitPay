@@ -161,6 +161,7 @@ Una serie por vendedor y tipo de documento. Documentos pequeños con el contador
 | `estado` | cadena | Solo `pendiente` mientras el documento existe. Los estados `convertida` y `descartada` **quedan retirados** del diseño vigente. |
 | `canal` | cadena | `general` (tab Cotizaciones) o `vecino` (tab Vecinos). Por defecto `general`. |
 | `aliasVecino` | cadena | Obligatorio si `canal === 'vecino'`; es la etiqueta del tab interno. Ausente en canal general. |
+| `telefonoVecino` | cadena | Opcional si `canal === 'vecino'`. Celular para abrir WhatsApp al capturar la lista. Ausente en canal general. |
 | `cliente` | objeto | Instantánea, igual que en el comprobante. |
 | `lineas` | arreglo de objetos | Con el precio acordado en su momento. Puede estar vacío en una cotización de vecino recién creada. |
 | `total` | número | |
@@ -175,7 +176,28 @@ Una serie por vendedor y tipo de documento. Documentos pequeños con el contador
 
 **Advertencia al recuperar** (FR-018): al abrir una cotización, el cliente compara sus líneas contra el catálogo en caché y señala los precios que cambiaron y los productos que ya no existen. No requiere lecturas adicionales.
 
-**Canal vecinos (US8)**: una cotización viva por vecino (`canal: vecino` + `aliasVecino`). El tab Vecinos filtra por canal; el tab Cotizaciones solo lista `canal: general`.
+**Canal vecinos (US8)**: una cotización viva por vecino (`canal: vecino` + `aliasVecino`). El tab Vecinos filtra por canal; el tab Cotizaciones solo lista `canal: general`. `aliasVecino` y `telefonoVecino` se pueden editar mientras la cotización esté pendiente.
+
+---
+
+### `listasRequerimiento/{vendedorId}`
+
+Un documento por vendedor (no una fila por producto). Las líneas van embebidas porque siempre se leen y escriben juntas.
+
+| Campo | Tipo | Notas |
+|-------|------|-------|
+| `vendedorId` | cadena | Igual al id del documento. Dueño; sincroniza entre sus dispositivos. |
+| `lineas` | arreglo | `{ id, codigo, descripcion, cantidad, urgencia: normal\|urgente }`. |
+| `actualizadoEn` | marca de tiempo | |
+| `caducaEn` | marca de tiempo | TTL Firestore de 1 semana desde la última escritura. El cliente ignora documentos vencidos. |
+
+Carga bajo demanda al abrir el tab Lista. No se lee al arrancar la app.
+
+---
+
+### Medios en Cloud Storage `capturas/{uid}/{id}.{ext}`
+
+Audio: lifecycle 1 día. Fotografía: 7 días. Ver `storage.lifecycle.json` y `docs/CICLO-DE-VIDA-MEDIOS.md`. El historial reproducible del día vive en IndexedDB (almacén `audios`); la UI no borra.
 
 ---
 

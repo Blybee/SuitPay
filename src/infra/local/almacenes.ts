@@ -17,8 +17,23 @@ import type {DBSchema, IDBPDatabase} from 'idb';
  * independiente de la red (FR-007, principio V), y para que arrancar la
  * aplicación cueste tres lecturas y no una por tecla.
  *
- * Se usa `idb` y no Dexie porque para dos almacenes Dexie sobra.
+ * El historial de audios del día vive en un tercer almacén. La UI no borra
+ * grabaciones: el lifecycle de Cloud Storage las caduca. Aquí solo se indexan
+ * para reproducir las de hoy; al listar se ocultan las de otro día civil Lima.
+ *
+ * Se usa `idb` y no Dexie porque para tres almacenes Dexie sigue sobrando.
  */
+
+export type ContextoDeAudio = 'pedido' | 'lista' | 'vecino'
+
+export interface RegistroDeAudio {
+  readonly id: string
+  readonly grabadoEn: number
+  readonly contexto: ContextoDeAudio
+  readonly vecinoId: string | null
+  readonly mimeType: string
+  readonly blob: Blob
+}
 
 interface EsquemaDeSuitPay extends DBSchema {
   pedido: {
@@ -29,10 +44,14 @@ interface EsquemaDeSuitPay extends DBSchema {
     key: string
     value: unknown
   }
+  audios: {
+    key: string
+    value: RegistroDeAudio
+  }
 }
 
 const NOMBRE = 'suitpay'
-const VERSION = 1
+const VERSION = 2
 
 /** Claves fijas: cada almacén guarda un único documento, no una colección. */
 export const CLAVES = {
@@ -52,6 +71,9 @@ function abrir(): Promise<IDBPDatabase<EsquemaDeSuitPay>> {
       }
       if (!bd.objectStoreNames.contains('catalogo')) {
         bd.createObjectStore('catalogo')
+      }
+      if (!bd.objectStoreNames.contains('audios')) {
+        bd.createObjectStore('audios', { keyPath: 'id' })
       }
     },
   })
@@ -106,5 +128,35 @@ export async function borrar(
     await bd.delete(almacen, clave)
   } catch {
     // Igual que arriba: no puede tumbar nada.
+  }
+}
+
+export async function guardarAudio(registro: RegistroDeAudio): Promise<void> {
+  if (!almacenamientoLocalDisponible()) return
+  try {
+    const bd = await abrir()
+    await bd.put('audios', registro)
+  } catch {
+    // El dictado ya se interpretó; perder el historial local no tumba la venta.
+  }
+}
+
+export async function listarAudios(): Promise<readonly RegistroDeAudio[]> {
+  if (!almacenamientoLocalDisponible()) return []
+  try {
+    const bd = await abrir()
+    return await bd.getAll('audios')
+  } catch {
+    return []
+  }
+}
+
+export async function borrarAudio(id: string): Promise<void> {
+  if (!almacenamientoLocalDisponible()) return
+  try {
+    const bd = await abrir()
+    await bd.delete('audios', id)
+  } catch {
+    // Perder una entrada local vieja no tumba el dictado.
   }
 }

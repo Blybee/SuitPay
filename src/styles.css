@@ -307,6 +307,19 @@
   display: none;
 }
 
+.desplegable-audios {
+  inset: unset;
+  position: fixed;
+  top: 5.5rem;
+  right: 1rem;
+  margin: 0;
+  color: inherit;
+}
+
+.desplegable-audios:is(:popover-open, .\:popover-open) {
+  display: block;
+}
+
 @media (min-width: 768px) {
   .barra-lateral-menu-movil {
     display: none !important;

@@ -490,6 +490,73 @@ describeConEmulador('instantáneas de solo lectura', () => {
   })
 })
 
+describeConEmulador('lista de requerimiento', () => {
+  it('un vendedor escribe y lee la suya', async () => {
+    await assertSucceeds(
+      setDoc(doc(comoVendedor(), 'listasRequerimiento/vendedor-1'), {
+        vendedorId: 'vendedor-1',
+        lineas: [
+          {
+            id: 'l1',
+            codigo: 'C01',
+            descripcion: 'CODO FG 1/2',
+            cantidad: 1,
+            urgencia: 'normal',
+          },
+        ],
+        actualizadoEn: serverTimestamp(),
+        caducaEn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      }),
+    )
+    await assertSucceeds(
+      getDoc(doc(comoVendedor(), 'listasRequerimiento/vendedor-1')),
+    )
+  })
+
+  it('un vendedor NO lee la lista de otro', async () => {
+    await entorno.withSecurityRulesDisabled(async (contexto) => {
+      await setDoc(
+        doc(contexto.firestore(), 'listasRequerimiento/vendedor-2'),
+        {
+          vendedorId: 'vendedor-2',
+          lineas: [],
+          actualizadoEn: serverTimestamp(),
+          caducaEn: new Date(Date.now() + 1000),
+        },
+      )
+    })
+    await assertFails(
+      getDoc(doc(comoVendedor(), 'listasRequerimiento/vendedor-2')),
+    )
+  })
+})
+
+describeConEmulador('vecino: alias y teléfono editables', () => {
+  it('un vendedor crea una cotización de vecino con teléfono y cambia el alias', async () => {
+    await assertSucceeds(
+      setDoc(doc(comoVendedor(), 'cotizaciones/vecino-1'), {
+        numero: 90,
+        estado: 'pendiente',
+        canal: 'vecino',
+        aliasVecino: 'wilmer',
+        telefonoVecino: '987654321',
+        cliente: null,
+        lineas: [],
+        total: 0,
+        creadoPor: 'vendedor-1',
+        creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(doc(comoVendedor(), 'cotizaciones/vecino-1'), {
+        aliasVecino: 'wilmer-2',
+        telefonoVecino: '912345678',
+      }),
+    )
+  })
+})
+
 describeConEmulador('la regla por defecto niega', () => {
   it('una colección no prevista es inaccesible', async () => {
     await assertFails(getDoc(doc(comoVendedor(), 'coleccion-inventada/algo')))

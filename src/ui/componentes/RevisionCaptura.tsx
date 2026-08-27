@@ -1,11 +1,10 @@
 import { Check, X } from 'lucide-react'
 import { OpcionesAmbiguas } from '../../features/captura/ambiguos.tsx'
-import { aprobarPropuestaDeCaptura } from '../../features/captura/aprobar.ts'
+import { extraerLineasAprobadasDeCaptura, type LineaCapturaAprobada } from '../../features/captura/aprobar.ts'
 import { usarCaptura } from '../../features/captura/estado.ts'
 import { MiniaturaCaptura } from '../../features/captura/miniatura.tsx'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { usarCatalogo } from '../../features/catalogo/almacen.ts'
-import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import { CabecerasDeColumna } from './LineaPedido.tsx'
 
 /**
@@ -16,7 +15,11 @@ export function RevisionCaptura({
   onAprobada,
   onDescartar,
 }: {
-  readonly onAprobada: (textosOriginales: readonly string[]) => void
+  readonly onAprobada: (
+    lineas: readonly LineaCapturaAprobada[],
+    textosOriginales: readonly string[],
+    capturaId: string | null,
+  ) => void
   readonly onDescartar: () => void
 }) {
   const lineas = usarCaptura((s) => s.lineas)
@@ -28,18 +31,11 @@ export function RevisionCaptura({
   const catalogo = usarCatalogo()
 
   function aprobar(): void {
-    const resultado = aprobarPropuestaDeCaptura()
+    const resultado = extraerLineasAprobadasDeCaptura()
     if (!resultado.ok) return
-    if (resultado.lineasOmitidas > 0) {
-      usarNotificaciones.getState().mostrar({
-        tono: 'info',
-        mensaje:
-          resultado.lineasOmitidas === 1
-            ? 'Un producto de la captura ya estaba en el pedido; no se duplicó.'
-            : `${resultado.lineasOmitidas} productos de la captura ya estaban en el pedido; no se duplicaron.`,
-      })
-    }
-    onAprobada(resultado.textosOriginales)
+    const capturaId = usarCaptura.getState().capturaId
+    cancelar()
+    onAprobada(resultado.lineas, resultado.textosOriginales, capturaId)
   }
 
   function descartar(): void {

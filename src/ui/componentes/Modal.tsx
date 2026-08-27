@@ -28,6 +28,8 @@ export interface PropsDeModal {
    */
   readonly noSeCierraSola?: boolean
   readonly className?: string
+  /** Acción en la esquina de la cabecera (p. ej. Ver todos). */
+  readonly cabeceraExtra?: ReactNode
 }
 
 function unir(...clases: readonly (string | false | undefined)[]): string {
@@ -43,6 +45,7 @@ export function Modal({
   pie,
   noSeCierraSola = false,
   className,
+  cabeceraExtra,
 }: PropsDeModal) {
   const dialogo = useRef<HTMLDialogElement>(null)
   const idTitulo = useId()
@@ -118,9 +121,12 @@ export function Modal({
         className,
       )}
     >
-      <h2 id={idTitulo} className="text-cabecera font-bold text-tinta">
-        {titulo}
-      </h2>
+      <div className="flex items-start justify-between gap-3">
+        <h2 id={idTitulo} className="text-cabecera font-bold text-tinta">
+          {titulo}
+        </h2>
+        {cabeceraExtra}
+      </div>
 
       {descripcion !== undefined ? (
         <p id={idDescripcion} className="mt-1 text-cuerpo text-desvaida">

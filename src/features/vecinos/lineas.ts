@@ -9,7 +9,11 @@ export async function agregarProductoAVecino(datos: {
   readonly cotizacionId: string
   readonly lineasActuales: readonly LineaDePedido[]
   readonly producto: ProductoBuscable
+  readonly cantidad?: number
 }): Promise<{ ok: boolean; mensaje?: string }> {
+  const incremento = datos.cantidad !== undefined && datos.cantidad > 0
+    ? datos.cantidad
+    : 1
   const existentes = [...datos.lineasActuales]
   const indice = existentes.findIndex(
     (linea) => linea.codigo === datos.producto.codigo,
@@ -18,14 +22,14 @@ export async function agregarProductoAVecino(datos: {
     const actual = existentes[indice]!
     existentes[indice] = {
       ...actual,
-      cantidad: actual.cantidad + 1,
+      cantidad: actual.cantidad + incremento,
     }
   } else {
     existentes.push({
       codigo: datos.producto.codigo,
       descripcion: datos.producto.descripcion,
       unidad: datos.producto.unidad,
-      cantidad: 1,
+      cantidad: incremento,
       precio: datos.producto.precio,
     })
   }

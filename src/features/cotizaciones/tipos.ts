@@ -21,4 +21,6 @@ export interface Cotizacion {
   readonly creadoPor: string
   readonly creadoEn: Date
   readonly actualizadoEn: Date | null
+  /** Celular del vecino (canal vecino). Ausente en cotizaciones generales. */
+  readonly telefonoVecino: string | null
 }

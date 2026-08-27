@@ -4,12 +4,14 @@ rules_version = '2';
 //
 // Cada vendedor escribe solo bajo su propio prefijo y no lee los medios de
 // otros. Los originales de audio e imagen contienen la voz del vendedor y,
-// potencialmente, nombres de clientes escritos en papel: el audio de un dictado
-// y la fotografía de una guía manual no son datos anónimos.
+// potencialmente, nombres de clientes escritos en papel.
 //
-// La lectura efectiva la hace el backend con privilegios administrativos, que no
-// está sujeto a estas reglas. Se concede lectura al propio autor únicamente para
-// que pueda revisar lo que acaba de subir.
+// La eliminación está permitida por optimización: acumular audios pequeños
+// todos los días —que no tienen uso más allá del día civil en Lima— consumiría
+// más recursos de los necesarios. La UI no ofrece borrar; el lifecycle nativo
+// del bucket caduca audios a 1 día y fotografías a 1 semana
+// (storage.lifecycle.json). El vendedor puede borrar los propios para
+// operaciones de mantenimiento; no puede tocar los de otro.
 
 service firebase.storage {
   match /b/{bucket}/o {
@@ -27,9 +29,7 @@ service firebase.storage {
                    && (request.resource.contentType.matches('image/.*')
                        || request.resource.contentType.matches('audio/.*'));
 
-      // Un medio que ya alimentó una propuesta es parte de la traza de cómo se
-      // armó un pedido. No se sobrescribe ni se borra desde el cliente.
-      allow delete: if false;
+      allow delete: if activo() && request.auth.uid == vendedorId;
     }
 
     match /{rutaCualquiera=**} {

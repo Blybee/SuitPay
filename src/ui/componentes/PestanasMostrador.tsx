@@ -1,6 +1,6 @@
 /**
  * Tabs internos del mostrador: Pedido | Cotizaciones | Vecinos | Lista (FR-005b).
- * Lista es el catálogo espejado con filtros facetados (FR-009d).
+ * Lista es la lista de requerimiento (N° | Producto | Cantidad | Urgencia).
  */
 
 export type PestanaMostrador = 'pedido' | 'cotizaciones' | 'vecinos' | 'lista'

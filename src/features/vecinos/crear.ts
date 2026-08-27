@@ -22,6 +22,7 @@ export async function crearCotizacionVecino(datos: {
   readonly uid: string
   readonly alias: string
   readonly cliente: ClienteDelPedido
+  readonly telefono?: string
 }): Promise<ResultadoCrearVecino> {
   const alias = datos.alias.trim()
   if (alias === '') {
@@ -48,11 +49,13 @@ export async function crearCotizacionVecino(datos: {
   }
 
   try {
+    const telefono = datos.telefono?.trim() ?? ''
     await setDoc(referencia, {
       numero: reserva.numero,
       estado: 'pendiente',
       canal: 'vecino',
       aliasVecino: alias,
+      ...(telefono !== '' ? { telefonoVecino: telefono } : {}),
       cliente,
       lineas: [],
       total: 0,
