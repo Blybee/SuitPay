@@ -628,6 +628,7 @@ function Mostrador() {
       })
       usarNotificaciones.getState().mostrar({
         tono: 'exito',
+        duracionMs: 5_000,
         mensaje: `Vecino ${propuesta.alias} listo.`,
       })
     } finally {
@@ -1139,6 +1140,7 @@ function Mostrador() {
                 })
                 usarNotificaciones.getState().mostrar({
                   tono: 'exito',
+                  duracionMs: 5_000,
                   mensaje: `Vecino ${propuesta.alias} listo.`,
                 })
               } finally {

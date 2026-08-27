@@ -89,34 +89,35 @@ export async function copiarCapturaYAbrirWhatsApp(datos: {
       ? enlaceChatWhatsApp(datos.telefono)
       : null
 
-  if (chat !== null) {
-    window.open(chat, '_blank', 'noopener,noreferrer')
-  }
-
   if (copiado && chat !== null) {
     mostrarNotificacion({
       tono: 'exito',
+      duracionMs: 6_000,
       mensaje: `Captura copiada. WhatsApp abierto: pega la imagen en el chat de ${datos.alias}.`,
     })
-    return
-  }
-  if (copiado) {
+  } else if (copiado) {
     mostrarNotificacion({
       tono: 'exito',
+      duracionMs: 6_000,
       mensaje: `Captura de ${datos.alias} copiada. Pégala en WhatsApp.`,
     })
-    return
-  }
-  if (chat !== null) {
+  } else if (chat !== null) {
     mostrarNotificacion({
       tono: 'info',
+      duracionMs: 6_000,
       mensaje:
         'WhatsApp abierto, pero no se pudo copiar la imagen. Haz otra captura o comparte el archivo a mano.',
     })
-    return
+  } else {
+    mostrarNotificacion({
+      tono: 'error',
+      mensaje: 'No se pudo copiar la captura. Prueba de nuevo o usa otro navegador.',
+    })
   }
-  mostrarNotificacion({
-    tono: 'error',
-    mensaje: 'No se pudo copiar la captura. Prueba de nuevo o usa otro navegador.',
-  })
+
+  if (chat !== null) {
+    window.setTimeout(() => {
+      window.open(chat, '_blank', 'noopener,noreferrer')
+    }, 300)
+  }
 }
