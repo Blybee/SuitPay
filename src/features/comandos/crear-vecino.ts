@@ -9,6 +9,8 @@ export interface PropuestaCrearVecino {
   readonly numeroDocumento: string
   readonly tipoDocumento: 'DNI' | 'RUC'
   readonly telefono?: string
+  /** Si está, no se crea otra cotización: se reasigna el cliente de esa. */
+  readonly cotizacionId?: string
 }
 
 const PATRON =

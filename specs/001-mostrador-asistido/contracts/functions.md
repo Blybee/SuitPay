@@ -133,7 +133,7 @@ La función más importante del sistema. Es el único camino por el que nace un 
 
 ## `interpretarCaptura`
 
-Único punto de salida del sistema hacia el servicio de asistencia. Existe tanto por seguridad como para hacer verificable el principio IV.
+Único punto de salida de **dictado y fotografía** hacia el servicio de asistencia. El PDF de requerimiento usa `extraerListaPdf` (FR-061).
 
 **Rol**: vendedor o administrador.
 
@@ -146,6 +146,24 @@ Ante error de cuota o límite de solicitudes, conmuta a la segunda credencial co
 **Respuesta**: `capturaId`, `lineas` con `textoOriginal`, `candidatos` y `estadoLinea`.
 
 **Errores**: `medio_ilegible` (FR-044 y el caso límite de la fotografía ilegible), `asistencia_no_disponible` (FR-046).
+
+---
+
+## `extraerListaPdf`
+
+Punto de salida **aparte** de `interpretarCaptura` (FR-061). Solo el PDF de requerimiento que el vendedor sube en Cotizaciones. No sustituye dictado ni fotografía.
+
+**Rol**: vendedor o administrador.
+
+**Petición**: `medioUrl` en Cloud Storage (PDF). **Sin** lote de productos y **sin** ficha de `clientes`.
+
+**Comportamiento**: lee el PDF y lo envía al modelo como `application/pdf` (`inlineData` por omisión; File API si el archivo supera el techo inline). MUST NOT extraer texto con un parser determinista antes del modelo. El schema pide renglones de mercadería y, si aparece identidad, `cliente: { tipoDocumento, numeroDocumento, denominacion } | null`. **No crea pedidos ni cotizaciones numeradas.**
+
+Ante error de cuota, conmuta a la segunda credencial. Ante indisponibilidad, `asistencia_no_disponible`.
+
+**Respuesta**: `capturaId`, `items` (`textoOriginal`, `cantidad`, `unidad`), `cliente` opcional.
+
+**Errores**: `medio_ilegible`, `asistencia_no_disponible`, `peticion_invalida` (tipo o tamaño).
 
 ---
 

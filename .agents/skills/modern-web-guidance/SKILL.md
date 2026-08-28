@@ -94,6 +94,14 @@ npx -y modern-web-guidance@latest retrieve "<id>"
 -   These guides are usually framework-agnostic; adapt them correctly to your setup.
 -   Do not hallucinate guides or ignore them; they represent the preferred local standard for the user's project.
 
+## Motion (SuitPay)
+
+- Prefer tokens `duration-rapida`, `duration-media`, `ease-salida` in `src/ui/tokens/tema.css`.
+- Do not use `transition-all` or magic millisecond values when a token exists.
+- For show/hide panels, use `grid-template-rows` 0fr/1fr or `@starting-style` + `transition-behavior: allow-discrete`. Honor `prefers-reduced-motion`.
+- Pair with `transitions-dev` (`transitions apply`) and `transitions-polish` (`transitions review`).
+- Also retrieve `animate-element-entry-exit` from this skill when adding or removing UI.
+
 
 ## Interpreting Browser Support & Fallbacks
 

@@ -3,17 +3,15 @@ rules_version = '2';
 // Acceso a los medios originales de las capturas.
 //
 // Cada vendedor escribe solo bajo su propio prefijo y no lee los medios de
-// otros. Los originales de audio e imagen contienen la voz del vendedor y,
-// potencialmente, nombres de clientes escritos en papel: el audio de un dictado
-// y la fotografía de una guía manual no son datos anónimos.
+// otros. Audio, imagen y PDF de requerimiento (FR-061) pueden contener datos
+// de cliente: no son anónimos.
 //
 // La lectura efectiva la hace el backend con privilegios administrativos, que no
 // está sujeto a estas reglas. Se concede lectura al propio autor únicamente para
 // que pueda revisar lo que acaba de subir.
 //
-// El ciclo de vida del bucket (storage.lifecycle.json) caduca audios a 1 día y
-// fotografías a 7 días. Lo ejecuta GCS, no el cliente: allow delete sigue
-// prohibido. La UI no ofrece borrar.
+// Techos: 12 MiB audio/imagen, 40 MiB PDF. El ciclo de vida del bucket
+// (storage.lifecycle.json) caduca audios a 1 día y fotografías a 7 días.
 
 service firebase.storage {
   match /b/{bucket}/o {
@@ -27,9 +25,20 @@ service firebase.storage {
 
       allow write: if activo()
                    && request.auth.uid == vendedorId
-                   && request.resource.size < 12 * 1024 * 1024
-                   && (request.resource.contentType.matches('image/.*')
-                       || request.resource.contentType.matches('audio/.*'));
+                   && (
+                     (
+                       request.resource.contentType.matches('image/.*')
+                       && request.resource.size < 12 * 1024 * 1024
+                     )
+                     || (
+                       request.resource.contentType.matches('audio/.*')
+                       && request.resource.size < 12 * 1024 * 1024
+                     )
+                     || (
+                       request.resource.contentType == 'application/pdf'
+                       && request.resource.size < 40 * 1024 * 1024
+                     )
+                   );
 
       // Un medio que ya alimentó una propuesta es parte de la traza de cómo se
       // armó un pedido. No se sobrescribe ni se borra desde el cliente.

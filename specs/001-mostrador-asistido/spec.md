@@ -132,6 +132,9 @@ Un cliente pide precios pero no cierra la compra. El vendedor guarda el pedido c
 4. **Given** una cotización que ya fue convertida o eliminada, **When** alguien intenta convertirla otra vez (p. ej. desde otro dispositivo), **Then** el sistema lo impide porque la cotización ya no existe.
 5. **Given** una cotización pendiente en el tab Cotizaciones, **When** el vendedor pulsa eliminar y confirma en el diálogo, **Then** el documento se elimina en duro de Firestore y deja de listarse.
 6. **Given** el diálogo de confirmación de eliminación, **When** el vendedor cancela, **Then** la cotización permanece intacta.
+7. **Given** el tab Cotizaciones, **When** el vendedor pulsa Subir PDF y elige un PDF de requerimiento, **Then** el procesamiento corre en segundo plano: el tab sigue usable, y al terminar aparece un toast y una fila en Pendientes recientes con el nombre del cliente (si se resolvió) o «Sin cliente».
+8. **Given** un job de PDF listo, **When** el vendedor pulsa Revisar cotización, **Then** se abre la revisión contrastada en Pedido; nada se ha numerado ni emitido.
+9. **Given** un PDF cuyo cliente está en el índice local, **When** termina el job, **Then** la fila muestra **nuestra** denominación, no un nombre inventado por el modelo.
 
 ---
 
@@ -283,6 +286,10 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **FR-018**: Al recuperar una cotización, el sistema MUST advertir de los productos que cambiaron de precio o dejaron de existir.
 - **FR-019**: Al convertir una cotización en boleta, factura o nota de venta, el sistema MUST eliminar en duro el documento de cotización en la misma transacción que crea el comprobante. Si la cotización ya no existe, MUST impedir una segunda conversión.
 - **FR-019a**: El tab Cotizaciones MUST ofrecer eliminar una cotización pendiente mediante un control explícito que exige confirmación del vendedor; tras confirmar, el documento MUST eliminarse en duro de Firestore. Cancelar el diálogo MUST dejar la cotización intacta.
+- **FR-061**: El tab Cotizaciones MUST ofrecer **Subir PDF** para importar un requerimiento del cliente. MUST NOT numerar una cotización ni emitir por el solo hecho de subir el archivo. Recuperar por número MUST seguir disponible como control de icono dentro del campo de número (Enter envía la búsqueda).
+- **FR-061a**: El PDF MUST enviarse al modelo como documento (`application/pdf`, inline o File API si supera el techo). MUST NOT extraerse el texto en el servidor con un parser determinista antes del modelo. El catálogo MUST NOT viajar en el payload; el emparejamiento MUST ocurrir en el cliente con la búsqueda local (Fuse). El modelo MAY devolver `cliente: { tipoDocumento, numeroDocumento, denominacion } | null`. La etiqueta de Pendientes MUST usar la denominación del índice/`clientes/{id}` cuando el documento coincida; si no está registrado, MAY mostrar una etiqueta provisional en la fila del job y MUST NOT escribir `clientes/{id}` desde la respuesta del modelo.
+- **FR-061b**: El procesamiento MUST ser un trabajo en segundo plano. Al terminar MUST avisarse con toast y MUST NOT abrir el diff ni cambiar de tab. «Revisar cotización» hidrata la revisión contrastada (FR-042) y pasa a Pedido. Aprobar sigue FR-041. Si la asistencia está caída, Subir PDF MUST quedar inerte (FR-046).
+- **FR-061c**: En la revisión, cada caja de sugerencias MUST ofrecer un control (lupa) que abre un combobox local sobre el catálogo para esa línea.
 - **FR-056**: Desde el detalle de un comprobante con líneas, el sistema MUST ofrecer «Reutilizar pedido»: cargar esas líneas (y el cliente, si lo había) en el mostrador como un pedido nuevo, con nueva clave de idempotencia, **sin modificar ni anular** el comprobante origen. Si ya hay un pedido en curso, MUST pedir confirmación antes de reemplazarlo. Al recuperar, SHOULD advertir diferencias de catálogo cuando aplique el mismo criterio que FR-018. Caso de uso: emitir boleta/factura y, al recoger, necesitar además una guía de remisión con la misma lista (ver feature `002-guias-remision`).
 
 **Clientes**
@@ -350,7 +357,7 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **FR-042**: La propuesta MUST mostrar, para cada línea, el contenido original interpretado junto al producto propuesto, de forma visualmente distinguible.
 - **FR-043**: Cuando el sistema no pueda decidir entre varios productos, MUST presentar las opciones en lugar de escoger.
 - **FR-044**: Las líneas que el sistema no pudo interpretar MUST quedar marcadas como pendientes y MUST NOT descartarse en silencio.
-- **FR-045**: El sistema MUST NOT enviar a servicios de asistencia automática razón social, RUC, DNI, dirección, teléfono, correo ni historial de compras de un cliente. La identidad del cliente MUST resolverse dentro del sistema.
+- **FR-045**: El sistema MUST NOT enviar a servicios de asistencia automática razón social, RUC, DNI, dirección, teléfono, correo ni historial de compras de un cliente **salvo la excepción de FR-061** (PDF de requerimiento íntegro, solo esa función). Audio, fotografía, catálogo y colección `clientes` MUST NOT enviarse. La identidad del cliente MUST resolverse dentro del sistema; el modelo no es la fuente de verdad.
 - **FR-046**: Cuando el servicio de asistencia no responda o tarde en exceso, el sistema MUST informarlo con claridad y MUST permitir completar la venta escribiendo.
 
 **Comandos**
@@ -406,7 +413,7 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **SC-009**: Los pedidos en papel que requieren transcripción manual completa se reducen respecto de la línea base semanal medida antes de la puesta en marcha.
 - **SC-010**: El 100% de las entregas al canal de vecinos quedan documentadas el mismo día como cotización de vecino; el comprobante se emite cuando el vecino paga. (Línea base: hoy se documentan solo al pagar, sin rastro formal en la entrega.)
 - **SC-011**: El 100% de las emisiones, anulaciones e intentos fallidos son atribuibles a un vendedor identificado y a un momento concreto.
-- **SC-012**: Ningún dato identificatorio de clientes aparece en el tráfico hacia servicios de asistencia automática, verificable por inspección.
+- **SC-012**: En dictado y fotografía, ningún dato identificatorio de clientes aparece en el tráfico hacia servicios de asistencia automática, verificable por inspección. En FR-061 el PDF viaja como medio; el payload de esa función MUST NOT incluir catálogo ni ficha de `clientes`.
 - **SC-013**: Señal cualitativa, declarada como tal: los 5 vendedores manifiestan preferir SuitPay al sistema anterior tras dos semanas de uso. Es el criterio de aceptación del dueño y no sustituye a las métricas anteriores.
 - **SC-014**: En Comprobantes, un vendedor obtiene el resumen del día (Hoy) con el total de ventas de la empresa en menos de 10 segundos en una jornada ordinaria, sin paginar.
 - **SC-015**: El 100% de las operaciones de listar, leer, imprimir, anular (mismo día) y reutilizar sobre comprobantes de otro emisor están permitidas a cualquier vendedor activo (trabajo colaborativo).

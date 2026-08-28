@@ -80,6 +80,10 @@
   --text-total--line-height: 1;
 
   --spacing: 0.25rem;
+
+  --duration-rapida: 150ms;
+  --duration-media: 280ms;
+  --ease-salida: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 :root {
@@ -89,4 +93,32 @@
   --alto-barra-total: 6.5rem;
   --ancho-sidebar: 15rem;
   --ancho-sidebar-colapsada: 4.5rem;
+}
+
+.fila-entrada {
+  opacity: 1;
+  translate: 0;
+  transition:
+    opacity var(--duration-media) var(--ease-salida),
+    translate var(--duration-media) var(--ease-salida);
+}
+
+@starting-style {
+  .fila-entrada {
+    opacity: 0;
+    translate: 0 -8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .fila-entrada {
+    transition: none;
+    translate: none;
+  }
+
+  @starting-style {
+    .fila-entrada {
+      translate: none;
+    }
+  }
 }

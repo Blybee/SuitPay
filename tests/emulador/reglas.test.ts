@@ -596,6 +596,85 @@ describeConEmulador('vecino: alias y teléfono editables', () => {
       }),
     )
   })
+
+  it('un vendedor añade teléfono a un vecino creado sin ese campo', async () => {
+    await assertSucceeds(
+      setDoc(doc(comoVendedor(), 'cotizaciones/vecino-sin-tel'), {
+        numero: 91,
+        estado: 'pendiente',
+        canal: 'vecino',
+        aliasVecino: 'ana',
+        cliente: {
+          tipoDocumento: 'DNI',
+          numeroDocumento: '12345678',
+          denominacion: 'Ana',
+        },
+        lineas: [],
+        total: 0,
+        creadoPor: 'vendedor-1',
+        creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(doc(comoVendedor(), 'cotizaciones/vecino-sin-tel'), {
+        telefonoVecino: '987654321',
+      }),
+    )
+  })
+
+  it('un vendedor cambia el cliente embebido sin tocar el resto', async () => {
+    await assertSucceeds(
+      setDoc(doc(comoVendedor(), 'cotizaciones/vecino-cliente'), {
+        numero: 92,
+        estado: 'pendiente',
+        canal: 'vecino',
+        aliasVecino: 'luis',
+        cliente: {
+          tipoDocumento: 'RUC',
+          numeroDocumento: '20123456789',
+          denominacion: 'Ferretería Luis',
+        },
+        lineas: [],
+        total: 0,
+        creadoPor: 'vendedor-1',
+        creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(doc(comoVendedor(), 'cotizaciones/vecino-cliente'), {
+        cliente: {
+          tipoDocumento: 'DNI',
+          numeroDocumento: '87654321',
+          denominacion: 'Luis DNI',
+        },
+      }),
+    )
+  })
+
+  it('un vecino con campos residuales aún admite teléfono', async () => {
+    await entorno.withSecurityRulesDisabled(async (contexto) => {
+      await setDoc(doc(contexto.firestore(), 'cotizaciones/vecino-legacy'), {
+        numero: 93,
+        estado: 'pendiente',
+        canal: 'vecino',
+        aliasVecino: 'rosa',
+        cliente: null,
+        lineas: [],
+        total: 0,
+        creadoPor: 'vendedor-1',
+        creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+        restoLegacy: true,
+      })
+    })
+    await assertSucceeds(
+      updateDoc(doc(comoVendedor(), 'cotizaciones/vecino-legacy'), {
+        telefonoVecino: '987654321',
+      }),
+    )
+  })
 })
 
 describeConEmulador('la regla por defecto niega', () => {

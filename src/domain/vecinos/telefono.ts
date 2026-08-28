@@ -23,6 +23,14 @@ export function normalizarTelefonoPeru(bruto: string): string | null {
   return `51${nacional}`
 }
 
+export function sanitizarEntradaTelefono(bruto: string): string {
+  const recortado = bruto.trim()
+  if (recortado === '') return ''
+  const conPlus = recortado.startsWith('+')
+  const digitos = recortado.replace(PATRON_SOLO_DIGITOS, '')
+  return conPlus ? `+${digitos}` : digitos
+}
+
 export function enlaceChatWhatsApp(telefono: string): string | null {
   const e164 = normalizarTelefonoPeru(telefono)
   if (e164 === null) return null

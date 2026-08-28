@@ -32,6 +32,7 @@ import { AltaTransportista } from '../features/transportistas/alta.tsx'
 import { guardarCotizacion } from '../features/cotizaciones/guardar.ts'
 import { PanelDeCotizaciones } from '../features/cotizaciones/panel.tsx'
 import { crearCotizacionVecino } from '../features/vecinos/crear.ts'
+import { persistirDatosDeVecino } from '../features/vecinos/datos.ts'
 import { agregarProductoAVecino } from '../features/vecinos/lineas.ts'
 import { PanelDeVecinos } from '../features/vecinos/panel.tsx'
 import { PanelDeListaRequerimiento } from '../features/lista/panel.tsx'
@@ -59,6 +60,7 @@ import {
   sePuedeEmitir,
   totalDelPedido,
   usarPedido,
+  type ClienteDelPedido,
 } from '../features/pedido/almacen.ts'
 import { puedeEmitir, usarSesion } from '../features/sesion/almacen.ts'
 import { GuardaSesion } from '../features/sesion/GuardaSesion.tsx'
@@ -391,6 +393,10 @@ function Mostrador() {
     }
 
     const aplicadas = aplicarLineasAprobadasAlPedido(lineas, capturaId)
+    const propuesto = usarCaptura.getState().clientePropuesto
+    if (propuesto !== null && usarPedido.getState().cliente === null) {
+      usarPedido.getState().fijarCliente(propuesto)
+    }
     if (aplicadas.agregadas > 0 && aplicadas.omitidas === 0) {
       usarNotificaciones.getState().mostrar({
         tono: 'exito',
@@ -603,6 +609,60 @@ function Mostrador() {
     }
   }
 
+  async function aplicarClienteAlVecino(
+    propuesta: PropuestaCrearVecino,
+    cliente: ClienteDelPedido,
+    uid: string,
+  ): Promise<void> {
+    if (propuesta.cotizacionId !== undefined) {
+      const resultado = await persistirDatosDeVecino({
+        cotizacionId: propuesta.cotizacionId,
+        alias: propuesta.alias,
+        telefono: propuesta.telefono ?? '',
+        cliente,
+      })
+      if (!resultado.ok) {
+        setAvisoVecino(
+          resultado.mensaje ?? 'No se pudieron guardar los datos del vecino.',
+        )
+        return
+      }
+      void queryClient.invalidateQueries({
+        queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+      })
+      usarNotificaciones.getState().mostrar({
+        tono: 'exito',
+        mensaje: 'Datos del vecino actualizados.',
+      })
+      return
+    }
+
+    const resultado = await crearCotizacionVecino({
+      uid,
+      alias: propuesta.alias,
+      cliente,
+      ...(propuesta.telefono !== undefined
+        ? { telefono: propuesta.telefono }
+        : {}),
+    })
+    if (!resultado.ok || resultado.cotizacionId === undefined) {
+      setAvisoVecino(resultado.mensaje ?? 'No se pudo crear el vecino.')
+      return
+    }
+    setTermino('')
+    setPropuestaVecino(null)
+    setVecinoActivoId(resultado.cotizacionId)
+    setPestana('vecinos')
+    void queryClient.invalidateQueries({
+      queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+    })
+    usarNotificaciones.getState().mostrar({
+      tono: 'exito',
+      duracionMs: 5_000,
+      mensaje: `Vecino ${propuesta.alias} listo.`,
+    })
+  }
+
   async function confirmarCrearVecino(
     propuesta: PropuestaCrearVecino,
   ): Promise<void> {
@@ -620,10 +680,9 @@ function Mostrador() {
         setPropuestaVecino(null)
         return
       }
-      const resultado = await crearCotizacionVecino({
-        uid: sesion.uid,
-        alias: propuesta.alias,
-        cliente: {
+      await aplicarClienteAlVecino(
+        propuesta,
+        {
           tipoDocumento: existente.tipoDocumento,
           numeroDocumento: existente.numeroDocumento,
           denominacion: existente.denominacion,
@@ -631,26 +690,8 @@ function Mostrador() {
             ? { direccion: existente.direccion }
             : {}),
         },
-        ...(propuesta.telefono !== undefined
-          ? { telefono: propuesta.telefono }
-          : {}),
-      })
-      if (!resultado.ok || resultado.cotizacionId === undefined) {
-        setAvisoVecino(resultado.mensaje ?? 'No se pudo crear el vecino.')
-        return
-      }
-      setTermino('')
-      setPropuestaVecino(null)
-      setVecinoActivoId(resultado.cotizacionId)
-      setPestana('vecinos')
-      void queryClient.invalidateQueries({
-        queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
-      })
-      usarNotificaciones.getState().mostrar({
-        tono: 'exito',
-        duracionMs: 5_000,
-        mensaje: `Vecino ${propuesta.alias} listo.`,
-      })
+        sesion.uid,
+      )
     } finally {
       setCreandoVecino(false)
     }
@@ -1134,31 +1175,7 @@ function Mostrador() {
             void (async () => {
               setCreandoVecino(true)
               try {
-                const resultado = await crearCotizacionVecino({
-                  uid,
-                  alias: propuesta.alias,
-                  cliente,
-                  ...(propuesta.telefono !== undefined
-                    ? { telefono: propuesta.telefono }
-                    : {}),
-                })
-                if (!resultado.ok || resultado.cotizacionId === undefined) {
-                  setAvisoVecino(
-                    resultado.mensaje ?? 'No se pudo crear el vecino.',
-                  )
-                  return
-                }
-                setTermino('')
-                setVecinoActivoId(resultado.cotizacionId)
-                setPestana('vecinos')
-                void queryClient.invalidateQueries({
-                  queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
-                })
-                usarNotificaciones.getState().mostrar({
-                  tono: 'exito',
-                  duracionMs: 5_000,
-                  mensaje: `Vecino ${propuesta.alias} listo.`,
-                })
+                await aplicarClienteAlVecino(propuesta, cliente, uid)
               } finally {
                 setCreandoVecino(false)
               }

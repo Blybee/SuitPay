@@ -165,6 +165,17 @@ service cloud.firestore {
                && aliasCoherente();
       }
 
+      // Update: lista blanca de claves afectadas, no hasOnly del documento
+      // entero. Un vecino creado sin teléfono, o con un campo residual de un
+      // esquema previo, debe poder ganar `telefonoVecino` sin reescribir todo.
+      function camposMutablesCotizacion() {
+        return request.resource.data.diff(resource.data).affectedKeys()
+               .hasOnly([
+                 'aliasVecino', 'telefonoVecino', 'cliente',
+                 'lineas', 'total', 'actualizadoEn'
+               ]);
+      }
+
       allow read: if personalDeLaEmpresa();
 
       allow create: if (esVendedor() || esAdministrador())
@@ -178,7 +189,9 @@ service cloud.firestore {
                     && sinCambiar('creadoPor')
                     && sinCambiar('numero')
                     && sinCambiar('canal')
-                    && cotizacionBienFormada();
+                    && canalValido()
+                    && aliasCoherente()
+                    && camposMutablesCotizacion();
 
       allow delete: if (esVendedor() || esAdministrador())
                     && resource.data.estado == 'pendiente';

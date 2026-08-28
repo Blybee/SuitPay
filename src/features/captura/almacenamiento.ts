@@ -6,7 +6,11 @@ import { obtenerAlmacenamiento } from '../../infra/firebase/cliente.ts'
  * Ruta: capturas/{uid}/{capturaId}.{ext}
  */
 
-function extensionDe(mimeType: string, tipo: 'audio' | 'imagen'): string {
+function extensionDe(
+  mimeType: string,
+  tipo: 'audio' | 'imagen' | 'pdf',
+): string {
+  if (tipo === 'pdf' || mimeType.includes('pdf')) return 'pdf'
   if (mimeType.includes('webm')) return 'webm'
   if (mimeType.includes('mp4') || mimeType.includes('m4a')) return 'mp4'
   if (mimeType.includes('ogg')) return 'ogg'
@@ -20,9 +24,15 @@ export async function subirMedioDeCaptura(entrada: {
   readonly uid: string
   readonly capturaId: string
   readonly blob: Blob
-  readonly tipo: 'audio' | 'imagen'
+  readonly tipo: 'audio' | 'imagen' | 'pdf'
 }): Promise<{ medioUrl: string; storagePath: string }> {
-  const mimeType = entrada.blob.type || (entrada.tipo === 'imagen' ? 'image/jpeg' : 'audio/webm')
+  const mimeType =
+    entrada.blob.type ||
+    (entrada.tipo === 'pdf'
+      ? 'application/pdf'
+      : entrada.tipo === 'imagen'
+        ? 'image/jpeg'
+        : 'audio/webm')
   const ext = extensionDe(mimeType, entrada.tipo)
   const storagePath = `capturas/${entrada.uid}/${entrada.capturaId}.${ext}`
   const referencia = ref(obtenerAlmacenamiento(), storagePath)

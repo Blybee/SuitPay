@@ -52,7 +52,8 @@ const DESCRIPCIONES: Record<
       'Puedes seguir armando el pedido; no se pierde. Prueba con el wifi del teléfono.',
   },
   asistencia: {
-    capacidadPerdida: 'El dictado y la lectura de fotos no están disponibles.',
+    capacidadPerdida:
+      'El dictado, la lectura de fotos y de PDFs no están disponibles.',
     loQueSiFunciona: 'La venta funciona con normalidad escribiendo el pedido.',
   },
   proveedor: {

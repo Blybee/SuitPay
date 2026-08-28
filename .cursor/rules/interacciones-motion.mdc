@@ -1,0 +1,14 @@
+---
+description: Microinteracciones con tokens de duración y easing. Sin transiciones planas.
+alwaysApply: true
+---
+
+# Interacciones y motion
+
+No implementes cambios de UI como cortes secos (mostrar/ocultar sin transición) salvo que `prefers-reduced-motion: reduce` lo pida.
+
+- Usa los tokens de `src/ui/tokens/tema.css`: `duration-rapida`, `duration-media`, `ease-salida`.
+- Prohibido `transition-all` y milisegundos mágicos (`duration-200` suelto) si ya hay token.
+- Entrada/salida de paneles: `grid-template-rows` 0fr/1fr, `@starting-style`, o `transition-behavior: allow-discrete`. Respeta reduced motion.
+- Spinners: `animate-spin` sobre el icono; el botón tiene `aria-busy`.
+- Antes de inventar una curva, consulta `transitions-dev` (`transitions apply`) y `transitions-polish` (`transitions review`), más `modern-web-guidance`.

@@ -12,6 +12,8 @@ import { Boton, Distintivo, Etiqueta } from './primitivas.tsx'
 export type ClaseDeArchivo = 'json' | 'pdf'
 export type EstadoDeCarga = 'vacio' | 'procesando' | 'listo' | 'error'
 
+const ACEPTADOS_DEFECTO: readonly ClaseDeArchivo[] = ['json', 'pdf']
+
 export interface ArchivoElegido {
   readonly nombre: string
   readonly bytes: number
@@ -49,20 +51,20 @@ function unir(...clases: readonly (string | false | undefined)[]): string {
 
 function primerArchivoValido(
   lista: FileList | readonly File[],
+  aceptados: readonly ClaseDeArchivo[],
 ): File | null {
   const archivos = Array.from(lista)
   for (const archivo of archivos) {
-    if (clasificarArchivo(archivo) !== null) return archivo
+    const clase = clasificarArchivo(archivo)
+    if (clase !== null && aceptados.includes(clase)) return archivo
   }
   return null
 }
 
-function arrastreTieneArchivos(transfer: DataTransfer | null): boolean {
-  if (transfer === null) return false
-  return Array.from(transfer.types).includes('Files')
-}
-
-function arrastreEsRechazable(transfer: DataTransfer | null): boolean {
+function arrastreEsRechazable(
+  transfer: DataTransfer | null,
+  aceptados: readonly ClaseDeArchivo[],
+): boolean {
   if (transfer === null) return false
   const items = Array.from(transfer.items).filter((item) => item.kind === 'file')
   if (items.length === 0) return false
@@ -70,12 +72,36 @@ function arrastreEsRechazable(transfer: DataTransfer | null): boolean {
     if (item.type === '' || item.type === 'application/octet-stream') {
       return false
     }
-    return (
-      item.type !== 'application/pdf' &&
-      item.type !== 'application/json' &&
-      item.type !== 'text/json'
-    )
+    if (item.type === 'application/pdf') return !aceptados.includes('pdf')
+    if (
+      item.type === 'application/json' ||
+      item.type === 'text/json'
+    ) {
+      return !aceptados.includes('json')
+    }
+    return true
   })
+}
+
+function textoRechazo(aceptados: readonly ClaseDeArchivo[]): string {
+  if (aceptados.length === 1 && aceptados[0] === 'pdf') {
+    return 'Solo se aceptan PDF.'
+  }
+  if (aceptados.length === 1 && aceptados[0] === 'json') {
+    return 'Solo se aceptan JSON.'
+  }
+  return 'Solo se aceptan JSON o PDF.'
+}
+
+function textoPozoVacio(aceptados: readonly ClaseDeArchivo[]): string {
+  if (aceptados.length === 1 && aceptados[0] === 'pdf') return 'Suelta el PDF'
+  if (aceptados.length === 1 && aceptados[0] === 'json') return 'Suelta el JSON'
+  return 'Suelta el JSON o el PDF'
+}
+
+function arrastreTieneArchivos(transfer: DataTransfer | null): boolean {
+  if (transfer === null) return false
+  return Array.from(transfer.types).includes('Files')
 }
 
 export function ZonaDeCarga({
@@ -83,6 +109,7 @@ export function ZonaDeCarga({
   etiqueta,
   nota,
   accept = 'application/json,.json,.js,application/pdf,.pdf',
+  aceptados = ACEPTADOS_DEFECTO,
   archivo,
   estado,
   mensaje,
@@ -94,6 +121,7 @@ export function ZonaDeCarga({
   readonly etiqueta: string
   readonly nota?: ReactNode
   readonly accept?: string
+  readonly aceptados?: readonly ClaseDeArchivo[]
   readonly archivo: ArchivoElegido | null
   readonly estado: EstadoDeCarga
   readonly mensaje: string | null
@@ -121,9 +149,9 @@ export function ZonaDeCarga({
 
   function entregar(lista: FileList | readonly File[] | null): void {
     if (lista === null || ocupado) return
-    const elegido = primerArchivoValido(lista)
+    const elegido = primerArchivoValido(lista, aceptados)
     if (elegido === null) {
-      setRechazoLocal('Solo se aceptan JSON o PDF.')
+      setRechazoLocal(textoRechazo(aceptados))
       return
     }
     setRechazoLocal(null)
@@ -138,7 +166,7 @@ export function ZonaDeCarga({
   function alArrastrarEncima(evento: DragEvent<HTMLElement>): void {
     if (!arrastreTieneArchivos(evento.dataTransfer) || ocupado) return
     evento.preventDefault()
-    const invalido = arrastreEsRechazable(evento.dataTransfer)
+    const invalido = arrastreEsRechazable(evento.dataTransfer, aceptados)
     evento.dataTransfer.dropEffect = invalido ? 'none' : 'copy'
     if (invalido) setRechazoLocal('tipo-arrastre')
   }
@@ -148,7 +176,7 @@ export function ZonaDeCarga({
     evento.preventDefault()
     entradasDeArrastre.current += 1
     setArrastrando(true)
-    if (arrastreEsRechazable(evento.dataTransfer)) {
+    if (arrastreEsRechazable(evento.dataTransfer, aceptados)) {
       setRechazoLocal('tipo-arrastre')
     }
   }
@@ -216,7 +244,9 @@ export function ZonaDeCarga({
         onChange={alCambiarInput}
       />
       <span id={ayudaId} className="sr-only">
-        JSON de la tienda virtual o PDF de productos (SICO)
+        {aceptados.length === 1 && aceptados[0] === 'pdf'
+          ? 'PDF de requerimiento del cliente'
+          : 'JSON de la tienda virtual o PDF de productos (SICO)'}
       </span>
 
       {vacio ? (
@@ -249,7 +279,7 @@ export function ZonaDeCarga({
               ? 'Ese archivo no sirve'
               : arrastrando
                 ? 'Suelta para cargar'
-                : 'Suelta el JSON o el PDF'}
+                : textoPozoVacio(aceptados)}
           </p>
           {arrastreInvalido ? (
             <p className="text-center text-cuerpo font-bold text-aviso">
@@ -301,7 +331,7 @@ export function ZonaDeCarga({
           {arrastrando && archivo !== null ? (
             <p className="px-5 pb-4 text-cuerpo text-tinta">
               {arrastreInvalido
-                ? 'Solo JSON o PDF.'
+                ? textoRechazo(aceptados)
                 : 'Suelta para reemplazar el archivo.'}
             </p>
           ) : null}
@@ -323,6 +353,7 @@ export function ZonaDeCarga({
           rechazoLocal,
           vacio,
           clase: archivo?.clase,
+          aceptados,
         })}
       </p>
     </div>
@@ -422,15 +453,17 @@ function textoDeEstado({
   rechazoLocal,
   vacio,
   clase,
+  aceptados,
 }: {
   readonly estado: EstadoDeCarga
   readonly mensaje: string | null
   readonly rechazoLocal: string | null
   readonly vacio: boolean
   readonly clase: ClaseDeArchivo | undefined
+  readonly aceptados: readonly ClaseDeArchivo[]
 }): string {
   if (rechazoLocal === 'tipo-arrastre') {
-    return 'Ese tipo no entra. Arrastra un JSON o un PDF.'
+    return `Ese tipo no entra. Arrastra ${aceptados.includes('json') && aceptados.includes('pdf') ? 'un JSON o un PDF' : aceptados.includes('pdf') ? 'un PDF' : 'un JSON'}.`
   }
   if (rechazoLocal !== null) return rechazoLocal
   if (estado === 'error' && mensaje !== null) return mensaje

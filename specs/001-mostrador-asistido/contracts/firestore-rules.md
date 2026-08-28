@@ -47,10 +47,10 @@ Las reglas comprueban forma, no lógica de negocio. La lógica vive en las funci
 
 - Al crear un cliente: el identificador del documento coincide con el campo del número de documento, los campos obligatorios están presentes, y `creadoPor` coincide con el usuario autenticado.
 - Al crear una cotización: `creadoPor` coincide con el usuario autenticado, el estado inicial es `pendiente`, `canal` es `general` o `vecino`, y si `canal` es `vecino` entonces `aliasVecino` está presente y no vacío.
-- Al editar una cotización: el estado sigue siendo `pendiente`, no se altera la autoría ni el `canal`; `aliasVecino` y `telefonoVecino` sí pueden cambiar en canal vecino.
+- Al editar una cotización: el estado sigue siendo `pendiente`, no se altera la autoría ni el `canal`; las claves afectadas MUST pertenecer a `{aliasVecino, telefonoVecino, cliente, lineas, total, actualizadoEn}`. El alias, el teléfono y la instantánea embebida de cliente sí pueden cambiar en canal vecino. Un documento con campos residuales de un esquema previo no bloquea ese update.
 - Al escribir `listasRequerimiento/{uid}/diasLista/{dia}`: el segmento `{uid}` coincide con el vendedor autenticado, `{dia}` tiene forma `AAAA-MM-DD`, `lineas` es un arreglo y `caducaEn` es marca de tiempo.
 - Al borrar una cotización: el documento existía en estado `pendiente` (el cliente no “borra” comprobantes disfrazados).
-- En toda escritura: se rechazan campos no previstos, para que la forma de los documentos no derive con el tiempo.
+- En create se rechazan campos no previstos en el documento completo; en update se rechazan claves afectadas fuera del conjunto mutable.
 
 ## Cómo se verifica este contrato
 

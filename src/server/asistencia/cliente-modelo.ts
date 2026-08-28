@@ -22,9 +22,10 @@ export interface DependenciasDelClienteModelo {
   readonly timeoutMs?: number
 }
 
-interface ParteGemini {
+export interface ParteGemini {
   text?: string
   inlineData?: { mimeType: string; data: string }
+  fileData?: { mimeType: string; fileUri: string }
   mediaResolution?: { level: string }
 }
 
@@ -100,11 +101,13 @@ async function llamarConClave(
   partes: ParteGemini[],
   deps: DependenciasDelClienteModelo,
   etiquetaClave: 'primaria' | 'secundaria',
+  opciones?: { readonly schema?: unknown; readonly timeoutMs?: number },
 ): Promise<{ ok: true; json: unknown } | { ok: false; cuota: boolean }> {
   const fetchFn = deps.fetchFn ?? fetch
   const modelo =
     deps.modelo ?? process.env.ASISTENCIA_MODELO ?? MODELO_POR_DEFECTO
-  const timeoutMs = deps.timeoutMs ?? 45_000
+  const timeoutMs = opciones?.timeoutMs ?? deps.timeoutMs ?? 45_000
+  const schema = opciones?.schema ?? SCHEMA_RESPUESTA_ASISTENCIA
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), timeoutMs)
   const url = `${GEMINI_API_BASE}/${modelo}:generateContent`
@@ -121,7 +124,7 @@ async function llamarConClave(
         contents: [{ parts: partes }],
         generationConfig: {
           responseMimeType: 'application/json',
-          responseSchema: SCHEMA_RESPUESTA_ASISTENCIA,
+          responseSchema: schema,
         },
       }),
     })
@@ -232,4 +235,51 @@ export async function invocarModelo(entrada: {
   }
 
   throw new ErrorDeSuitPay('asistencia_no_disponible')
+}
+
+/**
+ * generateContent con partes y schema propios (PDF FR-061).
+ * Reutiliza claves y conmutación de cuota; no usa el prompt de audio/foto.
+ */
+export async function invocarModeloConPartes(entrada: {
+  readonly partes: readonly ParteGemini[]
+  readonly schema: unknown
+  readonly deps?: DependenciasDelClienteModelo
+  readonly timeoutMs?: number
+}): Promise<unknown> {
+  const deps = entrada.deps ?? {}
+  const { primaria, secundaria } = leerClaves(deps)
+
+  if (!primaria && !secundaria) {
+    console.error(
+      '[SuitPay] asistencia: faltan ASISTENCIA_CLAVE_PRIMARIA / _SECUNDARIA en el proceso del servidor',
+    )
+    throw new ErrorDeSuitPay('asistencia_no_disponible')
+  }
+
+  const intentos: Array<{
+    clave: string
+    etiqueta: 'primaria' | 'secundaria'
+  }> = []
+  if (primaria) intentos.push({ clave: primaria, etiqueta: 'primaria' })
+  if (secundaria) intentos.push({ clave: secundaria, etiqueta: 'secundaria' })
+
+  for (const intento of intentos) {
+    const resultado = await llamarConClave(
+      intento.clave,
+      [...entrada.partes],
+      deps,
+      intento.etiqueta,
+      { schema: entrada.schema, timeoutMs: entrada.timeoutMs },
+    )
+    if (resultado.ok) return resultado.json
+  }
+
+  throw new ErrorDeSuitPay('asistencia_no_disponible')
+}
+
+export function clavesDeAsistencia(
+  deps: DependenciasDelClienteModelo = {},
+): { primaria: string | undefined; secundaria: string | undefined } {
+  return leerClaves(deps)
 }

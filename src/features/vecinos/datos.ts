@@ -1,15 +1,36 @@
-import { deleteDoc, doc, getDoc, serverTimestamp, updateDoc } from 'firebase/firestore'
+import {
+  deleteDoc,
+  deleteField,
+  doc,
+  getDoc,
+  serverTimestamp,
+  updateDoc,
+  type UpdateData,
+} from 'firebase/firestore'
 import { obtenerBaseDeDatos } from '../../infra/firebase/cliente.ts'
+import type { ClienteDelPedido } from '../pedido/almacen.ts'
 
 export interface ResultadoDatosVecino {
   readonly ok: boolean
   readonly mensaje?: string
 }
 
+function clienteParaFirestore(cliente: ClienteDelPedido) {
+  return {
+    tipoDocumento: cliente.tipoDocumento,
+    numeroDocumento: cliente.numeroDocumento,
+    denominacion: cliente.denominacion,
+    ...(cliente.direccion !== undefined && cliente.direccion.trim() !== ''
+      ? { direccion: cliente.direccion }
+      : {}),
+  }
+}
+
 export async function persistirDatosDeVecino(datos: {
   readonly cotizacionId: string
   readonly alias: string
   readonly telefono: string
+  readonly cliente?: ClienteDelPedido
 }): Promise<ResultadoDatosVecino> {
   const alias = datos.alias.trim()
   if (alias === '') {
@@ -32,11 +53,16 @@ export async function persistirDatosDeVecino(datos: {
     ) {
       return { ok: false, mensaje: 'Esa cotización de vecino no se puede editar.' }
     }
-    await updateDoc(referencia, {
+    const telefono = datos.telefono.trim()
+    const parche: UpdateData<Record<string, unknown>> = {
       aliasVecino: alias,
-      telefonoVecino: datos.telefono.trim(),
       actualizadoEn: serverTimestamp(),
-    })
+      telefonoVecino: telefono === '' ? deleteField() : telefono,
+    }
+    if (datos.cliente !== undefined) {
+      parche['cliente'] = clienteParaFirestore(datos.cliente)
+    }
+    await updateDoc(referencia, parche)
     return { ok: true }
   } catch (error) {
     console.error('[SuitPay] persistirDatosDeVecino', error)

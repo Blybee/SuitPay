@@ -3,7 +3,7 @@
  * viven aquí para no importar `src/server/` fuera de `*.funciones.ts`.
  */
 
-export type TipoDeCaptura = 'audio' | 'imagen'
+export type TipoDeCaptura = 'audio' | 'imagen' | 'pdf'
 
 export type EstadoDeLineaDeCaptura = 'resuelta' | 'ambigua' | 'pendiente'
 

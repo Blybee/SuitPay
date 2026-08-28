@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { z } from 'zod'
 import { PanelDeCotizaciones } from '../../features/cotizaciones/panel.tsx'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
@@ -22,9 +22,15 @@ function CotizacionesConGuarda() {
 
 function PaginaCotizaciones() {
   const { numero } = Route.useSearch()
+  const navigate = useNavigate()
   return (
     <main className="min-h-full">
-      <PanelDeCotizaciones numeroInicial={numero ?? null} />
+      <PanelDeCotizaciones
+        numeroInicial={numero ?? null}
+        onRecuperada={() => {
+          void navigate({ to: '/' })
+        }}
+      />
     </main>
   )
 }

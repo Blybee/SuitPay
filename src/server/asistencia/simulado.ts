@@ -34,6 +34,47 @@ export function asistenciaSimuladaActiva(): boolean {
   return !primaria || primaria.trim() === ''
 }
 
+export function extraerPdfSimulado(): {
+  readonly ilegible: boolean
+  readonly items: readonly {
+    readonly textoOriginal: string
+    readonly cantidad: number
+    readonly unidad: string
+  }[]
+  readonly cliente: {
+    readonly tipoDocumento: 'RUC'
+    readonly numeroDocumento: string
+    readonly denominacion: string
+  } | null
+} {
+  if (modoActual === 'caido') {
+    throw new Error('asistencia_simulada_caida')
+  }
+  if (modoActual === 'ilegible') {
+    return { ilegible: true, items: [], cliente: null }
+  }
+  return {
+    ilegible: false,
+    items: [
+      {
+        textoOriginal: '10 codo fg 1/2',
+        cantidad: 10,
+        unidad: 'NIU',
+      },
+      {
+        textoOriginal: 'tee pvc 3/4',
+        cantidad: 1,
+        unidad: 'NIU',
+      },
+    ],
+    cliente: {
+      tipoDocumento: 'RUC',
+      numeroDocumento: '20123456789',
+      denominacion: 'Cliente Test',
+    },
+  }
+}
+
 export function interpretarSimulado(entrada: {
   readonly tipo: TipoDeCaptura
   readonly candidatos: readonly CandidatoDeAsistencia[]

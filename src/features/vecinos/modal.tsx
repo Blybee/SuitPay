@@ -4,12 +4,22 @@ import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
 import { Selector } from '../../ui/componentes/Selector.tsx'
 import type { Cotizacion } from '../cotizaciones/tipos.ts'
+import type { ClienteDelPedido } from '../pedido/almacen.ts'
 import type { PropuestaCrearVecino } from '../comandos/crear-vecino.ts'
-import { telefonoEsValido } from '../../domain/vecinos/telefono.ts'
+import { sanitizarEntradaTelefono, telefonoEsValido } from '../../domain/vecinos/telefono.ts'
 import { eliminarCotizacionVecino, persistirDatosDeVecino } from './datos.ts'
 import { usarNotificaciones } from '../notificaciones/almacen.ts'
 
 type Vista = 'nuevo' | 'todos' | 'editar'
+
+function tipoDocumentoDeCliente(
+  cliente: ClienteDelPedido | null,
+): 'DNI' | 'RUC' {
+  if (cliente?.tipoDocumento === 'DNI') return 'DNI'
+  if (cliente?.tipoDocumento === 'RUC') return 'RUC'
+  if (cliente !== null && /^\d{8}$/.test(cliente.numeroDocumento)) return 'DNI'
+  return 'RUC'
+}
 
 /**
  * Alta / edición / listado de vecinos. El comando `/crear vecino` sigue
@@ -63,6 +73,17 @@ export function ModalDeVecino({
   const telefonoOk = telefono.trim() === '' || telefonoEsValido(telefono)
   const altaLista =
     alias.trim() !== '' && documentoOk && telefonoOk && !creando
+  const edicionLista =
+    alias.trim() !== '' && documentoOk && telefonoOk && !guardando
+
+  function documentoCambio(): boolean {
+    if (editando === null) return false
+    const actual = editando.cliente
+    return (
+      numeroDocumento !== (actual?.numeroDocumento ?? '') ||
+      tipoDocumento !== tipoDocumentoDeCliente(actual)
+    )
+  }
 
   return (
     <Modal
@@ -128,8 +149,20 @@ export function ModalDeVecino({
             </Boton>
             <Boton
               variante="principal"
-              disabled={guardando || alias.trim() === '' || !telefonoOk}
+              disabled={!edicionLista}
               onClick={() => {
+                if (documentoCambio()) {
+                  onCrear({
+                    alias: alias.trim(),
+                    numeroDocumento,
+                    tipoDocumento,
+                    cotizacionId: editando.id,
+                    ...(telefono.trim() !== ''
+                      ? { telefono: telefono.trim() }
+                      : {}),
+                  })
+                  return
+                }
                 void (async () => {
                   setGuardando(true)
                   const resultado = await persistirDatosDeVecino({
@@ -162,91 +195,49 @@ export function ModalDeVecino({
       }
     >
       {vista === 'nuevo' ? (
-        <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
-          <div>
-            <Etiqueta htmlFor="vecino-alias">Alias</Etiqueta>
-            <Campo
-              id="vecino-alias"
-              value={alias}
-              onChange={(e) => setAlias(e.target.value)}
-              autoComplete="off"
-            />
-          </div>
-          <Selector
-            etiqueta="Documento"
-            valor={tipoDocumento}
-            onCambiar={(valor) => {
-              setTipoDocumento(valor)
-              setNumeroDocumento('')
-            }}
-            opciones={[
-              { valor: 'RUC', etiqueta: 'RUC' },
-              { valor: 'DNI', etiqueta: 'DNI' },
-            ]}
-          />
-          <div>
-            <Etiqueta htmlFor="vecino-doc">{tipoDocumento}</Etiqueta>
-            <Campo
-              id="vecino-doc"
-              inputMode="numeric"
-              value={numeroDocumento}
-              onChange={(e) =>
-                setNumeroDocumento(e.target.value.replace(/\D/g, ''))
-              }
-              maxLength={tipoDocumento === 'RUC' ? 11 : 8}
-            />
-          </div>
-          <div>
-            <Etiqueta htmlFor="vecino-tel">Teléfono</Etiqueta>
-            <Campo
-              id="vecino-tel"
-              inputMode="tel"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-              placeholder="987654321"
-            />
-            {!telefonoOk ? (
-              <p className="mt-1 text-cuerpo text-aviso">
-                Usa un celular peruano de 9 dígitos.
-              </p>
-            ) : (
-              <p className="mt-1 text-etiqueta text-desvaida">
-                Opcional. Sirve para abrir el chat de WhatsApp al capturar la lista.
-              </p>
-            )}
-          </div>
-        </form>
+        <FormularioDatosVecino
+          ids={{ alias: 'vecino-alias', doc: 'vecino-doc', tel: 'vecino-tel' }}
+          alias={alias}
+          onAlias={setAlias}
+          tipoDocumento={tipoDocumento}
+          onTipoDocumento={(valor) => {
+            setTipoDocumento(valor)
+            setNumeroDocumento('')
+          }}
+          numeroDocumento={numeroDocumento}
+          onNumeroDocumento={setNumeroDocumento}
+          telefono={telefono}
+          onTelefono={setTelefono}
+          telefonoOk={telefonoOk}
+          pistaTelefono
+        />
       ) : null}
 
       {vista === 'editar' && editando !== null ? (
-        <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
-          <div>
-            <Etiqueta htmlFor="vecino-edit-alias">Alias</Etiqueta>
-            <Campo
-              id="vecino-edit-alias"
-              value={alias}
-              onChange={(e) => setAlias(e.target.value)}
-            />
-          </div>
-          <div>
-            <Etiqueta htmlFor="vecino-edit-tel">Teléfono</Etiqueta>
-            <Campo
-              id="vecino-edit-tel"
-              inputMode="tel"
-              value={telefono}
-              onChange={(e) => setTelefono(e.target.value)}
-            />
-            {!telefonoOk ? (
-              <p className="mt-1 text-cuerpo text-aviso">
-                Usa un celular peruano de 9 dígitos.
-              </p>
-            ) : null}
-          </div>
-          <p className="font-mono text-etiqueta text-desvaida">
-            {editando.cliente?.denominacion ?? 'Sin cliente'} ·{' '}
-            {editando.cliente?.numeroDocumento}
-          </p>
-        </form>
+        <FormularioDatosVecino
+          ids={{
+            alias: 'vecino-edit-alias',
+            doc: 'vecino-edit-doc',
+            tel: 'vecino-edit-tel',
+          }}
+          alias={alias}
+          onAlias={setAlias}
+          tipoDocumento={tipoDocumento}
+          onTipoDocumento={(valor) => {
+            setTipoDocumento(valor)
+            setNumeroDocumento('')
+          }}
+          numeroDocumento={numeroDocumento}
+          onNumeroDocumento={setNumeroDocumento}
+          telefono={telefono}
+          onTelefono={setTelefono}
+          telefonoOk={telefonoOk}
+          denominacion={
+            numeroDocumento === (editando.cliente?.numeroDocumento ?? '')
+              ? editando.cliente?.denominacion
+              : undefined
+          }
+        />
       ) : null}
 
       {vista === 'todos' ? (
@@ -276,6 +267,8 @@ export function ModalDeVecino({
                       setEditando(cada)
                       setAlias(cada.aliasVecino ?? '')
                       setTelefono(cada.telefonoVecino ?? '')
+                      setTipoDocumento(tipoDocumentoDeCliente(cada.cliente))
+                      setNumeroDocumento(cada.cliente?.numeroDocumento ?? '')
                       setVista('editar')
                     }}
                   >
@@ -320,5 +313,92 @@ export function ModalDeVecino({
         )
       ) : null}
     </Modal>
+  )
+}
+
+function FormularioDatosVecino({
+  ids,
+  alias,
+  onAlias,
+  tipoDocumento,
+  onTipoDocumento,
+  numeroDocumento,
+  onNumeroDocumento,
+  telefono,
+  onTelefono,
+  telefonoOk,
+  pistaTelefono = false,
+  denominacion,
+}: {
+  readonly ids: { readonly alias: string; readonly doc: string; readonly tel: string }
+  readonly alias: string
+  readonly onAlias: (valor: string) => void
+  readonly tipoDocumento: 'DNI' | 'RUC'
+  readonly onTipoDocumento: (valor: 'DNI' | 'RUC') => void
+  readonly numeroDocumento: string
+  readonly onNumeroDocumento: (valor: string) => void
+  readonly telefono: string
+  readonly onTelefono: (valor: string) => void
+  readonly telefonoOk: boolean
+  readonly pistaTelefono?: boolean
+  readonly denominacion?: string
+}) {
+  return (
+    <form className="space-y-3" onSubmit={(e) => e.preventDefault()}>
+      <div>
+        <Etiqueta htmlFor={ids.alias}>Alias</Etiqueta>
+        <Campo
+          id={ids.alias}
+          value={alias}
+          onChange={(e) => onAlias(e.target.value)}
+          autoComplete="off"
+        />
+      </div>
+      <Selector
+        etiqueta="Documento"
+        valor={tipoDocumento}
+        onCambiar={onTipoDocumento}
+        opciones={[
+          { valor: 'RUC', etiqueta: 'RUC' },
+          { valor: 'DNI', etiqueta: 'DNI' },
+        ]}
+      />
+      <div>
+        <Etiqueta htmlFor={ids.doc}>{tipoDocumento}</Etiqueta>
+        <Campo
+          id={ids.doc}
+          inputMode="numeric"
+          autoComplete="off"
+          value={numeroDocumento}
+          onChange={(e) => onNumeroDocumento(e.target.value.replace(/\D/g, ''))}
+          maxLength={tipoDocumento === 'RUC' ? 11 : 8}
+        />
+        {denominacion !== undefined && denominacion !== '' ? (
+          <p className="mt-1 font-mono text-etiqueta text-desvaida">
+            {denominacion}
+          </p>
+        ) : null}
+      </div>
+      <div>
+        <Etiqueta htmlFor={ids.tel}>Teléfono</Etiqueta>
+        <Campo
+          id={ids.tel}
+          inputMode="tel"
+          autoComplete="tel"
+          value={telefono}
+          onChange={(e) => onTelefono(sanitizarEntradaTelefono(e.target.value))}
+          placeholder="987654321"
+        />
+        {!telefonoOk ? (
+          <p className="mt-1 text-cuerpo text-aviso">
+            Usa un celular peruano de 9 dígitos.
+          </p>
+        ) : pistaTelefono ? (
+          <p className="mt-1 text-etiqueta text-desvaida">
+            Opcional. Sirve para abrir el chat de WhatsApp al capturar la lista.
+          </p>
+        ) : null}
+      </div>
+    </form>
   )
 }

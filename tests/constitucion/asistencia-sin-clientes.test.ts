@@ -47,4 +47,15 @@ describe('principio IV — asistencia sin clientes', () => {
     expect(fuente).not.toMatch(/numeroDocumento/)
     expect(fuente).not.toMatch(/peticion\.cliente/)
   })
+
+  it('extraer-pdf no envía catálogo ni colección clientes', () => {
+    const fuente = readFileSync(
+      join(RAIZ, 'src/server/asistencia/extraer-pdf.ts'),
+      'utf8',
+    )
+    expect(fuente).not.toMatch(/candidatos/)
+    expect(fuente).not.toMatch(/coleccion.*clientes/i)
+    expect(fuente).not.toMatch(/COLECCIONES\.clientes/)
+    expect(fuente).toMatch(/application\/pdf/)
+  })
 })

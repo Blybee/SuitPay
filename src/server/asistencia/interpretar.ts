@@ -1,15 +1,9 @@
 import { randomUUID } from 'node:crypto'
-import {
-  bd,
-  storage,
-  storageBucketDelEntorno,
-  COLECCIONES,
-} from '../firebase/admin.ts'
+import { bd, COLECCIONES } from '../firebase/admin.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
-import {
-  invocarModelo,
-  type DependenciasDelClienteModelo,
-} from './cliente-modelo.ts'
+import { invocarModelo } from './cliente-modelo.ts'
+import type { DependenciasDelClienteModelo } from './cliente-modelo.ts'
+import { leerMedioDeStorage } from './medios.ts'
 import { construirPayloadDeAsistencia } from './payload.ts'
 import {
   asistenciaSimuladaActiva,
@@ -48,72 +42,6 @@ export interface DependenciasDeInterpretar {
     readonly vendedorId: string
     readonly creadoEn: string
   }) => Promise<void>
-}
-
-function mimeDesdeUrl(medioUrl: string, tipo: TipoDeCaptura): string {
-  const bajo = medioUrl.toLowerCase()
-  if (bajo.endsWith('.png')) return 'image/png'
-  if (bajo.endsWith('.jpg') || bajo.endsWith('.jpeg')) return 'image/jpeg'
-  if (bajo.endsWith('.webp')) return 'image/webp'
-  if (bajo.endsWith('.webm')) return 'audio/webm'
-  if (bajo.endsWith('.mp4') || bajo.endsWith('.m4a')) return 'audio/mp4'
-  if (bajo.endsWith('.ogg')) return 'audio/ogg'
-  return tipo === 'imagen' ? 'image/jpeg' : 'audio/webm'
-}
-
-async function leerMedioDeStorage(
-  medioUrl: string,
-  tipo: TipoDeCaptura,
-): Promise<{ mimeType: string; dataBase64: string }> {
-  // gs://bucket/path o path relativo en el bucket
-  let bucketName: string | undefined
-  let objectPath: string
-
-  if (medioUrl.startsWith('gs://')) {
-    const sinEsquema = medioUrl.slice('gs://'.length)
-    const barra = sinEsquema.indexOf('/')
-    if (barra < 0) throw new ErrorDeSuitPay('peticion_invalida')
-    bucketName = sinEsquema.slice(0, barra)
-    objectPath = sinEsquema.slice(barra + 1)
-  } else if (medioUrl.startsWith('http://') || medioUrl.startsWith('https://')) {
-    // Emulador / download URL: extraer path tras /o/
-    const marcador = '/o/'
-    const idx = medioUrl.indexOf(marcador)
-    if (idx >= 0) {
-      const resto = medioUrl.slice(idx + marcador.length)
-      objectPath = decodeURIComponent(resto.split('?')[0] ?? resto)
-    } else {
-      objectPath = medioUrl
-    }
-  } else {
-    objectPath = medioUrl.replace(/^\//, '')
-  }
-
-  const bucketResuelto =
-    bucketName ?? storageBucketDelEntorno()
-  if (bucketResuelto === undefined || bucketResuelto === '') {
-    throw new ErrorDeSuitPay('fallo_inesperado', {
-      motivo: 'storage_bucket_no_configurado',
-    })
-  }
-  const archivo = storage().bucket(bucketResuelto).file(objectPath)
-  const [existe] = await archivo.exists()
-  if (!existe) {
-    throw new ErrorDeSuitPay('peticion_invalida', {
-      motivo: 'medio_no_encontrado',
-    })
-  }
-  const [buffer] = await archivo.download()
-  const [metadata] = await archivo.getMetadata()
-  const mimeType =
-    typeof metadata.contentType === 'string' && metadata.contentType !== ''
-      ? metadata.contentType
-      : mimeDesdeUrl(medioUrl, tipo)
-
-  return {
-    mimeType,
-    dataBase64: buffer.toString('base64'),
-  }
 }
 
 function mapearLinea(
@@ -225,7 +153,12 @@ export async function interpretarCaptura(
     })
   }
 
-  const leer = deps.leerMedio ?? ((url) => leerMedioDeStorage(url, peticion.tipo))
+  const leer =
+    deps.leerMedio ??
+    (async (url) => {
+      const medio = await leerMedioDeStorage(url, peticion.tipo)
+      return { mimeType: medio.mimeType, dataBase64: medio.dataBase64 }
+    })
   const medio = await leer(peticion.medioUrl)
 
   // Construye el payload auditable (principio IV) aunque el medio viaje aparte.

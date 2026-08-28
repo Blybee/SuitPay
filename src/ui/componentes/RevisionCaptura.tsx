@@ -1,7 +1,9 @@
 import { useRef, useState } from 'react'
-import { Check, X } from 'lucide-react'
+import { Check, Search, X } from 'lucide-react'
 import { OpcionesAmbiguas } from '../../features/captura/ambiguos.tsx'
-import { extraerLineasAprobadasDeCaptura, type LineaCapturaAprobada } from '../../features/captura/aprobar.ts'
+import { ComboboxProductoLinea } from '../../features/captura/busqueda-linea.tsx'
+import { extraerLineasAprobadasDeCaptura } from '../../features/captura/aprobar.ts'
+import type { LineaCapturaAprobada } from '../../features/captura/aprobar.ts'
 import { usarCaptura } from '../../features/captura/estado.ts'
 import { MiniaturaCaptura } from '../../features/captura/miniatura.tsx'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
@@ -10,7 +12,7 @@ import { CabecerasDeColumna } from './LineaPedido.tsx'
 
 /**
  * Revisión contrastada de una captura (T122 / FR-042).
- * Lectura original tachada; debajo, sangrada, la propuesta limpia.
+ * Original tachado solo si ya hay propuesta; pendiente se lee sin tachar.
  */
 export function RevisionCaptura({
   onAprobada,
@@ -27,10 +29,13 @@ export function RevisionCaptura({
   const medioObjectUrl = usarCaptura((s) => s.medioObjectUrl)
   const tipo = usarCaptura((s) => s.tipo)
   const elegir = usarCaptura((s) => s.elegirCandidato)
+  const asignar = usarCaptura((s) => s.asignarProducto)
+  const quitarLinea = usarCaptura((s) => s.quitarLinea)
   const cancelar = usarCaptura((s) => s.cancelar)
   const hayBloqueo = usarCaptura((s) => s.hayPendientesOAmbiguas())
   const catalogo = usarCatalogo()
   const [guardando, setGuardando] = useState(false)
+  const [lupaEn, setLupaEn] = useState<number | null>(null)
   const enVuelo = useRef(false)
 
   async function aprobar(): Promise<void> {
@@ -56,6 +61,16 @@ export function RevisionCaptura({
     onDescartar()
   }
 
+  function quitar(indice: number): void {
+    quitarLinea(indice)
+    setLupaEn((actual) => {
+      if (actual === null) return null
+      if (actual === indice) return null
+      if (actual > indice) return actual - 1
+      return actual
+    })
+  }
+
   return (
     <div
       className="border-b border-borde bg-papel"
@@ -77,7 +92,7 @@ export function RevisionCaptura({
           <button
             type="button"
             data-testid="aprobar-captura"
-            disabled={hayBloqueo || guardando}
+            disabled={hayBloqueo || guardando || lineas.length === 0}
             onClick={() => void aprobar()}
             className={[
               'flex min-h-12 items-center gap-2 rounded-full px-4',
@@ -121,9 +136,32 @@ export function RevisionCaptura({
               data-testid={`linea-captura-${indice}`}
               data-estado={linea.estadoLinea}
             >
-              <p className="text-cuerpo text-desvaida line-through decoration-desvaida/80">
-                {linea.textoOriginal}
-              </p>
+              <div className="flex items-start gap-2">
+                <p
+                  className={[
+                    'min-w-0 flex-1 text-cuerpo',
+                    pendiente
+                      ? 'text-tinta'
+                      : 'text-desvaida line-through decoration-desvaida/80',
+                  ].join(' ')}
+                >
+                  {linea.textoOriginal}
+                </p>
+                <button
+                  type="button"
+                  data-testid={`quitar-linea-captura-${indice}`}
+                  className={[
+                    'inline-flex size-11 shrink-0 items-center justify-center rounded-full',
+                    'text-desvaida transition-[color,background-color] duration-rapida ease-salida',
+                    'hover:bg-aviso/15 hover:text-aviso',
+                    'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
+                  ].join(' ')}
+                  aria-label={`Quitar ${linea.textoOriginal} de la revisión`}
+                  onClick={() => quitar(indice)}
+                >
+                  <X className="size-5" aria-hidden />
+                </button>
+              </div>
 
               {linea.estadoLinea === 'resuelta' && elegido && (
                 <div className="mt-1 ml-4 grid grid-cols-[1fr_auto_auto_auto] items-baseline gap-3">
@@ -144,21 +182,67 @@ export function RevisionCaptura({
 
               {ambigua && (
                 <div className="ml-4 mt-2">
-                  <p className="font-mono text-etiqueta uppercase text-aviso">
-                    Elige un candidato
-                  </p>
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-mono text-etiqueta uppercase text-aviso">
+                      Elige un candidato
+                    </p>
+                    <button
+                      type="button"
+                      className="inline-flex size-11 items-center justify-center rounded-full text-desvaida hover:bg-mesa hover:text-tinta focus-visible:border focus-visible:border-tinta focus-visible:outline-none"
+                      aria-label="Buscar otro producto"
+                      aria-expanded={lupaEn === indice}
+                      onClick={() =>
+                        setLupaEn((actual) => (actual === indice ? null : indice))
+                      }
+                    >
+                      <Search className="size-4" aria-hidden />
+                    </button>
+                  </div>
                   <OpcionesAmbiguas
                     candidatos={linea.candidatos}
                     onElegir={(codigo) => elegir(indice, codigo)}
                   />
+                  {lupaEn === indice ? (
+                    <ComboboxProductoLinea
+                      onElegir={(producto) => {
+                        asignar(indice, producto)
+                        setLupaEn(null)
+                      }}
+                      onCerrar={() => setLupaEn(null)}
+                    />
+                  ) : null}
                 </div>
               )}
 
               {pendiente && (
-                <p className="ml-4 mt-2 text-cuerpo text-aviso">
-                  Pendiente: no se pudo interpretar. Escribe este producto a mano
-                  o descarta la propuesta.
-                </p>
+                <div className="ml-4 mt-2">
+                  <div className="flex items-start justify-between gap-2">
+                    <p className="text-cuerpo text-aviso">
+                      Pendiente: no se pudo interpretar. Búscalo o escríbelo a
+                      mano.
+                    </p>
+                    <button
+                      type="button"
+                      className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-desvaida hover:bg-mesa hover:text-tinta focus-visible:border focus-visible:border-tinta focus-visible:outline-none"
+                      aria-label="Buscar producto para esta línea"
+                      aria-expanded={lupaEn === indice}
+                      onClick={() =>
+                        setLupaEn((actual) => (actual === indice ? null : indice))
+                      }
+                    >
+                      <Search className="size-4" aria-hidden />
+                    </button>
+                  </div>
+                  {lupaEn === indice ? (
+                    <ComboboxProductoLinea
+                      onElegir={(producto) => {
+                        asignar(indice, producto)
+                        setLupaEn(null)
+                      }}
+                      onCerrar={() => setLupaEn(null)}
+                    />
+                  ) : null}
+                </div>
               )}
             </li>
           )

@@ -113,7 +113,7 @@ const MENSAJES: Record<CodigoDeError, string> = {
   medio_ilegible:
     'No se pudo leer la captura. Vuelve a tomarla con mejor luz, o escribe el pedido.',
   asistencia_no_disponible:
-    'La asistencia por voz y foto no está disponible. Puedes escribir el pedido con normalidad.',
+    'La asistencia por voz, foto y PDF no está disponible. Puedes escribir el pedido con normalidad.',
 
   archivo_no_interpretable:
     'No se pudo interpretar el archivo. Revisa su formato.',

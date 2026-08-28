@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   enlaceChatWhatsApp,
   normalizarTelefonoPeru,
+  sanitizarEntradaTelefono,
   telefonoEsValido,
 } from '../../../src/domain/vecinos/telefono.ts'
 
@@ -20,5 +21,11 @@ describe('teléfono de vecino para WhatsApp', () => {
 
   it('arma el enlace click-to-chat sin adjunto', () => {
     expect(enlaceChatWhatsApp('987654321')).toBe('https://wa.me/51987654321')
+  })
+
+  it('sanitiza espacios al escribir', () => {
+    expect(sanitizarEntradaTelefono('981 102 420')).toBe('981102420')
+    expect(sanitizarEntradaTelefono('+51 987 654 321')).toBe('+51987654321')
+    expect(sanitizarEntradaTelefono('')).toBe('')
   })
 })

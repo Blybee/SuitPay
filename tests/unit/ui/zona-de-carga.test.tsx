@@ -103,6 +103,33 @@ describe('ZonaDeCarga', () => {
     expect(screen.getByRole('alert')).toHaveTextContent('Solo se aceptan JSON o PDF.')
   })
 
+  it('en modo solo PDF rechaza un JSON', () => {
+    const onArchivo = vi.fn()
+    render(
+      <ZonaDeCarga
+        etiqueta="PDF de requerimiento"
+        accept="application/pdf,.pdf"
+        aceptados={['pdf']}
+        archivo={null}
+        estado="vacio"
+        mensaje={null}
+        onArchivo={onArchivo}
+        onQuitar={() => undefined}
+      />,
+    )
+
+    expect(screen.getByText('Suelta el PDF')).toBeInTheDocument()
+    fireEvent.change(screen.getByLabelText('PDF de requerimiento'), {
+      target: {
+        files: [
+          new File(['{}'], 'tienda.json', { type: 'application/json' }),
+        ],
+      },
+    })
+    expect(onArchivo).not.toHaveBeenCalled()
+    expect(screen.getByRole('alert')).toHaveTextContent('Solo se aceptan PDF.')
+  })
+
   it('muestra la ficha, bloquea al procesar y permite quitar en listo', async () => {
     const usuario = userEvent.setup()
     const onQuitar = vi.fn()

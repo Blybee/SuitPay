@@ -1,11 +1,14 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Trash2 } from 'lucide-react'
+import { Loader2, Search, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { CLAVES_DE_CONSULTA } from '../../infra/consultas/cliente.ts'
+import { ZonaDeCarga } from '../../ui/componentes/ZonaDeCarga.tsx'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
+import { usarCaptura } from '../captura/estado.ts'
 import { usarCatalogo } from '../catalogo/almacen.ts'
+import { usarDegradacion } from '../degradacion/estado.ts'
 import { usarPedido } from '../pedido/almacen.ts'
 import { diferenciasContraCatalogo } from './diferencias.ts'
 import type { DiferenciaDeCotizacion } from './diferencias.ts'
@@ -14,6 +17,9 @@ import {
   buscarCotizacionPorNumero,
   listarCotizacionesPendientes,
 } from './leer.ts'
+import { procesarPdfDeRequerimiento } from './procesar-pdf.ts'
+import { usarPropuestasPdf } from './propuestas.ts'
+import type { PropuestaPdf } from './propuestas.ts'
 import type { Cotizacion } from './tipos.ts'
 import { YaUsada } from './ya-usada.tsx'
 
@@ -46,6 +52,12 @@ export function PanelDeCotizaciones({
   const [buscando, setBuscando] = useState(false)
   const [aEliminar, setAEliminar] = useState<Cotizacion | null>(null)
   const [eliminando, setEliminando] = useState(false)
+  const [zonaPdf, setZonaPdf] = useState(false)
+
+  const asistenciaCaida = usarDegradacion((s) =>
+    s.activas.some((d) => d.causa === 'asistencia'),
+  )
+  const propuestasPdf = usarPropuestasPdf((s) => s.propuestas)
 
   const pendientes = useQuery({
     queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
@@ -67,7 +79,7 @@ export function PanelDeCotizaciones({
   }, [numeroInicial])
 
   useEffect(() => {
-    if (buscada === null || buscada.estado !== 'pendiente') return
+    if (buscada === null) return
     setDiferencias(
       diferenciasContraCatalogo(buscada.lineas, (codigo) =>
         catalogo.productoPorCodigo(codigo),
@@ -103,6 +115,26 @@ export function PanelDeCotizaciones({
   function presentar(cotizacion: Cotizacion): void {
     setYaUsada(false)
     setBuscada(cotizacion)
+  }
+
+  function revisarPdf(propuesta: PropuestaPdf): void {
+    if (
+      propuesta.fase !== 'lista' ||
+      propuesta.lineas === undefined ||
+      propuesta.capturaId === undefined
+    ) {
+      return
+    }
+    usarCaptura.getState().recibirPropuesta({
+      capturaId: propuesta.capturaId,
+      medioUrl: propuesta.medioUrl ?? '',
+      medioObjectUrl: null,
+      tipo: 'pdf',
+      lineas: propuesta.lineas,
+      clientePropuesto: propuesta.cliente ?? null,
+    })
+    usarPropuestasPdf.getState().quitar(propuesta.id)
+    onRecuperada?.()
   }
 
   function abrirEnPedido(cotizacion: Cotizacion): void {
@@ -154,19 +186,74 @@ export function PanelDeCotizaciones({
       >
         <div className="min-w-40 flex-1">
           <Etiqueta htmlFor="numero-cotizacion">Número</Etiqueta>
-          <Campo
-            id="numero-cotizacion"
-            inputMode="numeric"
-            value={consulta}
-            onChange={(evento) => setConsulta(evento.target.value)}
-            placeholder="ej. 1042"
-            autoComplete="off"
-          />
+          <div className="relative">
+            <Campo
+              id="numero-cotizacion"
+              inputMode="numeric"
+              value={consulta}
+              onChange={(evento) => setConsulta(evento.target.value)}
+              placeholder="ej. 1042"
+              autoComplete="off"
+              className="pr-12"
+            />
+            <button
+              type="submit"
+              className="absolute top-1/2 right-1 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-tinta transition-[opacity,transform] duration-rapida ease-salida hover:bg-mesa focus-visible:border focus-visible:border-tinta focus-visible:outline-none disabled:opacity-50"
+              aria-label={buscando ? 'Buscando cotización' : 'Recuperar cotización'}
+              aria-busy={buscando || undefined}
+              disabled={buscando}
+            >
+              {buscando ? (
+                <Loader2 className="size-5 animate-spin" aria-hidden />
+              ) : (
+                <Search className="size-5" aria-hidden />
+              )}
+            </button>
+          </div>
         </div>
-        <Boton variante="principal" type="submit" disabled={buscando}>
-          {buscando ? 'Buscando…' : 'Recuperar'}
+        <Boton
+          variante="principal"
+          type="button"
+          disabled={asistenciaCaida}
+          title={
+            asistenciaCaida
+              ? 'La asistencia no está disponible. Escribe el pedido.'
+              : undefined
+          }
+          onClick={() => setZonaPdf((abierta) => !abierta)}
+        >
+          Subir PDF
         </Boton>
       </form>
+
+      <div
+        className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+        style={{ gridTemplateRows: zonaPdf ? '1fr' : '0fr' }}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div className="pt-2 pb-1">
+            <ZonaDeCarga
+              etiqueta="PDF de requerimiento"
+              accept="application/pdf,.pdf"
+              aceptados={['pdf']}
+              archivo={null}
+              estado="vacio"
+              mensaje={null}
+              deshabilitado={asistenciaCaida}
+              nota={
+                <p className="text-center text-cuerpo text-desvaida">
+                  Lista del cliente. El tab sigue usable mientras se lee.
+                </p>
+              }
+              onArchivo={(archivo) => {
+                setZonaPdf(false)
+                void procesarPdfDeRequerimiento(archivo)
+              }}
+              onQuitar={() => undefined}
+            />
+          </div>
+        </div>
+      </div>
 
       {aviso !== null ? (
         <p className="text-cuerpo font-bold text-aviso" role="alert">
@@ -185,7 +272,7 @@ export function PanelDeCotizaciones({
         </div>
       ) : null}
 
-      {buscada !== null && buscada.estado === 'pendiente' ? (
+      {buscada !== null ? (
         <article className="rounded-3xl border border-borde bg-papel p-5 shadow-sm">
           <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
             <h3 className="text-entrada font-bold text-tinta">
@@ -257,12 +344,55 @@ export function PanelDeCotizaciones({
               : null}
           </p>
         ) : null}
-        {(pendientes.data?.length ?? 0) === 0 && !pendientes.isLoading ? (
+        {(pendientes.data?.length ?? 0) === 0 &&
+        propuestasPdf.length === 0 &&
+        !pendientes.isLoading ? (
           <p className="text-cuerpo text-desvaida">
             No hay cotizaciones pendientes.
           </p>
         ) : null}
         <ul className="flex flex-col gap-2">
+          {propuestasPdf.map((cada) => (
+            <li
+              key={cada.id}
+              className="fila-entrada flex items-stretch gap-2"
+            >
+              <div
+                className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border border-borde bg-papel px-4 py-3"
+                aria-busy={cada.fase === 'procesando' || undefined}
+              >
+                <span className="font-mono font-bold text-tinta">PDF</span>
+                <span
+                  className="truncate text-cuerpo text-desvaida"
+                  aria-live={cada.fase === 'procesando' ? 'polite' : undefined}
+                >
+                  {cada.fase === 'procesando'
+                    ? 'El sistema está cotizando.'
+                    : cada.fase === 'error'
+                      ? (cada.mensajeError ?? 'No se pudo leer')
+                      : `${cada.etiquetaCliente ?? 'Sin cliente'} · ${cada.lineas?.length ?? 0} ${(cada.lineas?.length ?? 0) === 1 ? 'línea' : 'líneas'}`}
+                </span>
+                {cada.fase === 'lista' ? (
+                  <Boton
+                    variante="principal"
+                    className="shrink-0"
+                    onClick={() => revisarPdf(cada)}
+                  >
+                    Revisar cotización
+                  </Boton>
+                ) : cada.fase === 'procesando' ? (
+                  <Loader2
+                    className="size-5 shrink-0 animate-spin text-tinta"
+                    aria-hidden
+                  />
+                ) : (
+                  <span className="shrink-0 text-cuerpo font-bold text-aviso">
+                    Error
+                  </span>
+                )}
+              </div>
+            </li>
+          ))}
           {(pendientes.data ?? []).map((cada) => (
             <li key={cada.id} className="flex items-stretch gap-2">
               <button

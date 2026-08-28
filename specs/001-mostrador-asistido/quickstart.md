@@ -89,6 +89,12 @@ Registrar el tráfico saliente de la función de interpretación. Dictar "hazme 
 
 **Observar**: el payload contiene el audio y el lote de productos candidatos, y **ningún campo almacenado del cliente**: ni RUC, ni dirección, ni teléfono, ni historial. La identificación de "Ferretería El Progreso" se resuelve dentro del sistema, contra el índice local. Es la verificación por inspección que exige SC-012.
 
+### V8b — PDF de requerimiento (FR-061, excepción IV)
+
+Subir un PDF de cliente (con membrete) desde el tab Cotizaciones. El archivo viaja al modelo; el catálogo no.
+
+**Observar**: toast al terminar, sin abrir el diff; la fila de Pendientes muestra la denominación del índice si el RUC/DNI coincide. Revisar abre la revisión en Pedido. Nada se numeró. Dictado y foto siguen sin enviar ficha de clientes.
+
 ### V9 — Revisión contrastada de una guía manual (US7)
 
 Fotografiar una guía manuscrita real con al menos seis renglones, incluyendo uno tachado o ilegible a propósito.

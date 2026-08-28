@@ -37,7 +37,7 @@ Gobernanza de la constitución.
 - [x] **I. Aprobación humana indelegable** — FR-027 exige confirmación explícita y atribución; FR-041 impide que una captura emita por sí sola; FR-048 prohíbe que una instrucción en lenguaje natural produzca efectos irreversibles.
 - [x] **II. Ninguna venta se documenta dos veces** — FR-028 fija la garantía, FR-029 exige registrar antes de solicitar y prohíbe el reintento a ciegas, SC-004 la hace medible, y los casos límite cubren la respuesta ausente y los dos dispositivos.
 - [x] **III. Proveedor sustituible** — la especificación no nombra ningún proveedor ni ninguno de sus conceptos; se refiere siempre a "el proveedor de emisión" como dependencia de negocio.
-- [x] **IV. Datos de clientes fuera de los servicios de IA** — FR-045 lo prohíbe explícitamente y exige resolver la identidad dentro del sistema; SC-012 lo hace verificable.
+- [x] **IV. Datos de clientes fuera de los servicios de IA** — FR-045 lo prohíbe para dictado/foto; FR-061 documenta la excepción del PDF de requerimiento; SC-012 lo hace verificable.
 - [x] **V. El mostrador no se detiene** — FR-007 desacopla la búsqueda de servicios externos, FR-046 y FR-052 garantizan la continuidad, FR-051 exige que la degradación sea visible, FR-015 protege el pedido en curso.
 - [x] **VI. Lo que no se mide no se declara mejorado** — cada criterio afectado declara su línea base o su ausencia; SC-013 está etiquetado como cualitativo.
 - [x] **Restricciones del dominio** — FR-036 distingue documentos regulados de internos, FR-039 prohíbe la palabra "eliminar", FR-030 exige trazar incluso los intentos fallidos, FR-032 impide recalcular el impuesto.
