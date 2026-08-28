@@ -13,12 +13,15 @@ import {
 const pdf = readFileSync(resolve('docs/LISTAS.pdf'))
 
 describe('mapearUnidadDeLista y precio', () => {
-  it('UND → NIU, PAQUT → BX; desconocidas se conservan', () => {
+  it('UND/JUEGO/KIT/PAR → NIU; PAQUT/MIL/BX100 → BX; el resto se conserva', () => {
     expect(mapearUnidadDeLista('UND')).toBe('NIU')
+    expect(mapearUnidadDeLista('JUEGO')).toBe('NIU')
+    expect(mapearUnidadDeLista('KIT')).toBe('NIU')
+    expect(mapearUnidadDeLista('PAR')).toBe('NIU')
     expect(mapearUnidadDeLista('PAQUT')).toBe('BX')
-    expect(mapearUnidadDeLista('JUEGO')).toBe('JUEGO')
-    expect(mapearUnidadDeLista('KIT')).toBe('KIT')
-    expect(mapearUnidadDeLista('MIL')).toBe('MIL')
+    expect(mapearUnidadDeLista('MIL')).toBe('BX')
+    expect(mapearUnidadDeLista('BX100')).toBe('BX')
+    expect(mapearUnidadDeLista('ROLLO')).toBe('ROLLO')
   })
 
   it('convierte 12.5000 soles a 1250 céntimos', () => {
@@ -66,13 +69,15 @@ describe('interpretarDocumentoDeCatalogo', () => {
   )
 
   it(
-    'mapea PAQUT a BX y deja JUEGO para corrección inline',
+    'mapea PAQUT y MIL a BX, JUEGO a NIU',
     async () => {
       const resultado = await interpretarDocumentoDeCatalogo(new Uint8Array(pdf))
       const paquete = resultado.filas.find((p) => p.codigo === 'ALEX-CRUC006')
       expect(paquete?.unidad).toBe('BX')
+      const mil = resultado.filas.find((p) => p.codigo === 'ALEX-CRUC008')
+      expect(mil?.unidad).toBe('BX')
       const juego = resultado.filas.find((p) => p.codigo === 'AMER-JUAC001')
-      expect(juego?.unidad).toBe('JUEGO')
+      expect(juego?.unidad).toBe('NIU')
     },
     30_000,
   )

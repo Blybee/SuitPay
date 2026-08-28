@@ -15,7 +15,7 @@ cualquier pantalla con scroll), usa el toast Sileo vía la puerta SuitPay:
   (`src/features/notificaciones/almacen.ts`)
 - Host: `<Toaster position="top-right" theme="dark" options={{ fill: '#171717', styles: {…} }} />` en `__root.tsx`
 - Estilos: `sileo/styles.css` importado en `src/styles.css`
-- Docs: `docs/UI-NOTIFICACIONES-Y-MIGAS.md`
+- Docs: `docs/UI-COMPONENTES.md`
 
 Tonos: `exito` | `error` | `info` → `sileo.success` / `.error` / `.info`.
 Prefiere la puerta SuitPay; no llames `sileo.*` desde pantallas salvo promesa

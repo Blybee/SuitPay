@@ -6,7 +6,7 @@ import { sileo } from 'sileo'
  *
  * La app sigue hablando en `tono` / `mensaje` / `titulo`; aquí se traduce a
  * `sileo.success|error|info`. El host visual es `<Toaster />` en `__root.tsx`.
- * Docs: `docs/UI-NOTIFICACIONES-Y-MIGAS.md`.
+ * Docs: `docs/UI-COMPONENTES.md`.
  */
 
 export type TonoDeNotificacion = 'exito' | 'error' | 'info'
