@@ -6,7 +6,7 @@ import type { ReactNode } from 'react'
  * Migas de pan reutilizables.
  * Si una capa tiene `hermanas`, se renderiza un select para saltar entre ellas.
  * Debe vivir en el encabezado del layout admin (no dentro de max-w del contenido).
- * Ver docs/UI-NOTIFICACIONES-Y-MIGAS.md.
+ * Ver docs/UI-COMPONENTES.md.
  */
 
 export interface HermanaDeMiga {

@@ -1,8 +1,12 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+import { Hash, Package, SlidersHorizontal, Users } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { sileo } from 'sileo'
+import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
 import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
+import { Tarjeta } from '../../ui/componentes/Tarjeta.tsx'
 
 /**
  * Inicio de administración: hub de funciones (catálogo, series, …).
@@ -16,26 +20,40 @@ export const Route = createFileRoute('/administracion/')({
   ),
 })
 
-const ENLACES = [
+const ENLACES: readonly {
+  to:
+    | '/administracion/catalogo'
+    | '/administracion/series'
+    | '/administracion/usuarios'
+    | '/administracion/parametros'
+  titulo: string
+  descripcion: string
+  icono: LucideIcon
+}[] = [
   {
-    to: '/administracion/catalogo' as const,
-    etiqueta: 'Catálogo',
-    detalle: 'Importar productos desde el JSON de la tienda',
+    to: '/administracion/catalogo',
+    titulo: 'Catálogo',
+    descripcion:
+      'Importar productos desde el JSON de la tienda virtual o el PDF (SICO).',
+    icono: Package,
   },
   {
-    to: '/administracion/series' as const,
-    etiqueta: 'Series',
-    detalle: 'Establecimientos y series por vendedor',
+    to: '/administracion/series',
+    titulo: 'Series',
+    descripcion: 'Establecimientos y series por vendedor.',
+    icono: Hash,
   },
   {
-    to: '/administracion/usuarios' as const,
-    etiqueta: 'Usuarios',
-    detalle: 'Alta, roles y activación',
+    to: '/administracion/usuarios',
+    titulo: 'Usuarios',
+    descripcion: 'Alta, roles y activación.',
+    icono: Users,
   },
   {
-    to: '/administracion/parametros' as const,
-    etiqueta: 'Parámetros',
-    detalle: 'Umbral de identificación e impresión',
+    to: '/administracion/parametros',
+    titulo: 'Parámetros',
+    descripcion: 'Umbral de identificación e impresión.',
+    icono: SlidersHorizontal,
   },
 ]
 
@@ -44,23 +62,16 @@ function InicioAdministracion() {
 
   return (
     <div className="flex min-h-full flex-col px-6 py-8">
-      <p className="max-w-3xl text-cuerpo text-desvaida">
-        Administración del local: catálogo, series, umbral y usuarios.
-      </p>
-      <ul className="mt-8 flex flex-col gap-3">
+      <CabeceraAdmin titulo="Administración" />
+      <ul className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-4">
         {ENLACES.map((enlace) => (
           <li key={enlace.to}>
-            <Link
+            <Tarjeta
               to={enlace.to}
-              className="block rounded-3xl border border-borde bg-papel p-6 shadow-sm transition hover:border-tinta"
-            >
-              <p className="font-mono text-etiqueta uppercase text-desvaida">
-                {enlace.etiqueta}
-              </p>
-              <p className="mt-2 text-cuerpo font-bold text-tinta">
-                {enlace.detalle}
-              </p>
-            </Link>
+              titulo={enlace.titulo}
+              descripcion={enlace.descripcion}
+              icono={enlace.icono}
+            />
           </li>
         ))}
       </ul>

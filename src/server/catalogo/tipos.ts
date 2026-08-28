@@ -1,3 +1,4 @@
+import type { ConflictoDeImportacion } from '../../domain/catalogo/conflictos.ts'
 import type {
   CategoriaDeCatalogo,
   Producto,
@@ -10,19 +11,12 @@ import type {
 
 export type ProductoDeCatalogo = Producto
 export type { CategoriaDeCatalogo }
+export type {
+  ConflictoDeImportacion,
+  TipoDeConflicto,
+} from '../../domain/catalogo/conflictos.ts'
 
 export type ModoDeImportacion = 'validar' | 'publicar'
-
-export type TipoDeConflicto =
-  | 'codigo_duplicado'
-  | 'descripcion_ausente'
-  | 'unidad_desconocida'
-
-export interface ConflictoDeImportacion {
-  readonly tipo: TipoDeConflicto
-  readonly codigo: string
-  readonly detalle: string
-}
 
 export interface DiferenciasDeCatalogo {
   readonly nuevos: readonly ProductoDeCatalogo[]

@@ -43,5 +43,5 @@ Antes de producción oficial:
 
 - Si fallan altas de serie con mensaje de «datos oficiales» / proveedor: comprobar `SUITPAY_FASE` y si estamos en DEMO.
 - No promover lógica DEMO a PRODUCCION.
-- Notificaciones de UI: usar `usarNotificaciones().mostrar(…)` (Sileo / `Toaster` en raíz), no `<p role="alert">` al inicio de páginas largas. Ver `docs/UI-NOTIFICACIONES-Y-MIGAS.md`.
+- Notificaciones de UI: usar `usarNotificaciones().mostrar(…)` (Sileo / `Toaster` en raíz), no `<p role="alert">` al inicio de páginas largas. Ver `docs/UI-COMPONENTES.md`.
 - Navegación interna admin: usar `MigasDePan`.

@@ -1,18 +1,25 @@
-import { useRef, useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
-import type { CategoriaDeCatalogo, Producto } from '../../domain/esquemas/comunes.ts'
+import {
+  agruparConflictosPorCodigo,
+  detectarConflictos,
+  textoDeConflictos,
+} from '../../domain/catalogo/conflictos.ts'
 import { filtrarPorFacetas, marcasDe } from '../../domain/catalogo/filtros.ts'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
+import type { CategoriaDeCatalogo, Producto } from '../../domain/esquemas/comunes.ts'
 import {
   Boton,
   Campo,
   Casilla,
+  Distintivo,
   Etiqueta,
 } from '../../ui/componentes/primitivas.tsx'
 
 /**
  * Grilla de revisión previa a publicar (FR-009b, FR-009d).
  * Crear categoría, filtrar, seleccionar, editar inline y quitar filas.
+ * Los conflictos viven en la fila (validación en línea), no en un recuadro aparte.
  * Nada se escribe hasta confirmar. Virtualizada: ~3000 filas del PDF.
  */
 
@@ -21,66 +28,132 @@ function idDeCategoria(): string {
 }
 
 const ALTO_FILA = 48
+const ALTO_CALLOUT = 28
+const COLUMNAS =
+  'grid-cols-[2.5rem_8rem_1fr_7rem_4.5rem_6rem_7rem]'
+
+export interface BalanceDeRevision {
+  readonly reconocidos: number
+  readonly nuevos: number
+  readonly cambiados: number
+  readonly desaparecen: number
+  readonly version: number | null
+  readonly publicado: boolean
+}
 
 export function GrillaRevision({
   productos,
   categorias,
+  balance,
   onProductos,
   onCategorias,
 }: {
   readonly productos: readonly Producto[]
   readonly categorias: readonly CategoriaDeCatalogo[]
+  readonly balance: BalanceDeRevision
   readonly onProductos: (productos: readonly Producto[]) => void
   readonly onCategorias: (categorias: readonly CategoriaDeCatalogo[]) => void
 }) {
   const [marca, setMarca] = useState('')
   const [categoriaId, setCategoriaId] = useState('')
+  const [soloProblemas, setSoloProblemas] = useState(false)
   const [nombreNueva, setNombreNueva] = useState('')
-  const [seleccion, setSeleccion] = useState<ReadonlySet<string>>(
+  const [seleccion, setSeleccion] = useState<ReadonlySet<number>>(
     () => new Set(),
   )
   const [asignarA, setAsignarA] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
+  const conflictos = useMemo(() => detectarConflictos(productos), [productos])
+  const porCodigo = useMemo(
+    () => agruparConflictosPorCodigo(conflictos),
+    [conflictos],
+  )
   const marcas = useMemo(() => marcasDe(productos), [productos])
-  const visibles = useMemo(
-    () =>
+
+  const visibles = useMemo(() => {
+    const facetados = new Set(
       filtrarPorFacetas(productos, {
         marca: marca.length > 0 ? marca : null,
         categoriaId: categoriaId.length > 0 ? categoriaId : null,
       }),
-    [productos, marca, categoriaId],
+    )
+    return productos.flatMap((producto, indice) => {
+      if (!facetados.has(producto)) return []
+      if (
+        soloProblemas &&
+        (porCodigo.get(producto.codigo)?.length ?? 0) === 0
+      ) {
+        return []
+      }
+      return [{ producto, indice }]
+    })
+  }, [productos, marca, categoriaId, soloProblemas, porCodigo])
+
+  const filasConProblema = useMemo(
+    () =>
+      productos.filter(
+        (producto) => (porCodigo.get(producto.codigo)?.length ?? 0) > 0,
+      ).length,
+    [productos, porCodigo],
   )
 
   const virtualizador = useVirtualizer({
     count: visibles.length,
     getScrollElement: () => scrollRef.current,
-    estimateSize: () => ALTO_FILA,
-    overscan: 10,
+    initialRect: { width: 800, height: 384 },
+    observeElementRect: (_instancia, informar) => {
+      const el = scrollRef.current
+      const emitir = (): void => {
+        informar({
+          width: el?.clientWidth || 800,
+          height: el?.clientHeight || 384,
+        })
+      }
+      emitir()
+      if (el === null) return
+      const observador = new ResizeObserver(emitir)
+      observador.observe(el)
+      return () => observador.disconnect()
+    },
+    estimateSize: (index) => {
+      const fila = visibles[index]
+      if (fila === undefined) return ALTO_FILA
+      return (porCodigo.get(fila.producto.codigo)?.length ?? 0) > 0
+        ? ALTO_FILA + ALTO_CALLOUT
+        : ALTO_FILA
+    },
+    getItemKey: (index) => {
+      const fila = visibles[index]
+      if (fila === undefined) return index
+      const problemas = porCodigo.get(fila.producto.codigo)?.length ?? 0
+      return `${fila.indice}:${problemas}`
+    },
+    overscan: 8,
   })
 
-  function parche(codigo: string, cambio: Partial<Producto>): void {
+  function parche(indice: number, cambio: Partial<Producto>): void {
     onProductos(
-      productos.map((producto) =>
-        producto.codigo === codigo ? { ...producto, ...cambio } : producto,
+      productos.map((producto, i) =>
+        i === indice ? { ...producto, ...cambio } : producto,
       ),
     )
   }
 
-  function alternar(codigo: string): void {
+  function alternar(indice: number): void {
     const siguiente = new Set(seleccion)
-    if (siguiente.has(codigo)) siguiente.delete(codigo)
-    else siguiente.add(codigo)
+    if (siguiente.has(indice)) siguiente.delete(indice)
+    else siguiente.add(indice)
     setSeleccion(siguiente)
   }
 
   function seleccionarVisibles(): void {
-    setSeleccion(new Set(visibles.map((p) => p.codigo)))
+    setSeleccion(new Set(visibles.map((fila) => fila.indice)))
   }
 
   function quitarSeleccion(): void {
     if (seleccion.size === 0) return
-    onProductos(productos.filter((p) => !seleccion.has(p.codigo)))
+    onProductos(productos.filter((_, indice) => !seleccion.has(indice)))
     setSeleccion(new Set())
   }
 
@@ -97,8 +170,8 @@ export function GrillaRevision({
   function asignarSeleccion(): void {
     if (asignarA.length === 0 || seleccion.size === 0) return
     onProductos(
-      productos.map((producto) =>
-        seleccion.has(producto.codigo)
+      productos.map((producto, indice) =>
+        seleccion.has(indice)
           ? { ...producto, categoriaId: asignarA }
           : producto,
       ),
@@ -107,12 +180,28 @@ export function GrillaRevision({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-3xl border border-borde bg-papel p-6 shadow-sm">
-      <h2 className="text-subtitulo font-bold text-tinta">Revisión</h2>
-      <p className="text-cuerpo text-desvaida">
-        Crea categorías de un nivel, asígnalas a la selección, edita o quita
-        filas. Nada se escribe hasta confirmar.
-      </p>
+    <section className="flex flex-col gap-5 rounded-3xl border border-borde bg-papel p-6 shadow-sm">
+      <header className="flex flex-col gap-4">
+        <div className="flex flex-wrap items-end justify-between gap-3">
+          <div className="flex flex-col gap-1">
+            <h2 className="text-subtitulo font-bold text-tinta">Revisión</h2>
+            <p className="text-cuerpo text-desvaida">
+              Crea categorías, edita o quita filas. Nada se escribe hasta
+              confirmar.
+            </p>
+          </div>
+          {balance.publicado && balance.version !== null ? (
+            <Distintivo tono="sello">Versión {balance.version}</Distintivo>
+          ) : null}
+        </div>
+        <BalanceCifras
+          reconocidos={balance.reconocidos}
+          nuevos={balance.nuevos}
+          cambiados={balance.cambiados}
+          desaparecen={balance.desaparecen}
+          problemas={filasConProblema}
+        />
+      </header>
 
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex min-w-40 flex-col gap-1">
@@ -147,6 +236,15 @@ export function GrillaRevision({
             ))}
           </select>
         </label>
+        <Boton
+          variante={soloProblemas ? 'peligro' : 'secundario'}
+          aria-pressed={soloProblemas}
+          disabled={filasConProblema === 0 && !soloProblemas}
+          onClick={() => setSoloProblemas((actual) => !actual)}
+        >
+          Con problemas
+          {filasConProblema > 0 ? ` (${filasConProblema})` : ''}
+        </Boton>
         <Boton
           onClick={seleccionarVisibles}
           disabled={marca.length === 0 || visibles.length === 0}
@@ -208,11 +306,11 @@ export function GrillaRevision({
       <div
         role="table"
         aria-label="Productos a publicar"
-        className="rounded-2xl border border-borde"
+        className="overflow-hidden rounded-2xl border border-borde"
       >
         <div
           role="row"
-          className="grid grid-cols-[2.5rem_8rem_1fr_7rem_4.5rem_6rem_7rem] gap-1 border-b border-borde bg-mesa px-2 py-2 font-mono text-etiqueta uppercase text-desvaida"
+          className={`grid ${COLUMNAS} gap-1 border-b border-borde bg-mesa px-2 py-2 font-mono text-etiqueta uppercase text-desvaida`}
         >
           <span role="columnheader">Sel.</span>
           <span role="columnheader">Código</span>
@@ -227,92 +325,140 @@ export function GrillaRevision({
             className="relative w-full"
             style={{ height: `${virtualizador.getTotalSize()}px` }}
           >
-            {virtualizador.getVirtualItems().map((fila) => {
-              const producto = visibles[fila.index]
-              if (producto === undefined) return null
+            {virtualizador.getVirtualItems().map((virtual) => {
+              const fila = visibles[virtual.index]
+              if (fila === undefined) return null
+              const { producto, indice } = fila
+              const deEsta = porCodigo.get(producto.codigo) ?? []
+              const tieneProblema = deEsta.length > 0
+              const idError = `conflicto-${indice}`
+              const unidadInvalida = deEsta.some(
+                (c) => c.tipo === 'unidad_desconocida',
+              )
+              const descripcionInvalida = deEsta.some(
+                (c) => c.tipo === 'descripcion_ausente',
+              )
+              const codigoInvalido = deEsta.some(
+                (c) => c.tipo === 'codigo_duplicado',
+              )
+
               return (
                 <div
-                  key={producto.codigo}
+                  key={indice}
                   role="row"
-                  className="absolute top-0 left-0 grid w-full grid-cols-[2.5rem_8rem_1fr_7rem_4.5rem_6rem_7rem] items-center gap-1 border-b border-borde px-2"
+                  className={`absolute top-0 left-0 flex w-full flex-col border-b border-borde ${
+                    tieneProblema ? 'bg-aviso/10' : ''
+                  }`}
                   style={{
-                    height: `${fila.size}px`,
-                    transform: `translateY(${fila.start}px)`,
+                    height: `${virtual.size}px`,
+                    transform: `translateY(${virtual.start}px)`,
                   }}
                 >
-                  <span role="cell">
-                    <Casilla
-                      checked={seleccion.has(producto.codigo)}
-                      onCheckedChange={() => alternar(producto.codigo)}
-                      aria-label={`Seleccionar ${producto.codigo}`}
-                    />
-                  </span>
-                  <span
-                    role="cell"
-                    className="truncate font-mono text-etiqueta"
-                    title={producto.codigo}
+                  <div
+                    className={`grid ${COLUMNAS} min-h-12 items-center gap-1 px-2`}
                   >
-                    {producto.codigo}
-                  </span>
-                  <span role="cell">
-                    <input
-                      className="min-h-11 w-full rounded-full border border-borde bg-papel px-3 text-cuerpo uppercase"
-                      value={producto.descripcion}
-                      aria-label={`Descripción ${producto.codigo}`}
-                      onChange={(e) =>
-                        parche(producto.codigo, {
-                          descripcion: e.target.value,
-                        })
-                      }
-                    />
-                  </span>
-                  <span role="cell">
-                    <input
-                      className="min-h-11 w-full rounded-full border border-borde bg-papel px-3 text-cuerpo"
-                      value={producto.marca}
-                      aria-label={`Marca ${producto.codigo}`}
-                      onChange={(e) =>
-                        parche(producto.codigo, { marca: e.target.value })
-                      }
-                    />
-                  </span>
-                  <span role="cell">
-                    <input
-                      className="min-h-11 w-full rounded-full border border-borde bg-papel px-2 font-mono text-etiqueta"
-                      value={producto.unidad}
-                      aria-label={`Unidad ${producto.codigo}`}
-                      onChange={(e) =>
-                        parche(producto.codigo, {
-                          unidad: e.target.value.toUpperCase(),
-                        })
-                      }
-                    />
-                  </span>
-                  <span role="cell">
-                    <input
-                      key={`${producto.codigo}-precio`}
-                      className="min-h-11 w-full rounded-full border border-borde bg-papel px-2 text-right font-mono tabular-nums"
-                      inputMode="decimal"
-                      defaultValue={(producto.precio / 100).toFixed(2)}
-                      aria-label={`Precio ${producto.codigo}`}
-                      onBlur={(e) => {
-                        const n = Number.parseFloat(e.target.value)
-                        if (!Number.isFinite(n) || n < 0) {
-                          e.target.value = (producto.precio / 100).toFixed(2)
-                          return
-                        }
-                        parche(producto.codigo, { precio: Math.round(n * 100) })
-                      }}
-                    />
-                  </span>
-                  <span role="cell" className="truncate text-cuerpo">
-                    {categorias.find((c) => c.id === producto.categoriaId)
-                      ?.nombre ?? '—'}
-                    <span className="sr-only">
-                      {' '}
-                      {formatearImporte(producto.precio)}
+                    <span role="cell">
+                      <Casilla
+                        checked={seleccion.has(indice)}
+                        onCheckedChange={() => alternar(indice)}
+                        aria-label={`Seleccionar ${producto.codigo}`}
+                      />
                     </span>
-                  </span>
+                    <span role="cell">
+                      <Campo
+                        className="px-3 font-mono text-etiqueta"
+                        value={producto.codigo}
+                        invalido={codigoInvalido}
+                        aria-label={`Código ${producto.codigo}`}
+                        aria-errormessage={
+                          tieneProblema ? idError : undefined
+                        }
+                        maxLength={40}
+                        onChange={(e) =>
+                          parche(indice, { codigo: e.target.value })
+                        }
+                      />
+                    </span>
+                    <span role="cell">
+                      <Campo
+                        className="px-3 uppercase"
+                        value={producto.descripcion}
+                        invalido={descripcionInvalida}
+                        aria-label={`Descripción ${producto.codigo}`}
+                        aria-errormessage={
+                          tieneProblema ? idError : undefined
+                        }
+                        onChange={(e) =>
+                          parche(indice, {
+                            descripcion: e.target.value,
+                          })
+                        }
+                      />
+                    </span>
+                    <span role="cell">
+                      <Campo
+                        className="px-3"
+                        value={producto.marca}
+                        aria-label={`Marca ${producto.codigo}`}
+                        onChange={(e) =>
+                          parche(indice, { marca: e.target.value })
+                        }
+                      />
+                    </span>
+                    <span role="cell">
+                      <Campo
+                        className="px-2 font-mono text-etiqueta"
+                        value={producto.unidad}
+                        invalido={unidadInvalida}
+                        aria-label={`Unidad ${producto.codigo}`}
+                        aria-errormessage={
+                          tieneProblema ? idError : undefined
+                        }
+                        onChange={(e) =>
+                          parche(indice, {
+                            unidad: e.target.value.toUpperCase(),
+                          })
+                        }
+                      />
+                    </span>
+                    <span role="cell">
+                      <input
+                        key={`${indice}-precio`}
+                        className="min-h-11 w-full rounded-full border border-borde bg-papel px-2 text-right font-mono tabular-nums"
+                        inputMode="decimal"
+                        defaultValue={(producto.precio / 100).toFixed(2)}
+                        aria-label={`Precio ${producto.codigo}`}
+                        onBlur={(e) => {
+                          const n = Number.parseFloat(e.target.value)
+                          if (!Number.isFinite(n) || n < 0) {
+                            e.target.value = (producto.precio / 100).toFixed(2)
+                            return
+                          }
+                          parche(indice, { precio: Math.round(n * 100) })
+                        }}
+                      />
+                    </span>
+                    <span role="cell" className="truncate text-cuerpo">
+                      {categorias.find((c) => c.id === producto.categoriaId)
+                        ?.nombre ?? '—'}
+                      <span className="sr-only">
+                        {' '}
+                        {formatearImporte(producto.precio)}
+                      </span>
+                    </span>
+                  </div>
+                  {tieneProblema ? (
+                    <p
+                      id={idError}
+                      role="note"
+                      className={`grid ${COLUMNAS} gap-1 px-2 pb-1.5`}
+                    >
+                      <span aria-hidden />
+                      <span className="col-span-6 min-w-0 truncate font-mono text-etiqueta leading-tight text-aviso">
+                        {textoDeConflictos(deEsta)}
+                      </span>
+                    </p>
+                  ) : null}
                 </div>
               )
             })}
@@ -323,5 +469,60 @@ export function GrillaRevision({
         {visibles.length} de {productos.length} productos visibles
       </p>
     </section>
+  )
+}
+
+function BalanceCifras({
+  reconocidos,
+  nuevos,
+  cambiados,
+  desaparecen,
+  problemas,
+}: {
+  readonly reconocidos: number
+  readonly nuevos: number
+  readonly cambiados: number
+  readonly desaparecen: number
+  readonly problemas: number
+}) {
+  return (
+    <dl className="flex flex-wrap items-end gap-x-8 gap-y-3">
+      <Cifra cifra={reconocidos} etiqueta="reconocidos" />
+      <Cifra cifra={nuevos} etiqueta="nuevos" />
+      <Cifra cifra={cambiados} etiqueta="cambiados" />
+      <Cifra cifra={desaparecen} etiqueta="salen" />
+      <Cifra
+        cifra={problemas}
+        etiqueta="con problema"
+        aviso={problemas > 0}
+      />
+    </dl>
+  )
+}
+
+function Cifra({
+  cifra,
+  etiqueta,
+  aviso = false,
+}: {
+  readonly cifra: number
+  readonly etiqueta: string
+  readonly aviso?: boolean
+}) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <dt className="font-mono text-etiqueta uppercase tracking-widest text-desvaida">
+        {etiqueta}
+      </dt>
+      <dd
+        className={
+          aviso
+            ? 'font-mono text-subtitulo font-bold tabular-nums text-aviso'
+            : 'font-mono text-subtitulo font-bold tabular-nums text-tinta'
+        }
+      >
+        {cifra}
+      </dd>
+    </div>
   )
 }
