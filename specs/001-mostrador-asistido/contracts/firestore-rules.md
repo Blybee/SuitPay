@@ -23,7 +23,7 @@ Define quién puede leer y escribir cada colección. Es el contrato que sostiene
 | `comprobantes/{id}` | **leer** | **leer** | **leer** | **Ningún rol escribe. Nunca.** Solo el backend. |
 | `series/{id}` | leer las propias | leer, editar | leer | El contador solo lo toca el backend, en transacción. |
 | `cotizaciones/{id}` | leer, crear, editar y **borrar** las pendientes | leer, crear, editar, borrar pendientes | leer | La conversión las borra el backend en la transacción de emisión (FR-019). El cliente puede borrar pendientes tras confirmación en UI (FR-019a). En canal `vecino` se admite `telefonoVecino` y editar `aliasVecino`. |
-| `listasRequerimiento/{uid}/dias/{AAAA-MM-DD}` | leer, crear, editar, borrar **los propios** | leer, crear, editar, borrar los propios | leer los propios | Lista de requerimiento por día laboral; TTL 1 semana (`caducaEn`). |
+| `listasRequerimiento/{uid}/diasLista/{AAAA-MM-DD}` | leer, crear, editar, borrar **los propios** | leer, crear, editar, borrar los propios | leer los propios | Lista de requerimiento por día laboral; TTL 1 semana (`caducaEn`) sobre el collection group `diasLista`. |
 | `capturas/{id}` | leer, crear las propias | leer | — | El estado y las propuestas los escribe el backend. |
 | `usuarios/{uid}` | leer el propio | leer, crear, editar | leer | El rol solo lo asigna el administrador, y se propaga al token. |
 
@@ -35,7 +35,7 @@ Define quién puede leer y escribir cada colección. Es el contrato que sostiene
 
 **Sobre las cotizaciones.** El vendedor puede crear, editar y borrar una cotización mientras esté `pendiente`. El único estado vigente es `pendiente` (el documento existe o no). Campos `canal` (`general` \| `vecino`) y, si aplica, `aliasVecino` y `telefonoVecino`. El alias y el teléfono de un vecino sí se pueden editar. No existen campos de “comprobante resultante” ni transición a `convertida`: la protección contra la doble conversión es el **borrado en la misma transacción de emisión**. Cualquier vendedor autorizado puede borrar pendientes de otro (alineado a FR-017).
 
-**Sobre los medios de captura.** En Cloud Storage, cada vendedor escribe y puede borrar solo bajo su propio prefijo. La UI no borra: el lifecycle del bucket caduca audios a 1 día y fotos a 7 días (`docs/CICLO-DE-VIDA-MEDIOS.md`). Acumular audios diarios sin limpieza consumiría más recursos de los necesarios.
+**Sobre los medios de captura.** En Cloud Storage, cada vendedor escribe solo bajo su propio prefijo. **No hay `allow delete` desde el cliente**: el ciclo de vida del bucket caduca audios a 1 día y fotos a 7 días (`docs/CICLO-DE-VIDA-MEDIOS.md`). GCS lo ejecuta con privilegios de infraestructura; acumular audios diarios sin limpieza consumiría más recursos de los necesarios.
 
 **Sobre las series.** El cliente puede leer su serie para saber si la tiene configurada, pero no puede tocar el contador. Escribirlo desde el cliente permitiría reservar o repetir numeración.
 
@@ -48,7 +48,7 @@ Las reglas comprueban forma, no lógica de negocio. La lógica vive en las funci
 - Al crear un cliente: el identificador del documento coincide con el campo del número de documento, los campos obligatorios están presentes, y `creadoPor` coincide con el usuario autenticado.
 - Al crear una cotización: `creadoPor` coincide con el usuario autenticado, el estado inicial es `pendiente`, `canal` es `general` o `vecino`, y si `canal` es `vecino` entonces `aliasVecino` está presente y no vacío.
 - Al editar una cotización: el estado sigue siendo `pendiente`, no se altera la autoría ni el `canal`; `aliasVecino` y `telefonoVecino` sí pueden cambiar en canal vecino.
-- Al escribir `listasRequerimiento/{uid}/dias/{dia}`: el segmento `{uid}` coincide con el vendedor autenticado, `{dia}` tiene forma `AAAA-MM-DD`, `lineas` es un arreglo y `caducaEn` es marca de tiempo.
+- Al escribir `listasRequerimiento/{uid}/diasLista/{dia}`: el segmento `{uid}` coincide con el vendedor autenticado, `{dia}` tiene forma `AAAA-MM-DD`, `lineas` es un arreglo y `caducaEn` es marca de tiempo.
 - Al borrar una cotización: el documento existía en estado `pendiente` (el cliente no “borra” comprobantes disfrazados).
 - En toda escritura: se rechazan campos no previstos, para que la forma de los documentos no derive con el tiempo.
 

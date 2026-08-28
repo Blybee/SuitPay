@@ -1,5 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import { FileDown, Share2, X } from 'lucide-react'
 import { alternarUrgencia, etiquetaDeUrgencia } from '../../domain/lista/urgencia.ts'
 import { bytesDePdfDeRequerimiento } from '../../domain/lista/pdf.ts'
@@ -9,6 +9,7 @@ import { usarNotificaciones } from '../notificaciones/almacen.ts'
 import { usarSesion } from '../sesion/almacen.ts'
 import { CLAVES_DE_CONSULTA } from '../../infra/consultas/cliente.ts'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
+import { usarDiaLista } from './dia-activo.ts'
 import {
   actualizarCantidadDeLista,
   actualizarUrgenciaDeLista,
@@ -76,7 +77,13 @@ export function PanelDeListaRequerimiento() {
   const queryClient = useQueryClient()
 
   const semana = useMemo(() => semanaLaboralEnLima(), [])
-  const [fechaActiva, setFechaActiva] = useState(() => diaPorDefecto(semana))
+  const fechaEnStore = usarDiaLista((s) => s.fecha)
+  const fijarDia = usarDiaLista((s) => s.fijar)
+  const fechaActiva = fechaEnStore ?? diaPorDefecto(semana)
+
+  useEffect(() => {
+    if (fechaEnStore === null) fijarDia(diaPorDefecto(semana))
+  }, [fechaEnStore, fijarDia, semana])
 
   const consulta = useQuery({
     queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(uid ?? '', fechaActiva),
@@ -126,7 +133,7 @@ export function PanelDeListaRequerimiento() {
                 role="tab"
                 aria-selected={seleccionado}
                 aria-label={`${dia.etiqueta} ${dia.corta}`}
-                onClick={() => setFechaActiva(dia.fecha)}
+                onClick={() => fijarDia(dia.fecha)}
                 className={[
                   'min-h-9 rounded-full border px-3 font-mono text-etiqueta font-bold uppercase transition-colors',
                   seleccionado
@@ -216,7 +223,6 @@ export function PanelDeListaRequerimiento() {
                           actualizarCantidadDeLista({
                             uid,
                             fecha: fechaActiva,
-                            lineasActuales: lineas,
                             id: linea.id,
                             cantidad,
                           }),
@@ -235,7 +241,6 @@ export function PanelDeListaRequerimiento() {
                           actualizarUrgenciaDeLista({
                             uid,
                             fecha: fechaActiva,
-                            lineasActuales: lineas,
                             id: linea.id,
                             urgencia: alternarUrgencia(linea.urgencia),
                           }),
@@ -248,7 +253,6 @@ export function PanelDeListaRequerimiento() {
                           actualizarUrgenciaDeLista({
                             uid,
                             fecha: fechaActiva,
-                            lineasActuales: lineas,
                             id: linea.id,
                             urgencia: alternarUrgencia(linea.urgencia),
                           }),
@@ -272,7 +276,6 @@ export function PanelDeListaRequerimiento() {
                           quitarDeLista({
                             uid,
                             fecha: fechaActiva,
-                            lineasActuales: lineas,
                             id: linea.id,
                           }),
                         )

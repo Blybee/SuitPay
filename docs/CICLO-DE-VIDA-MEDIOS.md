@@ -2,16 +2,24 @@
 
 Los originales de dictado y fotografía viven en Cloud Storage (`capturas/{uid}/{id}.{ext}`).
 
-## Por qué se permite borrar
+## Por qué caducan solos
 
 Acumular audios pequeños todos los días —que no tienen uso más allá del día civil en Lima— consumiría más recursos de los necesarios. La gerencia exige limpieza automática. La UI **no** ofrece eliminar grabaciones: el vendedor reproduce las de hoy; el bucket caduca el resto.
 
 ## Lifecycle nativo del bucket
 
-Fuente: `storage.lifecycle.json`. Aplicar al bucket de Storage (GCS):
+Fuente: `storage.lifecycle.json`. Lo ejecuta GCS con privilegios de infraestructura, **no** las reglas de Storage del cliente. `allow delete` en `storage.rules` sigue en `false`: un cliente no puede borrar la traza.
+
+Aplicar al bucket de Storage (GCS):
 
 ```bash
 gcloud storage buckets update gs://BUCKET --lifecycle-file=storage.lifecycle.json
+```
+
+Comprobar:
+
+```bash
+gcloud storage buckets describe gs://BUCKET --format="json(lifecycle)"
 ```
 
 | Medio | Sufijos | Edad |
@@ -23,11 +31,13 @@ El emulador no ejecuta lifecycle. En local el dropdown ya filtra al día actual 
 
 ## Firestore: lista de requerimiento
 
-Un documento por vendedor y día laboral: `listasRequerimiento/{uid}/dias/{AAAA-MM-DD}`, con campo `caducaEn` (7 días desde la última escritura). Habilitar TTL sobre el grupo de subcolecciones `dias`:
+Un documento por vendedor y día laboral: `listasRequerimiento/{uid}/diasLista/{AAAA-MM-DD}`, con campo `caducaEn` (7 días desde la última escritura). El id de subcolección es `diasLista` (no `dias`) para que el TTL no cubra otros grupos de colecciones homónimos.
+
+Habilitar TTL sobre el grupo de subcolecciones `diasLista`:
 
 ```bash
 gcloud firestore fields ttls update caducaEn \
-  --collection-group=dias \
+  --collection-group=diasLista \
   --enable-ttl
 ```
 

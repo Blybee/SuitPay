@@ -187,11 +187,12 @@ service cloud.firestore {
     // --- Lista de requerimiento ------------------------------------------
     //
     // Un documento por vendedor y día laboral (lun–sáb, día civil Lima):
-    // `listasRequerimiento/{vendedorId}/dias/{AAAA-MM-DD}`. Cada pill del tab
-    // Lista lee su día bajo demanda. `caducaEn` alimenta el TTL de Firestore
-    // (1 semana); el cliente también ignora documentos caducados.
+    // `listasRequerimiento/{vendedorId}/diasLista/{AAAA-MM-DD}`. Cada pill del
+    // tab Lista lee su día bajo demanda. `caducaEn` alimenta el TTL de
+    // Firestore (1 semana) sobre el collection group `diasLista`, no `dias`;
+    // el cliente también ignora documentos caducados.
 
-    match /listasRequerimiento/{vendedorId}/dias/{dia} {
+    match /listasRequerimiento/{vendedorId}/diasLista/{dia} {
       function listaBienFormada() {
         return request.resource.data.vendedorId == uid()
                && request.resource.data.vendedorId == vendedorId

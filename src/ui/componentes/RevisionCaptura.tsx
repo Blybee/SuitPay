@@ -1,3 +1,4 @@
+import { useRef, useState } from 'react'
 import { Check, X } from 'lucide-react'
 import { OpcionesAmbiguas } from '../../features/captura/ambiguos.tsx'
 import { extraerLineasAprobadasDeCaptura, type LineaCapturaAprobada } from '../../features/captura/aprobar.ts'
@@ -19,7 +20,7 @@ export function RevisionCaptura({
     lineas: readonly LineaCapturaAprobada[],
     textosOriginales: readonly string[],
     capturaId: string | null,
-  ) => void
+  ) => boolean | void | Promise<boolean | void>
   readonly onDescartar: () => void
 }) {
   const lineas = usarCaptura((s) => s.lineas)
@@ -29,13 +30,25 @@ export function RevisionCaptura({
   const cancelar = usarCaptura((s) => s.cancelar)
   const hayBloqueo = usarCaptura((s) => s.hayPendientesOAmbiguas())
   const catalogo = usarCatalogo()
+  const [guardando, setGuardando] = useState(false)
+  const enVuelo = useRef(false)
 
-  function aprobar(): void {
+  async function aprobar(): Promise<void> {
+    if (enVuelo.current || hayBloqueo) return
     const resultado = extraerLineasAprobadasDeCaptura()
     if (!resultado.ok) return
     const capturaId = usarCaptura.getState().capturaId
-    cancelar()
-    onAprobada(resultado.lineas, resultado.textosOriginales, capturaId)
+    enVuelo.current = true
+    setGuardando(true)
+    try {
+      const ok = await Promise.resolve(
+        onAprobada(resultado.lineas, resultado.textosOriginales, capturaId),
+      )
+      if (ok !== false) cancelar()
+    } finally {
+      enVuelo.current = false
+      setGuardando(false)
+    }
   }
 
   function descartar(): void {
@@ -64,11 +77,11 @@ export function RevisionCaptura({
           <button
             type="button"
             data-testid="aprobar-captura"
-            disabled={hayBloqueo}
-            onClick={aprobar}
+            disabled={hayBloqueo || guardando}
+            onClick={() => void aprobar()}
             className={[
               'flex min-h-12 items-center gap-2 rounded-full px-4',
-              hayBloqueo
+              hayBloqueo || guardando
                 ? 'cursor-not-allowed bg-mesa text-desvaida'
                 : 'bg-tinta text-papel',
             ].join(' ')}

@@ -1,8 +1,8 @@
 import {
   doc,
   getDoc,
+  runTransaction,
   serverTimestamp,
-  setDoc,
   Timestamp,
 } from 'firebase/firestore'
 import {
@@ -15,7 +15,12 @@ import type {
   LineaDeRequerimiento,
   UrgenciaDeRequerimiento,
 } from '../../domain/lista/tipos.ts'
-import { VIDA_LISTA_MS } from '../../domain/lista/tipos.ts'
+import {
+  COLECCION_LISTAS_REQUERIMIENTO,
+  SUBCOLECCION_DIAS_LISTA,
+  VIDA_LISTA_MS,
+} from '../../domain/lista/tipos.ts'
+
 import { obtenerBaseDeDatos } from '../../infra/firebase/cliente.ts'
 
 export interface ResultadoLista {
@@ -25,11 +30,17 @@ export interface ResultadoLista {
 
 /**
  * Un documento por vendedor y día civil Lima:
- * `listasRequerimiento/{uid}/dias/{AAAA-MM-DD}`. Cada día se lee bajo demanda
- * al pulsar su pill; los días no visitados no cuestan lecturas.
+ * `listasRequerimiento/{uid}/diasLista/{AAAA-MM-DD}`. Cada día se lee bajo
+ * demanda al pulsar su pill; los días no visitados no cuestan lecturas.
  */
 function referencia(uid: string, fecha: string) {
-  return doc(obtenerBaseDeDatos(), 'listasRequerimiento', uid, 'dias', fecha)
+  return doc(
+    obtenerBaseDeDatos(),
+    COLECCION_LISTAS_REQUERIMIENTO,
+    uid,
+    SUBCOLECCION_DIAS_LISTA,
+    fecha,
+  )
 }
 
 function mapearLineas(raw: unknown): LineaDeRequerimiento[] {
@@ -66,6 +77,34 @@ function caducada(datos: Record<string, unknown>, ahora: Date): boolean {
   return false
 }
 
+function lineasDeInstantanea(
+  datos: Record<string, unknown> | undefined,
+): readonly LineaDeRequerimiento[] {
+  if (datos === undefined) return []
+  if (caducada(datos, new Date())) return []
+  return mapearLineas(datos['lineas'])
+}
+
+function payloadDeLista(
+  uid: string,
+  fecha: string,
+  lineas: readonly LineaDeRequerimiento[],
+) {
+  return {
+    vendedorId: uid,
+    fecha,
+    lineas: lineas.map((linea) => ({
+      id: linea.id,
+      codigo: linea.codigo,
+      descripcion: linea.descripcion,
+      cantidad: linea.cantidad,
+      urgencia: linea.urgencia,
+    })),
+    actualizadoEn: serverTimestamp(),
+    caducaEn: Timestamp.fromMillis(Date.now() + VIDA_LISTA_MS),
+  }
+}
+
 /**
  * Una lectura: el documento del día pedido. Carga bajo demanda (pill del día).
  */
@@ -75,29 +114,28 @@ export async function leerListaDeRequerimiento(
 ): Promise<readonly LineaDeRequerimiento[]> {
   const instantanea = await getDoc(referencia(uid, fecha))
   if (!instantanea.exists()) return []
-  const datos = instantanea.data()
-  if (caducada(datos, new Date())) return []
-  return mapearLineas(datos['lineas'])
+  return lineasDeInstantanea(instantanea.data())
 }
 
-async function persistir(
+/**
+ * Lee y escribe el día en una transacción para no perder altas concurrentes
+ * (otro dispositivo o dictado + buscador a la vez).
+ */
+async function mutarLista(
   uid: string,
   fecha: string,
-  lineas: readonly LineaDeRequerimiento[],
+  mutar: (
+    lineas: readonly LineaDeRequerimiento[],
+  ) => readonly LineaDeRequerimiento[],
 ): Promise<ResultadoLista> {
+  const ref = referencia(uid, fecha)
   try {
-    await setDoc(referencia(uid, fecha), {
-      vendedorId: uid,
-      fecha,
-      lineas: lineas.map((linea) => ({
-        id: linea.id,
-        codigo: linea.codigo,
-        descripcion: linea.descripcion,
-        cantidad: linea.cantidad,
-        urgencia: linea.urgencia,
-      })),
-      actualizadoEn: serverTimestamp(),
-      caducaEn: Timestamp.fromMillis(Date.now() + VIDA_LISTA_MS),
+    await runTransaction(obtenerBaseDeDatos(), async (tx) => {
+      const instantanea = await tx.get(ref)
+      const actuales = instantanea.exists()
+        ? lineasDeInstantanea(instantanea.data())
+        : []
+      tx.set(ref, payloadDeLista(uid, fecha, mutar(actuales)))
     })
     return { ok: true }
   } catch (error) {
@@ -119,8 +157,7 @@ export async function agregarProductosALista(datos: {
     readonly urgencia?: UrgenciaDeRequerimiento
   }[]
 }): Promise<ResultadoLista> {
-  try {
-    const actuales = await leerListaDeRequerimiento(datos.uid, datos.fecha)
+  return mutarLista(datos.uid, datos.fecha, (actuales) => {
     let lineas = actuales
     for (const producto of datos.productos) {
       lineas = fusionarLineaDeRequerimiento(lineas, {
@@ -131,61 +168,38 @@ export async function agregarProductosALista(datos: {
         urgencia: producto.urgencia,
       })
     }
-    return persistir(datos.uid, datos.fecha, lineas)
-  } catch (error) {
-    console.error('[SuitPay] agregarProductosALista', error)
-    return {
-      ok: false,
-      mensaje: 'No se pudo guardar la lista. Comprueba la conexión.',
-    }
-  }
+    return lineas
+  })
 }
 
 export async function actualizarCantidadDeLista(datos: {
   readonly uid: string
   readonly fecha: string
-  readonly lineasActuales: readonly LineaDeRequerimiento[]
   readonly id: string
   readonly cantidad: number
 }): Promise<ResultadoLista> {
-  return persistir(
-    datos.uid,
-    datos.fecha,
-    cambiarCantidadDeRequerimiento(
-      datos.lineasActuales,
-      datos.id,
-      datos.cantidad,
-    ),
+  return mutarLista(datos.uid, datos.fecha, (actuales) =>
+    cambiarCantidadDeRequerimiento(actuales, datos.id, datos.cantidad),
   )
 }
 
 export async function actualizarUrgenciaDeLista(datos: {
   readonly uid: string
   readonly fecha: string
-  readonly lineasActuales: readonly LineaDeRequerimiento[]
   readonly id: string
   readonly urgencia: UrgenciaDeRequerimiento
 }): Promise<ResultadoLista> {
-  return persistir(
-    datos.uid,
-    datos.fecha,
-    cambiarUrgenciaDeRequerimiento(
-      datos.lineasActuales,
-      datos.id,
-      datos.urgencia,
-    ),
+  return mutarLista(datos.uid, datos.fecha, (actuales) =>
+    cambiarUrgenciaDeRequerimiento(actuales, datos.id, datos.urgencia),
   )
 }
 
 export async function quitarDeLista(datos: {
   readonly uid: string
   readonly fecha: string
-  readonly lineasActuales: readonly LineaDeRequerimiento[]
   readonly id: string
 }): Promise<ResultadoLista> {
-  return persistir(
-    datos.uid,
-    datos.fecha,
-    quitarLineaDeRequerimiento(datos.lineasActuales, datos.id),
+  return mutarLista(datos.uid, datos.fecha, (actuales) =>
+    quitarLineaDeRequerimiento(actuales, datos.id),
   )
 }

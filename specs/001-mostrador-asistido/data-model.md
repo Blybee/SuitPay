@@ -180,7 +180,7 @@ Una serie por vendedor y tipo de documento. Documentos pequeños con el contador
 
 ---
 
-### `listasRequerimiento/{vendedorId}/dias/{AAAA-MM-DD}`
+### `listasRequerimiento/{vendedorId}/diasLista/{AAAA-MM-DD}`
 
 Un documento por vendedor **y día laboral** (lunes a sábado, día civil Lima). Las líneas van embebidas porque siempre se leen y escriben juntas.
 
@@ -192,7 +192,7 @@ Un documento por vendedor **y día laboral** (lunes a sábado, día civil Lima).
 | `actualizadoEn` | marca de tiempo | |
 | `caducaEn` | marca de tiempo | TTL Firestore de 1 semana desde la última escritura. El cliente ignora documentos vencidos. |
 
-El tab Lista muestra pills lun–sáb de la semana actual (fecha corta en teléfono); abre en el día actual y **cada día se lee bajo demanda al pulsar su pill** (una lectura por día visitado, nada al arrancar la app). Las altas del buscador/dictado/foto van al día actual.
+El tab Lista muestra pills lun–sáb de la semana actual (fecha corta en teléfono); abre en el día actual y **cada día se lee bajo demanda al pulsar su pill** (una lectura por día visitado, nada al arrancar la app). Las altas del buscador/dictado/foto van al día actual y el pill visible pasa a ese día. Las escrituras fusionan en transacción para no perder altas concurrentes. El id `diasLista` evita que el TTL cubra otros collection groups llamados `dias`.
 
 ---
 

@@ -35,6 +35,7 @@ import { crearCotizacionVecino } from '../features/vecinos/crear.ts'
 import { agregarProductoAVecino } from '../features/vecinos/lineas.ts'
 import { PanelDeVecinos } from '../features/vecinos/panel.tsx'
 import { PanelDeListaRequerimiento } from '../features/lista/panel.tsx'
+import { usarDiaLista } from '../features/lista/dia-activo.ts'
 import { agregarProductosALista } from '../features/lista/persistir.ts'
 import { urgenciaDesdeTexto } from '../domain/lista/urgencia.ts'
 import { claveDeDiaLima } from '../domain/captura/hora-lima.ts'
@@ -272,14 +273,14 @@ function Mostrador() {
     lineas: readonly LineaCapturaAprobada[],
     textosOriginales: readonly string[],
     capturaId: string | null,
-  ): Promise<void> {
+  ): Promise<boolean> {
     setPanelDictado(false)
     setPanelFoto(false)
     const hablado = textosOriginales.join(' ')
     const comando = comandoDesdeDictado(hablado)
     if (comando !== null) {
       void ejecutarComando(comando)
-      return
+      return true
     }
 
     if (pestana === 'lista' && sesion.uid !== null) {
@@ -299,8 +300,9 @@ function Mostrador() {
           tono: 'error',
           mensaje: resultado.mensaje ?? 'No se pudo agregar a la lista.',
         })
-        return
+        return false
       }
+      usarDiaLista.getState().fijar(hoy)
       void queryClient.invalidateQueries({
         queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid, hoy),
       })
@@ -311,7 +313,7 @@ function Mostrador() {
             ? 'Producto agregado a la lista de requerimiento.'
             : `${lineas.length} productos agregados a la lista de requerimiento.`,
       })
-      return
+      return true
     }
 
     if (pestana === 'vecinos') {
@@ -329,12 +331,12 @@ function Mostrador() {
           tono: 'error',
           mensaje: 'No hay un vecino activo para asignar el dictado.',
         })
-        return
+        return false
       }
       const activa = listaVecinos.find((cada) => cada.id === destinoId)
       if (activa === undefined) {
         setAvisoVecino('Ese vecino ya no está disponible.')
-        return
+        return false
       }
       let actuales = [...activa.lineas]
       for (const linea of lineas) {
@@ -354,7 +356,7 @@ function Mostrador() {
         })
         if (!resultado.ok) {
           setAvisoVecino(resultado.mensaje ?? 'No se pudo agregar el producto.')
-          return
+          return false
         }
         const indice = actuales.findIndex((cada) => cada.codigo === linea.codigo)
         if (indice >= 0) {
@@ -385,7 +387,7 @@ function Mostrador() {
         tono: 'exito',
         mensaje: `Agregado a ${activa.aliasVecino ?? `H${activa.numero}`}.`,
       })
-      return
+      return true
     }
 
     const aplicadas = aplicarLineasAprobadasAlPedido(lineas, capturaId)
@@ -408,7 +410,7 @@ function Mostrador() {
     }
 
     const mencion = extraerMencionDeCliente(textosOriginales)
-    if (mencion === null || usarPedido.getState().cliente !== null) return
+    if (mencion === null || usarPedido.getState().cliente !== null) return true
     const local = resolverClienteLocal(mencion, usarCatalogo.getState().clientes)
     if (local) {
       usarPedido.getState().fijarCliente({
@@ -422,6 +424,7 @@ function Mostrador() {
       setConsultaClienteInicial(mencion)
       setAltaClienteAbierta(true)
     }
+    return true
   }
 
   async function ejecutarComando(texto: string): Promise<void> {
@@ -496,6 +499,7 @@ function Mostrador() {
           })
           return
         }
+        usarDiaLista.getState().fijar(hoy)
         void queryClient.invalidateQueries({
           queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid!, hoy),
         })
@@ -563,6 +567,7 @@ function Mostrador() {
           })
           return
         }
+        usarDiaLista.getState().fijar(hoy)
         void queryClient.invalidateQueries({
           queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid!, hoy),
         })
@@ -938,9 +943,9 @@ function Mostrador() {
 
       {faseCaptura === 'revision' && (
         <RevisionCaptura
-          onAprobada={(lineas, textos, capturaId) => {
-            void alAprobarCaptura(lineas, textos, capturaId)
-          }}
+          onAprobada={(lineas, textos, capturaId) =>
+            alAprobarCaptura(lineas, textos, capturaId)
+          }
           onDescartar={() => {
             setPanelDictado(false)
             setPanelFoto(false)

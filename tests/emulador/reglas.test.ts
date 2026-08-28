@@ -494,7 +494,7 @@ describeConEmulador('lista de requerimiento', () => {
   it('un vendedor escribe y lee la de su día', async () => {
     await assertSucceeds(
       setDoc(
-        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/dias/2026-08-27'),
+        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/diasLista/2026-08-27'),
         {
           vendedorId: 'vendedor-1',
           fecha: '2026-08-27',
@@ -514,7 +514,7 @@ describeConEmulador('lista de requerimiento', () => {
     )
     await assertSucceeds(
       getDoc(
-        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/dias/2026-08-27'),
+        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/diasLista/2026-08-27'),
       ),
     )
   })
@@ -522,7 +522,7 @@ describeConEmulador('lista de requerimiento', () => {
   it('el id del día debe ser una fecha', async () => {
     await assertFails(
       setDoc(
-        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/dias/no-fecha'),
+        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/diasLista/no-fecha'),
         {
           vendedorId: 'vendedor-1',
           lineas: [],
@@ -538,7 +538,7 @@ describeConEmulador('lista de requerimiento', () => {
       await setDoc(
         doc(
           contexto.firestore(),
-          'listasRequerimiento/vendedor-2/dias/2026-08-27',
+          'listasRequerimiento/vendedor-2/diasLista/2026-08-27',
         ),
         {
           vendedorId: 'vendedor-2',
@@ -551,7 +551,22 @@ describeConEmulador('lista de requerimiento', () => {
     })
     await assertFails(
       getDoc(
-        doc(comoVendedor(), 'listasRequerimiento/vendedor-2/dias/2026-08-27'),
+        doc(comoVendedor(), 'listasRequerimiento/vendedor-2/diasLista/2026-08-27'),
+      ),
+    )
+  })
+
+  it('un vendedor NO escribe la lista de otro', async () => {
+    await assertFails(
+      setDoc(
+        doc(comoVendedor(), 'listasRequerimiento/vendedor-2/diasLista/2026-08-27'),
+        {
+          vendedorId: 'vendedor-1',
+          fecha: '2026-08-27',
+          lineas: [],
+          actualizadoEn: serverTimestamp(),
+          caducaEn: new Date(Date.now() + 1000),
+        },
       ),
     )
   })
