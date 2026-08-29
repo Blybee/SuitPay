@@ -16,7 +16,10 @@ import { registrarInyeccionDeCapturaParaPruebas } from '../features/captura/inye
 import { EstadoIlegible } from '../features/captura/ilegible.tsx'
 import { PanelFotografia } from '../features/captura/imagen.tsx'
 import { motivoBloqueoPorCaptura } from '../features/captura/pendientes.ts'
-import { PasoTextoExtraido } from '../features/captura/revision-imagen.tsx'
+import {
+  BarraPasoTextoExtraido,
+  ListaPasoTextoExtraido,
+} from '../features/captura/revision-imagen.tsx'
 import { reconocerCrearVecino, type PropuestaCrearVecino } from '../features/comandos/crear-vecino.ts'
 import { despacharComando, mensajeDeProhibido } from '../features/comandos/ejecutar.ts'
 import { InstruccionIncompleta } from '../features/comandos/incompletas.tsx'
@@ -932,6 +935,17 @@ function Mostrador() {
           facetas={catalogo.facetas}
           onCambiar={(facetas) => catalogo.fijarFacetas(facetas)}
         />
+        {faseCaptura === 'revision_texto' && (
+          <BarraPasoTextoExtraido
+            onContinuar={() => {
+              /* fase pasa a revision en el store */
+            }}
+            onCancelar={() => {
+              cancelarCaptura()
+              setPanelFoto(false)
+            }}
+          />
+        )}
       </div>
 
       <PanelDictado
@@ -970,17 +984,7 @@ function Mostrador() {
         />
       )}
 
-      {faseCaptura === 'revision_texto' && (
-        <PasoTextoExtraido
-          onContinuar={() => {
-            /* fase pasa a revision en el store */
-          }}
-          onCancelar={() => {
-            cancelarCaptura()
-            setPanelFoto(false)
-          }}
-        />
-      )}
+      {faseCaptura === 'revision_texto' && <ListaPasoTextoExtraido />}
 
       {faseCaptura === 'revision' && (
         <RevisionCaptura
