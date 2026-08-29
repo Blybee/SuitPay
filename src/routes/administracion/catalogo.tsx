@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
+import { TriangleAlert } from 'lucide-react'
 import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
 import { GrillaRevision } from '../../features/catalogo/grilla-revision.tsx'
 import {
@@ -10,7 +11,10 @@ import type { ResumenDeImportacion } from '../../features/catalogo/importar.func
 import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import { detectarConflictos } from '../../domain/catalogo/conflictos.ts'
-import type { CategoriaDeCatalogo, Producto } from '../../domain/esquemas/comunes.ts'
+import type {
+  CategoriaDeCatalogo,
+  Producto,
+} from '../../domain/esquemas/comunes.ts'
 import { DestinoDeNota, Nota } from '../../ui/componentes/Nota.tsx'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
 import {
@@ -108,16 +112,15 @@ function PantallaDeCatalogo() {
       },
     })
     if (!resultado.ok || resultado.resumen === undefined) {
-      fallarCarga(
-        resultado.error?.mensaje ?? 'No se pudo validar el catálogo.',
-      )
+      fallarCarga(resultado.error?.mensaje ?? 'No se pudo validar el catálogo.')
       return
     }
     aplicarValidacion(resultado.resumen)
     setEstadoCarga('listo')
     usarNotificaciones.getState().mostrar({
       tono: 'info',
-      mensaje: 'Validación lista. Revisa y asigna categorías antes de publicar.',
+      mensaje:
+        'Validación lista. Revisa y asigna categorías antes de publicar.',
     })
   }
 
@@ -208,6 +211,17 @@ function PantallaDeCatalogo() {
       <section className="rounded-3xl border border-borde bg-papel p-6 shadow-sm">
         <ZonaDeCarga
           titulo="Importar Productos"
+          accionCabecera={
+            <Boton
+              variante="principal"
+              disabled={
+                productos.length === 0 || ocupado || publicando || bloqueado
+              }
+              onClick={() => void publicar()}
+            >
+              {publicando ? 'Publicando…' : 'Publicar'}
+            </Boton>
+          }
           etiqueta="Archivo JSON o PDF"
           nota={
             <Nota linea="Descarga la lista de productos en:">
@@ -218,6 +232,7 @@ function PantallaDeCatalogo() {
           archivo={archivo}
           estado={estadoCarga}
           mensaje={mensajeCarga}
+          ocultarEstadoSinError
           deshabilitado={ocupado || publicando}
           onArchivo={(elegido) => {
             void leerArchivo(elegido)
@@ -225,20 +240,7 @@ function PantallaDeCatalogo() {
           onQuitar={quitarArchivo}
         />
 
-        <div className="mt-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <p className="text-cuerpo text-desvaida">
-            {bloqueado
-              ? 'Hay filas con problema. Corrígelas en la grilla antes de publicar.'
-              : 'El catálogo no se actualiza hasta que confirmes.'}
-          </p>
-          <Boton
-            variante="principal"
-            disabled={productos.length === 0 || ocupado || publicando || bloqueado}
-            onClick={() => void publicar()}
-          >
-            {publicando ? 'Publicando…' : 'Publicar'}
-          </Boton>
-        </div>
+        {bloqueado ? <AvisoPublicacionBloqueada /> : null}
       </section>
 
       {productos.length > 0 && (
@@ -258,6 +260,23 @@ function PantallaDeCatalogo() {
         />
       )}
     </div>
+  )
+}
+
+function AvisoPublicacionBloqueada() {
+  return (
+    <aside
+      role="alert"
+      className="mt-4 flex items-start gap-3 rounded-2xl bg-aviso/10 px-4 py-3 text-aviso"
+    >
+      <TriangleAlert className="mt-0.5 size-5 shrink-0" aria-hidden />
+      <div className="min-w-0">
+        <p className="font-bold">Publicación bloqueada</p>
+        <p className="text-cuerpo">
+          Hay filas con problema. Corrígelas en la grilla antes de publicar.
+        </p>
+      </div>
+    </aside>
   )
 }
 

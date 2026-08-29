@@ -66,17 +66,16 @@ function arrastreEsRechazable(
   aceptados: readonly ClaseDeArchivo[],
 ): boolean {
   if (transfer === null) return false
-  const items = Array.from(transfer.items).filter((item) => item.kind === 'file')
+  const items = Array.from(transfer.items).filter(
+    (item) => item.kind === 'file',
+  )
   if (items.length === 0) return false
   return items.every((item) => {
     if (item.type === '' || item.type === 'application/octet-stream') {
       return false
     }
     if (item.type === 'application/pdf') return !aceptados.includes('pdf')
-    if (
-      item.type === 'application/json' ||
-      item.type === 'text/json'
-    ) {
+    if (item.type === 'application/json' || item.type === 'text/json') {
       return !aceptados.includes('json')
     }
     return true
@@ -106,8 +105,10 @@ function arrastreTieneArchivos(transfer: DataTransfer | null): boolean {
 
 export function ZonaDeCarga({
   titulo,
+  accionCabecera,
   etiqueta,
   nota,
+  ocultarEstadoSinError = false,
   accept = 'application/json,.json,.js,application/pdf,.pdf',
   aceptados = ACEPTADOS_DEFECTO,
   archivo,
@@ -118,8 +119,10 @@ export function ZonaDeCarga({
   onQuitar,
 }: {
   readonly titulo?: string
+  readonly accionCabecera?: ReactNode
   readonly etiqueta: string
   readonly nota?: ReactNode
+  readonly ocultarEstadoSinError?: boolean
   readonly accept?: string
   readonly aceptados?: readonly ClaseDeArchivo[]
   readonly archivo: ArchivoElegido | null
@@ -222,8 +225,13 @@ export function ZonaDeCarga({
 
   return (
     <div className="flex flex-col gap-3">
-      {titulo !== undefined ? (
-        <h2 className="text-cabecera font-bold text-tinta">{titulo}</h2>
+      {titulo !== undefined || accionCabecera !== undefined ? (
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {titulo !== undefined ? (
+            <h2 className="text-cabecera font-bold text-tinta">{titulo}</h2>
+          ) : null}
+          {accionCabecera}
+        </div>
       ) : null}
       <Etiqueta
         htmlFor={id}
@@ -344,6 +352,7 @@ export function ZonaDeCarga({
         aria-live="polite"
         className={unir(
           'text-cuerpo',
+          ocultarEstadoSinError && errorVisible === null && 'hidden',
           errorVisible !== null ? 'font-bold text-aviso' : 'text-desvaida',
         )}
       >
@@ -382,7 +391,9 @@ function FichaDeArchivo({
       <span
         className={unir(
           'flex size-12 shrink-0 items-center justify-center rounded-full border bg-papel',
-          estado === 'error' ? 'border-aviso text-aviso' : 'border-borde text-tinta',
+          estado === 'error'
+            ? 'border-aviso text-aviso'
+            : 'border-borde text-tinta',
         )}
         aria-hidden
       >
@@ -395,7 +406,13 @@ function FichaDeArchivo({
         </p>
         <p className="mt-0.5 flex flex-wrap items-center gap-2 font-mono text-etiqueta text-desvaida">
           <Distintivo
-            tono={estado === 'error' ? 'aviso' : estado === 'listo' ? 'sello' : 'desvaida'}
+            tono={
+              estado === 'error'
+                ? 'aviso'
+                : estado === 'listo'
+                  ? 'sello'
+                  : 'desvaida'
+            }
           >
             {archivo.clase === 'pdf' ? 'PDF' : 'JSON'}
           </Distintivo>

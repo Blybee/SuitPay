@@ -1,13 +1,24 @@
 import { useMemo, useRef, useState } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
 import {
+  ListChecks,
+  Minus,
+  PencilLine,
+  Plus,
+  TriangleAlert,
+} from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
+import {
   agruparConflictosPorCodigo,
   detectarConflictos,
   textoDeConflictos,
 } from '../../domain/catalogo/conflictos.ts'
 import { filtrarPorFacetas, marcasDe } from '../../domain/catalogo/filtros.ts'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
-import type { CategoriaDeCatalogo, Producto } from '../../domain/esquemas/comunes.ts'
+import type {
+  CategoriaDeCatalogo,
+  Producto,
+} from '../../domain/esquemas/comunes.ts'
 import {
   Boton,
   Campo,
@@ -29,8 +40,7 @@ function idDeCategoria(): string {
 
 const ALTO_FILA = 48
 const ALTO_CALLOUT = 28
-const COLUMNAS =
-  'grid-cols-[2.5rem_8rem_1fr_7rem_4.5rem_6rem_7rem]'
+const COLUMNAS = 'grid-cols-[2.5rem_8rem_1fr_7rem_4.5rem_6rem_7rem]'
 
 export interface BalanceDeRevision {
   readonly reconocidos: number
@@ -160,7 +170,9 @@ export function GrillaRevision({
   function crearCategoria(): void {
     const nombre = nombreNueva.trim()
     if (nombre.length === 0) return
-    if (categorias.some((c) => c.nombre.toLowerCase() === nombre.toLowerCase())) {
+    if (
+      categorias.some((c) => c.nombre.toLowerCase() === nombre.toLowerCase())
+    ) {
       return
     }
     onCategorias([...categorias, { id: idDeCategoria(), nombre }])
@@ -180,20 +192,8 @@ export function GrillaRevision({
   }
 
   return (
-    <section className="flex flex-col gap-5 rounded-3xl border border-borde bg-papel p-6 shadow-sm">
-      <header className="flex flex-col gap-4">
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div className="flex flex-col gap-1">
-            <h2 className="text-subtitulo font-bold text-tinta">Revisión</h2>
-            <p className="text-cuerpo text-desvaida">
-              Crea categorías, edita o quita filas. Nada se escribe hasta
-              confirmar.
-            </p>
-          </div>
-          {balance.publicado && balance.version !== null ? (
-            <Distintivo tono="sello">Versión {balance.version}</Distintivo>
-          ) : null}
-        </div>
+    <section className="flex flex-col gap-4 rounded-3xl border border-borde bg-papel p-6 shadow-sm">
+      <header className="flex flex-col gap-3">
         <BalanceCifras
           reconocidos={balance.reconocidos}
           nuevos={balance.nuevos}
@@ -201,106 +201,121 @@ export function GrillaRevision({
           desaparecen={balance.desaparecen}
           problemas={filasConProblema}
         />
+        {balance.publicado && balance.version !== null ? (
+          <div className="flex justify-end">
+            <Distintivo tono="sello">Versión {balance.version}</Distintivo>
+          </div>
+        ) : null}
       </header>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex min-w-40 flex-col gap-1">
-          <Etiqueta htmlFor="revision-marca">Filtrar marca</Etiqueta>
-          <select
-            id="revision-marca"
-            className="min-h-11 rounded-full border border-borde bg-papel px-4"
-            value={marca}
-            onChange={(e) => setMarca(e.target.value)}
+      <div className="flex flex-col gap-3 rounded-2xl bg-mesa p-3">
+        <div className="flex flex-wrap items-end gap-2">
+          <div className="flex min-w-44 flex-1 flex-col gap-1 sm:max-w-48">
+            <Etiqueta htmlFor="revision-marca">Filtrar marca</Etiqueta>
+            <select
+              id="revision-marca"
+              className="min-h-11 rounded-full border border-borde bg-papel px-4"
+              value={marca}
+              onChange={(e) => setMarca(e.target.value)}
+            >
+              <option value="">Todas</option>
+              {marcas.map((cada) => (
+                <option key={cada} value={cada}>
+                  {cada}
+                </option>
+              ))}
+            </select>
+          </div>
+          <div className="flex min-w-44 flex-1 flex-col gap-1 sm:max-w-48">
+            <Etiqueta htmlFor="revision-cat">Filtrar categoría</Etiqueta>
+            <select
+              id="revision-cat"
+              className="min-h-11 rounded-full border border-borde bg-papel px-4"
+              value={categoriaId}
+              onChange={(e) => setCategoriaId(e.target.value)}
+            >
+              <option value="">Todas</option>
+              {categorias.map((cada) => (
+                <option key={cada.id} value={cada.id}>
+                  {cada.nombre}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Boton
+            variante={soloProblemas ? 'peligro' : 'secundario'}
+            aria-pressed={soloProblemas}
+            disabled={filasConProblema === 0 && !soloProblemas}
+            onClick={() => setSoloProblemas((actual) => !actual)}
           >
-            <option value="">Todas</option>
-            {marcas.map((cada) => (
-              <option key={cada} value={cada}>
-                {cada}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="flex min-w-40 flex-col gap-1">
-          <Etiqueta htmlFor="revision-cat">Filtrar categoría</Etiqueta>
-          <select
-            id="revision-cat"
-            className="min-h-11 rounded-full border border-borde bg-papel px-4"
-            value={categoriaId}
-            onChange={(e) => setCategoriaId(e.target.value)}
+            Con problemas
+            {filasConProblema > 0 ? ` (${filasConProblema})` : ''}
+          </Boton>
+          <Boton
+            onClick={seleccionarVisibles}
+            disabled={marca.length === 0 || visibles.length === 0}
           >
-            <option value="">Todas</option>
-            {categorias.map((cada) => (
-              <option key={cada.id} value={cada.id}>
-                {cada.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Boton
-          variante={soloProblemas ? 'peligro' : 'secundario'}
-          aria-pressed={soloProblemas}
-          disabled={filasConProblema === 0 && !soloProblemas}
-          onClick={() => setSoloProblemas((actual) => !actual)}
-        >
-          Con problemas
-          {filasConProblema > 0 ? ` (${filasConProblema})` : ''}
-        </Boton>
-        <Boton
-          onClick={seleccionarVisibles}
-          disabled={marca.length === 0 || visibles.length === 0}
-        >
-          Seleccionar marca
-        </Boton>
-        <Boton
-          variante="peligro"
-          onClick={quitarSeleccion}
-          disabled={seleccion.size === 0}
-        >
-          Quitar ({seleccion.size})
-        </Boton>
-      </div>
+            Seleccionar marca
+          </Boton>
+          <Boton
+            variante="peligro"
+            onClick={quitarSeleccion}
+            disabled={seleccion.size === 0}
+          >
+            Quitar ({seleccion.size})
+          </Boton>
+        </div>
 
-      <div className="flex flex-wrap items-end gap-3">
-        <label className="flex min-w-48 flex-col gap-1">
-          <Etiqueta htmlFor="nueva-cat">Nueva categoría</Etiqueta>
-          <Campo
-            id="nueva-cat"
-            value={nombreNueva}
-            onChange={(e) => setNombreNueva(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                crearCategoria()
-              }
-            }}
-          />
-        </label>
-        <Boton onClick={crearCategoria} disabled={nombreNueva.trim().length === 0}>
-          Crear
-        </Boton>
-        <label className="flex min-w-40 flex-col gap-1">
-          <Etiqueta htmlFor="asignar-cat">Asignar a selección</Etiqueta>
-          <select
-            id="asignar-cat"
-            className="min-h-11 rounded-full border border-borde bg-papel px-4"
-            value={asignarA}
-            onChange={(e) => setAsignarA(e.target.value)}
-          >
-            <option value="">Elegir…</option>
-            {categorias.map((cada) => (
-              <option key={cada.id} value={cada.id}>
-                {cada.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
-        <Boton
-          variante="principal"
-          onClick={asignarSeleccion}
-          disabled={asignarA.length === 0 || seleccion.size === 0}
-        >
-          Asignar ({seleccion.size})
-        </Boton>
+        <div className="grid gap-3 border-t border-borde pt-3 md:grid-cols-2">
+          <div className="flex min-w-0 flex-wrap items-end gap-2">
+            <div className="flex min-w-52 flex-1 flex-col gap-1">
+              <Etiqueta htmlFor="nueva-cat">Nueva categoría</Etiqueta>
+              <Campo
+                id="nueva-cat"
+                value={nombreNueva}
+                onChange={(e) => setNombreNueva(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    crearCategoria()
+                  }
+                }}
+              />
+            </div>
+            <Boton
+              onClick={crearCategoria}
+              disabled={nombreNueva.trim().length === 0}
+            >
+              Crear
+            </Boton>
+          </div>
+
+          <div className="flex min-w-0 flex-wrap items-end gap-2">
+            <div className="flex min-w-52 flex-1 flex-col gap-1">
+              <Etiqueta htmlFor="asignar-cat">Asignar a selección</Etiqueta>
+              <select
+                id="asignar-cat"
+                className="min-h-11 w-full rounded-full border border-borde bg-papel px-4"
+                value={asignarA}
+                onChange={(e) => setAsignarA(e.target.value)}
+              >
+                <option value="">Elegir…</option>
+                {categorias.map((cada) => (
+                  <option key={cada.id} value={cada.id}>
+                    {cada.nombre}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <Boton
+              variante="principal"
+              onClick={asignarSeleccion}
+              disabled={asignarA.length === 0 || seleccion.size === 0}
+            >
+              Asignar ({seleccion.size})
+            </Boton>
+          </div>
+        </div>
       </div>
 
       <div
@@ -370,9 +385,7 @@ export function GrillaRevision({
                         value={producto.codigo}
                         invalido={codigoInvalido}
                         aria-label={`Código ${producto.codigo}`}
-                        aria-errormessage={
-                          tieneProblema ? idError : undefined
-                        }
+                        aria-errormessage={tieneProblema ? idError : undefined}
                         maxLength={40}
                         onChange={(e) =>
                           parche(indice, { codigo: e.target.value })
@@ -385,9 +398,7 @@ export function GrillaRevision({
                         value={producto.descripcion}
                         invalido={descripcionInvalida}
                         aria-label={`Descripción ${producto.codigo}`}
-                        aria-errormessage={
-                          tieneProblema ? idError : undefined
-                        }
+                        aria-errormessage={tieneProblema ? idError : undefined}
                         onChange={(e) =>
                           parche(indice, {
                             descripcion: e.target.value,
@@ -411,9 +422,7 @@ export function GrillaRevision({
                         value={producto.unidad}
                         invalido={unidadInvalida}
                         aria-label={`Unidad ${producto.codigo}`}
-                        aria-errormessage={
-                          tieneProblema ? idError : undefined
-                        }
+                        aria-errormessage={tieneProblema ? idError : undefined}
                         onChange={(e) =>
                           parche(indice, {
                             unidad: e.target.value.toUpperCase(),
@@ -486,14 +495,15 @@ function BalanceCifras({
   readonly problemas: number
 }) {
   return (
-    <dl className="flex flex-wrap items-end gap-x-8 gap-y-3">
-      <Cifra cifra={reconocidos} etiqueta="reconocidos" />
-      <Cifra cifra={nuevos} etiqueta="nuevos" />
-      <Cifra cifra={cambiados} etiqueta="cambiados" />
-      <Cifra cifra={desaparecen} etiqueta="salen" />
+    <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-2xl border border-borde bg-borde sm:grid-cols-3 md:grid-cols-5">
+      <Cifra cifra={reconocidos} etiqueta="reconocidos" icono={ListChecks} />
+      <Cifra cifra={nuevos} etiqueta="nuevos" icono={Plus} />
+      <Cifra cifra={cambiados} etiqueta="cambiados" icono={PencilLine} />
+      <Cifra cifra={desaparecen} etiqueta="salen" icono={Minus} />
       <Cifra
         cifra={problemas}
         etiqueta="con problema"
+        icono={TriangleAlert}
         aviso={problemas > 0}
       />
     </dl>
@@ -503,26 +513,46 @@ function BalanceCifras({
 function Cifra({
   cifra,
   etiqueta,
+  icono: Icono,
   aviso = false,
 }: {
   readonly cifra: number
   readonly etiqueta: string
+  readonly icono: LucideIcon
   readonly aviso?: boolean
 }) {
   return (
-    <div className="flex flex-col gap-0.5">
-      <dt className="font-mono text-etiqueta uppercase tracking-widest text-desvaida">
-        {etiqueta}
-      </dt>
-      <dd
+    <div
+      className={`flex min-w-0 items-center gap-3 px-4 py-3 ${
+        aviso ? 'bg-aviso/10' : 'bg-papel'
+      }`}
+    >
+      <span
         className={
           aviso
-            ? 'font-mono text-subtitulo font-bold tabular-nums text-aviso'
-            : 'font-mono text-subtitulo font-bold tabular-nums text-tinta'
+            ? 'flex size-9 shrink-0 items-center justify-center rounded-full bg-papel text-aviso'
+            : 'flex size-9 shrink-0 items-center justify-center rounded-full bg-mesa text-desvaida'
         }
+        aria-hidden
       >
-        {cifra}
-      </dd>
+        <Icono className="size-4" strokeWidth={2.25} />
+      </span>
+      <div className="min-w-0">
+        <dt
+          className={`truncate text-etiqueta tracking-normal capitalize ${
+            aviso ? 'font-bold text-aviso' : 'text-desvaida'
+          }`}
+        >
+          {etiqueta}
+        </dt>
+        <dd
+          className={`font-mono text-cabecera font-bold tabular-nums ${
+            aviso ? 'text-aviso' : 'text-tinta'
+          }`}
+        >
+          {cifra}
+        </dd>
+      </div>
     </div>
   )
 }
