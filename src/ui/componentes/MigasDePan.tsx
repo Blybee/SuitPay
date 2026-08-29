@@ -1,6 +1,6 @@
 import { Link, useRouter } from '@tanstack/react-router'
-import { ChevronDown } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { Selector } from './Selector.tsx'
 
 /**
  * Migas de pan reutilizables.
@@ -54,35 +54,21 @@ export function MigasDePan({
               ) : null}
 
               {tieneHermanas ? (
-                <span className="relative inline-flex w-fit max-w-full items-center">
-                  <label className="sr-only" htmlFor={`miga-select-${indice}`}>
-                    Cambiar sección: {item.etiqueta}
-                  </label>
-                  <select
-                    id={`miga-select-${indice}`}
-                    value={item.to ?? item.hermanas![0]!.to}
-                    onChange={(evento) => {
-                      const destino = evento.target.value
-                      void router.navigate({ to: destino })
-                    }}
-                    className={[
-                      'field-sizing-content w-auto max-w-full cursor-pointer appearance-none',
-                      'border-0 bg-transparent p-0 pr-5 font-bold text-tinta',
-                      'focus-visible:outline-none focus-visible:underline',
-                    ].join(' ')}
-                    aria-current={esUltima ? 'page' : undefined}
-                  >
-                    {item.hermanas!.map((hermana) => (
-                      <option key={hermana.to} value={hermana.to}>
-                        {hermana.etiqueta}
-                      </option>
-                    ))}
-                  </select>
-                  <ChevronDown
-                    className="pointer-events-none absolute right-0 top-1/2 size-4 -translate-y-1/2 text-desvaida"
-                    aria-hidden
-                  />
-                </span>
+                <Selector
+                  id={`miga-select-${indice}`}
+                  etiqueta={`Cambiar sección: ${item.etiqueta}`}
+                  ocultarEtiqueta
+                  variante="miga"
+                  valor={item.to ?? item.hermanas[0]!.to}
+                  onCambiar={(destino) => {
+                    void router.navigate({ to: destino })
+                  }}
+                  opciones={item.hermanas.map((hermana) => ({
+                    valor: hermana.to,
+                    etiqueta: hermana.etiqueta,
+                  }))}
+                  aria-current={esUltima ? 'page' : undefined}
+                />
               ) : item.to !== undefined && !esUltima ? (
                 <Link
                   to={item.to}
@@ -110,9 +96,7 @@ function SpanActual({
 }) {
   return (
     <span
-      className={
-        esUltima ? 'font-bold text-tinta' : 'font-bold text-desvaida'
-      }
+      className={esUltima ? 'font-bold text-tinta' : 'font-bold text-desvaida'}
       aria-current={esUltima ? 'page' : undefined}
     >
       {children}

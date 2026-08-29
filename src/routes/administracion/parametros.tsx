@@ -11,6 +11,7 @@ import type { Parametros } from '../../features/parametros/parametros.funciones.
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
+import { Selector } from '../../ui/componentes/Selector.tsx'
 
 /**
  * Parámetros del sistema (T085): umbral, ventana de anulación, formato.
@@ -130,19 +131,18 @@ function PantallaDeParametros() {
           <Etiqueta htmlFor="ventana">Ventana de anulación</Etiqueta>
           <Campo id="ventana" value="mismo_dia" disabled readOnly />
         </div>
-        <div>
-          <Etiqueta htmlFor="formato">Formato de impresión</Etiqueta>
-          <select
-            id="formato"
-            className="min-h-11 w-full rounded-full border border-borde bg-papel px-4"
-            value={formato}
-            onChange={(e) => setFormato(e.target.value as 'a4' | 'rollo')}
-            disabled={ocupado}
-          >
-            <option value="a4">A4</option>
-            <option value="rollo">Rollo</option>
-          </select>
-        </div>
+        <Selector
+          id="formato"
+          etiqueta="Formato de impresión"
+          disposicion="columna"
+          valor={formato}
+          onCambiar={setFormato}
+          disabled={ocupado}
+          opciones={[
+            { valor: 'a4', etiqueta: 'A4' },
+            { valor: 'rollo', etiqueta: 'Rollo' },
+          ]}
+        />
         <Boton type="submit" variante="principal" disabled={ocupado}>
           Guardar
         </Boton>

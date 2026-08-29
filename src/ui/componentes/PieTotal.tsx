@@ -1,5 +1,6 @@
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type { Centimos } from '../../domain/totales/calculo.ts'
+import { Boton } from './primitivas.tsx'
 import { Selector } from './Selector.tsx'
 
 /**
@@ -7,11 +8,7 @@ import { Selector } from './Selector.tsx'
  * En modo cotización el CTA principal es Guardar (no Emitir).
  */
 
-export type EstadoDeEmision =
-  | 'listo'
-  | 'emitiendo'
-  | 'emitido'
-  | 'inhabilitado'
+export type EstadoDeEmision = 'listo' | 'emitiendo' | 'emitido' | 'inhabilitado'
 
 export interface PropsDePieTotal {
   readonly total: Centimos
@@ -98,7 +95,7 @@ export function PieTotal({
               valor={medioPago}
               onCambiar={onCambiarMedioPago}
               opciones={OPCIONES_PAGO}
-              className="selector-suitpay--compacto"
+              variante="compacto"
             />
           </div>
         ) : (
@@ -118,46 +115,34 @@ export function PieTotal({
         </div>
 
         {modoCotizacion ? (
-          <button
-            type="button"
+          <Boton
+            variante="principal"
+            tamano="grande"
+            className="shrink-0 uppercase"
             onClick={onGuardarCotizacion}
             disabled={!puedeGuardar}
-            className={[
-              'min-h-11 shrink-0 rounded-full px-4 text-cuerpo font-bold uppercase',
-              'md:min-h-14 md:px-8 md:text-entrada',
-              'focus-visible:outline-none focus-visible:border-tinta',
-              'disabled:cursor-not-allowed',
-              puedeGuardar
-                ? 'border border-tinta bg-tinta text-papel hover:bg-tinta/90'
-                : 'border border-borde bg-mesa text-desvaida',
-            ].join(' ')}
+            aria-busy={guardandoCotizacion || undefined}
           >
             {guardandoCotizacion ? 'Guardando…' : 'Guardar'}
-          </button>
+          </Boton>
         ) : (
-          <button
-            type="button"
+          <Boton
+            variante="principal"
+            tamano="grande"
+            className="shrink-0 uppercase"
             onClick={onEmitir}
             disabled={bloqueado || enVuelo || estado === 'emitido'}
+            aria-busy={enVuelo || undefined}
             aria-describedby={
               motivoDeBloqueo !== null ? 'motivo-de-bloqueo' : undefined
             }
-            className={[
-              'min-h-11 shrink-0 rounded-full px-4 text-cuerpo font-bold uppercase',
-              'md:min-h-14 md:px-8 md:text-entrada',
-              'focus-visible:outline-none focus-visible:border-tinta',
-              'disabled:cursor-not-allowed',
-              bloqueado || enVuelo || estado === 'emitido'
-                ? 'border border-borde bg-mesa text-desvaida'
-                : 'border border-tinta bg-tinta text-papel hover:bg-tinta/90',
-            ].join(' ')}
           >
             {enVuelo
               ? 'Emitiendo…'
               : estado === 'emitido'
                 ? 'Emitido'
                 : 'Emitir'}
-          </button>
+          </Boton>
         )}
       </div>
     </div>

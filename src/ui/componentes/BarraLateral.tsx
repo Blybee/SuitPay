@@ -15,7 +15,6 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { usarSesion } from '../../features/sesion/almacen.ts'
 import type { Rol } from '../../features/sesion/almacen.ts'
 import { MarcaSuitPay } from './MarcaSuitPay.tsx'
-import { Boton } from './primitivas.tsx'
 
 /**
  * Sidebar Soft-Pill colapsable: marca arriba, nav, usuario + logout al pie
@@ -91,10 +90,7 @@ function leerColapsada(): boolean {
   }
 }
 
-function itemActivo(
-  pathname: string,
-  item: ItemDeBarraLateral,
-): boolean {
+function itemActivo(pathname: string, item: ItemDeBarraLateral): boolean {
   if (item.exacto) return pathname === item.to
   return pathname === item.to || pathname.startsWith(`${item.to}/`)
 }
@@ -225,10 +221,7 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
         className="barra-lateral-menu-movil border-b border-borde bg-papel shadow-md"
         style={{ top: topeMenuMovil }}
       >
-        <nav
-          className="flex flex-col gap-1 px-3 py-3"
-          aria-label="Menú"
-        >
+        <nav className="flex flex-col gap-1 px-3 py-3" aria-label="Menú">
           {menu.map((item) => {
             const activo = itemActivo(pathname, item)
             const Icono = item.icono
@@ -256,15 +249,16 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
           <p className="min-w-0 flex-1 truncate text-cuerpo font-bold text-tinta">
             {cargando ? '…' : (nombre ?? 'Sin sesión')}
           </p>
-          <Boton
-            variante="discreto"
-            className="shrink-0 px-2"
+          <button
+            type="button"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-desvaida transition-colors hover:bg-mesa hover:text-tinta focus-visible:border focus-visible:border-tinta focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
             onClick={() => void cerrarSesion()}
             disabled={cargando || nombre === null}
             aria-label="Cerrar sesión"
+            title="Cerrar sesión"
           >
             <LogOut className="size-4" aria-hidden />
-          </Boton>
+          </button>
         </div>
       </div>
 
@@ -294,9 +288,9 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
               </div>
             </>
           )}
-          <Boton
-            variante="discreto"
-            className="shrink-0 px-2"
+          <button
+            type="button"
+            className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-desvaida transition-colors hover:bg-mesa hover:text-tinta focus-visible:border focus-visible:border-tinta focus-visible:outline-none"
             onClick={alternar}
             aria-label={colapsada ? 'Expandir menú' : 'Colapsar menú'}
             aria-expanded={!colapsada}
@@ -307,7 +301,7 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
             ) : (
               <PanelLeftClose className="size-5" aria-hidden />
             )}
-          </Boton>
+          </button>
         </div>
 
         <nav

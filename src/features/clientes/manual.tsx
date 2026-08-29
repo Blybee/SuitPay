@@ -1,4 +1,5 @@
 import { Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
+import { Selector } from '../../ui/componentes/Selector.tsx'
 import type { Cliente } from '../../domain/esquemas/comunes.ts'
 
 /**
@@ -42,27 +43,23 @@ export function FormularioManualDeCliente({
           ? 'Corrige los datos del cliente. El documento no se puede cambiar.'
           : 'La consulta oficial no responde. Escribe los datos y continúa la venta.'}
       </p>
-      <div>
-        <Etiqueta htmlFor="cliente-tipo">Tipo</Etiqueta>
-        <select
-          id="cliente-tipo"
-          className="selector-suitpay mt-1 w-full"
-          value={valor.tipoDocumento}
-          disabled={documentoBloqueado || opciones.length === 1}
-          onChange={(evento) =>
-            onCambiar({
-              ...valor,
-              tipoDocumento: evento.target.value as Cliente['tipoDocumento'],
-            })
-          }
-        >
-          {opciones.map((tipo) => (
-            <option key={tipo} value={tipo}>
-              {tipo}
-            </option>
-          ))}
-        </select>
-      </div>
+      <Selector
+        id="cliente-tipo"
+        etiqueta="Tipo"
+        disposicion="columna"
+        valor={valor.tipoDocumento}
+        disabled={documentoBloqueado || opciones.length === 1}
+        onCambiar={(tipoDocumento) =>
+          onCambiar({
+            ...valor,
+            tipoDocumento,
+          })
+        }
+        opciones={opciones.map((tipo) => ({
+          valor: tipo,
+          etiqueta: tipo,
+        }))}
+      />
       <div>
         <Etiqueta htmlFor="cliente-numero">Documento</Etiqueta>
         <Campo

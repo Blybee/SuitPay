@@ -11,13 +11,16 @@ import type { ClienteDelPedido } from '../pedido/almacen.ts'
 import type { LineaDePedido } from '../../domain/totales/calculo.ts'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
+import { Selector } from '../../ui/componentes/Selector.tsx'
 
 export interface BorradorDeGuia {
   readonly claveIdempotencia: string
   readonly traslado: TrasladoDeGuia
 }
 
-function itemsDesdePedido(lineas: readonly LineaDePedido[]): TrasladoDeGuia['items'] {
+function itemsDesdePedido(
+  lineas: readonly LineaDePedido[],
+): TrasladoDeGuia['items'] {
   return lineas.map((linea) => ({
     codigo: linea.codigo,
     cantidad: linea.cantidad,
@@ -89,11 +92,13 @@ export function PapeletaDeGuia({
   const coincidencias = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
     if (q.length < 2) return []
-    return indice.filter(
-      (cada) =>
-        cada.numeroDocumento.includes(q) ||
-        cada.denominacion.toLowerCase().includes(q),
-    ).slice(0, 8)
+    return indice
+      .filter(
+        (cada) =>
+          cada.numeroDocumento.includes(q) ||
+          cada.denominacion.toLowerCase().includes(q),
+      )
+      .slice(0, 8)
   }, [busqueda, indice])
 
   const faltantes = faltantesDelTraslado(traslado)
@@ -189,47 +194,35 @@ export function PapeletaDeGuia({
           {cliente
             ? `Destinatario: ${cliente.denominacion}`
             : 'Sin destinatario (traslado interno o identifícalo en el pedido).'}
-          {comprobanteOrigenId
-            ? ' · Asociada al comprobante reutilizado.'
-            : ''}
+          {comprobanteOrigenId ? ' · Asociada al comprobante reutilizado.' : ''}
         </p>
 
         <div className="grid gap-3 sm:grid-cols-2">
-          <label className="flex flex-col gap-1">
-            <Etiqueta htmlFor="guia-modo">Modo de transporte</Etiqueta>
-            <select
-              id="guia-modo"
-              className="min-h-11 rounded-full border border-borde bg-papel px-4"
-              value={traslado.modoTransporte}
-              onChange={(e) =>
-                parche({
-                  modoTransporte: e.target.value as TrasladoDeGuia['modoTransporte'],
-                })
-              }
-            >
-              <option value="publico">Público</option>
-              <option value="privado">Privado</option>
-            </select>
-          </label>
-          <label className="flex flex-col gap-1">
-            <Etiqueta htmlFor="guia-motivo">Motivo</Etiqueta>
-            <select
-              id="guia-motivo"
-              className="min-h-11 rounded-full border border-borde bg-papel px-4"
-              value={traslado.motivoTraslado}
-              onChange={(e) =>
-                parche({
-                  motivoTraslado: e.target.value as TrasladoDeGuia['motivoTraslado'],
-                })
-              }
-            >
-              <option value="venta">Venta</option>
-              <option value="compra">Compra</option>
-              <option value="consignacion">Consignación</option>
-              <option value="entre_almacenes">Entre almacenes</option>
-              <option value="otros">Otros</option>
-            </select>
-          </label>
+          <Selector
+            id="guia-modo"
+            etiqueta="Modo de transporte"
+            disposicion="columna"
+            valor={traslado.modoTransporte}
+            onCambiar={(modoTransporte) => parche({ modoTransporte })}
+            opciones={[
+              { valor: 'publico', etiqueta: 'Público' },
+              { valor: 'privado', etiqueta: 'Privado' },
+            ]}
+          />
+          <Selector
+            id="guia-motivo"
+            etiqueta="Motivo"
+            disposicion="columna"
+            valor={traslado.motivoTraslado}
+            onCambiar={(motivoTraslado) => parche({ motivoTraslado })}
+            opciones={[
+              { valor: 'venta', etiqueta: 'Venta' },
+              { valor: 'compra', etiqueta: 'Compra' },
+              { valor: 'consignacion', etiqueta: 'Consignación' },
+              { valor: 'entre_almacenes', etiqueta: 'Entre almacenes' },
+              { valor: 'otros', etiqueta: 'Otros' },
+            ]}
+          />
           <div>
             <Etiqueta htmlFor="guia-peso">Peso bruto</Etiqueta>
             <Campo
@@ -237,7 +230,9 @@ export function PapeletaDeGuia({
               className="mt-1"
               numerico
               value={String(traslado.pesoBruto)}
-              onChange={(e) => parche({ pesoBruto: Number(e.target.value) || 0 })}
+              onChange={(e) =>
+                parche({ pesoBruto: Number(e.target.value) || 0 })
+              }
             />
           </div>
           <div>
@@ -255,7 +250,9 @@ export function PapeletaDeGuia({
         </div>
 
         <div>
-          <Etiqueta htmlFor="guia-partida">Partida (ubigeo · dirección)</Etiqueta>
+          <Etiqueta htmlFor="guia-partida">
+            Partida (ubigeo · dirección)
+          </Etiqueta>
           <div className="mt-1 grid gap-2 sm:grid-cols-[8rem_1fr]">
             <Campo
               id="guia-partida-ubigeo"
@@ -300,7 +297,9 @@ export function PapeletaDeGuia({
         </div>
 
         <div>
-          <Etiqueta htmlFor="guia-llegada">Llegada (ubigeo · dirección)</Etiqueta>
+          <Etiqueta htmlFor="guia-llegada">
+            Llegada (ubigeo · dirección)
+          </Etiqueta>
           <div className="mt-1 grid gap-2 sm:grid-cols-[8rem_1fr]">
             <Campo
               id="guia-llegada-ubigeo"

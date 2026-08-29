@@ -11,6 +11,7 @@ import {
 } from '../../features/usuarios/usuarios.funciones.ts'
 import type { UsuarioListado } from '../../features/usuarios/usuarios.funciones.ts'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
+import { Selector } from '../../ui/componentes/Selector.tsx'
 
 /**
  * Gestión de usuarios y roles (T084 / FR-005).
@@ -128,7 +129,10 @@ function PantallaDeUsuarios() {
         data: { uid: usuario.uid, rol: nuevoRol },
       })
       if (respuesta?.ok !== true) {
-        avisar('error', respuesta?.error?.mensaje ?? 'No se pudo cambiar el rol.')
+        avisar(
+          'error',
+          respuesta?.error?.mensaje ?? 'No se pudo cambiar el rol.',
+        )
         return
       }
       await cargar()
@@ -184,22 +188,19 @@ function PantallaDeUsuarios() {
             disabled={ocupado}
           />
         </div>
-        <div>
-          <Etiqueta htmlFor="rol">Rol</Etiqueta>
-          <select
-            id="rol"
-            className="min-h-11 w-full rounded-full border border-borde bg-papel px-4"
-            value={rol}
-            onChange={(e) =>
-              setRol(e.target.value as 'vendedor' | 'administrador' | 'jefe')
-            }
-            disabled={ocupado}
-          >
-            <option value="vendedor">Vendedor</option>
-            <option value="administrador">Administrador</option>
-            <option value="jefe">Jefe</option>
-          </select>
-        </div>
+        <Selector
+          id="rol"
+          etiqueta="Rol"
+          disposicion="columna"
+          valor={rol}
+          onCambiar={setRol}
+          disabled={ocupado}
+          opciones={[
+            { valor: 'vendedor', etiqueta: 'Vendedor' },
+            { valor: 'administrador', etiqueta: 'Administrador' },
+            { valor: 'jefe', etiqueta: 'Jefe' },
+          ]}
+        />
         <Boton type="submit" variante="principal" disabled={ocupado}>
           Crear usuario
         </Boton>
@@ -224,22 +225,19 @@ function PantallaDeUsuarios() {
                 </p>
               </div>
               <div className="flex flex-wrap gap-2">
-                <select
-                  className="min-h-11 rounded-full border border-borde bg-papel px-3"
-                  value={usuario.rol}
+                <Selector
+                  etiqueta={`Rol de ${usuario.nombre}`}
+                  ocultarEtiqueta
+                  variante="compacto"
+                  valor={usuario.rol}
                   disabled={ocupado}
-                  onChange={(e) =>
-                    void cambiarRol(
-                      usuario,
-                      e.target.value as 'vendedor' | 'administrador' | 'jefe',
-                    )
-                  }
-                  aria-label={`Rol de ${usuario.nombre}`}
-                >
-                  <option value="vendedor">Vendedor</option>
-                  <option value="administrador">Administrador</option>
-                  <option value="jefe">Jefe</option>
-                </select>
+                  onCambiar={(nuevoRol) => void cambiarRol(usuario, nuevoRol)}
+                  opciones={[
+                    { valor: 'vendedor', etiqueta: 'Vendedor' },
+                    { valor: 'administrador', etiqueta: 'Administrador' },
+                    { valor: 'jefe', etiqueta: 'Jefe' },
+                  ]}
+                />
                 <Boton
                   variante={usuario.activo ? 'peligro' : 'principal'}
                   disabled={ocupado}

@@ -26,6 +26,7 @@ import {
   Distintivo,
   Etiqueta,
 } from '../../ui/componentes/primitivas.tsx'
+import { Selector } from '../../ui/componentes/Selector.tsx'
 
 /**
  * Grilla de revisión previa a publicar (FR-009b, FR-009d).
@@ -212,35 +213,34 @@ export function GrillaRevision({
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex min-w-44 flex-1 flex-col gap-1 sm:max-w-48">
             <Etiqueta htmlFor="revision-marca">Filtrar marca</Etiqueta>
-            <select
+            <Selector
               id="revision-marca"
-              className="min-h-11 rounded-full border border-borde bg-papel px-4"
-              value={marca}
-              onChange={(e) => setMarca(e.target.value)}
-            >
-              <option value="">Todas</option>
-              {marcas.map((cada) => (
-                <option key={cada} value={cada}>
-                  {cada}
-                </option>
-              ))}
-            </select>
+              etiqueta="Filtrar marca"
+              ocultarEtiqueta
+              valor={marca}
+              onCambiar={setMarca}
+              opciones={[
+                { valor: '', etiqueta: 'Todas' },
+                ...marcas.map((cada) => ({ valor: cada, etiqueta: cada })),
+              ]}
+            />
           </div>
           <div className="flex min-w-44 flex-1 flex-col gap-1 sm:max-w-48">
             <Etiqueta htmlFor="revision-cat">Filtrar categoría</Etiqueta>
-            <select
+            <Selector
               id="revision-cat"
-              className="min-h-11 rounded-full border border-borde bg-papel px-4"
-              value={categoriaId}
-              onChange={(e) => setCategoriaId(e.target.value)}
-            >
-              <option value="">Todas</option>
-              {categorias.map((cada) => (
-                <option key={cada.id} value={cada.id}>
-                  {cada.nombre}
-                </option>
-              ))}
-            </select>
+              etiqueta="Filtrar categoría"
+              ocultarEtiqueta
+              valor={categoriaId}
+              onCambiar={setCategoriaId}
+              opciones={[
+                { valor: '', etiqueta: 'Todas' },
+                ...categorias.map((cada) => ({
+                  valor: cada.id,
+                  etiqueta: cada.nombre,
+                })),
+              ]}
+            />
           </div>
           <Boton
             variante={soloProblemas ? 'peligro' : 'secundario'}
@@ -293,19 +293,20 @@ export function GrillaRevision({
           <div className="flex min-w-0 flex-wrap items-end gap-2">
             <div className="flex min-w-52 flex-1 flex-col gap-1">
               <Etiqueta htmlFor="asignar-cat">Asignar a selección</Etiqueta>
-              <select
+              <Selector
                 id="asignar-cat"
-                className="min-h-11 w-full rounded-full border border-borde bg-papel px-4"
-                value={asignarA}
-                onChange={(e) => setAsignarA(e.target.value)}
-              >
-                <option value="">Elegir…</option>
-                {categorias.map((cada) => (
-                  <option key={cada.id} value={cada.id}>
-                    {cada.nombre}
-                  </option>
-                ))}
-              </select>
+                etiqueta="Asignar a selección"
+                ocultarEtiqueta
+                valor={asignarA}
+                onCambiar={setAsignarA}
+                opciones={[
+                  { valor: '', etiqueta: 'Elegir…' },
+                  ...categorias.map((cada) => ({
+                    valor: cada.id,
+                    etiqueta: cada.nombre,
+                  })),
+                ]}
+              />
             </div>
             <Boton
               variante="principal"

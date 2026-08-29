@@ -16,26 +16,30 @@ function unir(...clases: readonly (string | false | undefined)[]): string {
 
 // --- Botón ------------------------------------------------------------------
 
-type VarianteDeBoton = 'principal' | 'secundario' | 'peligro' | 'discreto'
+export type VarianteDeBoton =
+  'principal' | 'secundario' | 'peligro' | 'discreto'
+export type TamanoDeBoton = 'normal' | 'grande'
 
 const ESTILOS_DE_BOTON: Record<VarianteDeBoton, string> = {
   principal:
-    'rounded-full bg-tinta text-papel border border-tinta hover:bg-tinta/90 disabled:bg-desvaida disabled:border-desvaida',
+    'border-tinta bg-tinta text-papel shadow-sm hover:bg-tinta/90 hover:shadow-md disabled:border-borde disabled:bg-borde disabled:text-desvaida',
   secundario:
-    'rounded-full bg-papel text-tinta border border-borde hover:bg-mesa disabled:text-desvaida disabled:border-desvaida',
+    'border-borde bg-papel text-tinta shadow-sm hover:border-tinta/40 hover:bg-mesa hover:shadow-md disabled:bg-mesa disabled:text-desvaida',
   peligro:
-    'rounded-full bg-papel text-aviso border border-aviso hover:bg-aviso hover:text-papel disabled:text-desvaida disabled:border-desvaida',
+    'border-aviso bg-papel text-aviso shadow-sm hover:bg-aviso hover:text-papel hover:shadow-md disabled:border-borde disabled:bg-mesa disabled:text-desvaida',
   discreto:
-    'rounded-full bg-transparent text-desvaida border border-transparent hover:text-tinta hover:border-borde',
+    'border-borde bg-papel text-desvaida shadow-sm hover:border-tinta/40 hover:bg-mesa hover:text-tinta hover:shadow-md disabled:bg-mesa',
 }
 
 export interface PropsDeBoton extends ComponentPropsWithoutRef<'button'> {
   readonly variante?: VarianteDeBoton
+  readonly tamano?: TamanoDeBoton
   readonly asChild?: boolean
 }
 
 export function Boton({
   variante = 'secundario',
+  tamano = 'normal',
   asChild = false,
   className,
   type = 'button',
@@ -46,10 +50,15 @@ export function Boton({
     <Componente
       type={type}
       className={unir(
-        'inline-flex min-h-11 items-center justify-center gap-2 px-5 font-bold',
-        'transition-colors',
-        'focus-visible:outline-none focus-visible:border-tinta',
-        'disabled:cursor-not-allowed',
+        'inline-flex items-center justify-center gap-2 rounded-full border font-bold',
+        'transition-[color,background-color,border-color,box-shadow,transform] duration-rapida ease-salida',
+        'hover:-translate-y-0.5 active:translate-y-px active:shadow-none',
+        'focus-visible:outline-none focus-visible:border-tinta focus-visible:ring-2 focus-visible:ring-tinta/10',
+        'disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-none disabled:hover:translate-y-0 disabled:active:translate-y-0',
+        'motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:translate-y-0',
+        tamano === 'grande'
+          ? 'min-h-11 px-4 text-cuerpo md:min-h-14 md:px-8 md:text-entrada'
+          : 'min-h-11 px-5',
         ESTILOS_DE_BOTON[variante],
         className,
       )}

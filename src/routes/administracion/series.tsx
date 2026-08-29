@@ -19,6 +19,7 @@ import type {
 import { listarUsuariosFn } from '../../features/usuarios/usuarios.funciones.ts'
 import type { UsuarioListado } from '../../features/usuarios/usuarios.funciones.ts'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
+import { Selector } from '../../ui/componentes/Selector.tsx'
 
 /**
  * Establecimientos y series por vendedor (T083 / FR-031 / decisión 12).
@@ -68,7 +69,10 @@ function PantallaDeSeries() {
         listarUsuariosFn(),
       ])
       if (est?.ok !== true) {
-        avisar('error', est?.error?.mensaje ?? 'No se listaron establecimientos.')
+        avisar(
+          'error',
+          est?.error?.mensaje ?? 'No se listaron establecimientos.',
+        )
         return
       }
       if (ser?.ok !== true) {
@@ -89,8 +93,7 @@ function PantallaDeSeries() {
         setEstablecimientoId(est.establecimientos![0]!.id)
       }
       if (vendedorId === '' && lista.length > 0) {
-        const primero =
-          lista.find((u) => u.rol === 'vendedor') ?? lista[0]
+        const primero = lista.find((u) => u.rol === 'vendedor') ?? lista[0]
         if (primero) setVendedorId(primero.uid)
       }
     } catch (err) {
@@ -267,41 +270,32 @@ function PantallaDeSeries() {
       <section className="rounded-3xl border border-borde bg-papel p-6">
         <h2 className="text-cuerpo font-bold">Series</h2>
         <form onSubmit={crearSer} className="mt-4 flex flex-col gap-3">
-          <div>
-            <Etiqueta htmlFor="vendedor">Vendedor</Etiqueta>
-            <select
-              id="vendedor"
-              className="min-h-11 w-full rounded-full border border-borde bg-papel px-4"
-              value={vendedorId}
-              onChange={(e) => setVendedorId(e.target.value)}
-              disabled={ocupado}
-              required
-            >
-              {vendedores.map((v) => (
-                <option key={v.uid} value={v.uid}>
-                  {v.nombre || v.correo} ({v.rol})
-                </option>
-              ))}
-            </select>
-          </div>
-          <div>
-            <Etiqueta htmlFor="tipo">Tipo</Etiqueta>
-            <select
-              id="tipo"
-              className="min-h-11 w-full rounded-full border border-borde bg-papel px-4"
-              value={tipoDocumento}
-              onChange={(e) =>
-                setTipoDocumento(
-                  e.target.value as 'boleta' | 'factura' | 'guia',
-                )
-              }
-              disabled={ocupado}
-            >
-              <option value="boleta">Boleta</option>
-              <option value="factura">Factura</option>
-              <option value="guia">Guía de remisión</option>
-            </select>
-          </div>
+          <Selector
+            id="vendedor"
+            etiqueta="Vendedor"
+            disposicion="columna"
+            valor={vendedorId}
+            onCambiar={setVendedorId}
+            disabled={ocupado}
+            required
+            opciones={vendedores.map((vendedor) => ({
+              valor: vendedor.uid,
+              etiqueta: `${vendedor.nombre || vendedor.correo} (${vendedor.rol})`,
+            }))}
+          />
+          <Selector
+            id="tipo"
+            etiqueta="Tipo"
+            disposicion="columna"
+            valor={tipoDocumento}
+            onCambiar={setTipoDocumento}
+            disabled={ocupado}
+            opciones={[
+              { valor: 'boleta', etiqueta: 'Boleta' },
+              { valor: 'factura', etiqueta: 'Factura' },
+              { valor: 'guia', etiqueta: 'Guía de remisión' },
+            ]}
+          />
           <div>
             <Etiqueta htmlFor="serie">Serie (máx. 4, prefijo B/F/T)</Etiqueta>
             <Campo
@@ -326,23 +320,19 @@ function PantallaDeSeries() {
               disabled={ocupado}
             />
           </div>
-          <div>
-            <Etiqueta htmlFor="estId">Establecimiento</Etiqueta>
-            <select
-              id="estId"
-              className="min-h-11 w-full rounded-full border border-borde bg-papel px-4"
-              value={establecimientoId}
-              onChange={(e) => setEstablecimientoId(e.target.value)}
-              disabled={ocupado}
-              required
-            >
-              {establecimientos.map((est) => (
-                <option key={est.id} value={est.id}>
-                  {est.nombre || est.codigoAnexo} ({est.id})
-                </option>
-              ))}
-            </select>
-          </div>
+          <Selector
+            id="estId"
+            etiqueta="Establecimiento"
+            disposicion="columna"
+            valor={establecimientoId}
+            onCambiar={setEstablecimientoId}
+            disabled={ocupado}
+            required
+            opciones={establecimientos.map((establecimiento) => ({
+              valor: establecimiento.id,
+              etiqueta: `${establecimiento.nombre || establecimiento.codigoAnexo} (${establecimiento.id})`,
+            }))}
+          />
           <Boton type="submit" variante="principal" disabled={ocupado}>
             Crear serie
           </Boton>

@@ -1,20 +1,10 @@
 import type { CategoriaEnCatalogo } from '../../infra/local/catalogo.ts'
 import type { FacetasDeCatalogo } from '../../domain/catalogo/filtros.ts'
-import { Etiqueta } from './primitivas.tsx'
+import { Selector } from './Selector.tsx'
 
 /**
- * Filtros facetados sobre el espejo local (FR-009d). Native <select>:
- * Baseline, teclado y lector de pantalla sin librería extra.
+ * Filtros facetados sobre el espejo local (FR-009d).
  */
-
-function unir(...clases: readonly (string | false | undefined)[]): string {
-  return clases.filter((cada) => typeof cada === 'string').join(' ')
-}
-
-const CLASE_SELECT = unir(
-  'min-h-11 min-w-40 rounded-full border border-borde bg-papel px-4 text-cuerpo text-tinta',
-  'focus-visible:outline-none focus-visible:border-tinta',
-)
 
 export function FiltrosDeCatalogo({
   marcas,
@@ -32,53 +22,46 @@ export function FiltrosDeCatalogo({
   return (
     <div className="flex flex-wrap items-end gap-3 px-4 pb-2">
       {marcas.length > 0 ? (
-        <label className="flex min-w-40 flex-col gap-1">
-          <Etiqueta htmlFor="filtro-marca">Marca</Etiqueta>
-          <select
-            id="filtro-marca"
-            className={CLASE_SELECT}
-            value={facetas.marca ?? ''}
-            onChange={(evento) => {
-              const valor = evento.target.value
-              onCambiar({
-                ...facetas,
-                marca: valor.length > 0 ? valor : null,
-              })
-            }}
-          >
-            <option value="">Todas</option>
-            {marcas.map((marca) => (
-              <option key={marca} value={marca}>
-                {marca}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Selector
+          id="filtro-marca"
+          etiqueta="Marca"
+          disposicion="columna"
+          contenedorClassName="min-w-40"
+          valor={facetas.marca ?? ''}
+          onCambiar={(valor) =>
+            onCambiar({
+              ...facetas,
+              marca: valor.length > 0 ? valor : null,
+            })
+          }
+          opciones={[
+            { valor: '', etiqueta: 'Todas' },
+            ...marcas.map((marca) => ({ valor: marca, etiqueta: marca })),
+          ]}
+        />
       ) : null}
 
       {categorias.length > 0 ? (
-        <label className="flex min-w-40 flex-col gap-1">
-          <Etiqueta htmlFor="filtro-categoria">Categoría</Etiqueta>
-          <select
-            id="filtro-categoria"
-            className={CLASE_SELECT}
-            value={facetas.categoriaId ?? ''}
-            onChange={(evento) => {
-              const valor = evento.target.value
-              onCambiar({
-                ...facetas,
-                categoriaId: valor.length > 0 ? valor : null,
-              })
-            }}
-          >
-            <option value="">Todas</option>
-            {categorias.map((categoria) => (
-              <option key={categoria.id} value={categoria.id}>
-                {categoria.nombre}
-              </option>
-            ))}
-          </select>
-        </label>
+        <Selector
+          id="filtro-categoria"
+          etiqueta="Categoría"
+          disposicion="columna"
+          contenedorClassName="min-w-40"
+          valor={facetas.categoriaId ?? ''}
+          onCambiar={(valor) =>
+            onCambiar({
+              ...facetas,
+              categoriaId: valor.length > 0 ? valor : null,
+            })
+          }
+          opciones={[
+            { valor: '', etiqueta: 'Todas' },
+            ...categorias.map((categoria) => ({
+              valor: categoria.id,
+              etiqueta: categoria.nombre,
+            })),
+          ]}
+        />
       ) : null}
     </div>
   )
