@@ -382,7 +382,8 @@ export function GrillaRevision({
                     </span>
                     <span role="cell">
                       <Campo
-                        className="px-3 font-mono text-etiqueta"
+                        variante="en-linea"
+                        className="font-mono text-etiqueta"
                         value={producto.codigo}
                         invalido={codigoInvalido}
                         aria-label={`Código ${producto.codigo}`}
@@ -395,7 +396,8 @@ export function GrillaRevision({
                     </span>
                     <span role="cell">
                       <Campo
-                        className="px-3 uppercase"
+                        variante="en-linea"
+                        className="uppercase"
                         value={producto.descripcion}
                         invalido={descripcionInvalida}
                         aria-label={`Descripción ${producto.codigo}`}
@@ -409,7 +411,7 @@ export function GrillaRevision({
                     </span>
                     <span role="cell">
                       <Campo
-                        className="px-3"
+                        variante="en-linea"
                         value={producto.marca}
                         aria-label={`Marca ${producto.codigo}`}
                         onChange={(e) =>
@@ -419,7 +421,9 @@ export function GrillaRevision({
                     </span>
                     <span role="cell">
                       <Campo
-                        className="px-2 font-mono text-etiqueta"
+                        variante="en-linea"
+                        alineacion="centro"
+                        className="font-mono text-etiqueta uppercase"
                         value={producto.unidad}
                         invalido={unidadInvalida}
                         aria-label={`Unidad ${producto.codigo}`}
@@ -432,9 +436,10 @@ export function GrillaRevision({
                       />
                     </span>
                     <span role="cell">
-                      <input
+                      <Campo
                         key={`${indice}-precio`}
-                        className="min-h-11 w-full rounded-full border border-borde bg-papel px-2 text-right font-mono tabular-nums"
+                        variante="en-linea"
+                        numerico
                         inputMode="decimal"
                         defaultValue={(producto.precio / 100).toFixed(2)}
                         aria-label={`Precio ${producto.codigo}`}

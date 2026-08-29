@@ -69,26 +69,53 @@ export function Boton({
 
 // --- Campo ------------------------------------------------------------------
 
+export type VarianteDeCampo = 'formulario' | 'en-linea'
+export type AlineacionDeCampo = 'izquierda' | 'centro' | 'derecha'
+
 export interface PropsDeCampo extends ComponentPropsWithoutRef<'input'> {
   readonly invalido?: boolean
   readonly numerico?: boolean
+  readonly variante?: VarianteDeCampo
+  readonly alineacion?: AlineacionDeCampo
+  readonly superficie?: 'mesa' | 'papel'
 }
 
 export function Campo({
   className,
   invalido = false,
   numerico = false,
+  variante = 'formulario',
+  alineacion,
+  superficie = 'mesa',
   ...resto
 }: PropsDeCampo) {
+  const alineacionResuelta = alineacion ?? (numerico ? 'derecha' : 'izquierda')
+
   return (
     <input
       aria-invalid={invalido || undefined}
       className={unir(
-        'min-h-11 w-full rounded-full border bg-papel px-4 text-tinta',
+        'min-h-11 w-full border text-tinta',
+        'transition-[color,background-color,border-color,box-shadow] duration-rapida ease-salida',
         'placeholder:text-desvaida',
-        'focus-visible:outline-none focus-visible:border-tinta',
-        numerico && 'font-mono tabular-nums text-right',
-        invalido ? 'border-aviso' : 'border-borde',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tinta/10',
+        'disabled:cursor-not-allowed disabled:bg-mesa disabled:text-desvaida',
+        'motion-reduce:transition-none',
+        variante === 'en-linea'
+          ? 'rounded-xl px-2 md:px-3'
+          : 'rounded-full px-4 shadow-sm',
+        variante === 'en-linea'
+          ? invalido
+            ? 'border-aviso bg-aviso/5 text-aviso focus-visible:border-aviso focus-visible:ring-aviso/10'
+            : superficie === 'papel'
+              ? 'border-transparent bg-papel shadow-sm hover:border-borde focus-visible:border-tinta focus-visible:shadow-md'
+              : 'border-transparent bg-mesa hover:border-borde hover:bg-papel focus-visible:border-tinta focus-visible:bg-papel focus-visible:shadow-sm'
+          : invalido
+            ? 'border-aviso bg-papel focus-visible:border-aviso focus-visible:ring-aviso/10'
+            : 'border-borde bg-papel hover:border-tinta/40 focus-visible:border-tinta',
+        numerico && 'font-mono tabular-nums',
+        alineacionResuelta === 'centro' && 'text-center',
+        alineacionResuelta === 'derecha' && 'text-right',
         className,
       )}
       {...resto}

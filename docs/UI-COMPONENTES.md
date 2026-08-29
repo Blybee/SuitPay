@@ -15,7 +15,7 @@ solo cuando el control es de un flujo, no del sistema.
 | Componente   | Archivo          | Cuándo usarlo                                                                                                                                                  |
 | ------------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Boton`      | `primitivas.tsx` | Toda acción con texto. Variantes: `principal` · `secundario` · `peligro` · `discreto`. Cápsula con borde siempre visible, alto ≥ 44 px. No cubre icon buttons. |
-| `Campo`      | `primitivas.tsx` | Texto / número. `invalido` pinta borde aviso; `numerico` alinea a la derecha en mono.                                                                          |
+| `Campo`      | `primitivas.tsx` | Texto / número. Variantes `formulario` y `en-linea`; alineación semántica con `alineacion` o `numerico`.                                                       |
 | `Etiqueta`   | `primitivas.tsx` | Label mono uppercase de un campo. No la uses como título de sección.                                                                                           |
 | `Casilla`    | `primitivas.tsx` | Checkbox cápsula (Radix).                                                                                                                                      |
 | `Regla`      | `primitivas.tsx` | Separador 1 px (`border`).                                                                                                                                     |
@@ -83,6 +83,53 @@ Reglas:
   variante localmente.
 - Los botones que solo contienen un icono son controles distintos y quedan fuera
   de estas cuatro variantes.
+
+---
+
+## Campos de texto y edición en línea
+
+Para campos estándar o editables en línea, reutiliza `Campo`; no reconstruyas
+fondo, borde, foco o estados dentro de una tabla. Sus dos variantes responden a
+contextos distintos:
+
+| Variante     | Uso                                                                         | Apariencia                                                                                                             |
+| ------------ | --------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `formulario` | Formularios, filtros y datos que se completan como una tarea independiente. | Cápsula blanca, borde visible y sombra mínima.                                                                         |
+| `en-linea`   | Valores editables dentro de filas del pedido o de una grilla.               | Rectángulo suave `rounded-xl`, fondo `mesa` y borde transparente; evita que cada celda parezca un botón o una burbuja. |
+
+La variante `en-linea` conserva 44 px de alto. En reposo el fondo suave permite
+reconocer que el dato es editable sin llenar la tabla de contornos. Hover aclara
+la superficie y revela el borde; el foco añade borde tinta, anillo y sombra
+suave. `invalido` combina fondo de aviso y borde de aviso, por lo que el error no
+depende solo del color del texto. Todo cambio usa `duration-rapida` y
+`ease-salida`; reduced motion elimina la transición.
+
+Usa `superficie="mesa"` (predeterminada) dentro de filas blancas y
+`superficie="papel"` cuando la fila ya vive sobre `mesa`, como en el pedido. La
+superficie debe contrastar con su contexto; no elijas una globalmente para todas
+las tablas.
+
+La alineación comunica el tipo de dato:
+
+- texto variable (`descripción`, `marca`, códigos largos): izquierda;
+- valor categórico muy corto (`unidad`): centro;
+- cantidades, precios e importes comparables: derecha con `numerico`, fuente
+  monoespaciada y cifras tabulares. No centres precios aunque sean cortos: la
+  columna debe poder compararse por magnitud.
+
+```tsx
+<Campo
+  variante="en-linea"
+  numerico
+  value={precio}
+  aria-label={`Precio de ${producto}`}
+/>
+```
+
+Usa `alineacion="centro"` solo para datos cortos y homogéneos. En grillas sin
+`label` visible, cada campo necesita un nombre accesible específico mediante
+`aria-label`. `className` puede ajustar tipografía o casing, pero no recrear la
+superficie interactiva.
 
 ---
 

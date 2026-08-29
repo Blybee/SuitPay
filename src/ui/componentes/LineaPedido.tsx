@@ -7,6 +7,7 @@ import {
   precioEsMenorQueCatalogo,
 } from '../../domain/totales/calculo.ts'
 import type { Centimos, LineaDePedido } from '../../domain/totales/calculo.ts'
+import { Campo } from './primitivas.tsx'
 
 /**
  * Un renglón del pedido.
@@ -77,16 +78,16 @@ export function LineaPedido({
   onQuitar,
   onVolverAlBuscador,
 }: PropsDeLineaPedido) {
-  const [precioTecleado, setPrecioTecleado] = useState(() => aTexto(linea.precio))
+  const [precioTecleado, setPrecioTecleado] = useState(() =>
+    aTexto(linea.precio),
+  )
   const [cantidadTecleada, setCantidadTecleada] = useState(() =>
     String(linea.cantidad),
   )
   const editando = useRef(false)
   const fila = useRef<HTMLLIElement>(null)
 
-  function intentarVolverAlBuscador(
-    relatedTarget: EventTarget | null,
-  ): void {
+  function intentarVolverAlBuscador(relatedTarget: EventTarget | null): void {
     if (onVolverAlBuscador === undefined) return
     const destino = relatedTarget
     if (
@@ -156,9 +157,9 @@ export function LineaPedido({
       className={[
         REJILLA_LINEA,
         'items-baseline border-b border-borde py-1.5',
-        // El estado no se distingue solo por color: además del borde rojo, abajo
+        // El estado no se distingue solo por color: el campo se marca y abajo
         // se escribe el motivo.
-        lineaEnAviso && 'border-l-4 border-l-aviso bg-aviso/5',
+        lineaEnAviso && 'bg-aviso/5',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -189,10 +190,13 @@ export function LineaPedido({
         )}
       </div>
 
-      <input
+      <Campo
         aria-label={`Cantidad de ${linea.descripcion}`}
         value={cantidadTecleada}
         inputMode="decimal"
+        variante="en-linea"
+        numerico
+        superficie="papel"
         onFocus={() => {
           editando.current = true
         }}
@@ -204,20 +208,17 @@ export function LineaPedido({
         onKeyDown={(evento) => {
           if (evento.key === 'Enter') evento.currentTarget.blur()
         }}
-        className={[
-          'min-h-11 min-w-0 w-full rounded-full border border-transparent bg-transparent px-0.5 md:px-2',
-          'font-mono tabular-nums text-right text-cuerpo text-tinta',
-          'hover:border-borde',
-          'focus-visible:border-borde focus-visible:bg-mesa focus-visible:outline-none',
-        ].join(' ')}
       />
 
       <div className="min-w-0">
-        <input
+        <Campo
           aria-label={`Precio de ${linea.descripcion}`}
-          aria-invalid={bajoPiso || undefined}
           value={precioTecleado}
           inputMode="decimal"
+          variante="en-linea"
+          numerico
+          superficie="papel"
+          invalido={bajoPiso}
           onFocus={() => {
             editando.current = true
           }}
@@ -229,14 +230,6 @@ export function LineaPedido({
           onKeyDown={(evento) => {
             if (evento.key === 'Enter') evento.currentTarget.blur()
           }}
-          className={[
-            'min-h-11 min-w-0 w-full rounded-full border bg-transparent px-0.5 md:px-2',
-            'font-mono tabular-nums text-right text-cuerpo',
-            'focus-visible:outline-none focus-visible:bg-mesa',
-            bajoPiso
-              ? 'border-aviso text-aviso focus-visible:border-aviso'
-              : 'border-transparent text-tinta hover:border-borde focus-visible:border-borde',
-          ].join(' ')}
         />
         {bajoPiso && precioDeCatalogo !== undefined && (
           <p className="hidden px-1 text-right font-mono text-etiqueta text-desvaida md:block">
