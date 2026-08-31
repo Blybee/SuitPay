@@ -4,7 +4,7 @@
 
 **Created**: 2026-08-09
 
-**Updated**: 2026-08-18 (enmienda: asociación 1:1 boleta/factura ↔ guía; anulación en cascada bidireccional + toast informativo)
+**Updated**: 2026-08-29 (enmienda: modos de cabecera Bol/Fact + Guía R; wizard de dos confirmaciones; `/guia` se conserva)
 
 **Status**: Draft
 
@@ -139,6 +139,23 @@ El vendedor anula, el mismo día, una boleta o factura que ya tiene guía asocia
 
 ---
 
+### User Story 9 - Encadenar boleta o factura con guía desde el selector (Priority: P2)
+
+El vendedor elige «Bol + Guía R» o «Fact + Guía R» en la cabecera, arma el pedido y confirma Emitir. El sistema emite solo la boleta o factura (una intención, una clave de idempotencia). Al éxito abre de inmediato la papeleta de guía ya vinculada, mostrando serie-número del origen e Imprimir. El vendedor confirma Emitir en la papeleta (segunda intención, segunda clave). `/guia` sigue disponible para guía suelta.
+
+**Why this priority**: el comando `/guia` no deja claro a qué comprobante se asocia; el modo compuesto hace explícita la secuencia de dos pasos en el mostrador.
+
+**Independent Test**: selector Bol + Guía R → emitir boleta → papeleta con «Asociada a Boleta B001-…» → emitir guía → par 1:1.
+
+**Acceptance Scenarios**:
+
+1. **Given** modo «Bol + Guía R» o «Fact + Guía R» y un pedido emitible, **When** el vendedor confirma Emitir, **Then** se emite boleta o factura (no un tipo fiscal compuesto) y se abre la papeleta con el origen visible (serie-número), sin haber emitido la guía todavía.
+2. **Given** esa papeleta, **When** el vendedor confirma Emitir, **Then** se emite la guía con `comprobanteOrigenId` y se escribe `guiaAsociadaId` en el origen (FR-011).
+3. **Given** el vendedor cancela la papeleta, **When** cierra, **Then** la boleta/factura ya emitida permanece y se ofrece Imprimir; MUST NOT emitirse guía.
+4. **Given** `/guia` sin modo compuesto, **When** el vendedor lo usa, **Then** el comando sigue abriendo la papeleta sin emitir (FR-006).
+
+---
+
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
@@ -159,6 +176,7 @@ El vendedor anula, el mismo día, una boleta o factura que ya tiene guía asocia
 - **FR-014**: Al confirmar anular uno de los dos, el sistema MUST mostrar un toast informativo (Sileo vía `usarNotificaciones`) de que también se anulará el documento asociado. El toast MUST NOT pedir confirmación extra. La confirmación explícita es la del documento abierto (principio I). El toast MUST aparecer en el detalle de boleta/factura **y** en el de guía.
 - **FR-015**: Si la anulación de **cualquiera** de los dos queda `indeterminada`, el sistema MUST NOT presentar el par como anulado hasta resolver. MUST NOT reintentar a ciegas. Un segundo intento cuando el par ya está anulado MUST ser no-op (sin nueva llamada al proveedor).
 - **FR-016**: La anulación en cascada MUST cubrir en pruebas el reintento, la respuesta ausente y el fallo del proveedor **en ambos sentidos** (constitución: ambos documentos son regulados). El reintegro de stock (una sola vez) lo especifica `003`.
+- **FR-017**: El selector del mostrador MAY ofrecer modos de UX «Bol + Guía R» y «Fact + Guía R». MUST NOT añadir tipos fiscales a `TIPOS_ELEGIBLES`. Cada modo MUST emitir boleta o factura y, al éxito, abrir la papeleta de guía con el origen identificado por serie-número. MUST exigir confirmación explícita en ambos pasos (principio I). MUST usar dos claves de idempotencia (principio II). `/guia` MUST seguir disponible.
 
 ### Key Entities
 

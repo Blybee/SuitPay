@@ -1,11 +1,14 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import { REGLAS } from '../domain/documentos/tipos.ts'
 import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
 import { pedidoTienePrecioBajoCatalogo } from '../domain/totales/calculo.ts'
 import { usarBusqueda } from '../features/busqueda/almacen.ts'
-import { usarCatalogo, umbralVigente, marcasDelCatalogo } from '../features/catalogo/almacen.ts'
+import {
+  usarCatalogo,
+  umbralVigente,
+  marcasDelCatalogo,
+} from '../features/catalogo/almacen.ts'
 import { PanelDictado } from '../features/captura/audio.tsx'
 import {
   extraerMencionDeCliente,
@@ -20,8 +23,14 @@ import {
   BarraPasoTextoExtraido,
   ListaPasoTextoExtraido,
 } from '../features/captura/revision-imagen.tsx'
-import { reconocerCrearVecino, type PropuestaCrearVecino } from '../features/comandos/crear-vecino.ts'
-import { despacharComando, mensajeDeProhibido } from '../features/comandos/ejecutar.ts'
+import {
+  reconocerCrearVecino,
+  type PropuestaCrearVecino,
+} from '../features/comandos/crear-vecino.ts'
+import {
+  despacharComando,
+  mensajeDeProhibido,
+} from '../features/comandos/ejecutar.ts'
 import { InstruccionIncompleta } from '../features/comandos/incompletas.tsx'
 import { comandoDesdeDictado } from '../features/comandos/por-voz.ts'
 import {
@@ -52,7 +61,10 @@ import {
   usarDegradacion,
 } from '../features/degradacion/estado.ts'
 import { usarEmision } from '../features/emision/flujo.ts'
+import { calcularMotivoDeBloqueo } from '../features/emision/bloqueo.ts'
 import { EstadoDeEmision } from '../features/emision/estados.tsx'
+import { resolverYPrecargarPdf } from '../features/emision/precarga.ts'
+import { etiquetaDeAsociacionGuia } from '../features/guia/etiqueta.ts'
 import {
   compartirComprobante,
   reimprimir,
@@ -84,19 +96,21 @@ import { CLAVES_DE_CONSULTA } from '../infra/consultas/cliente.ts'
 import { DOCUMENTO_CLIENTE_POR_NOMBRE } from '../features/clientes/documento-marcador.ts'
 import {
   CabeceraDocumento,
+  modoEncadenaGuia,
+  tipoFiscalDeModo,
   type ModoDeCabecera,
   type SeriesEnCabecera,
 } from '../ui/componentes/CabeceraDocumento.tsx'
-import {
-  Entrada,
-  type MangoDeEntrada,
-} from '../ui/componentes/Entrada.tsx'
+import { Entrada, type MangoDeEntrada } from '../ui/componentes/Entrada.tsx'
 import {
   CabecerasDeColumna,
   LineaPedido,
 } from '../ui/componentes/LineaPedido.tsx'
 import { Modal } from '../ui/componentes/Modal.tsx'
-import { PestanasMostrador } from '../ui/componentes/PestanasMostrador.tsx'
+import {
+  CuerpoPestana,
+  PestanasMostrador,
+} from '../ui/componentes/PestanasMostrador.tsx'
 import type { PestanaMostrador } from '../ui/componentes/PestanasMostrador.tsx'
 import { Boton } from '../ui/componentes/primitivas.tsx'
 import { PieTotal } from '../ui/componentes/PieTotal.tsx'
@@ -104,6 +118,11 @@ import type { EstadoDeEmision as FaseDelBoton } from '../ui/componentes/PieTotal
 import { RevisionCaptura } from '../ui/componentes/RevisionCaptura.tsx'
 import type { Cotizacion } from '../features/cotizaciones/tipos.ts'
 import { listarCotizacionesPendientes } from '../features/cotizaciones/leer.ts'
+import { intentarLoteAprendizaje } from '../features/aprendizaje/empujar-lote.ts'
+import {
+  paresDesdeCaptura,
+  registrarParesEnSegundoPlano,
+} from '../features/aprendizaje/registrar.ts'
 
 /**
  * Mostrador Soft-Pill (FR-005b).
@@ -134,7 +153,9 @@ function Mostrador() {
   const [seriesCabecera, setSeriesCabecera] = useState<SeriesEnCabecera>({
     boleta: null,
     factura: null,
+    guia: null,
   })
+  const [encadenarGuia, setEncadenarGuia] = useState(false)
   const [altaClienteAbierta, setAltaClienteAbierta] = useState(false)
   const [consultaClienteInicial, setConsultaClienteInicial] = useState<
     string | null
@@ -143,7 +164,7 @@ function Mostrador() {
     useState<ArranqueManualDeCliente | null>(null)
   const [altaRevisionInicial, setAltaRevisionInicial] =
     useState<ArranqueRevisionDeCliente | null>(null)
-  const [modoCotizacion, setModoCotizacion] = useState(false)
+  const modoCotizacion = usarPedido((s) => s.modoCotizacion)
   const [consultandoPadron, setConsultandoPadron] = useState(false)
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false)
   const [avisoCotizacion, setAvisoCotizacion] = useState<string | null>(null)
@@ -164,6 +185,11 @@ function Mostrador() {
     readonly prefijo: string
   } | null>(null)
   const [papeletaGuiaAbierta, setPapeletaGuiaAbierta] = useState(false)
+  const [lineaSenalada, setLineaSenalada] = useState<{
+    readonly codigo: string
+    readonly tipo: 'existente' | 'nueva'
+    readonly vez: number
+  } | null>(null)
   const [borradorGuia, setBorradorGuia] = useState<BorradorDeGuia | null>(null)
   const [altaTransportistaRuc, setAltaTransportistaRuc] = useState<
     string | null
@@ -178,6 +204,7 @@ function Mostrador() {
   const resolverEmision = usarEmision((estado) => estado.resolver)
   const falloDeRed = usarEmision((estado) => estado.falloDeRed)
   const cerrarEmision = usarEmision((estado) => estado.cerrar)
+  const promoverEncadenado = usarEmision((estado) => estado.promoverEncadenado)
   const degradaciones = usarDegradacion((estado) => estado.activas)
   const sinRed = degradaciones.some((cada) => cada.causa === 'red')
   const faseCaptura = usarCaptura((s) => s.fase)
@@ -193,9 +220,14 @@ function Mostrador() {
       .activas.some((cada) => cada.causa === 'red')
     void usarCatalogo.getState().cargar({
       forzar:
-        degradadaPorRed ||
-        usarCatalogo.getState().posiblementeDesactualizado,
+        degradadaPorRed || usarCatalogo.getState().posiblementeDesactualizado,
     })
+    intentarLoteAprendizaje()
+    function alFoco(): void {
+      intentarLoteAprendizaje()
+    }
+    window.addEventListener('focus', alFoco)
+    return () => window.removeEventListener('focus', alFoco)
   }, [sesion.uid])
 
   useEffect(() => {
@@ -210,14 +242,15 @@ function Mostrador() {
 
   useEffect(() => {
     if (sesion.uid === null) {
-      setSeriesCabecera({ boleta: null, factura: null })
+      setSeriesCabecera({ boleta: null, factura: null, guia: null })
       return
     }
     const estado = { vivo: true }
     void (async () => {
-      const [boleta, factura] = await Promise.all([
+      const [boleta, factura, guia] = await Promise.all([
         leerMiSerieFn({ data: { tipoDocumento: 'boleta' } }),
         leerMiSerieFn({ data: { tipoDocumento: 'factura' } }),
+        leerMiSerieFn({ data: { tipoDocumento: 'guia' } }),
       ])
       if (!estado.vivo) return
       const serieDe = (
@@ -229,6 +262,7 @@ function Mostrador() {
       setSeriesCabecera({
         boleta: serieDe(boleta),
         factura: serieDe(factura),
+        guia: serieDe(guia),
       })
     })()
     return () => {
@@ -241,8 +275,12 @@ function Mostrador() {
   const umbral = umbralVigente(catalogo)
   const resultado = catalogo.buscar(termino)
 
-  const proveedorCaido = degradaciones.some((cada) => cada.causa === 'proveedor')
-  const asistenciaCaida = degradaciones.some((cada) => cada.causa === 'asistencia')
+  const proveedorCaido = degradaciones.some(
+    (cada) => cada.causa === 'proveedor',
+  )
+  const asistenciaCaida = degradaciones.some(
+    (cada) => cada.causa === 'asistencia',
+  )
   const asistenciaDisponible = !degradaciones.some(
     (cada) => cada.causa === 'asistencia' || cada.causa === 'red',
   )
@@ -272,6 +310,8 @@ function Mostrador() {
       total,
       umbral,
       motivoDeSesion: puedeEmitir(sesion) ? null : sesion.motivoDeBloqueo,
+      encadenarGuia,
+      serieGuia: seriesCabecera.guia,
     })
 
   async function alAprobarCaptura(
@@ -350,7 +390,8 @@ function Mostrador() {
           descripcion: linea.descripcion,
           unidad: linea.unidad,
           precio:
-            usarCatalogo.getState().productoPorCodigo(linea.codigo)?.precio ?? 0,
+            usarCatalogo.getState().productoPorCodigo(linea.codigo)?.precio ??
+            0,
           activo: true,
         }
         const resultado = await agregarProductoAVecino({
@@ -363,7 +404,9 @@ function Mostrador() {
           setAvisoVecino(resultado.mensaje ?? 'No se pudo agregar el producto.')
           return false
         }
-        const indice = actuales.findIndex((cada) => cada.codigo === linea.codigo)
+        const indice = actuales.findIndex(
+          (cada) => cada.codigo === linea.codigo,
+        )
         if (indice >= 0) {
           const previa = actuales[indice]!
           actuales = actuales.map((cada, i) =>
@@ -396,6 +439,11 @@ function Mostrador() {
     }
 
     const aplicadas = aplicarLineasAprobadasAlPedido(lineas, capturaId)
+    registrarParesEnSegundoPlano({
+      medio: usarCaptura.getState().tipo ?? 'captura',
+      pares: paresDesdeCaptura(lineas),
+      clienteId: usarPedido.getState().cliente?.numeroDocumento,
+    })
     const propuesto = usarCaptura.getState().clientePropuesto
     if (propuesto !== null && usarPedido.getState().cliente === null) {
       usarPedido.getState().fijarCliente(propuesto)
@@ -420,7 +468,10 @@ function Mostrador() {
 
     const mencion = extraerMencionDeCliente(textosOriginales)
     if (mencion === null || usarPedido.getState().cliente !== null) return true
-    const local = resolverClienteLocal(mencion, usarCatalogo.getState().clientes)
+    const local = resolverClienteLocal(
+      mencion,
+      usarCatalogo.getState().clientes,
+    )
     if (local) {
       usarPedido.getState().fijarCliente({
         tipoDocumento: local.numeroDocumento.length === 11 ? 'RUC' : 'DNI',
@@ -548,6 +599,11 @@ function Mostrador() {
       cantidad: 1,
       precio: producto.precio,
     })
+    setLineaSenalada((prev) => ({
+      codigo: producto.codigo,
+      tipo: agregada ? 'nueva' : 'existente',
+      vez: (prev?.vez ?? 0) + 1,
+    }))
     if (!agregada) {
       usarNotificaciones.getState().mostrar({
         tono: 'info',
@@ -706,7 +762,7 @@ function Mostrador() {
       lineas: cotizacion.lineas,
       cliente: cotizacion.cliente,
     })
-    setModoCotizacion(false)
+    pedido.fijarModoCotizacion(false)
     setPestana('pedido')
     setAvisoCotizacion(
       `Cotización de vecino #${cotizacion.numero} abierta. Elige boleta, factura o nota de venta y emite.`,
@@ -738,10 +794,36 @@ function Mostrador() {
           totalDeclarado: total,
         },
       })
-      resolverEmision(respuesta)
+      resolverEmision(respuesta, {
+        conservarPedido: encadenarGuia,
+      })
       if (respuesta.ok && respuesta.comprobante !== undefined) {
-        // vaciar() ya corre en el flujo de emisión; soltamos el modo cotización.
         limpiarContextoDeCotizacionEnCabecera()
+        void resolverYPrecargarPdf(
+          respuesta.comprobante.comprobanteId,
+          respuesta.comprobante.archivos.pdf,
+        )
+        if (encadenarGuia) {
+          if (seriesCabecera.guia === null) {
+            promoverEncadenado()
+            setEncadenarGuia(false)
+            usarNotificaciones.getState().mostrar({
+              tono: 'info',
+              mensaje:
+                'El comprobante se emitió. Falta serie de guía para continuar.',
+            })
+            return
+          }
+          pedido.fijarComprobanteOrigen({
+            id: respuesta.comprobante.comprobanteId,
+            etiqueta: etiquetaDeAsociacionGuia(
+              pedido.tipoDocumento,
+              respuesta.comprobante.serie,
+              respuesta.comprobante.numero,
+            ),
+          })
+          setPapeletaGuiaAbierta(true)
+        }
       }
     } catch {
       falloDeRed()
@@ -749,7 +831,7 @@ function Mostrador() {
   }
 
   function limpiarContextoDeCotizacionEnCabecera(): void {
-    setModoCotizacion(false)
+    pedido.fijarModoCotizacion(false)
   }
 
   async function lanzarGuardadoDeCotizacion(): Promise<void> {
@@ -769,6 +851,15 @@ function Mostrador() {
         )
         return
       }
+      registrarParesEnSegundoPlano({
+        medio: 'cotizar',
+        pares: pedido.lineas.map((linea) => ({
+          textoOriginal: linea.descripcion,
+          codigoAprobado: linea.codigo,
+          descripcionAprobada: linea.descripcion,
+        })),
+        clienteId: pedido.cliente?.numeroDocumento,
+      })
       // Cierra el borrador en Pedido: la cotización vive en su tab.
       // Sin aviso persistente en Pedido (el listado de Cotizaciones basta).
       usarPedido.getState().vaciar()
@@ -785,15 +876,23 @@ function Mostrador() {
 
   const modoCabecera: ModoDeCabecera = modoCotizacion
     ? 'cotizacion'
-    : pedido.tipoDocumento
+    : encadenarGuia && pedido.tipoDocumento === 'boleta'
+      ? 'boleta_guia'
+      : encadenarGuia && pedido.tipoDocumento === 'factura'
+        ? 'factura_guia'
+        : pedido.tipoDocumento
 
   function alCambiarModoCabecera(modo: ModoDeCabecera): void {
     if (modo === 'cotizacion') {
-      setModoCotizacion(true)
+      pedido.fijarModoCotizacion(true)
+      setEncadenarGuia(false)
       return
     }
-    setModoCotizacion(false)
-    pedido.fijarTipoDocumento(modo)
+    pedido.fijarModoCotizacion(false)
+    const fiscal = tipoFiscalDeModo(modo)
+    if (fiscal === 'cotizacion') return
+    pedido.fijarTipoDocumento(fiscal)
+    setEncadenarGuia(modoEncadenaGuia(modo))
   }
 
   function abrirAltaRevisionTrasConsulta(
@@ -832,12 +931,14 @@ function Mostrador() {
         // Registrado: fijar al pedido de inmediato (sin panel de confirmación).
         pedido.fijarCliente({
           tipoDocumento:
-            existente.tipoDocumento === 'RUC' || existente.tipoDocumento === 'DNI'
+            existente.tipoDocumento === 'RUC' ||
+            existente.tipoDocumento === 'DNI'
               ? existente.tipoDocumento
               : datos.tipoDocumento,
           numeroDocumento: existente.numeroDocumento,
           denominacion: existente.denominacion,
-          ...(existente.direccion !== undefined && existente.direccion.trim() !== ''
+          ...(existente.direccion !== undefined &&
+          existente.direccion.trim() !== ''
             ? { direccion: existente.direccion }
             : {}),
         })
@@ -887,16 +988,16 @@ function Mostrador() {
   const faseDelBoton: FaseDelBoton =
     fase.nombre === 'en_vuelo'
       ? 'emitiendo'
-      : fase.nombre === 'emitida'
+      : fase.nombre === 'emitida' || fase.nombre === 'encadenando_guia'
         ? 'emitido'
         : motivoDeBloqueo !== null
           ? 'inhabilitado'
           : 'listo'
 
   return (
-    <div className="flex min-h-full flex-col">
-      {/* Buscador + tabs: un solo bloque sticky, sin borde/hueco entre ambos. */}
-      <div className="sticky top-0 z-20 w-full border-b border-borde bg-papel">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden">
+      {/* Buscador + tabs: cabecera fija; el scroll vive en la lista del tab. */}
+      <div className="z-20 w-full shrink-0 border-b border-borde bg-papel">
         <Entrada
           ref={entradaRef}
           termino={termino}
@@ -924,6 +1025,18 @@ function Mostrador() {
         />
         <PestanasMostrador
           activa={pestana}
+          slotPedido={pedido.slotActivo}
+          segundoAbierto={pedido.segundoAbierto}
+          onSlotPedido={() => {
+            const activo = usarPedido.getState().slotActivo
+            usarCaptura.getState().guardarEnSlot(activo)
+            if (usarPedido.getState().segundoAbierto) {
+              usarPedido.getState().conmutarSlot()
+            } else {
+              usarPedido.getState().abrirSegundo()
+            }
+            usarCaptura.getState().cargarDeSlot(usarPedido.getState().slotActivo)
+          }}
           onCambiar={(siguiente) => {
             setAvisoCotizacion(null)
             setPestana(siguiente)
@@ -984,22 +1097,30 @@ function Mostrador() {
         />
       )}
 
-      {faseCaptura === 'revision_texto' && <ListaPasoTextoExtraido />}
+      {faseCaptura === 'revision_texto' || faseCaptura === 'revision' ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+          {faseCaptura === 'revision_texto' ? (
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+              <ListaPasoTextoExtraido />
+            </div>
+          ) : (
+            <RevisionCaptura
+              onAprobada={(lineas, textos, capturaId) =>
+                alAprobarCaptura(lineas, textos, capturaId)
+              }
+              onDescartar={() => {
+                setPanelDictado(false)
+                setPanelFoto(false)
+              }}
+            />
+          )}
+        </div>
+      ) : null}
 
-      {faseCaptura === 'revision' && (
-        <RevisionCaptura
-          onAprobada={(lineas, textos, capturaId) =>
-            alAprobarCaptura(lineas, textos, capturaId)
-          }
-          onDescartar={() => {
-            setPanelDictado(false)
-            setPanelFoto(false)
-          }}
-        />
-      )}
-
-      {pestana === 'pedido' && (
-        <div className="flex min-h-0 flex-1 flex-col">
+      {pestana === 'pedido' &&
+        faseCaptura !== 'revision' &&
+        faseCaptura !== 'revision_texto' && (
+        <CuerpoPestana id="pedido" modo="interno">
           <CabeceraDocumento
             modo={modoCabecera}
             onCambiarModo={alCambiarModoCabecera}
@@ -1023,7 +1144,7 @@ function Mostrador() {
             umbral={umbral}
           />
 
-          <div className="flex-1 overflow-y-auto pb-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
             <CabecerasDeColumna numeroDeLineas={pedido.lineas.length} />
             <ul>
               {lineas.map((linea, indice) => (
@@ -1042,6 +1163,23 @@ function Mostrador() {
                   }
                   onQuitar={() => pedido.quitarLinea(indice)}
                   onVolverAlBuscador={() => entradaRef.current?.enfocar()}
+                  resaltar={
+                    lineaSenalada?.tipo === 'existente' &&
+                    lineaSenalada.codigo === linea.codigo
+                  }
+                  onFinResalte={() => {
+                    setLineaSenalada((prev) =>
+                      prev?.tipo === 'existente' &&
+                      prev.codigo === linea.codigo
+                        ? null
+                        : prev,
+                    )
+                  }}
+                  enfocarCantidad={
+                    lineaSenalada?.tipo === 'nueva' &&
+                    lineaSenalada.codigo === linea.codigo
+                  }
+                  senal={lineaSenalada?.vez ?? 0}
                 />
               ))}
             </ul>
@@ -1077,38 +1215,49 @@ function Mostrador() {
 
           <EstadoDeEmision
             fase={fase}
-            onCerrar={cerrarEmision}
+            onCerrar={() => {
+              cerrarEmision()
+              setEncadenarGuia(false)
+            }}
             onReintentar={() => void lanzarEmision()}
             onImprimir={(id) => void reimprimir(id)}
             onCompartir={(id) => void compartirComprobante(id)}
           />
-        </div>
+        </CuerpoPestana>
       )}
 
       {pestana === 'cotizaciones' && (
-        <PanelDeCotizaciones
-          onRecuperada={() => {
-            setModoCotizacion(true)
-            setPestana('pedido')
-          }}
-        />
+        <CuerpoPestana id="cotizaciones" modo="pagina">
+          <PanelDeCotizaciones
+            onRecuperada={() => {
+              pedido.fijarModoCotizacion(true)
+              setPestana('pedido')
+            }}
+          />
+        </CuerpoPestana>
       )}
 
       {pestana === 'vecinos' && (
-        <PanelDeVecinos
-          activaId={vecinoActivoId}
-          onCambiarActiva={setVecinoActivoId}
-          onConvertir={convertirVecinoEnPedido}
-          aviso={avisoVecino}
-          onVolverAlBuscador={() => entradaRef.current?.enfocar()}
-          creandoVecino={creandoVecino}
-          onCrearDesdeModal={(propuesta) => {
-            void confirmarCrearVecino(propuesta)
-          }}
-        />
+        <CuerpoPestana id="vecinos" modo="interno">
+          <PanelDeVecinos
+            activaId={vecinoActivoId}
+            onCambiarActiva={setVecinoActivoId}
+            onConvertir={convertirVecinoEnPedido}
+            aviso={avisoVecino}
+            onVolverAlBuscador={() => entradaRef.current?.enfocar()}
+            creandoVecino={creandoVecino}
+            onCrearDesdeModal={(propuesta) => {
+              void confirmarCrearVecino(propuesta)
+            }}
+          />
+        </CuerpoPestana>
       )}
 
-      {pestana === 'lista' && <PanelDeListaRequerimiento />}
+      {pestana === 'lista' && (
+        <CuerpoPestana id="lista" modo="interno">
+          <PanelDeListaRequerimiento />
+        </CuerpoPestana>
+      )}
 
       <ResultadosDeComando
         resultado={resultadoComando}
@@ -1128,15 +1277,32 @@ function Mostrador() {
       <PapeletaDeGuia
         abierta={papeletaGuiaAbierta}
         onCerrar={() => {
+          const eraEncadenada = fase.nombre === 'encadenando_guia'
           setPapeletaGuiaAbierta(false)
           setBorradorGuia(null)
+          if (eraEncadenada) {
+            promoverEncadenado()
+            setEncadenarGuia(false)
+          }
         }}
         cliente={pedido.cliente}
         lineas={pedido.lineas}
         comprobanteOrigenId={pedido.comprobanteOrigenId}
+        etiquetaOrigen={pedido.comprobanteOrigenEtiqueta}
+        urlPdfOrigen={
+          fase.nombre === 'encadenando_guia'
+            ? fase.comprobante.archivos.pdf
+            : null
+        }
         borradorInicial={borradorGuia}
         onEmitida={(respuesta) => {
+          if (fase.nombre === 'encadenando_guia' && !respuesta.ok) {
+            return
+          }
           resolverEmision(respuesta)
+          if (respuesta.ok) {
+            setEncadenarGuia(false)
+          }
         }}
         onRechazoDefinitivo={(borrador) => {
           setBorradorGuia(borrador)
@@ -1164,7 +1330,11 @@ function Mostrador() {
           setPendienteAltaVecino(null)
         }}
         modoDocumento={
-          pendienteAltaVecino !== null ? 'cotizacion' : modoCabecera
+          pendienteAltaVecino !== null
+            ? 'cotizacion'
+            : tipoFiscalDeModo(modoCabecera) === 'cotizacion'
+              ? 'cotizacion'
+              : tipoFiscalDeModo(modoCabecera)
         }
         indiceDeClientes={catalogo.clientes}
         onClienteElegido={(cliente) => {
@@ -1257,34 +1427,4 @@ function Mostrador() {
       </Modal>
     </div>
   )
-}
-
-function calcularMotivoDeBloqueo(datos: {
-  readonly lineas: number
-  readonly emitible: boolean
-  readonly tipo: 'boleta' | 'factura' | 'nota_venta'
-  readonly cliente: unknown
-  readonly total: number
-  readonly umbral: number
-  readonly motivoDeSesion: string | null
-}): string | null {
-  if (datos.motivoDeSesion !== null) return datos.motivoDeSesion
-
-  if (datos.lineas === 0) return null
-
-  if (!datos.emitible) {
-    return 'Hay una línea con cantidad o precio en cero. Corrígela para poder emitir.'
-  }
-
-  const reglas = REGLAS[datos.tipo]
-  if (datos.cliente === null) {
-    if (reglas.exigeClienteIdentificado) {
-      return 'Una factura necesita el RUC del cliente. Identifícalo para poder emitir.'
-    }
-    if (reglas.sujetoAUmbralDeIdentificacion && datos.total > datos.umbral) {
-      return 'Este importe obliga a identificar al cliente. Ingresa su documento para continuar.'
-    }
-  }
-
-  return null
 }

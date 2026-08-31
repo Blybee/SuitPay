@@ -35,22 +35,57 @@ export interface PedidoPersistido {
    */
   readonly claveIdempotencia: string | null
   readonly comprobanteOrigenId?: string | null
+  readonly comprobanteOrigenEtiqueta?: string | null
+  readonly modoCotizacion?: boolean
   readonly guardadoEn: number
 }
 
 export function leerPedido(): Promise<PedidoPersistido | undefined> {
-  return leer<PedidoPersistido>('pedido', CLAVES.pedidoEnCurso)
+  return leer<PedidoPersistido>('pedido', CLAVES.pedidoSlot1)
 }
 
 export function guardarPedido(
   pedido: Omit<PedidoPersistido, 'guardadoEn'>,
 ): Promise<void> {
-  return guardar<PedidoPersistido>('pedido', CLAVES.pedidoEnCurso, {
+  return guardarPedidoEnSlot(1, pedido)
+}
+
+export async function guardarPedidoEnSlot(
+  slot: 1 | 2,
+  pedido: Omit<PedidoPersistido, 'guardadoEn'>,
+): Promise<void> {
+  const clave = slot === 1 ? CLAVES.pedidoSlot1 : CLAVES.pedidoSlot2
+  return guardar<PedidoPersistido>('pedido', clave, {
     ...pedido,
     guardadoEn: Date.now(),
   })
 }
 
+export function leerPedidoEnSlot(
+  slot: 1 | 2,
+): Promise<PedidoPersistido | undefined> {
+  const clave = slot === 1 ? CLAVES.pedidoSlot1 : CLAVES.pedidoSlot2
+  return leer<PedidoPersistido>('pedido', clave)
+}
+
 export function olvidarPedido(): Promise<void> {
-  return borrar('pedido', CLAVES.pedidoEnCurso)
+  return olvidarPedidoEnSlot(1)
+}
+
+export function olvidarPedidoEnSlot(slot: 1 | 2): Promise<void> {
+  const clave = slot === 1 ? CLAVES.pedidoSlot1 : CLAVES.pedidoSlot2
+  return borrar('pedido', clave)
+}
+
+export interface MetaDeSlots {
+  readonly slotActivo: 1 | 2
+  readonly segundoAbierto: boolean
+}
+
+export function leerMetaDeSlots(): Promise<MetaDeSlots | undefined> {
+  return leer<MetaDeSlots>('pedido', CLAVES.pedidoMeta)
+}
+
+export function guardarMetaDeSlots(meta: MetaDeSlots): Promise<void> {
+  return guardar('pedido', CLAVES.pedidoMeta, meta)
 }

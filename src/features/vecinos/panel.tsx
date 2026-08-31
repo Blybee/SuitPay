@@ -1,7 +1,10 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
 import { Camera, Plus } from 'lucide-react'
-import { calcularTotal, formatearImporte } from '../../domain/totales/calculo.ts'
+import {
+  calcularTotal,
+  formatearImporte,
+} from '../../domain/totales/calculo.ts'
 import { CLAVES_DE_CONSULTA } from '../../infra/consultas/cliente.ts'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
 import {
@@ -47,8 +50,7 @@ export function PanelDeVecinos({
   })
 
   const lista = vecinos.data ?? []
-  const activa =
-    lista.find((cada) => cada.id === activaId) ?? lista[0] ?? null
+  const activa = lista.find((cada) => cada.id === activaId) ?? lista[0] ?? null
   const [modalAbierto, setModalAbierto] = useState(false)
   const [capturandoId, setCapturandoId] = useState<string | null>(null)
 
@@ -137,50 +139,50 @@ export function PanelDeVecinos({
         className="flex flex-wrap gap-2 border-b border-borde px-4 pt-3 pb-3"
       >
         {lista.map((cada) => {
-            const seleccionada = activa?.id === cada.id
-            return (
-              <div
-                key={cada.id}
+          const seleccionada = activa?.id === cada.id
+          return (
+            <div
+              key={cada.id}
+              className={[
+                'flex items-center gap-1 rounded-full border py-1 pl-2 pr-1',
+                seleccionada
+                  ? 'border-tinta bg-tinta text-papel'
+                  : 'border-borde bg-papel text-tinta',
+              ].join(' ')}
+            >
+              <button
+                type="button"
+                role="tab"
+                aria-selected={seleccionada}
                 className={[
-                  'flex items-center gap-1 rounded-full border py-1 pl-2 pr-1',
-                  seleccionada
-                    ? 'border-tinta bg-tinta text-papel'
-                    : 'border-borde bg-papel text-tinta',
+                  'rounded-full px-3 py-1 text-cuerpo font-bold',
+                  'focus-visible:outline-none focus-visible:border-tinta',
+                  seleccionada ? 'text-papel' : 'text-tinta hover:bg-mesa',
                 ].join(' ')}
+                onClick={() => onCambiarActiva(cada.id)}
               >
-                <button
-                  type="button"
-                  role="tab"
-                  aria-selected={seleccionada}
-                  className={[
-                    'rounded-full px-3 py-1 text-cuerpo font-bold',
-                    'focus-visible:outline-none focus-visible:border-tinta',
-                    seleccionada ? 'text-papel' : 'text-tinta hover:bg-mesa',
-                  ].join(' ')}
-                  onClick={() => onCambiarActiva(cada.id)}
-                >
-                  {cada.aliasVecino ?? `H${cada.numero}`}
-                </button>
-                <button
-                  type="button"
-                  aria-label={`Capturar lista de ${cada.aliasVecino ?? cada.numero}`}
-                  disabled={capturandoId !== null}
-                  className={[
-                    'flex size-9 items-center justify-center rounded-full',
-                    seleccionada
-                      ? 'text-papel hover:bg-papel/15'
-                      : 'text-tinta hover:bg-mesa',
-                  ].join(' ')}
-                  onClick={(evento) => {
-                    evento.stopPropagation()
-                    void capturarVecino(cada)
-                  }}
-                >
-                  <Camera className="size-4" aria-hidden />
-                </button>
-              </div>
-            )
-          })}
+                {cada.aliasVecino ?? `H${cada.numero}`}
+              </button>
+              <button
+                type="button"
+                aria-label={`Capturar lista de ${cada.aliasVecino ?? cada.numero}`}
+                disabled={capturandoId !== null}
+                className={[
+                  'flex size-9 items-center justify-center rounded-full',
+                  seleccionada
+                    ? 'text-papel hover:bg-papel/15'
+                    : 'text-tinta hover:bg-mesa',
+                ].join(' ')}
+                onClick={(evento) => {
+                  evento.stopPropagation()
+                  void capturarVecino(cada)
+                }}
+              >
+                <Camera className="size-4" aria-hidden />
+              </button>
+            </div>
+          )
+        })}
         <button
           type="button"
           aria-label="Agregar vecino"
@@ -226,7 +228,7 @@ export function PanelDeVecinos({
             </p>
           </div>
 
-          <div className="flex-1 overflow-y-auto pb-2">
+          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
             <CabecerasDeColumna numeroDeLineas={activa.lineas.length} />
             <ul>
               {activa.lineas.map((linea, indice) => (

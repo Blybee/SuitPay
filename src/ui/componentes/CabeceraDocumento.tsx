@@ -6,10 +6,7 @@ import {
   UserPlus,
   UserRoundPen,
 } from 'lucide-react'
-import {
-  REGLAS,
-  TIPOS_ELEGIBLES,
-} from '../../domain/documentos/tipos.ts'
+import { REGLAS } from '../../domain/documentos/tipos.ts'
 import type { TipoElegible } from '../../domain/documentos/tipos.ts'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type { Centimos } from '../../domain/totales/calculo.ts'
@@ -27,13 +24,31 @@ import { Selector } from './Selector.tsx'
  * campo). En modo Nombre, «Usar» aplica la denominación.
  */
 
-export type ModoDeCabecera = TipoElegible | 'cotizacion'
+export type ModoDeCabecera =
+  | TipoElegible
+  | 'cotizacion'
+  | 'boleta_guia'
+  | 'factura_guia'
 
 export type ModoDeCampoCliente = ModoCampoCliente
 
 export interface SeriesEnCabecera {
   readonly boleta: string | null
   readonly factura: string | null
+  readonly guia: string | null
+}
+
+/** Los modos compuestos no son tipos fiscales: emiten boleta o factura. */
+export function tipoFiscalDeModo(
+  modo: ModoDeCabecera,
+): TipoElegible | 'cotizacion' {
+  if (modo === 'boleta_guia') return 'boleta'
+  if (modo === 'factura_guia') return 'factura'
+  return modo
+}
+
+export function modoEncadenaGuia(modo: ModoDeCabecera): boolean {
+  return modo === 'boleta_guia' || modo === 'factura_guia'
 }
 
 const ETIQUETA_CAMPO: Record<ModoDeCampoCliente, string> = {
@@ -43,7 +58,10 @@ const ETIQUETA_CAMPO: Record<ModoDeCampoCliente, string> = {
 }
 
 function modoCampoPorDefecto(modo: ModoDeCabecera): ModoDeCampoCliente | null {
-  const permitidos = modosCampoClientePermitidos(modo)
+  const fiscal = tipoFiscalDeModo(modo)
+  const permitidos = modosCampoClientePermitidos(
+    fiscal === 'cotizacion' ? 'cotizacion' : fiscal,
+  )
   return permitidos[0] ?? null
 }
 
@@ -78,8 +96,14 @@ function etiquetaDeOpcionTipo(
   if (modo === 'boleta') {
     return `Boleta · ${series.boleta ?? 'sin asignar'}`
   }
+  if (modo === 'boleta_guia') {
+    return `Bol + Guía R · ${series.boleta ?? 'sin asignar'}`
+  }
   if (modo === 'factura') {
     return `Factura · ${series.factura ?? 'sin asignar'}`
+  }
+  if (modo === 'factura_guia') {
+    return `Fact + Guía R · ${series.factura ?? 'sin asignar'}`
   }
   if (modo === 'nota_venta') return REGLAS.nota_venta.nombre
   return 'Cotización'
@@ -119,9 +143,12 @@ export function CabeceraDocumento({
   total,
   umbral,
 }: PropsDeCabecera) {
-  const esCotizacion = modo === 'cotizacion'
-  const reglas = esCotizacion ? null : REGLAS[modo]
-  const permitidos = modosCampoClientePermitidos(modo)
+  const tipoFiscal = tipoFiscalDeModo(modo)
+  const esCotizacion = tipoFiscal === 'cotizacion'
+  const reglas = esCotizacion ? null : REGLAS[tipoFiscal]
+  const permitidos = modosCampoClientePermitidos(
+    esCotizacion ? 'cotizacion' : tipoFiscal,
+  )
   const [modoCampo, setModoCampo] = useState<ModoDeCampoCliente | null>(
     modoCampoPorDefecto(modo),
   )
@@ -136,12 +163,28 @@ export function CabeceraDocumento({
   }, [modo, cliente])
 
   const opcionesTipo: readonly { valor: ModoDeCabecera; etiqueta: string }[] = [
-    ...TIPOS_ELEGIBLES.map((cada) => ({
-      valor: cada as ModoDeCabecera,
-      etiqueta: etiquetaDeOpcionTipo(cada, series),
-    })),
     {
-      valor: 'cotizacion' as const,
+      valor: 'boleta',
+      etiqueta: etiquetaDeOpcionTipo('boleta', series),
+    },
+    {
+      valor: 'boleta_guia',
+      etiqueta: etiquetaDeOpcionTipo('boleta_guia', series),
+    },
+    {
+      valor: 'factura',
+      etiqueta: etiquetaDeOpcionTipo('factura', series),
+    },
+    {
+      valor: 'factura_guia',
+      etiqueta: etiquetaDeOpcionTipo('factura_guia', series),
+    },
+    {
+      valor: 'nota_venta',
+      etiqueta: etiquetaDeOpcionTipo('nota_venta', series),
+    },
+    {
+      valor: 'cotizacion',
       etiqueta: etiquetaDeOpcionTipo('cotizacion', series),
     },
   ]
@@ -223,7 +266,7 @@ export function CabeceraDocumento({
           etiqueta="Tipo de documento"
           ocultarEtiqueta
           valor={modo}
-          onCambiar={(valor) => onCambiarModo(valor as ModoDeCabecera)}
+          onCambiar={onCambiarModo}
           opciones={opcionesTipo}
         />
 
@@ -382,7 +425,7 @@ export function CabeceraDocumento({
 
       {exigeCliente && (
         <p className="mt-1.5 text-cuerpo font-bold text-aviso">
-          {reglas?.exigeClienteIdentificado
+          {reglas.exigeClienteIdentificado
             ? 'Una factura necesita el RUC del cliente.'
             : `Este importe (${formatearImporte(total)}) supera el umbral de ${formatearImporte(umbral)} y obliga a identificar al cliente.`}
         </p>

@@ -48,6 +48,12 @@ export function construirPayloadDeAsistencia(entrada: {
     codigo: c.codigo,
     descripcion: c.descripcion,
     unidad: c.unidad,
+    ...(c.aliases !== undefined && c.aliases.length > 0
+      ? { aliases: [...c.aliases] }
+      : {}),
+    ...(c.etiquetas !== undefined && c.etiquetas.length > 0
+      ? { etiquetas: [...c.etiquetas] }
+      : {}),
   }))
 
   return {
@@ -69,9 +75,10 @@ export function textoDeCandidatosParaPrompt(
 ): string {
   return JSON.stringify(
     candidatos.map((c) => ({
-      codigo: c.codigo,
-      descripcion: c.descripcion,
-      unidad: c.unidad,
+      id: c.codigo,
+      n: c.descripcion,
+      a: c.aliases ?? [],
+      e: c.etiquetas ?? [],
     })),
   )
 }

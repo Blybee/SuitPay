@@ -19,6 +19,11 @@ export type FaseDeEmision =
       readonly yaExistia: boolean
     }
   | {
+      readonly nombre: 'encadenando_guia'
+      readonly comprobante: RespuestaDeEmitir
+      readonly yaExistia: boolean
+    }
+  | {
       readonly nombre: 'en_verificacion'
       readonly comprobanteId: string | null
       readonly mensaje: string
@@ -50,10 +55,19 @@ export interface RespuestaDelServidor {
   }
 }
 
+export interface OpcionesDeResolver {
+  /** Conserva líneas/cliente para abrir la papeleta de guía (wizard). */
+  readonly conservarPedido?: boolean
+}
+
 interface AlmacenDeEmision {
   readonly fase: FaseDeEmision
   comenzar: () => boolean
-  resolver: (respuesta: RespuestaDelServidor) => void
+  resolver: (
+    respuesta: RespuestaDelServidor,
+    opciones?: OpcionesDeResolver,
+  ) => void
+  promoverEncadenado: () => void
   falloDeRed: () => void
   adoptarConsulta: (comprobante: RespuestaDeEmitir) => void
   marcarReintentableTrasConsulta: (mensaje: string) => void
@@ -69,17 +83,20 @@ export const usarEmision = create<AlmacenDeEmision>((set, get) => ({
     return true
   },
 
-  resolver(respuesta) {
+  resolver(respuesta, opciones) {
     if (respuesta.ok && respuesta.comprobante !== undefined) {
       const comprobante = respuesta.comprobante
+      const conservar = opciones?.conservarPedido === true
       set({
         fase: {
-          nombre: 'emitida',
+          nombre: conservar ? 'encadenando_guia' : 'emitida',
           comprobante,
           yaExistia: comprobante.yaExistia,
         },
       })
-      usarPedido.getState().vaciar()
+      if (!conservar) {
+        usarPedido.getState().vaciar()
+      }
       usarDegradacion.getState().resolver('proveedor')
       return
     }
@@ -165,6 +182,19 @@ export const usarEmision = create<AlmacenDeEmision>((set, get) => ({
       },
     })
     usarDegradacion.getState().declarar('red')
+  },
+
+  promoverEncadenado() {
+    const fase = get().fase
+    if (fase.nombre !== 'encadenando_guia') return
+    set({
+      fase: {
+        nombre: 'emitida',
+        comprobante: fase.comprobante,
+        yaExistia: fase.yaExistia,
+      },
+    })
+    usarPedido.getState().vaciar()
   },
 
   adoptarConsulta(comprobante) {

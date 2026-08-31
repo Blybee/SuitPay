@@ -10,7 +10,6 @@ import {
   MENSAJE_LOTE_DEMASIADO_GRANDE,
 } from './errores-inesperados.ts'
 import { audiosVisibles, usarHistorialDeAudios } from './historial.ts'
-import { construirLoteDeCandidatos } from './lote.ts'
 import { subirMedioDeCaptura } from './almacenamiento.ts'
 import { usarCaptura } from './estado.ts'
 import type { ContextoDeAudio, RegistroDeAudio } from '../../infra/local/almacenes.ts'
@@ -30,7 +29,7 @@ function formatDuration(seconds: number): string {
  * Permite abandonar la espera y seguir escribiendo.
  */
 export function PanelDictado({
-  termino,
+  termino: _termino,
   abierto,
   onCerrar,
   contexto,
@@ -136,18 +135,10 @@ export function PanelDictado({
       }
 
       captura.marcarProcesando()
-      const candidatos = construirLoteDeCandidatos(indice, termino)
-      if (candidatos.length === 0) {
-        captura.marcarError('No hay productos en el catálogo para emparejar.')
-        URL.revokeObjectURL(objectUrl)
-        return
-      }
-
       const respuesta = await interpretarCapturaFn({
         data: {
           tipo: 'audio',
           medioUrl: storagePath,
-          candidatos,
         },
       })
 

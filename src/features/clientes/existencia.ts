@@ -15,7 +15,9 @@ export type ClienteExistente = Pick<
   | 'direccion'
   | 'ubigeo'
   | 'condicion'
->
+> & {
+  readonly instruccionesCotizacion?: readonly string[]
+}
 
 export async function leerClientePorDocumento(
   numeroDocumento: string,
@@ -35,5 +37,10 @@ export async function leerClientePorDocumento(
     ubigeo: typeof datos['ubigeo'] === 'string' ? datos['ubigeo'] : undefined,
     condicion:
       typeof datos['condicion'] === 'string' ? datos['condicion'] : undefined,
+    instruccionesCotizacion: Array.isArray(datos['instruccionesCotizacion'])
+      ? datos['instruccionesCotizacion'].filter(
+          (n): n is string => typeof n === 'string' && n.trim() !== '',
+        )
+      : undefined,
   }
 }

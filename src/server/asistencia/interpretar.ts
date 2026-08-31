@@ -21,7 +21,8 @@ import type {
 export interface PeticionDeInterpretarCaptura {
   readonly tipo: TipoDeCaptura
   readonly medioUrl: string
-  readonly candidatos: readonly CandidatoDeAsistencia[]
+  readonly candidatos?: readonly CandidatoDeAsistencia[]
+  readonly instrucciones?: readonly string[]
   readonly vendedorId: string
 }
 
@@ -42,6 +43,7 @@ export interface DependenciasDeInterpretar {
     readonly vendedorId: string
     readonly creadoEn: string
   }) => Promise<void>
+  readonly leerCatalogo?: () => Promise<CandidatoDeAsistencia[]>
 }
 
 function mapearLinea(
@@ -147,7 +149,15 @@ export async function interpretarCaptura(
   peticion: PeticionDeInterpretarCaptura,
   deps: DependenciasDeInterpretar = {},
 ): Promise<ResultadoDeInterpretacion> {
-  if (peticion.candidatos.length === 0) {
+  let candidatos = [...(peticion.candidatos ?? [])]
+  if (candidatos.length === 0) {
+    const { leerCatalogoCompactoComoCandidatos } = await import(
+      '../aprendizaje/catalogo-compacto.ts'
+    )
+    candidatos = await (deps.leerCatalogo?.() ??
+      leerCatalogoCompactoComoCandidatos())
+  }
+  if (candidatos.length === 0) {
     throw new ErrorDeSuitPay('peticion_invalida', {
       motivo: 'candidatos_vacios',
     })
@@ -165,7 +175,7 @@ export async function interpretarCaptura(
   const payload = construirPayloadDeAsistencia({
     tipo: peticion.tipo,
     medio,
-    candidatos: peticion.candidatos,
+    candidatos,
   })
 
   const usarSimulado =
@@ -183,6 +193,7 @@ export async function interpretarCaptura(
         tipo: payload.tipo,
         medio: payload.medio,
         candidatos: payload.candidatos,
+        instrucciones: peticion.instrucciones ?? [],
         deps: deps.depsModelo,
       })
     }
@@ -198,7 +209,7 @@ export async function interpretarCaptura(
   }
 
   const lineas = respuestaModelo.items.map((item) =>
-    mapearLinea(item, peticion.candidatos),
+    mapearLinea(item, candidatos),
   )
 
   // Ningún renglón del modelo se descarta: si items vacío tras no-ilegible,

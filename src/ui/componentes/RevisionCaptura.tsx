@@ -73,10 +73,10 @@ export function RevisionCaptura({
 
   return (
     <div
-      className="border-b border-borde bg-papel"
+      className="flex min-h-0 flex-1 flex-col border-b border-borde bg-papel"
       data-testid="revision-captura"
     >
-      <div className="flex items-start justify-between gap-3 px-4 py-3">
+      <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-3 bg-papel px-4 py-3">
         <div className="flex min-w-0 flex-1 gap-3">
           {tipo === 'imagen' && <MiniaturaCaptura src={medioObjectUrl} />}
           <div>
@@ -116,6 +116,7 @@ export function RevisionCaptura({
         </div>
       </div>
 
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
       <CabecerasDeColumna />
       <ul>
         {lineas.map((linea, indice) => {
@@ -248,6 +249,7 @@ export function RevisionCaptura({
           )
         })}
       </ul>
+      </div>
     </div>
   )
 }

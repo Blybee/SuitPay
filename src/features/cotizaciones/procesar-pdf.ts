@@ -5,7 +5,7 @@ import { usarDegradacion } from '../degradacion/estado.ts'
 import { usarNotificaciones } from '../notificaciones/almacen.ts'
 import { usarSesion } from '../sesion/almacen.ts'
 import { emparejarItemsPdf } from './emparejar-pdf.ts'
-import { extraerListaPdfFn } from './pdf.funciones.ts'
+import { interpretarRequerimientoFn } from './pdf.funciones.ts'
 import { usarPropuestasPdf } from './propuestas.ts'
 import { resolverEtiquetaClientePdf } from './resolver-cliente-pdf.ts'
 
@@ -19,43 +19,69 @@ export function pdfDentroDelTecho(bytes: number): boolean {
 /**
  * Arranca el job en segundo plano. No abre la revisión.
  */
-export async function procesarPdfDeRequerimiento(
-  archivo: File,
-): Promise<void> {
+export async function procesarRequerimientoDeCotizar(entrada: {
+  readonly archivo?: File | null
+  readonly texto?: string
+  readonly clienteId?: string
+}): Promise<void> {
+  const archivo = entrada.archivo ?? null
+  const texto = entrada.texto?.trim() ?? ''
   const uid = usarSesion.getState().uid
   const indice = usarCatalogo.getState().indice
   if (uid === null || indice === null) {
     usarNotificaciones.getState().mostrar({
       tono: 'error',
-      mensaje: 'No hay sesión o catálogo para leer el PDF.',
+      mensaje: 'No hay sesión o catálogo para cotizar.',
     })
     return
   }
-  if (!pdfDentroDelTecho(archivo.size)) {
+  if (archivo === null && texto === '') {
     usarNotificaciones.getState().mostrar({
       tono: 'error',
-      mensaje: 'El PDF pesa más de 40 MB. Usa un archivo más liviano.',
+      mensaje: 'Suelta un archivo o pega el texto del cliente.',
+    })
+    return
+  }
+  if (archivo !== null && !pdfDentroDelTecho(archivo.size)) {
+    usarNotificaciones.getState().mostrar({
+      tono: 'error',
+      mensaje: 'El archivo pesa más de 40 MB. Usa uno más liviano.',
     })
     return
   }
 
   const id = crypto.randomUUID()
+  const nombre = archivo?.name ?? 'texto'
   usarPropuestasPdf.getState().encolar({
     id,
-    nombreArchivo: archivo.name,
+    nombreArchivo: nombre,
     fase: 'procesando',
   })
 
   try {
-    const { storagePath } = await subirMedioDeCaptura({
-      uid,
-      capturaId: id,
-      blob: archivo,
-      tipo: 'pdf',
-    })
+    let storagePath: string | undefined
+    let tipoMedio: 'pdf' | 'imagen' | undefined
+    if (archivo !== null) {
+      const esPdf =
+        archivo.type === 'application/pdf' ||
+        archivo.name.toLowerCase().endsWith('.pdf')
+      tipoMedio = esPdf ? 'pdf' : 'imagen'
+      const subida = await subirMedioDeCaptura({
+        uid,
+        capturaId: id,
+        blob: archivo,
+        tipo: esPdf ? 'pdf' : 'imagen',
+      })
+      storagePath = subida.storagePath
+    }
 
-    const respuesta = await extraerListaPdfFn({
-      data: { medioUrl: storagePath },
+    const respuesta = await interpretarRequerimientoFn({
+      data: {
+        medioUrl: storagePath,
+        tipoMedio,
+        texto: texto === '' ? undefined : texto,
+        clienteId: entrada.clienteId,
+      },
     })
 
     if (!respuesta.ok || respuesta.resultado === undefined) {
@@ -79,7 +105,11 @@ export async function procesarPdfDeRequerimiento(
     }
 
     usarDegradacion.getState().resolver('asistencia')
-    const lineas = emparejarItemsPdf(indice, respuesta.resultado.items)
+    const lineas = emparejarItemsPdf(
+      indice,
+      respuesta.resultado.items,
+      (codigo) => usarCatalogo.getState().productoPorCodigo(codigo),
+    )
     const detectado = respuesta.resultado.cliente
     let registrado = null
     if (detectado !== null) {
@@ -101,11 +131,11 @@ export async function procesarPdfDeRequerimiento(
       etiquetaCliente: resuelto.etiqueta,
       cliente: resuelto.cliente,
       capturaId: respuesta.resultado.capturaId,
-      medioUrl: storagePath,
+      medioUrl: storagePath ?? '',
     })
     usarNotificaciones.getState().mostrar({
       tono: 'exito',
-      titulo: 'PDF procesado',
+      titulo: 'Lista leída',
       mensaje: `${resuelto.etiqueta} · ${lineas.length} ${lineas.length === 1 ? 'línea' : 'líneas'}. Revisa cuando quieras.`,
     })
   } catch (error) {
@@ -131,4 +161,8 @@ export async function procesarPdfDeRequerimiento(
         : 'No se pudo leer el PDF. Puedes escribir el pedido.',
     })
   }
+}
+
+export async function procesarPdfDeRequerimiento(archivo: File): Promise<void> {
+  return procesarRequerimientoDeCotizar({ archivo })
 }

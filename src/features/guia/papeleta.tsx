@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Printer } from 'lucide-react'
 import { sileo } from 'sileo'
 import type { TrasladoDeGuia } from '../../domain/guia/tipos.ts'
 import { faltantesDelTraslado } from '../../domain/guia/validar.ts'
 import { generarClaveDeIdempotencia } from '../emision/clave.ts'
-import { emitirGuiaFn } from './guia.funciones.ts'
-import { leerIndiceDeTransportistasFn } from './guia.funciones.ts'
+import { emitirGuiaFn, leerIndiceDeTransportistasFn } from './guia.funciones.ts'
 import { debeMostrarToastRegenerar } from './recuperar.ts'
 import type { RespuestaDelServidor } from '../emision/flujo.ts'
 import type { ClienteDelPedido } from '../pedido/almacen.ts'
@@ -12,6 +12,8 @@ import type { LineaDePedido } from '../../domain/totales/calculo.ts'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
 import { Selector } from '../../ui/componentes/Selector.tsx'
+import { imprimirDocumento } from '../emision/impresion.ts'
+import { resolverYPrecargarPdf } from '../emision/precarga.ts'
 
 export interface BorradorDeGuia {
   readonly claveIdempotencia: string
@@ -48,6 +50,8 @@ export function PapeletaDeGuia({
   cliente,
   lineas,
   comprobanteOrigenId,
+  etiquetaOrigen,
+  urlPdfOrigen,
   borradorInicial,
   onEmitida,
   onRechazoDefinitivo,
@@ -57,6 +61,9 @@ export function PapeletaDeGuia({
   readonly cliente: ClienteDelPedido | null
   readonly lineas: readonly LineaDePedido[]
   readonly comprobanteOrigenId: string | null
+  /** Serie-número visible, p. ej. «Asociada a Boleta B001-00000042». */
+  readonly etiquetaOrigen?: string | null
+  readonly urlPdfOrigen?: string | null
   readonly borradorInicial?: BorradorDeGuia | null
   readonly onEmitida: (respuesta: RespuestaDelServidor) => void
   readonly onRechazoDefinitivo: (borrador: BorradorDeGuia) => void
@@ -71,6 +78,8 @@ export function PapeletaDeGuia({
   >([])
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [avisoPdf, setAvisoPdf] = useState<string | null>(null)
+  const [urlPdf, setUrlPdf] = useState<string | null>(urlPdfOrigen ?? null)
 
   useEffect(() => {
     if (!abierta) return
@@ -82,11 +91,18 @@ export function PapeletaDeGuia({
       setTraslado(trasladoVacio(lineas))
     }
     setError(null)
+    setAvisoPdf(null)
     void leerIndiceDeTransportistasFn().then((r) => {
-      if (r.ok) setIndice(r.transportistas)
+      setIndice(r.transportistas)
     })
+    if (comprobanteOrigenId !== null) {
+      void resolverYPrecargarPdf(comprobanteOrigenId, urlPdfOrigen ?? null).then(
+        (url) => {
+          if (url !== null) setUrlPdf(url)
+        },
+      )
+    }
     // Solo al abrir o al recuperar un borrador; no al editar el pedido debajo.
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- lineas se lee al abrir
   }, [abierta, borradorInicial])
 
   const coincidencias = useMemo(() => {
@@ -194,8 +210,37 @@ export function PapeletaDeGuia({
           {cliente
             ? `Destinatario: ${cliente.denominacion}`
             : 'Sin destinatario (traslado interno o identifícalo en el pedido).'}
-          {comprobanteOrigenId ? ' · Asociada al comprobante reutilizado.' : ''}
+          {etiquetaOrigen
+            ? ` · ${etiquetaOrigen}`
+            : comprobanteOrigenId
+              ? ' · Asociada al comprobante reutilizado.'
+              : ''}
         </p>
+        {comprobanteOrigenId !== null ? (
+          <div className="flex flex-wrap items-center gap-2">
+            <Boton
+              onClick={() => {
+                setAvisoPdf(null)
+                const resultado = imprimirDocumento(urlPdf)
+                if (!resultado.ok) {
+                  setAvisoPdf(
+                    resultado.motivo === 'no_se_pudo_abrir'
+                      ? 'No se pudo abrir el PDF. Revisa el bloqueador de ventanas.'
+                      : 'Este comprobante no tiene archivo PDF.',
+                  )
+                }
+              }}
+            >
+              <Printer className="size-5" aria-hidden />
+              Imprimir origen
+            </Boton>
+            {avisoPdf !== null ? (
+              <p className="text-cuerpo font-bold text-aviso" role="status">
+                {avisoPdf}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
           <Selector

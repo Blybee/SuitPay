@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Hash, Package, SlidersHorizontal, Users } from 'lucide-react'
+import { Brain, Hash, Package, SlidersHorizontal, Users } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { sileo } from 'sileo'
 import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
@@ -26,6 +26,7 @@ const ENLACES: readonly {
     | '/administracion/series'
     | '/administracion/usuarios'
     | '/administracion/parametros'
+    | '/administracion/aprendizaje'
   titulo: string
   descripcion: string
   icono: LucideIcon
@@ -54,6 +55,13 @@ const ENLACES: readonly {
     titulo: 'Parámetros',
     descripcion: 'Umbral de identificación e impresión.',
     icono: SlidersHorizontal,
+  },
+  {
+    to: '/administracion/aprendizaje',
+    titulo: 'Aprendizaje',
+    descripcion:
+      'Memoria de alias y etiquetas de asistencia, y bitácora de lotes diarios.',
+    icono: Brain,
   },
 ]
 

@@ -87,4 +87,28 @@ describe('principio IV — payload de asistencia (T116)', () => {
     })
     expect(payloadContieneDatosDeCliente(payload)).toBe(false)
   })
+
+  it('incluye aliases y etiquetas opcionales sin precio', () => {
+    const payload = construirPayloadDeAsistencia({
+      tipo: 'imagen',
+      medio: { mimeType: 'image/jpeg', dataBase64: 'eA==' },
+      candidatos: [
+        {
+          codigo: 'C1',
+          descripcion: 'CODO FG 1/2',
+          unidad: 'NIU',
+          aliases: ['codo media'],
+          etiquetas: ['economico'],
+        },
+      ],
+    })
+    expect(payload.candidatos[0]).toEqual({
+      codigo: 'C1',
+      descripcion: 'CODO FG 1/2',
+      unidad: 'NIU',
+      aliases: ['codo media'],
+      etiquetas: ['economico'],
+    })
+    expect(JSON.stringify(payload.candidatos)).not.toMatch(/precio/)
+  })
 })

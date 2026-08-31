@@ -48,14 +48,34 @@ describe('principio IV — asistencia sin clientes', () => {
     expect(fuente).not.toMatch(/peticion\.cliente/)
   })
 
-  it('extraer-pdf no envía catálogo ni colección clientes', () => {
+  it('extraer-pdf no envía colección clientes ni precios', () => {
     const fuente = readFileSync(
       join(RAIZ, 'src/server/asistencia/extraer-pdf.ts'),
       'utf8',
     )
-    expect(fuente).not.toMatch(/candidatos/)
-    expect(fuente).not.toMatch(/coleccion.*clientes/i)
     expect(fuente).not.toMatch(/COLECCIONES\.clientes/)
+    expect(fuente).not.toMatch(/\bprecio\b/)
     expect(fuente).toMatch(/application\/pdf/)
+    expect(fuente).toMatch(/catalogo-compacto/)
+  })
+
+  it('el catálogo compacto no lleva precio ni ficha de cliente', () => {
+    const fuente = readFileSync(
+      join(RAIZ, 'src/domain/aprendizaje/compacto.ts'),
+      'utf8',
+    )
+    expect(fuente).not.toMatch(/readonly precio/)
+    expect(fuente).not.toMatch(/razonSocial/)
+    expect(fuente).not.toMatch(/COLECCIONES\.clientes/)
+  })
+
+  it('el requerimiento anonimiza notas y no manda razón social al modelo', () => {
+    const fuente = readFileSync(
+      join(RAIZ, 'src/server/asistencia/requerimiento.ts'),
+      'utf8',
+    )
+    expect(fuente).toMatch(/anonimizarNotas/)
+    expect(fuente).not.toMatch(/razonSocial/)
+    expect(fuente).not.toMatch(/denominacion/)
   })
 })

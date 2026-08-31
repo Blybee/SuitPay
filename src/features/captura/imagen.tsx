@@ -8,7 +8,6 @@ import {
   esErrorDeLoteDemasiadoGrande,
   MENSAJE_LOTE_DEMASIADO_GRANDE,
 } from './errores-inesperados.ts'
-import { construirLoteDeCandidatos } from './lote.ts'
 import { subirMedioDeCaptura } from './almacenamiento.ts'
 import { usarCaptura } from './estado.ts'
 
@@ -43,7 +42,7 @@ async function redimensionarSiHaceFalta(file: Blob): Promise<Blob> {
  * Captura / selección de fotografía + subida + interpretación (T131).
  */
 export function PanelFotografia({
-  termino,
+  termino: _termino,
   abierto,
   onCerrar,
 }: {
@@ -81,18 +80,10 @@ export function PanelFotografia({
       })
 
       captura.marcarProcesando()
-      const candidatos = construirLoteDeCandidatos(indice, termino)
-      if (candidatos.length === 0) {
-        captura.marcarError('No hay productos en el catálogo para emparejar.')
-        URL.revokeObjectURL(objectUrl)
-        return
-      }
-
       const respuesta = await interpretarCapturaFn({
         data: {
           tipo: 'imagen',
           medioUrl: storagePath,
-          candidatos,
         },
       })
 

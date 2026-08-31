@@ -39,4 +39,12 @@ describe('esquema interpretarCaptura (audio e imagen)', () => {
     })
     expect(parsed.success).toBe(false)
   })
+
+  it('acepta petición sin candidatos (el servidor rellena el compacto)', () => {
+    const parsed = esquemaInterpretarCaptura.safeParse({
+      tipo: 'imagen',
+      medioUrl: 'capturas/u/c.jpg',
+    })
+    expect(parsed.success).toBe(true)
+  })
 })

@@ -49,12 +49,11 @@
       ]
     },
     {
-      "collectionGroup": "cotizaciones",
+      "collectionGroup": "revisionesAprendizaje",
       "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "canal", "order": "ASCENDING" },
-        { "fieldPath": "estado", "order": "ASCENDING" },
-        { "fieldPath": "creadoEn", "order": "DESCENDING" }
+        { "fieldPath": "procesada", "order": "ASCENDING" },
+        { "fieldPath": "diaLima", "order": "ASCENDING" }
       ]
     }
   ],

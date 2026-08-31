@@ -56,6 +56,9 @@ const VERSION = 2
 /** Claves fijas: cada almacén guarda un único documento, no una colección. */
 export const CLAVES = {
   pedidoEnCurso: 'pedido-en-curso',
+  pedidoSlot1: 'pedido-en-curso-1',
+  pedidoSlot2: 'pedido-en-curso-2',
+  pedidoMeta: 'pedido-meta',
   catalogo: 'catalogo',
   indiceDeClientes: 'indice-de-clientes',
   parametros: 'parametros',

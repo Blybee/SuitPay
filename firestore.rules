@@ -290,6 +290,26 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // --- Aprendizaje de asistencia --------------------------------------
+    //
+    // Memoria viva y lotes: solo lectura admin/jefe. Toda escritura es
+    // Admin SDK (función de servidor). El TTL de Firestore cubre
+    // `lotesAprendizaje` (caducaEn +3 días), no `aprendizaje/memoria`.
+
+    match /aprendizaje/{documento} {
+      allow read: if esAdministrador() || esJefe();
+      allow write: if false;
+    }
+
+    match /lotesAprendizaje/{dia} {
+      allow read: if esAdministrador() || esJefe();
+      allow write: if false;
+    }
+
+    match /revisionesAprendizaje/{revisionId} {
+      allow read, write: if false;
+    }
+
     // --- Regla por defecto: negar ----------------------------------------
 
     match /{documento=**} {

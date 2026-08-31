@@ -32,6 +32,8 @@
   html,
   body {
     height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
   }
 
   body {
@@ -313,5 +315,62 @@
 @media (min-width: 768px) {
   .barra-lateral-menu-movil {
     display: none !important;
+  }
+}
+
+/* Shimmer en los glifos: el degradado ES el relleno. 3 barridos y se retira. */
+.t-shimmer {
+  display: inline-block;
+  max-width: 100%;
+  vertical-align: bottom;
+  --shimmer-dur: 700ms;
+  --shimmer-band: 220%;
+  background-image: linear-gradient(
+    90deg,
+    var(--color-tinta) 0%,
+    var(--color-tinta) 28%,
+    var(--color-sello) 50%,
+    var(--color-tinta) 72%,
+    var(--color-tinta) 100%
+  );
+  background-size: var(--shimmer-band) 100%;
+  background-repeat: no-repeat;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  animation: t-shimmer var(--shimmer-dur) var(--shimmer-ease) 3;
+}
+@keyframes t-shimmer {
+  0% {
+    background-position: 100% 0;
+  }
+  100% {
+    background-position: 0% 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-shimmer {
+    animation: none !important;
+    background-image: none;
+    color: var(--color-sello);
+    -webkit-text-fill-color: var(--color-sello);
+  }
+}
+
+/* Anillo de resalte: outline interior, no empuja layout ni queda bajo los campos. */
+.linea-pedido {
+  outline: 2px solid transparent;
+  outline-offset: -2px;
+  transition: outline-color var(--duration-media) var(--ease-salida);
+}
+.linea-pedido.t-resalte-fila {
+  outline-color: var(--color-sello);
+}
+@media (prefers-reduced-motion: reduce) {
+  .linea-pedido {
+    transition: none;
   }
 }

@@ -183,6 +183,7 @@ export async function invocarModelo(entrada: {
   readonly tipo: TipoDeCaptura
   readonly medio: MedioEnPayload
   readonly candidatos: readonly CandidatoDeAsistencia[]
+  readonly instrucciones?: readonly string[]
   readonly deps?: DependenciasDelClienteModelo
 }): Promise<RespuestaDelModelo> {
   const deps = entrada.deps ?? {}
@@ -201,7 +202,11 @@ export async function invocarModelo(entrada: {
     `[SuitPay] asistencia: modelo=${modelo} claves=${primaria ? 'P' : '-'}${secundaria ? 'S' : '-'} candidatos=${entrada.candidatos.length} medio=${entrada.medio.mimeType} (~${Math.round((entrada.medio.dataBase64.length * 0.75) / 1024)} KB)`,
   )
 
-  const prompt = promptDeAsistencia(entrada.tipo, entrada.candidatos)
+  const prompt = promptDeAsistencia(
+    entrada.tipo,
+    entrada.candidatos,
+    entrada.instrucciones ?? [],
+  )
   const partes: ParteGemini[] = [
     { text: prompt },
     {

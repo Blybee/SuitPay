@@ -13,8 +13,10 @@ export const SCHEMA_RESPUESTA_PDF = {
         type: 'OBJECT',
         properties: {
           textoOriginal: { type: 'STRING' },
+          codigo: { type: 'STRING' },
           cantidad: { type: 'NUMBER' },
           unidad: { type: 'STRING' },
+          confidence: { type: 'STRING', enum: ['high', 'low'] },
         },
         required: ['textoOriginal', 'cantidad'],
       },
@@ -33,9 +35,29 @@ export const SCHEMA_RESPUESTA_PDF = {
   required: ['ilegible', 'items'],
 } as const
 
-export function promptDeListaPdf(): string {
+export function promptDeListaPdf(
+  catalogoJson?: string,
+  notas?: readonly string[],
+): string {
+  const bloqueCatalogo =
+    catalogoJson !== undefined && catalogoJson.trim() !== ''
+      ? `
+Catálogo compacto (id, n, a, e). Empareja cada renglón a un id si hay coincidencia semántica clara; si no, codigo="" y confidence="low".
+${catalogoJson}
+`
+      : `
+- No rellenes códigos de catálogo si no recibiste catálogo compacto.
+`
+  const bloqueNotas =
+    notas !== undefined && notas.length > 0
+      ? `
+Preferencias de este pedido (anónimas):
+${notas.join('\n')}
+`
+      : ''
+
   return `
-Lee este PDF de requerimiento o pedido de un cliente (ferretería / gasfitería) y devuelve SOLO JSON puro.
+Lee este PDF o imagen de requerimiento de un cliente (ferretería / gasfitería) y devuelve SOLO JSON puro.
 
 Reglas de mercadería:
 - Extrae SOLO renglones de producto (cantidad + descripción). Un renglón = un elemento de "items".
@@ -43,7 +65,8 @@ Reglas de mercadería:
 - "textoOriginal": el texto del renglón tal cual aparece, antes de normalizar.
 - "cantidad": unidades pedidas. Por defecto 1. NO confundas medida (1/2", 3/4) con cantidad.
 - "unidad": la de despacho si se indica; si no, "NIU".
-- No inventes productos que no estén en el documento. No rellenes códigos de catálogo.
+${bloqueCatalogo}
+${bloqueNotas}
 
 Identidad del cliente (si está presente en membrete, pie o cabecera):
 - Si hay RUC (11 dígitos) o DNI (8 dígitos) y un nombre o razón social, rellena "cliente".

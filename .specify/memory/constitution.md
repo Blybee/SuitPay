@@ -1,18 +1,20 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.1.0
-Bump rationale: MINOR. Se amplía el principio IV con una excepción acotada: el
-PDF de requerimiento que el vendedor sube en Cotizaciones MAY enviarse íntegro
-al modelo (multimodal). Audio, fotografía, catálogo y colección `clientes` no
-cambian. Aprobado por el dueño del negocio al pedir esta función.
+Version change: 1.1.0 → 1.2.0
+Bump rationale: MINOR. Se amplía el principio IV: el catálogo compacto
+(código, nombre, alias y etiquetas de asistencia), las notas de instrucción
+sin identidad, y los medios de Cotizar (PDF, imagen, texto) MAY enviarse al
+modelo. La colección `clientes` sigue prohibida. Aprobado por el dueño al
+pedir emparejado semántico y aprendizaje diferido (spec 005).
 
 Principios modificados:
-  IV.  Los datos de clientes no salen hacia servicios de IA — se añade la
-       excepción del PDF de requerimiento (solo esa función de servidor).
+  IV.  Los datos de clientes no salen hacia servicios de IA — excepciones
+       acotadas: medios de Cotizar, catálogo compacto, notas anónimas, lote
+       de aprendizaje (pares + memoria de productos, sin PII).
 
 Secciones añadidas: ninguna.
-Plantillas: sin cambio estructural. Spec `001` FR-061 / FR-045 enmendado.
+Plantillas: sin cambio estructural. Spec `005`.
 
 TODO diferidos: ninguno.
 -->
@@ -119,24 +121,37 @@ A los servicios de inteligencia automática solo se envían datos de productos y
 el vendedor produce para describir un pedido: su voz, su texto, o la fotografía de una guía
 manual.
 
-**Excepción (v1.1.0).** El PDF de requerimiento que el vendedor sube en el tab Cotizaciones MAY
-enviarse íntegro al modelo, porque el medio es multimodal (texto embebido o página escaneada) y
-el membrete del cliente viaja en el archivo. Esta excepción cubre **únicamente** esa función de
-servidor. Audio, fotografía, el catálogo y la colección `clientes` MUST NOT enviarse. El modelo
-MAY devolver un número de documento y una denominación; la etiqueta que ve el vendedor MUST
-resolverse dentro del sistema (índice local o `clientes/{numeroDocumento}`) cuando el documento
-esté registrado. El modelo no es la fuente de verdad del cliente. No se escribe `clientes/{id}`
-a partir de la respuesta del modelo.
+**Excepción (v1.1.0, ampliada v1.2.0).** El medio que el vendedor aporta en Cotizar —PDF,
+imagen o texto pegado— MAY enviarse al modelo (el membrete puede viajar en el archivo). Audio y
+fotografía del pedido siguen siendo contenido que produce el vendedor.
+
+**Catálogo compacto (v1.2.0).** En cotizar, fotografía y dictado MAY enviarse un catálogo
+minimizado `{ id, n, a[], e[] }` (código, nombre, alias y etiquetas de asistencia). MUST NOT
+enviarse precio, stock, ni la colección `clientes`. La búsqueda escrita del mostrador MUST
+seguir siendo local (principio V).
+
+**Notas de instrucción (v1.2.0).** El texto de las notas que el vendedor escribe sobre un
+cliente MAY enviarse, sin RUC, DNI, razón social, teléfono ni historial. El servidor MUST
+anonimizar dígitos de documento antes de incluirlas.
+
+**Lote de aprendizaje (v1.2.0).** MAY enviarse pares `textoOriginal` + códigos/nombres
+aprobados y la memoria de productos vigente (solo alias/etiquetas), con agrupaciones opacas.
+MUST NOT enviarse identidad de cliente. El lote MUST NOT escribir `clientes/{id}`; solo
+`aprendizaje/memoria`.
+
+El modelo MAY devolver un número de documento y una denominación; la etiqueta que ve el
+vendedor MUST resolverse dentro del sistema. El modelo no es la fuente de verdad del cliente.
+No se escribe `clientes/{id}` a partir de la respuesta del modelo.
 
 - Razón social, RUC, DNI, dirección, teléfono, correo e historial de compras de un cliente MUST
-  NOT enviarse a ningún servicio de inteligencia automática, salvo el contenido propio de ese
-  PDF de requerimiento en la función citada.
+  NOT enviarse a ningún servicio de inteligencia automática, salvo el contenido propio del
+  medio de Cotizar en la función citada.
 - Cuando una fotografía o un dictado contenga datos de cliente, la resolución de la identidad
   del cliente MUST ocurrir dentro del sistema, no delegarse al modelo.
 
-**Razón**: decisión explícita del negocio, tomada antes de que existiera una línea de código. La
-excepción del PDF la pidió el mismo dueño: sin visión del archivo, un requerimiento escaneado
-no entra al mostrador.
+**Razón**: decisión explícita del negocio. La excepción del PDF (v1.1.0) y su ampliación a
+imagen/texto, catálogo compacto y aprendizaje (v1.2.0) las pidió el mismo dueño: sin visión
+del requerimiento y sin matching semántico, la cotización no entra al mostrador.
 
 ### V. El mostrador no se detiene
 
@@ -244,4 +259,4 @@ consideró y se descartó. La plantilla de plan reserva una tabla para ello.
 **Guía en tiempo de ejecución.** `.cursor/rules/specify-rules.mdc` es el archivo de contexto del
 agente de codificación y se mantiene mediante la extensión `agent-context`.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-28 | **Last Amended**: 2026-08-27
+**Version**: 1.2.0 | **Ratified**: 2026-07-28 | **Last Amended**: 2026-08-29

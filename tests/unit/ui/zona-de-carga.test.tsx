@@ -30,10 +30,21 @@ describe('clasificarArchivo', () => {
     ).toBe('pdf')
   })
 
-  it('rechaza tipos ajenos', () => {
+  it('reconoce imagen por tipo o extensión', () => {
     expect(
       clasificarArchivo(
         new File(['x'], 'foto.png', { type: 'image/png' }),
+      ),
+    ).toBe('imagen')
+    expect(
+      clasificarArchivo(new File(['x'], 'scan.WEBP', { type: '' })),
+    ).toBe('imagen')
+  })
+
+  it('rechaza tipos ajenos', () => {
+    expect(
+      clasificarArchivo(
+        new File(['x'], 'nota.txt', { type: 'text/plain' }),
       ),
     ).toBeNull()
   })

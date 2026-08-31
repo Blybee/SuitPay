@@ -35,6 +35,8 @@ export interface ItemDeListaPdf {
   readonly textoOriginal: string
   readonly cantidad: number
   readonly unidad: string
+  readonly codigo?: string | null
+  readonly confidence?: 'high' | 'low'
 }
 
 export interface ClienteDetectadoPdf {
@@ -53,6 +55,7 @@ export interface ResultadoDeListaPdf {
 export interface PeticionDeExtraerPdf {
   readonly medioUrl: string
   readonly vendedorId: string
+  readonly instrucciones?: readonly string[]
 }
 
 export interface DependenciasDeExtraerPdf {
@@ -133,7 +136,12 @@ export function normalizarItemsPdf(valor: unknown): ItemDeListaPdf[] {
       typeof i.unidad === 'string' && i.unidad.trim() !== ''
         ? i.unidad.trim()
         : 'NIU'
-    items.push({ textoOriginal: texto, cantidad, unidad })
+    const codigo =
+      typeof i.codigo === 'string' && i.codigo.trim() !== ''
+        ? i.codigo.trim()
+        : null
+    const confidence = i.confidence === 'high' ? 'high' : 'low'
+    items.push({ textoOriginal: texto, cantidad, unidad, codigo, confidence })
   }
   return items
 }
@@ -166,6 +174,22 @@ export async function extraerListaPdf(
     deps.forzarSimulado === true ||
     (deps.forzarSimulado !== false && asistenciaSimuladaActiva())
 
+  let catalogoJson = ''
+  if (!usarSimulado) {
+    try {
+      const { leerCatalogoCompactoComoCandidatos } = await import(
+        '../aprendizaje/catalogo-compacto.ts'
+      )
+      const { textoDeCandidatosParaPrompt } = await import('./payload.ts')
+      const candidatos = await leerCatalogoCompactoComoCandidatos()
+      if (candidatos.length > 0) {
+        catalogoJson = textoDeCandidatosParaPrompt(candidatos)
+      }
+    } catch (error) {
+      console.error('[SuitPay] extraerListaPdf: catálogo compacto no disponible', error)
+    }
+  }
+
   let json: unknown
   try {
     if (usarSimulado) {
@@ -175,6 +199,8 @@ export async function extraerListaPdf(
         via,
         dataBase64: medio.dataBase64,
         bytes,
+        catalogoJson,
+        instrucciones: peticion.instrucciones,
         depsModelo: deps.depsModelo,
       })
     }
@@ -251,9 +277,11 @@ async function invocarPdf(entrada: {
   readonly via: ViaDePdf
   readonly dataBase64: string
   readonly bytes: Uint8Array
+  readonly catalogoJson?: string
+  readonly instrucciones?: readonly string[]
   readonly depsModelo?: DependenciasDelClienteModelo
 }): Promise<unknown> {
-  const prompt = promptDeListaPdf()
+  const prompt = promptDeListaPdf(entrada.catalogoJson, entrada.instrucciones)
   const deps = entrada.depsModelo ?? {}
 
   if (entrada.via === 'inline') {

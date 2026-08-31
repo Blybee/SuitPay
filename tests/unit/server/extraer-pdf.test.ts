@@ -42,7 +42,7 @@ describe('extraerListaPdf (FR-061)', () => {
     expect(payload.medio.dataBase64).toBe('')
   })
 
-  it('el prompt no lleva lote de productos', () => {
+  it('el prompt vacío no exige lote filtrado', () => {
     expect(promptDeListaPdf()).not.toMatch(/LOTE FILTRADO/i)
     expect(promptDeListaPdf()).not.toMatch(/candidatos/)
   })
@@ -193,7 +193,7 @@ describe('extraerListaPdf (FR-061)', () => {
     expect(serializado).not.toContain('LOTE FILTRADO')
   })
 
-  it('no extrae texto con unpdf; el schema trae cliente opcional y sin código', () => {
+  it('no extrae texto con unpdf; el schema trae cliente opcional y código de matching', () => {
     const fuente = readFileSync(
       join(import.meta.dirname, '../../../src/server/asistencia/extraer-pdf.ts'),
       'utf8',
@@ -204,7 +204,7 @@ describe('extraerListaPdf (FR-061)', () => {
     expect(TECHO_UI_PDF_BYTES).toBe(40 * 1024 * 1024)
     expect(
       'codigo' in SCHEMA_RESPUESTA_PDF.properties.items.items.properties,
-    ).toBe(false)
+    ).toBe(true)
     expect(SCHEMA_RESPUESTA_PDF.properties.cliente.nullable).toBe(true)
   })
 

@@ -40,3 +40,18 @@ test('el comando /guia abre la papeleta sin emitir', async ({ page }) => {
     page.getByRole('button', { name: 'Emitir', exact: true }),
   ).toBeVisible()
 })
+
+test('el selector ofrece Bol + Guía R', async ({ page }) => {
+  test.skip(
+    !hayEmulador,
+    'Requiere la Emulator Suite. Ver npm run prueba:e2e:completa',
+  )
+
+  await sembrarSesionDeVendedor(page)
+  await page.goto('/')
+
+  await page.getByLabel('Tipo de documento').click()
+  await expect(page.getByRole('option', { name: /Bol \+ Guía R/ })).toBeVisible({
+    timeout: 10_000,
+  })
+})

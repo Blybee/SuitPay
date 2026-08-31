@@ -21,7 +21,7 @@ export const MAX_CANDIDATOS_ASISTENCIA = 2000
 export const esquemaInterpretarCaptura = z.object({
   tipo: z.enum(['audio', 'imagen']),
   medioUrl: z.string().trim().min(1).max(2000),
-  candidatos: z.array(esquemaCandidato).min(1).max(MAX_CANDIDATOS_ASISTENCIA),
+  candidatos: z.array(esquemaCandidato).max(MAX_CANDIDATOS_ASISTENCIA).optional(),
 })
 
 export interface RespuestaDeInterpretarCaptura {

@@ -84,14 +84,21 @@ export const crearClienteFn = createServerFn({ method: 'POST' })
     }
   })
 
-const esquemaActualizar = esquemaDeCliente.pick({
-  tipoDocumento: true,
-  numeroDocumento: true,
-  denominacion: true,
-  direccion: true,
-  ubigeo: true,
-  condicion: true,
-})
+const esquemaActualizar = esquemaDeCliente
+  .pick({
+    tipoDocumento: true,
+    numeroDocumento: true,
+    denominacion: true,
+    direccion: true,
+    ubigeo: true,
+    condicion: true,
+  })
+  .extend({
+    instruccionesCotizacion: z
+      .array(z.string().trim().min(1).max(500))
+      .max(20)
+      .optional(),
+  })
 
 export const actualizarClienteFn = createServerFn({ method: 'POST' })
   .validator(esquemaActualizar)

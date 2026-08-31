@@ -61,9 +61,27 @@ interface Acciones {
   marcarError: (mensaje: string) => void
   cancelar: () => void
   hayPendientesOAmbiguas: () => boolean
+  guardarEnSlot: (slot: 1 | 2) => void
+  cargarDeSlot: (slot: 1 | 2) => void
 }
 
 export type AlmacenDeCaptura = EstadoDeCapturaEnCurso & Acciones
+
+const porSlot: Partial<Record<1 | 2, EstadoDeCapturaEnCurso>> = {}
+
+function snapshot(estado: EstadoDeCapturaEnCurso): EstadoDeCapturaEnCurso {
+  return {
+    fase: estado.fase,
+    tipo: estado.tipo,
+    capturaId: estado.capturaId,
+    medioUrl: estado.medioUrl,
+    medioObjectUrl: estado.medioObjectUrl,
+    lineas: estado.lineas,
+    clientePropuesto: estado.clientePropuesto,
+    mensajeError: estado.mensajeError,
+    motivoIlegible: estado.motivoIlegible,
+  }
+}
 
 const INICIAL: EstadoDeCapturaEnCurso = {
   fase: 'idle',
@@ -200,5 +218,18 @@ export const usarCaptura = create<AlmacenDeCaptura>((set, get) => ({
     return get().lineas.some(
       (l) => l.estadoLinea === 'pendiente' || l.estadoLinea === 'ambigua',
     )
+  },
+
+  guardarEnSlot(slot) {
+    porSlot[slot] = snapshot(get())
+  },
+
+  cargarDeSlot(slot) {
+    const guardado = porSlot[slot]
+    if (guardado === undefined) {
+      set({ ...INICIAL })
+      return
+    }
+    set({ ...guardado })
   },
 }))

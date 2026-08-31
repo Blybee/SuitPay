@@ -43,6 +43,18 @@ gcloud firestore fields ttls update caducaEn \
 
 El cliente también ignora documentos con `caducaEn` vencido (el TTL de Firestore puede tardar en borrar).
 
+## Firestore: lotes de aprendizaje
+
+Un documento por día civil Lima: `lotesAprendizaje/{AAAA-MM-DD}`, con campo `caducaEn` (3 días). El id de colección es `lotesAprendizaje` (no `lotes`) para que el TTL no cubra otros grupos homónimos. La memoria consolidada vive en `aprendizaje/memoria` y **no** caduca. Las revisiones pendientes (`revisionesAprendizaje`) no caducan hasta incluirse en un lote; entonces reciben `caducaEn` +3 días.
+
+```bash
+gcloud firestore fields ttls update caducaEn \
+  --collection-group=lotesAprendizaje \
+  --enable-ttl
+```
+
+El admin ignora lotes vencidos (el borrado de Firestore no es inmediato).
+
 ## WhatsApp de la captura del vecino
 
 `https://wa.me/{telefono}` abre el chat. No admite adjuntar PNG. SuitPay copia la imagen al portapapeles y abre el chat para que el vendedor la pegue.

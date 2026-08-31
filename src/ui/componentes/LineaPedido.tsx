@@ -44,6 +44,13 @@ export interface PropsDeLineaPedido {
    * foco no quedó en otro control de la misma línea, vuelve al buscador.
    */
   readonly onVolverAlBuscador?: () => void
+  /** Barrido shimmer si el producto ya estaba y acaba de elegirse otra vez. */
+  readonly resaltar?: boolean
+  /** Se llama al terminar los 3 barridos (o de inmediato si hay reduced motion). */
+  readonly onFinResalte?: () => void
+  /** Tras agregar desde el combobox, el foco cae en cantidad. */
+  readonly enfocarCantidad?: boolean
+  readonly senal?: number
 }
 
 /** Convierte lo tecleado a céntimos. Acepta coma o punto, como se escriba. */
@@ -69,6 +76,12 @@ const REJILLA_LINEA = [
   'md:grid-cols-[minmax(0,1fr)_5rem_7rem_7rem_2.5rem] md:gap-2 md:px-4',
 ].join(' ')
 
+/** Tres barridos; alineado con `--shimmer-dur` de `.t-shimmer`. */
+const SHIMMER_MS = 700
+const SHIMMER_BARRIDOS = 3
+/** `--duration-media` si hay reduced motion (no se anima). */
+const SHIMMER_REDUCIDO_MS = 280
+
 export function LineaPedido({
   linea,
   precioDeCatalogo,
@@ -77,6 +90,10 @@ export function LineaPedido({
   onCambiarPrecio,
   onQuitar,
   onVolverAlBuscador,
+  resaltar = false,
+  onFinResalte,
+  enfocarCantidad = false,
+  senal = 0,
 }: PropsDeLineaPedido) {
   const [precioTecleado, setPrecioTecleado] = useState(() =>
     aTexto(linea.precio),
@@ -86,6 +103,9 @@ export function LineaPedido({
   )
   const editando = useRef(false)
   const fila = useRef<HTMLLIElement>(null)
+  const finResalteHecho = useRef(false)
+  const onFinResalteRef = useRef(onFinResalte)
+  onFinResalteRef.current = onFinResalte
 
   function intentarVolverAlBuscador(relatedTarget: EventTarget | null): void {
     if (onVolverAlBuscador === undefined) return
@@ -122,6 +142,33 @@ export function LineaPedido({
     if (!editando.current) setCantidadTecleada(String(linea.cantidad))
   }, [linea.cantidad])
 
+  useEffect(() => {
+    finResalteHecho.current = false
+    if (!resaltar) return
+    fila.current?.scrollIntoView({ block: 'nearest', inline: 'nearest' })
+    const reducido =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    const espera = reducido
+      ? SHIMMER_REDUCIDO_MS
+      : SHIMMER_MS * SHIMMER_BARRIDOS
+    const id = window.setTimeout(() => {
+      if (finResalteHecho.current) return
+      finResalteHecho.current = true
+      onFinResalteRef.current?.()
+    }, espera)
+    return () => window.clearTimeout(id)
+  }, [resaltar, senal])
+
+  useEffect(() => {
+    if (!enfocarCantidad) return
+    const campo = fila.current?.querySelector<HTMLInputElement>(
+      'input[aria-label^="Cantidad"]',
+    )
+    campo?.focus()
+    campo?.select()
+  }, [enfocarCantidad, senal])
+
   const importe = calcularImporte(linea)
   const emitible = lineaEsEmitible(linea)
   const precioEnEdicion = aCentimos(precioTecleado)
@@ -156,10 +203,11 @@ export function LineaPedido({
       ref={fila}
       className={[
         REJILLA_LINEA,
-        'items-baseline border-b border-borde py-1.5',
+        'linea-pedido items-baseline border-b border-borde py-1.5',
         // El estado no se distingue solo por color: el campo se marca y abajo
         // se escribe el motivo.
         lineaEnAviso && 'bg-aviso/5',
+        resaltar && 't-resalte-fila',
       ]
         .filter(Boolean)
         .join(' ')}
@@ -169,11 +217,25 @@ export function LineaPedido({
           className="truncate text-cuerpo uppercase text-tinta"
           title={`${linea.descripcion} · ${linea.codigo} · ${linea.unidad}`}
         >
-          {linea.descripcion}
+          {resaltar ? (
+            <span key={senal} className="t-shimmer">
+              {linea.descripcion}
+            </span>
+          ) : (
+            linea.descripcion
+          )}
         </p>
         {/* En móvil el código compite con el nombre y desborda la grilla. */}
         <p className="hidden min-w-0 truncate font-mono text-etiqueta uppercase text-desvaida md:block">
-          {linea.codigo} · {linea.unidad}
+          {resaltar ? (
+            <span key={senal} className="t-shimmer">
+              {linea.codigo} · {linea.unidad}
+            </span>
+          ) : (
+            <>
+              {linea.codigo} · {linea.unidad}
+            </>
+          )}
         </p>
         <p className="sr-only md:hidden">
           {linea.codigo} · {linea.unidad}

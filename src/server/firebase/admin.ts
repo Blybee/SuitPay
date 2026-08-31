@@ -125,6 +125,8 @@ export const COLECCIONES = {
   usuarios: 'usuarios',
   config: 'config',
   transportistas: 'transportistas',
+  lotesAprendizaje: 'lotesAprendizaje',
+  revisionesAprendizaje: 'revisionesAprendizaje',
 } as const
 
 export const DOCUMENTOS = {
@@ -133,4 +135,5 @@ export const DOCUMENTOS = {
   indiceDeTransportistas: 'indices/transportistas',
   parametros: 'config/parametros',
   contadorCotizaciones: 'config/contadorCotizaciones',
+  aprendizajeMemoria: 'aprendizaje/memoria',
 } as const

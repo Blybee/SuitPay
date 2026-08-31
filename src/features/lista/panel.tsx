@@ -1,9 +1,15 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useMemo } from 'react'
 import { FileDown, Share2, X } from 'lucide-react'
-import { alternarUrgencia, etiquetaDeUrgencia } from '../../domain/lista/urgencia.ts'
+import {
+  alternarUrgencia,
+  etiquetaDeUrgencia,
+} from '../../domain/lista/urgencia.ts'
 import { bytesDePdfDeRequerimiento } from '../../domain/lista/pdf.ts'
-import { diaPorDefecto, semanaLaboralEnLima } from '../../domain/lista/semana.ts'
+import {
+  diaPorDefecto,
+  semanaLaboralEnLima,
+} from '../../domain/lista/semana.ts'
 import type { LineaDeRequerimiento } from '../../domain/lista/tipos.ts'
 import { usarNotificaciones } from '../notificaciones/almacen.ts'
 import { usarSesion } from '../sesion/almacen.ts'
@@ -23,7 +29,9 @@ function blobDePdf(bytes: Uint8Array): Blob {
   return new Blob([copia], { type: 'application/pdf' })
 }
 
-async function descargarPdf(lineas: readonly LineaDeRequerimiento[]): Promise<void> {
+async function descargarPdf(
+  lineas: readonly LineaDeRequerimiento[],
+): Promise<void> {
   const blob = blobDePdf(bytesDePdfDeRequerimiento(lineas, new Date()))
   const url = URL.createObjectURL(blob)
   const enlace = document.createElement('a')
@@ -173,12 +181,13 @@ export function PanelDeListaRequerimiento() {
 
       {!consulta.isLoading && lineas.length === 0 ? (
         <p className="px-4 py-8 text-cuerpo text-desvaida" role="status">
-          No hay productos en la lista. Búscalos arriba o dicta con el micrófono.
+          No hay productos en la lista. Búscalos arriba o dicta con el
+          micrófono.
         </p>
       ) : null}
 
       {lineas.length > 0 ? (
-        <div className="flex-1 overflow-auto">
+        <div className="min-h-0 flex-1 overflow-auto">
           <table className="w-full border-collapse text-left">
             <thead className="sticky top-0 bg-papel">
               <tr className="border-b border-borde">

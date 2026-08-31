@@ -1,7 +1,7 @@
 import { createServerFn } from '@tanstack/react-start'
 import { getRequestHeaders } from '@tanstack/react-start/server'
 import { z } from 'zod'
-import { TIPOS_CON_SERIE_ADMINISTRABLE, TIPOS_ELEGIBLES } from '../../domain/documentos/tipos.ts'
+import { TIPOS_CON_SERIE_ADMINISTRABLE } from '../../domain/documentos/tipos.ts'
 import { exigirIdentidad } from '../../server/auth/verificar.ts'
 import { ErrorDeSuitPay, esErrorDeSuitPay } from '../../server/errores.ts'
 import {
@@ -122,7 +122,7 @@ export const desactivarSerieFn = createServerFn({ method: 'POST' })
 export const leerMiSerieFn = createServerFn({ method: 'GET' })
   .validator(
     z.object({
-      tipoDocumento: z.enum(TIPOS_ELEGIBLES),
+      tipoDocumento: z.enum(['boleta', 'factura', 'nota_venta', 'guia']),
     }),
   )
   .handler(async ({ data }): Promise<RespuestaDeSeries> =>

@@ -15,7 +15,9 @@ import { montarEscenario, peticion } from './ayudas-emision.ts'
  * Los tres casos de abajo no son variaciones del mismo error, son tres gestos
  * distintos del mostrador. La cantidad a cero sale de corregir una cifra a medias.
  * El precio a cero sale de negociar un accesorio de regalo, que ocurre a diario. Y
- * el pedido vacío sale de pulsar emitir sobre la pantalla recién abierta.
+ * el pedido vacío lo bloquea también la UI (`calcularMotivoDeBloqueo`) para no
+ * pulsar Emitir sobre la pantalla recién abierta; el servidor sigue siendo la
+ * última barrera.
  *
  * ## La afirmación que de verdad importa
  *

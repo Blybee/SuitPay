@@ -39,17 +39,34 @@ solo cuando el control es de un flujo, no del sistema.
 
 ## Mostrador
 
-| Componente          | Archivo                 | Cuándo usarlo                                                                                                              |
-| ------------------- | ----------------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| `Entrada`           | `Entrada.tsx`           | Combobox de productos (escribir / voz / foto).                                                                             |
-| `LineaPedido`       | `LineaPedido.tsx`       | Fila del pedido: qty, precio, quitar.                                                                                      |
-| `CabeceraDocumento` | `CabeceraDocumento.tsx` | Tipo, serie, cliente.                                                                                                      |
-| `PieTotal`          | `PieTotal.tsx`          | Total + emitir, anclado al pie.                                                                                            |
-| `Selector`          | `Selector.tsx`          | Select personalizado Soft-Pill (Radix): trigger, listbox en portal, teclado y foco gestionados. No uses `<select>` nativo. |
-| `FiltrosDeCatalogo` | `FiltrosDeCatalogo.tsx` | Facetas marca / categoría sobre el espejo local.                                                                           |
-| `EtiquetaSinValor`  | `EtiquetaSinValor.tsx`  | «SIN VALOR TRIBUTARIO». Recibe el **tipo**, no un booleano.                                                                |
-| `Sello`             | `Sello.tsx`             | Violeta sobre lo ya emitido (REGISTRADO / ACEPTADO). Nunca en el pedido en curso.                                          |
-| `RevisionCaptura`   | `RevisionCaptura.tsx`   | Contraste original vs propuesta (voz / foto).                                                                              |
+| Componente          | Archivo                 | Cuándo usarlo                                                                                                                     |
+| ------------------- | ----------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `Entrada`           | `Entrada.tsx`           | Combobox de productos (escribir / voz / foto).                                                                                    |
+| `LineaPedido`       | `LineaPedido.tsx`       | Fila del pedido: qty, precio, quitar. Producto ya presente: shimmer + `scrollIntoView` nearest. Producto nuevo: foco en cantidad. |
+| `CabeceraDocumento` | `CabeceraDocumento.tsx` | Tipo, serie, cliente. Incluye modos UX «Bol + Guía R» / «Fact + Guía R» (no son tipos fiscales). |
+| `PieTotal`          | `PieTotal.tsx`          | Total + emitir, anclado al pie.                                                                                                   |
+| `Selector`          | `Selector.tsx`          | Select personalizado Soft-Pill (Radix): trigger, listbox en portal, teclado y foco gestionados. No uses `<select>` nativo.        |
+| `FiltrosDeCatalogo` | `FiltrosDeCatalogo.tsx` | Facetas marca / categoría sobre el espejo local.                                                                                  |
+| `EtiquetaSinValor`  | `EtiquetaSinValor.tsx`  | «SIN VALOR TRIBUTARIO». Recibe el **tipo**, no un booleano.                                                                       |
+| `Sello`             | `Sello.tsx`             | Violeta sobre lo ya emitido (REGISTRADO / ACEPTADO). Nunca en el pedido en curso.                                                 |
+| `RevisionCaptura`   | `RevisionCaptura.tsx`   | Contraste original vs propuesta (voz / foto).                                                                                     |
+
+El mostrador (`src/routes/index.tsx`) ocupa `h-full overflow-hidden`. Cada
+pestaña entra en `CuerpoPestana`: Pedido, Vecinos y Lista recortan el slot
+(`overflow-hidden`) y el scroll vive **solo** en la lista o tabla
+(`min-h-0 flex-1 overflow-y-auto`). Cotizaciones usa el modo `pagina`: el
+panel entero es el scrollport, para que al desplegar Cotizar (zona de carga)
+el contenido no quede recortado. No añadas `min-h-full` ni un segundo
+`overflow-auto` en el `main`: eso produce desbordamiento anidado y un hueco
+bajo el pie.
+
+Si el combobox elige un producto **ya** en el pedido: toast + shimmer **solo
+en el texto** (`t-shimmer`) y un anillo de resalte en la fila
+(`t-resalte-fila`: outline interior sello, sin mover el layout). Ambos
+duran los tres barridos y se retiran juntos. Reduced motion deja texto y
+anillo en sello un instante. `scrollIntoView({ block: 'nearest' })` si la
+fila está fuera del contenedor. Si es **nuevo**: foco y selección en
+Cantidad. No pongas el shimmer en la fila ni en un overlay.
 
 ---
 

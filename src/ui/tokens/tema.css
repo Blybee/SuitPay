@@ -54,8 +54,7 @@
   --font-sans:
     'Atkinson Hyperlegible Next Variable', 'Atkinson Hyperlegible',
     ui-sans-serif, system-ui, sans-serif;
-  --font-mono:
-    'Atkinson Hyperlegible Mono Variable', ui-monospace, monospace;
+  --font-mono: 'Atkinson Hyperlegible Mono Variable', ui-monospace, monospace;
 
   --text-etiqueta: 0.75rem;
   --text-etiqueta--line-height: 1rem;
@@ -93,6 +92,12 @@
   --alto-barra-total: 6.5rem;
   --ancho-sidebar: 15rem;
   --ancho-sidebar-colapsada: 4.5rem;
+
+  --shimmer-dur: 2000ms;
+  --shimmer-base: #1a1714;
+  --shimmer-highlight: #4c3f91;
+  --shimmer-band: 400%;
+  --shimmer-ease: linear;
 }
 
 .fila-entrada {

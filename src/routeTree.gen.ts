@@ -14,6 +14,7 @@ import { Route as AccesoRouteImport } from './routes/acceso'
 import { Route as AdministracionRouteRouteImport } from './routes/administracion/route'
 import { Route as ConfiguracionRouteImport } from './routes/configuracion'
 import { Route as AdministracionIndexRouteImport } from './routes/administracion/index'
+import { Route as AdministracionAprendizajeRouteImport } from './routes/administracion/aprendizaje'
 import { Route as AdministracionCatalogoRouteImport } from './routes/administracion/catalogo'
 import { Route as AdministracionParametrosRouteImport } from './routes/administracion/parametros'
 import { Route as AdministracionSeriesRouteImport } from './routes/administracion/series'
@@ -47,6 +48,12 @@ const AdministracionIndexRoute = AdministracionIndexRouteImport.update({
   path: '/',
   getParentRoute: () => AdministracionRouteRoute,
 } as any)
+const AdministracionAprendizajeRoute =
+  AdministracionAprendizajeRouteImport.update({
+    id: '/aprendizaje',
+    path: '/aprendizaje',
+    getParentRoute: () => AdministracionRouteRoute,
+  } as any)
 const AdministracionCatalogoRoute = AdministracionCatalogoRouteImport.update({
   id: '/catalogo',
   path: '/catalogo',
@@ -90,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/administracion': typeof AdministracionRouteRouteWithChildren
   '/acceso': typeof AccesoRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/administracion/aprendizaje': typeof AdministracionAprendizajeRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
   '/administracion/parametros': typeof AdministracionParametrosRoute
   '/administracion/series': typeof AdministracionSeriesRoute
@@ -103,6 +111,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acceso': typeof AccesoRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/administracion/aprendizaje': typeof AdministracionAprendizajeRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
   '/administracion/parametros': typeof AdministracionParametrosRoute
   '/administracion/series': typeof AdministracionSeriesRoute
@@ -118,6 +127,7 @@ export interface FileRoutesById {
   '/administracion': typeof AdministracionRouteRouteWithChildren
   '/acceso': typeof AccesoRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/administracion/aprendizaje': typeof AdministracionAprendizajeRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
   '/administracion/parametros': typeof AdministracionParametrosRoute
   '/administracion/series': typeof AdministracionSeriesRoute
@@ -134,6 +144,7 @@ export interface FileRouteTypes {
     | '/administracion'
     | '/acceso'
     | '/configuracion'
+    | '/administracion/aprendizaje'
     | '/administracion/catalogo'
     | '/administracion/parametros'
     | '/administracion/series'
@@ -147,6 +158,7 @@ export interface FileRouteTypes {
     | '/'
     | '/acceso'
     | '/configuracion'
+    | '/administracion/aprendizaje'
     | '/administracion/catalogo'
     | '/administracion/parametros'
     | '/administracion/series'
@@ -161,6 +173,7 @@ export interface FileRouteTypes {
     | '/administracion'
     | '/acceso'
     | '/configuracion'
+    | '/administracion/aprendizaje'
     | '/administracion/catalogo'
     | '/administracion/parametros'
     | '/administracion/series'
@@ -218,6 +231,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdministracionIndexRouteImport
       parentRoute: typeof AdministracionRouteRoute
     }
+    '/administracion/aprendizaje': {
+      id: '/administracion/aprendizaje'
+      path: '/aprendizaje'
+      fullPath: '/administracion/aprendizaje'
+      preLoaderRoute: typeof AdministracionAprendizajeRouteImport
+      parentRoute: typeof AdministracionRouteRoute
+    }
     '/administracion/catalogo': {
       id: '/administracion/catalogo'
       path: '/catalogo'
@@ -271,6 +291,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface AdministracionRouteRouteChildren {
+  AdministracionAprendizajeRoute: typeof AdministracionAprendizajeRoute
   AdministracionCatalogoRoute: typeof AdministracionCatalogoRoute
   AdministracionParametrosRoute: typeof AdministracionParametrosRoute
   AdministracionSeriesRoute: typeof AdministracionSeriesRoute
@@ -279,6 +300,7 @@ interface AdministracionRouteRouteChildren {
 }
 
 const AdministracionRouteRouteChildren: AdministracionRouteRouteChildren = {
+  AdministracionAprendizajeRoute: AdministracionAprendizajeRoute,
   AdministracionCatalogoRoute: AdministracionCatalogoRoute,
   AdministracionParametrosRoute: AdministracionParametrosRoute,
   AdministracionSeriesRoute: AdministracionSeriesRoute,

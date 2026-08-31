@@ -4,9 +4,11 @@ import userEvent from '@testing-library/user-event'
 import {
   CabeceraDocumento,
   mensajeValidacionCampo,
+  modoEncadenaGuia,
+  tipoFiscalDeModo,
 } from '../../../src/ui/componentes/CabeceraDocumento.tsx'
 
-const series = { boleta: 'B001', factura: 'F001' }
+const series = { boleta: 'B001', factura: 'F001', guia: 'T001' }
 
 const base = {
   series,
@@ -116,5 +118,27 @@ describe('CabeceraDocumento — campo manual con Enter', () => {
     await usuario.click(screen.getByLabelText('Buscar o agregar cliente'))
     expect(onAgregarClienteNuevo).toHaveBeenCalledOnce()
     expect(onDocumentoCompleto).not.toHaveBeenCalled()
+  })
+})
+
+describe('modos compuestos Bol/Fact + Guía R', () => {
+  it('tipoFiscalDeModo no inventa un tipo fiscal', () => {
+    expect(tipoFiscalDeModo('boleta_guia')).toBe('boleta')
+    expect(tipoFiscalDeModo('factura_guia')).toBe('factura')
+    expect(modoEncadenaGuia('boleta_guia')).toBe(true)
+    expect(modoEncadenaGuia('boleta')).toBe(false)
+  })
+
+  it('muestra Bol + Guía R y Fact + Guía R en el trigger según el modo', () => {
+    const { rerender } = render(
+      <CabeceraDocumento {...base} modo="boleta_guia" />,
+    )
+    expect(screen.getByLabelText('Tipo de documento')).toHaveTextContent(
+      'Bol + Guía R · B001',
+    )
+    rerender(<CabeceraDocumento {...base} modo="factura_guia" />)
+    expect(screen.getByLabelText('Tipo de documento')).toHaveTextContent(
+      'Fact + Guía R · F001',
+    )
   })
 })

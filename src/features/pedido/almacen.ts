@@ -13,10 +13,14 @@ import type {
 } from '../../domain/totales/calculo.ts'
 import type { TipoElegible } from '../../domain/documentos/tipos.ts'
 import {
-  guardarPedido,
-  leerPedido,
-  olvidarPedido,
+  guardarPedidoEnSlot,
+  leerPedidoEnSlot,
+  leerMetaDeSlots,
+  guardarMetaDeSlots,
+  olvidarPedidoEnSlot,
 } from '../../infra/local/pedido.ts'
+import { CLAVES, leer } from '../../infra/local/almacenes.ts'
+import type { PedidoPersistido } from '../../infra/local/pedido.ts'
 import { generarClaveDeIdempotencia } from '../emision/clave.ts'
 
 /**
@@ -53,7 +57,11 @@ interface EstadoDelPedido {
   readonly claveIdempotencia: string | null
   /** Comprobante (boleta/factura) desde el que se reutilizó el pedido. */
   readonly comprobanteOrigenId: string | null
+  readonly comprobanteOrigenEtiqueta: string | null
+  readonly modoCotizacion: boolean
   readonly restaurando: boolean
+  readonly slotActivo: 1 | 2
+  readonly segundoAbierto: boolean
 }
 
 interface AccionesDelPedido {
@@ -90,6 +98,11 @@ interface AccionesDelPedido {
     readonly lineas: readonly LineaDePedido[]
     readonly cliente: ClienteDelPedido | null
     readonly comprobanteOrigenId: string
+    readonly comprobanteOrigenEtiqueta?: string
+  }) => void
+  fijarComprobanteOrigen: (datos: {
+    readonly id: string
+    readonly etiqueta: string
   }) => void
   /**
    * Reclama la clave de idempotencia con la que se confirmará la venta. Es
@@ -101,6 +114,9 @@ interface AccionesDelPedido {
   soltarClaveDeIdempotencia: () => void
   vaciar: () => void
   restaurar: () => Promise<void>
+  fijarModoCotizacion: (valor: boolean) => void
+  abrirSegundo: () => void
+  conmutarSlot: () => void
 }
 
 export type AlmacenDelPedido = EstadoDelPedido & AccionesDelPedido
@@ -113,22 +129,75 @@ const ESTADO_INICIAL: EstadoDelPedido = {
   capturaId: null,
   claveIdempotencia: null,
   comprobanteOrigenId: null,
+  comprobanteOrigenEtiqueta: null,
+  modoCotizacion: false,
   restaurando: true,
+  slotActivo: 1,
+  segundoAbierto: false,
 }
 
+
+const VACIO_CONTENIDO: Omit<
+  EstadoDelPedido,
+  'restaurando' | 'slotActivo' | 'segundoAbierto'
+> = {
+  lineas: [],
+  cliente: null,
+  tipoDocumento: 'nota_venta',
+  cotizacionId: null,
+  capturaId: null,
+  claveIdempotencia: null,
+  comprobanteOrigenId: null,
+  comprobanteOrigenEtiqueta: null,
+  modoCotizacion: false,
+}
+
+let inactivo: typeof VACIO_CONTENIDO | null = null
+
+function contenidoDe(
+  estado: EstadoDelPedido | typeof VACIO_CONTENIDO,
+): typeof VACIO_CONTENIDO {
+  return {
+    lineas: estado.lineas,
+    cliente: estado.cliente,
+    tipoDocumento: estado.tipoDocumento,
+    cotizacionId: estado.cotizacionId,
+    capturaId: estado.capturaId,
+    claveIdempotencia: estado.claveIdempotencia,
+    comprobanteOrigenId: estado.comprobanteOrigenId,
+    comprobanteOrigenEtiqueta: estado.comprobanteOrigenEtiqueta,
+    modoCotizacion: 'modoCotizacion' in estado ? estado.modoCotizacion : false,
+  }
+}
+
+function hidratar(
+  guardado: PedidoPersistido,
+): typeof VACIO_CONTENIDO {
+  return {
+    lineas: guardado.lineas,
+    cliente: guardado.cliente,
+    tipoDocumento: guardado.tipoDocumento as TipoElegible,
+    cotizacionId: guardado.cotizacionId,
+    capturaId: guardado.capturaId,
+    claveIdempotencia: guardado.claveIdempotencia,
+    comprobanteOrigenId: guardado.comprobanteOrigenId ?? null,
+    comprobanteOrigenEtiqueta: guardado.comprobanteOrigenEtiqueta ?? null,
+    modoCotizacion: guardado.modoCotizacion === true,
+  }
+}
 
 export const usarPedido = create<AlmacenDelPedido>((set, get) => {
   function persistir(): void {
     const estado = get()
-    void guardarPedido({
-      lineas: estado.lineas,
-      cliente: estado.cliente,
-      tipoDocumento: estado.tipoDocumento,
-      cotizacionId: estado.cotizacionId,
-      capturaId: estado.capturaId,
-      claveIdempotencia: estado.claveIdempotencia,
-      comprobanteOrigenId: estado.comprobanteOrigenId,
+    void guardarPedidoEnSlot(estado.slotActivo, contenidoDe(estado))
+    void guardarMetaDeSlots({
+      slotActivo: estado.slotActivo,
+      segundoAbierto: estado.segundoAbierto,
     })
+    if (estado.segundoAbierto && inactivo !== null) {
+      const otro: 1 | 2 = estado.slotActivo === 1 ? 2 : 1
+      void guardarPedidoEnSlot(otro, inactivo)
+    }
   }
 
   /**
@@ -207,6 +276,7 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         cotizacionId: datos.cotizacionId,
         capturaId: null,
         comprobanteOrigenId: null,
+        comprobanteOrigenEtiqueta: null,
       })
     },
 
@@ -220,6 +290,14 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         cotizacionId: null,
         capturaId: null,
         comprobanteOrigenId: datos.comprobanteOrigenId,
+        comprobanteOrigenEtiqueta: datos.comprobanteOrigenEtiqueta ?? null,
+      })
+    },
+
+    fijarComprobanteOrigen(datos) {
+      cambiarContenido({
+        comprobanteOrigenId: datos.id,
+        comprobanteOrigenEtiqueta: datos.etiqueta,
       })
     },
 
@@ -238,25 +316,86 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
     },
 
     vaciar() {
-      set({ ...ESTADO_INICIAL, restaurando: false })
-      void olvidarPedido()
+      const estado = get()
+      if (estado.slotActivo === 2) {
+        const slot1 = inactivo ?? VACIO_CONTENIDO
+        inactivo = null
+        set({
+          ...slot1,
+          restaurando: false,
+          slotActivo: 1,
+          segundoAbierto: false,
+        })
+        void olvidarPedidoEnSlot(2)
+        void guardarPedidoEnSlot(1, slot1)
+        void guardarMetaDeSlots({ slotActivo: 1, segundoAbierto: false })
+        return
+      }
+      set({
+        ...VACIO_CONTENIDO,
+        restaurando: false,
+        slotActivo: 1,
+        segundoAbierto: estado.segundoAbierto,
+      })
+      void olvidarPedidoEnSlot(1)
+    },
+
+    fijarModoCotizacion(valor) {
+      cambiarContenido({ modoCotizacion: valor })
+    },
+
+    abrirSegundo() {
+      const estado = get()
+      if (estado.segundoAbierto) {
+        get().conmutarSlot()
+        return
+      }
+      inactivo = contenidoDe(estado)
+      void guardarPedidoEnSlot(1, inactivo)
+      set({
+        ...VACIO_CONTENIDO,
+        restaurando: false,
+        slotActivo: 2,
+        segundoAbierto: true,
+      })
+      persistir()
+    },
+
+    conmutarSlot() {
+      const estado = get()
+      if (!estado.segundoAbierto) return
+      const actual = contenidoDe(estado)
+      const destino: 1 | 2 = estado.slotActivo === 1 ? 2 : 1
+      const siguiente = inactivo ?? VACIO_CONTENIDO
+      inactivo = actual
+      set({
+        ...siguiente,
+        restaurando: false,
+        slotActivo: destino,
+        segundoAbierto: true,
+      })
+      persistir()
     },
 
     async restaurar() {
-      const guardado = await leerPedido()
-      if (guardado === undefined) {
+      const legado = await leer<PedidoPersistido>('pedido', CLAVES.pedidoEnCurso)
+      const slot1 = (await leerPedidoEnSlot(1)) ?? legado
+      const slot2 = await leerPedidoEnSlot(2)
+      const meta = await leerMetaDeSlots()
+      const segundo = meta?.segundoAbierto === true && slot2 !== undefined
+      const activo: 1 | 2 = segundo && meta?.slotActivo === 2 ? 2 : 1
+      if (activo === 1 && slot2 !== undefined) inactivo = hidratar(slot2)
+      if (activo === 2 && slot1 !== undefined) inactivo = hidratar(slot1)
+      const principal = activo === 1 ? slot1 : slot2
+      if (principal === undefined) {
         set({ restaurando: false })
         return
       }
       set({
-        lineas: guardado.lineas,
-        cliente: guardado.cliente,
-        tipoDocumento: guardado.tipoDocumento as TipoElegible,
-        cotizacionId: guardado.cotizacionId,
-        capturaId: guardado.capturaId,
-        claveIdempotencia: guardado.claveIdempotencia,
-        comprobanteOrigenId: guardado.comprobanteOrigenId ?? null,
+        ...hidratar(principal),
         restaurando: false,
+        slotActivo: activo,
+        segundoAbierto: segundo,
       })
     },
   }

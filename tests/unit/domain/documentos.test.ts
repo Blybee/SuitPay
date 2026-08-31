@@ -86,6 +86,8 @@ describe('lo que el vendedor puede elegir', () => {
     // No es una omisión: aparece cuando el proveedor no responde, y ofrecerlo
     // como opción normal invitaría a usarlo para evitar el comprobante real.
     expect(TIPOS_ELEGIBLES).not.toContain('interno_contingencia')
+    expect(TIPOS_ELEGIBLES).not.toContain('guia')
+    expect(TIPOS_ELEGIBLES).not.toContain('boleta_guia')
   })
 })
 

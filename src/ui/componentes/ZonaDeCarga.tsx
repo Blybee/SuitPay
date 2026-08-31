@@ -6,10 +6,10 @@
  */
 import { useId, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent, ReactNode } from 'react'
-import { FileJson, FileText, FileUp, X } from 'lucide-react'
+import { FileImage, FileJson, FileText, FileUp, X } from 'lucide-react'
 import { Boton, Distintivo, Etiqueta } from './primitivas.tsx'
 
-export type ClaseDeArchivo = 'json' | 'pdf'
+export type ClaseDeArchivo = 'json' | 'pdf' | 'imagen'
 export type EstadoDeCarga = 'vacio' | 'procesando' | 'listo' | 'error'
 
 const ACEPTADOS_DEFECTO: readonly ClaseDeArchivo[] = ['json', 'pdf']
@@ -32,6 +32,17 @@ export function clasificarArchivo(archivo: File): ClaseDeArchivo | null {
     nombre.endsWith('.js')
   ) {
     return 'json'
+  }
+  if (
+    archivo.type === 'image/jpeg' ||
+    archivo.type === 'image/png' ||
+    archivo.type === 'image/webp' ||
+    nombre.endsWith('.jpg') ||
+    nombre.endsWith('.jpeg') ||
+    nombre.endsWith('.png') ||
+    nombre.endsWith('.webp')
+  ) {
+    return 'imagen'
   }
   return null
 }
@@ -78,23 +89,40 @@ function arrastreEsRechazable(
     if (item.type === 'application/json' || item.type === 'text/json') {
       return !aceptados.includes('json')
     }
+    if (
+      item.type === 'image/jpeg' ||
+      item.type === 'image/png' ||
+      item.type === 'image/webp'
+    ) {
+      return !aceptados.includes('imagen')
+    }
     return true
   })
 }
 
 function textoRechazo(aceptados: readonly ClaseDeArchivo[]): string {
+  if (aceptados.includes('pdf') && aceptados.includes('imagen') && aceptados.length === 2) {
+    return 'Solo se aceptan PDF o imagen.'
+  }
   if (aceptados.length === 1 && aceptados[0] === 'pdf') {
     return 'Solo se aceptan PDF.'
   }
   if (aceptados.length === 1 && aceptados[0] === 'json') {
     return 'Solo se aceptan JSON.'
   }
+  if (aceptados.length === 1 && aceptados[0] === 'imagen') {
+    return 'Solo se aceptan imágenes.'
+  }
   return 'Solo se aceptan JSON o PDF.'
 }
 
 function textoPozoVacio(aceptados: readonly ClaseDeArchivo[]): string {
+  if (aceptados.includes('pdf') && aceptados.includes('imagen') && aceptados.length === 2) {
+    return 'Suelta el PDF o la imagen'
+  }
   if (aceptados.length === 1 && aceptados[0] === 'pdf') return 'Suelta el PDF'
   if (aceptados.length === 1 && aceptados[0] === 'json') return 'Suelta el JSON'
+  if (aceptados.length === 1 && aceptados[0] === 'imagen') return 'Suelta la imagen'
   return 'Suelta el JSON o el PDF'
 }
 
@@ -208,7 +236,7 @@ export function ZonaDeCarga({
 
   const clasesPozo = unir(
     'relative flex w-full flex-col rounded-2xl border border-dashed bg-mesa',
-    'transition-[border-color,background-color,box-shadow] duration-200 ease-out',
+    'transition-[border-color,background-color,box-shadow] duration-rapida ease-salida',
     'focus-visible:border-solid focus-visible:border-tinta',
     arrastreInvalido && 'border-aviso bg-aviso/10',
     arrastrando &&
@@ -252,7 +280,9 @@ export function ZonaDeCarga({
         onChange={alCambiarInput}
       />
       <span id={ayudaId} className="sr-only">
-        {aceptados.length === 1 && aceptados[0] === 'pdf'
+        {aceptados.includes('pdf') && aceptados.includes('imagen')
+          ? 'PDF o imagen del requerimiento del cliente'
+          : aceptados.length === 1 && aceptados[0] === 'pdf'
           ? 'PDF de requerimiento del cliente'
           : 'JSON de la tienda virtual o PDF de productos (SICO)'}
       </span>
@@ -296,7 +326,7 @@ export function ZonaDeCarga({
           ) : nota !== undefined ? (
             <div
               className={unir(
-                'w-full max-w-md transition-opacity duration-200 ease-out',
+                'w-full max-w-md transition-opacity duration-rapida ease-salida',
                 arrastrando && 'opacity-40',
               )}
             >
@@ -384,7 +414,12 @@ function FichaDeArchivo({
   readonly onCambiar: () => void
   readonly onQuitar: () => void
 }) {
-  const Icono = archivo.clase === 'pdf' ? FileText : FileJson
+  const Icono =
+    archivo.clase === 'pdf'
+      ? FileText
+      : archivo.clase === 'imagen'
+        ? FileImage
+        : FileJson
 
   return (
     <div className="flex flex-wrap items-center gap-3 px-4 py-4 sm:flex-nowrap">
@@ -414,7 +449,11 @@ function FichaDeArchivo({
                   : 'desvaida'
             }
           >
-            {archivo.clase === 'pdf' ? 'PDF' : 'JSON'}
+            {archivo.clase === 'pdf'
+              ? 'PDF'
+              : archivo.clase === 'imagen'
+                ? 'IMG'
+                : 'JSON'}
           </Distintivo>
           <span className="uppercase tracking-widest">
             {formatearTamano(archivo.bytes)}

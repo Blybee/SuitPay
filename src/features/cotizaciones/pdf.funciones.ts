@@ -42,3 +42,41 @@ export const extraerListaPdfFn = createServerFn({ method: 'POST' })
       }
     }
   })
+
+const esquemaRequerimiento = z.object({
+  medioUrl: z.string().trim().max(2000).optional(),
+  tipoMedio: z.enum(['pdf', 'imagen']).optional(),
+  texto: z.string().max(20_000).optional(),
+  clienteId: z.string().trim().max(20).optional(),
+})
+
+export const interpretarRequerimientoFn = createServerFn({ method: 'POST' })
+  .validator(esquemaRequerimiento)
+  .handler(async ({ data }): Promise<RespuestaDeExtraerListaPdf> => {
+    try {
+      const identidad = await exigirIdentidad(getRequestHeaders(), [
+        'vendedor',
+        'administrador',
+      ])
+      const { interpretarRequerimiento } = await import(
+        '../../server/asistencia/requerimiento.ts'
+      )
+      const resultado = await interpretarRequerimiento({
+        medioUrl: data.medioUrl,
+        tipoMedio: data.tipoMedio,
+        texto: data.texto,
+        clienteId: data.clienteId,
+        vendedorId: identidad.uid,
+      })
+      return { ok: true, resultado }
+    } catch (error) {
+      if (esErrorDeSuitPay(error)) {
+        return { ok: false, error: error.aRespuesta() }
+      }
+      console.error('[SuitPay] fallo al interpretar requerimiento', error)
+      return {
+        ok: false,
+        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
+      }
+    }
+  })

@@ -8,6 +8,7 @@ export const HERMANAS_ADMIN = [
   { etiqueta: 'Series', to: '/administracion/series' as const },
   { etiqueta: 'Usuarios', to: '/administracion/usuarios' as const },
   { etiqueta: 'Parámetros', to: '/administracion/parametros' as const },
+  { etiqueta: 'Aprendizaje', to: '/administracion/aprendizaje' as const },
 ] as const
 
 export type RutaAdminHermana = (typeof HERMANAS_ADMIN)[number]['to']

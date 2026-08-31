@@ -17,11 +17,18 @@ import {
   buscarCotizacionPorNumero,
   listarCotizacionesPendientes,
 } from './leer.ts'
-import { procesarPdfDeRequerimiento } from './procesar-pdf.ts'
+import { procesarRequerimientoDeCotizar } from './procesar-pdf.ts'
 import { usarPropuestasPdf } from './propuestas.ts'
 import type { PropuestaPdf } from './propuestas.ts'
 import type { Cotizacion } from './tipos.ts'
 import { YaUsada } from './ya-usada.tsx'
+import { buscarCoincidenciasDeCliente } from '../clientes/coincidencias.ts'
+import {
+  leerClientePorDocumento,
+  type ClienteExistente,
+} from '../clientes/existencia.ts'
+import { actualizarClienteFn } from '../clientes/clientes.funciones.ts'
+import { clasificarArchivo } from '../../ui/componentes/ZonaDeCarga.tsx'
 
 /**
  * Lista y recuperación de cotizaciones (FR-017, FR-018, FR-019a).
@@ -53,6 +60,16 @@ export function PanelDeCotizaciones({
   const [aEliminar, setAEliminar] = useState<Cotizacion | null>(null)
   const [eliminando, setEliminando] = useState(false)
   const [zonaPdf, setZonaPdf] = useState(false)
+  const [archivoCotizar, setArchivoCotizar] = useState<File | null>(null)
+  const [textoWhatsapp, setTextoWhatsapp] = useState('')
+  const [mostrarTexto, setMostrarTexto] = useState(false)
+  const [consultaCliente, setConsultaCliente] = useState('')
+  const [clienteElegido, setClienteElegido] = useState<ClienteExistente | null>(
+    null,
+  )
+  const [notas, setNotas] = useState<string[]>([])
+  const [notaNueva, setNotaNueva] = useState('')
+  const [enviandoCotizar, setEnviandoCotizar] = useState(false)
 
   const asistenciaCaida = usarDegradacion((s) =>
     s.activas.some((d) => d.causa === 'asistencia'),
@@ -125,6 +142,7 @@ export function PanelDeCotizaciones({
     ) {
       return
     }
+    usarPedido.getState().fijarModoCotizacion(true)
     usarCaptura.getState().recibirPropuesta({
       capturaId: propuesta.capturaId,
       medioUrl: propuesta.medioUrl ?? '',
@@ -138,6 +156,7 @@ export function PanelDeCotizaciones({
   }
 
   function abrirEnPedido(cotizacion: Cotizacion): void {
+    usarPedido.getState().fijarModoCotizacion(true)
     cargarDesdeCotizacion({
       cotizacionId: cotizacion.id,
       lineas: cotizacion.lineas,
@@ -169,6 +188,65 @@ export function PanelDeCotizaciones({
       setEliminando(false)
     }
   }
+
+  async function elegirClientePorDocumento(
+    numeroDocumento: string,
+  ): Promise<void> {
+    const existente = await leerClientePorDocumento(numeroDocumento)
+    if (existente === null) {
+      setAviso('No se encontró ese cliente.')
+      return
+    }
+    setClienteElegido(existente)
+    setConsultaCliente(existente.denominacion)
+    setNotas([...(existente.instruccionesCotizacion ?? [])])
+  }
+
+  async function persistirNotas(siguientes: string[]): Promise<void> {
+    if (clienteElegido === null) return
+    setNotas(siguientes)
+    await actualizarClienteFn({
+      data: {
+        tipoDocumento: clienteElegido.tipoDocumento,
+        numeroDocumento: clienteElegido.numeroDocumento,
+        denominacion: clienteElegido.denominacion,
+        direccion: clienteElegido.direccion,
+        ubigeo: clienteElegido.ubigeo,
+        condicion: clienteElegido.condicion,
+        instruccionesCotizacion: siguientes,
+      },
+    })
+  }
+
+  async function lanzarCotizar(): Promise<void> {
+    if (enviandoCotizar) return
+    setEnviandoCotizar(true)
+    try {
+      await procesarRequerimientoDeCotizar({
+        archivo: archivoCotizar,
+        texto: textoWhatsapp,
+        clienteId: clienteElegido?.numeroDocumento,
+      })
+      setArchivoCotizar(null)
+      setTextoWhatsapp('')
+      setMostrarTexto(false)
+    } finally {
+      setEnviandoCotizar(false)
+    }
+  }
+
+  const coincidenciasCliente = buscarCoincidenciasDeCliente(
+    consultaCliente,
+    catalogo.clientes,
+  )
+  const archivoElegido =
+    archivoCotizar === null
+      ? null
+      : {
+          nombre: archivoCotizar.name,
+          bytes: archivoCotizar.size,
+          clase: clasificarArchivo(archivoCotizar) ?? 'pdf',
+        }
 
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-6">
@@ -222,7 +300,7 @@ export function PanelDeCotizaciones({
           }
           onClick={() => setZonaPdf((abierta) => !abierta)}
         >
-          Subir PDF
+          Cotizar
         </Boton>
       </form>
 
@@ -231,26 +309,160 @@ export function PanelDeCotizaciones({
         style={{ gridTemplateRows: zonaPdf ? '1fr' : '0fr' }}
       >
         <div className="min-h-0 overflow-hidden">
-          <div className="pt-2 pb-1">
+          <div className="flex flex-col gap-4 pt-2 pb-1">
             <ZonaDeCarga
-              etiqueta="PDF de requerimiento"
-              accept="application/pdf,.pdf"
-              aceptados={['pdf']}
-              archivo={null}
-              estado="vacio"
+              etiqueta="PDF o imagen de requerimiento"
+              accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
+              aceptados={['pdf', 'imagen']}
+              archivo={archivoElegido}
+              estado={archivoCotizar === null ? 'vacio' : 'listo'}
               mensaje={null}
-              deshabilitado={asistenciaCaida}
+              deshabilitado={asistenciaCaida || enviandoCotizar}
               nota={
                 <p className="text-center text-cuerpo text-desvaida">
                   Lista del cliente. El tab sigue usable mientras se lee.
                 </p>
               }
-              onArchivo={(archivo) => {
-                setZonaPdf(false)
-                void procesarPdfDeRequerimiento(archivo)
-              }}
-              onQuitar={() => undefined}
+              onArchivo={(archivo) => setArchivoCotizar(archivo)}
+              onQuitar={() => setArchivoCotizar(null)}
             />
+            <button
+              type="button"
+              className="self-start rounded-full px-3 py-1.5 text-cuerpo font-bold text-tinta transition-colors duration-rapida ease-salida hover:bg-mesa"
+              onClick={() => setMostrarTexto((v) => !v)}
+              aria-expanded={mostrarTexto}
+            >
+              {mostrarTexto ? 'Ocultar mensaje' : 'Pegar mensaje de WhatsApp'}
+            </button>
+            <div
+              className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+              style={{ gridTemplateRows: mostrarTexto ? '1fr' : '0fr' }}
+            >
+              <div className="min-h-0 overflow-hidden">
+                <Etiqueta htmlFor="texto-whatsapp-cotizar">
+                  Mensaje del cliente
+                </Etiqueta>
+                <textarea
+                  id="texto-whatsapp-cotizar"
+                  value={textoWhatsapp}
+                  onChange={(evento) => setTextoWhatsapp(evento.target.value)}
+                  rows={4}
+                  className="mt-1 w-full rounded-2xl border border-borde bg-papel px-3 py-2 text-cuerpo text-tinta"
+                  placeholder="Pega aquí el mensaje…"
+                />
+              </div>
+            </div>
+            <div>
+              <Etiqueta htmlFor="cliente-cotizar">Cliente (opcional)</Etiqueta>
+              <input
+                id="cliente-cotizar"
+                role="combobox"
+                aria-expanded={coincidenciasCliente.length > 0}
+                aria-controls="lista-clientes-cotizar"
+                aria-autocomplete="list"
+                value={consultaCliente}
+                onChange={(evento) => {
+                  setConsultaCliente(evento.target.value)
+                  setClienteElegido(null)
+                }}
+                autoComplete="off"
+                className="mt-1 w-full rounded-2xl border border-borde bg-papel px-3 py-2 text-cuerpo text-tinta"
+                placeholder="Razón social o documento"
+              />
+              {coincidenciasCliente.length > 0 && clienteElegido === null ? (
+                <ul
+                  id="lista-clientes-cotizar"
+                  role="listbox"
+                  className="mt-1 rounded-2xl border border-borde bg-papel"
+                >
+                  {coincidenciasCliente.map((cada) => (
+                    <li key={cada.numeroDocumento}>
+                      <button
+                        type="button"
+                        className="w-full px-3 py-2 text-left text-cuerpo hover:bg-mesa"
+                        onClick={() =>
+                          void elegirClientePorDocumento(cada.numeroDocumento)
+                        }
+                      >
+                        {cada.denominacion} · {cada.numeroDocumento}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+            {clienteElegido !== null ? (
+              <div className="rounded-2xl border border-borde bg-mesa/40 p-3">
+                <p className="mb-2 text-cuerpo font-bold text-tinta">
+                  Notas de {clienteElegido.denominacion}
+                </p>
+                <ul className="mb-2 flex flex-col gap-2">
+                  {notas.map((nota, indice) => (
+                    <li key={`${indice}-${nota.slice(0, 12)}`} className="flex gap-2">
+                      <input
+                        aria-label={`Nota ${indice + 1}`}
+                        value={nota}
+                        onChange={(evento) => {
+                          const siguientes = notas.map((n, i) =>
+                            i === indice ? evento.target.value : n,
+                          )
+                          setNotas(siguientes)
+                        }}
+                        onBlur={() => void persistirNotas(notas)}
+                        className="min-w-0 flex-1 rounded-xl border border-borde bg-papel px-2 py-1 text-cuerpo"
+                      />
+                      <Boton
+                        variante="discreto"
+                        type="button"
+                        onClick={() =>
+                          void persistirNotas(notas.filter((_, i) => i !== indice))
+                        }
+                      >
+                        Quitar
+                      </Boton>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex gap-2">
+                  <input
+                    value={notaNueva}
+                    onChange={(evento) => setNotaNueva(evento.target.value)}
+                    placeholder="Nueva nota de instrucción"
+                    className="min-w-0 flex-1 rounded-xl border border-borde bg-papel px-2 py-1 text-cuerpo"
+                  />
+                  <Boton
+                    variante="secundario"
+                    type="button"
+                    disabled={notaNueva.trim() === ''}
+                    onClick={() => {
+                      const texto = notaNueva.trim()
+                      if (texto === '') return
+                      setNotaNueva('')
+                      void persistirNotas([...notas, texto])
+                    }}
+                  >
+                    Añadir
+                  </Boton>
+                </div>
+              </div>
+            ) : (
+              <p className="text-cuerpo text-desvaida">
+                Elige un cliente para ver o crear notas de cotización.
+              </p>
+            )}
+            <Boton
+              variante="principal"
+              type="button"
+              disabled={
+                asistenciaCaida ||
+                enviandoCotizar ||
+                (archivoCotizar === null && textoWhatsapp.trim() === '')
+              }
+              aria-busy={enviandoCotizar || undefined}
+              onClick={() => void lanzarCotizar()}
+            >
+              Interpretar
+            </Boton>
           </div>
         </div>
       </div>

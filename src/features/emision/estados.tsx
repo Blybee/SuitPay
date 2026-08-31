@@ -1,5 +1,5 @@
 import { AlertTriangle, Download, Loader2, Printer, Share2 } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { MarcaDeEstado } from '../../ui/componentes/Sello.tsx'
@@ -11,6 +11,7 @@ import type { RespuestaDeEmitir } from './emitir.funciones.ts'
 import { sePuedeReintentar, usarEmision } from './flujo.ts'
 import type { FaseDeEmision } from './flujo.ts'
 import { imprimirDocumento } from './impresion.ts'
+import { resolverYPrecargarPdf } from './precarga.ts'
 
 /**
  * Estados de emisión en la interfaz (decisión 10).
@@ -36,9 +37,22 @@ function AccionesDePdf({
   readonly onCompartir: (comprobanteId: string) => void
 }) {
   const [aviso, setAviso] = useState<string | null>(null)
-  const pdf = comprobante.archivos.pdf
+  const [pdf, setPdf] = useState<string | null>(comprobante.archivos.pdf)
   const nombre = nombreDelComprobante(comprobante.serie, comprobante.numero)
   const sinPdf = pdf === null || pdf === ''
+
+  useEffect(() => {
+    let vivo = true
+    void resolverYPrecargarPdf(
+      comprobante.comprobanteId,
+      comprobante.archivos.pdf,
+    ).then((url) => {
+      if (vivo && url !== null) setPdf(url)
+    })
+    return () => {
+      vivo = false
+    }
+  }, [comprobante.comprobanteId, comprobante.archivos.pdf])
 
   function alImprimir(): void {
     setAviso(null)
@@ -129,7 +143,9 @@ export function EstadoDeEmision({
   onImprimir,
   onCompartir,
 }: PropsDeEstadoDeEmision) {
-  if (fase.nombre === 'inactiva') return null
+  if (fase.nombre === 'inactiva' || fase.nombre === 'encadenando_guia') {
+    return null
+  }
 
   if (fase.nombre === 'en_vuelo') {
     return (

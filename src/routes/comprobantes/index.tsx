@@ -24,6 +24,7 @@ import {
   confirmarYPrepararReutilizacion,
   etiquetaDeComprobante,
 } from '../../features/pedido/reutilizar-desde-comprobante.ts'
+import { etiquetaDeAsociacionGuia } from '../../features/guia/etiqueta.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import type { ClienteEnIndice } from '../../infra/local/catalogo.ts'
 import { Modal } from '../../ui/componentes/Modal.tsx'
@@ -179,6 +180,15 @@ function ListaDeComprobantes() {
       lineas: preparado.lineas,
       cliente: preparado.cliente,
       comprobanteOrigenId: comprobante.id,
+      comprobanteOrigenEtiqueta:
+        comprobante.tipoDocumento === 'boleta' ||
+        comprobante.tipoDocumento === 'factura'
+          ? etiquetaDeAsociacionGuia(
+              comprobante.tipoDocumento,
+              comprobante.serie,
+              comprobante.numero,
+            )
+          : `Asociada a ${preparado.etiqueta}`,
     })
     mostrar({
       tono: 'info',

@@ -37,9 +37,9 @@ export const SCHEMA_RESPUESTA_ASISTENCIA = {
 } as const
 
 const REGLAS_BASE = `
-Recibirás un LOTE FILTRADO de productos candidatos en JSON con campos:
-  codigo, descripcion, unidad
-Debes usar SOLO ese lote. No inventes productos ni códigos.
+Recibirás el catálogo compacto (o un lote) en JSON con campos:
+  id (codigo), n (nombre), a (alias), e (etiquetas de intención: economico, liviano, …)
+Debes usar SOLO esos productos. No inventes códigos.
 
 Estructura típica del pedido hablado/escrito: [cantidad] [producto] [medida] [marca].
 Ejemplos: "10 codo fg de media", "pegamento 1/16 pavco 5 unidades".
@@ -66,16 +66,22 @@ Reglas de extracción:
 export function promptDeAsistencia(
   tipo: TipoDeCaptura,
   candidatos: readonly CandidatoDeAsistencia[],
+  instrucciones: readonly string[] = [],
 ): string {
   const encabezado =
     tipo === 'audio'
       ? 'Escucha este audio de un pedido de mostrador (gasfitería/grifería) y devuelve SOLO JSON puro.'
-      : 'Lee esta fotografía de una guía manual de pedido (manuscrita o impresa) y devuelve SOLO JSON puro. Primero extrae el texto de cada renglón en textoOriginal; después empareja contra el lote.'
+      : 'Lee esta fotografía de una guía manual de pedido (manuscrita o impresa) y devuelve SOLO JSON puro. Primero extrae el texto de cada renglón en textoOriginal; después empareja contra el catálogo.'
+
+  const bloqueNotas =
+    instrucciones.length > 0
+      ? `\nPreferencias de este pedido (sin identidad):\n${instrucciones.map((n) => `- ${n}`).join('\n')}\n`
+      : ''
 
   return `${encabezado}
 
 ${REGLAS_BASE}
-
-Lote de candidatos (${candidatos.length} productos, JSON):
+${bloqueNotas}
+Catálogo compacto (${candidatos.length} productos, JSON):
 ${textoDeCandidatosParaPrompt(candidatos)}`
 }

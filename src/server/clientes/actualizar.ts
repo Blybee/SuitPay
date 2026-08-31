@@ -1,4 +1,5 @@
 import { FieldValue } from 'firebase-admin/firestore'
+import { z } from 'zod'
 import { esquemaDeCliente } from '../../domain/esquemas/comunes.ts'
 import type { Cliente } from '../../domain/esquemas/comunes.ts'
 import { COLECCIONES, DOCUMENTOS, bd } from '../firebase/admin.ts'
@@ -12,7 +13,9 @@ import { fallar } from '../errores.ts'
 export type PeticionDeActualizarCliente = Pick<
   Cliente,
   'tipoDocumento' | 'numeroDocumento' | 'denominacion' | 'direccion' | 'ubigeo' | 'condicion'
->
+> & {
+  readonly instruccionesCotizacion?: readonly string[]
+}
 
 export interface ClienteActualizado {
   readonly numeroDocumento: string
@@ -30,6 +33,12 @@ export async function actualizarCliente(
       direccion: true,
       ubigeo: true,
       condicion: true,
+    })
+    .extend({
+      instruccionesCotizacion: z
+        .array(z.string().trim().min(1).max(500))
+        .max(20)
+        .optional(),
     })
     .safeParse(peticion)
   if (!parseado.success) {
@@ -86,6 +95,9 @@ export async function actualizarCliente(
     if (cliente.direccion !== undefined) documento['direccion'] = cliente.direccion
     if (cliente.ubigeo !== undefined) documento['ubigeo'] = cliente.ubigeo
     if (cliente.condicion !== undefined) documento['condicion'] = cliente.condicion
+    if (cliente.instruccionesCotizacion !== undefined) {
+      documento['instruccionesCotizacion'] = cliente.instruccionesCotizacion
+    }
 
     tx.update(referencia, documento)
     tx.set(
