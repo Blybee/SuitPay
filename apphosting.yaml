@@ -20,7 +20,9 @@ runConfig:
   maxInstances: 2
   concurrency: 80
   cpu: 1
-  memoryMiB: 512
+  # 1024: la importación del PDF de lista (~150 páginas, pdfjs) no cabe con
+  # holgura en los 512 MiB por defecto junto a firebase-admin.
+  memoryMiB: 1024
 
 env:
   # --- Configuración pública del cliente de Firebase ---------------------

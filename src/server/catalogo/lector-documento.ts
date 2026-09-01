@@ -1,12 +1,17 @@
-import { extractTextItems, getDocumentProxy } from 'unpdf'
+import { definePDFJSModule, getDocumentProxy } from 'unpdf'
 import { fallar } from '../errores.ts'
 import type { ProductoDeCatalogo } from './tipos.ts'
 
 /**
  * Interpretación determinista de la lista de precios en PDF (T078 / decisión 13).
  *
- * `unpdf.extractTextItems` da coordenadas; las reglas de columnas viven aquí.
- * No hay LLM: códigos y precios no pueden alucinarse.
+ * Coordenadas (`str`, `x`, `y`) con el PDF.js empaquetado de `unpdf`. Las reglas
+ * de columnas viven aquí. No hay LLM: códigos y precios no pueden alucinarse.
+ *
+ * No usamos `extractTextItems`: abre todas las páginas en paralelo (`Promise.all`)
+ * y en Cloud Run (512–1024 MiB) eso tumba el proceso. La lista SICO ronda 150
+ * páginas. El import explícito de `unpdf/pdfjs` es para que Nitro lo tracee en
+ * el bundle de producción (dentro de `node_modules` el dinámico no siempre entra).
  */
 
 const TOLERANCIA_Y = 3
@@ -71,7 +76,7 @@ export function bytesDesdeBase64(texto: string): Uint8Array {
   if (buf.byteLength < 8) {
     fallar('archivo_no_interpretable', { motivo: 'pdf_vacio' })
   }
-  return new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
+  return new Uint8Array(buf)
 }
 
 export async function interpretarDocumentoDeCatalogo(
@@ -81,15 +86,9 @@ export async function interpretarDocumentoDeCatalogo(
     fallar('archivo_no_interpretable', { motivo: 'pdf_vacio' })
   }
 
-  let itemsPorPagina: readonly (readonly {
-    str?: string
-    x?: number
-    y?: number
-  }[])[]
+  let itemsPorPagina: readonly (readonly ItemDeTexto[])[]
   try {
-    const pdf = await getDocumentProxy(bytes)
-    const extraido = await extractTextItems(pdf)
-    itemsPorPagina = extraido.items
+    itemsPorPagina = await extraerItemsPorPagina(bytes)
   } catch {
     fallar('archivo_no_interpretable', { motivo: 'pdf_ilegible' })
   }
@@ -98,18 +97,7 @@ export async function interpretarDocumentoDeCatalogo(
   let omitidos = 0
   let marca = ''
 
-  for (const pagina of itemsPorPagina) {
-    const items: ItemDeTexto[] = []
-    for (const crudo of pagina) {
-      const str = (crudo.str ?? '').trim()
-      if (str.length === 0) continue
-      items.push({
-        str,
-        x: typeof crudo.x === 'number' ? crudo.x : 0,
-        y: typeof crudo.y === 'number' ? crudo.y : 0,
-      })
-    }
-
+  for (const items of itemsPorPagina) {
     for (const fila of agruparPorFila(items)) {
       const texto = fila.map((i) => i.str).join(' ')
       const linea = texto.match(LINEA)
@@ -140,6 +128,54 @@ export async function interpretarDocumentoDeCatalogo(
     filas: productos,
     reconocidos: productos.length,
     omitidos,
+  }
+}
+
+function esItemDeTexto(item: unknown): item is {
+  readonly str: string
+  readonly transform: readonly number[]
+} {
+  if (typeof item !== 'object' || item === null) return false
+  if (!('str' in item) || typeof item.str !== 'string') return false
+  if (!('transform' in item) || !Array.isArray(item.transform)) return false
+  return true
+}
+
+/**
+ * Una página tras otra. `extractTextItems` de unpdf hace fan-out de todas.
+ */
+async function extraerItemsPorPagina(
+  bytes: Uint8Array,
+): Promise<readonly (readonly ItemDeTexto[])[]> {
+  await definePDFJSModule(() => import('unpdf/pdfjs'))
+  const pdf = await getDocumentProxy(bytes)
+  try {
+    const paginas: ItemDeTexto[][] = []
+    for (let n = 1; n <= pdf.numPages; n += 1) {
+      const pagina = await pdf.getPage(n)
+      try {
+        const contenido = await pagina.getTextContent()
+        const items: ItemDeTexto[] = []
+        for (const crudo of contenido.items) {
+          if (!esItemDeTexto(crudo)) continue
+          const str = crudo.str.trim()
+          if (str.length === 0) continue
+          const x = crudo.transform[4]
+          const y = crudo.transform[5]
+          items.push({
+            str,
+            x: typeof x === 'number' ? x : 0,
+            y: typeof y === 'number' ? y : 0,
+          })
+        }
+        paginas.push(items)
+      } finally {
+        pagina.cleanup()
+      }
+    }
+    return paginas
+  } finally {
+    await pdf.loadingTask.destroy()
   }
 }
 

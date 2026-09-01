@@ -5,10 +5,6 @@ import { exigirIdentidad } from '../../server/auth/verificar.ts'
 import { ErrorDeSuitPay, esErrorDeSuitPay } from '../../server/errores.ts'
 import { AlmacenDeCatalogoFirestore } from '../../server/catalogo/almacen-firestore.ts'
 import { importarCatalogo } from '../../server/catalogo/importar.ts'
-import {
-  bytesDesdeBase64,
-  interpretarDocumentoDeCatalogo,
-} from '../../server/catalogo/lector-documento.ts'
 import type { ResumenDeImportacion } from '../../server/catalogo/tipos.ts'
 import type { Producto } from '../../domain/esquemas/comunes.ts'
 
@@ -75,6 +71,9 @@ export const interpretarCatalogoDocumentoFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }): Promise<RespuestaDeInterpretarDocumento> => {
     try {
       await exigirIdentidad(getRequestHeaders(), ['administrador'])
+      const { bytesDesdeBase64, interpretarDocumentoDeCatalogo } = await import(
+        '../../server/catalogo/lector-documento.ts'
+      )
       const resultado = await interpretarDocumentoDeCatalogo(
         bytesDesdeBase64(data.contenidoBase64),
       )

@@ -19,6 +19,11 @@ const config = defineConfig(({ mode }) => {
 
   return {
     resolve: { tsconfigPaths: true },
+    ssr: {
+      // Fuerza a Nitro a empaquetar unpdf + unpdf/pdfjs (el import dinámico
+      // interno de unpdf no siempre queda en el grafo de producción).
+      noExternal: ['unpdf'],
+    },
     plugins: [
       devtools(),
       tailwindcss(),

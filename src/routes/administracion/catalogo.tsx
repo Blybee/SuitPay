@@ -111,8 +111,8 @@ function PantallaDeCatalogo() {
         modo: 'validar',
       },
     })
-    if (!resultado.ok || resultado.resumen === undefined) {
-      fallarCarga(resultado.error?.mensaje ?? 'No se pudo validar el catálogo.')
+    if (!resultado?.ok || resultado.resumen === undefined) {
+      fallarCarga(resultado?.error?.mensaje ?? 'No se pudo validar el catálogo.')
       return
     }
     aplicarValidacion(resultado.resumen)
@@ -129,9 +129,14 @@ function PantallaDeCatalogo() {
     const interpretado = await interpretarCatalogoDocumentoFn({
       data: { contenidoBase64, nombreArchivo: archivo.name },
     })
-    if (!interpretado.ok || interpretado.filas === undefined) {
+    if (
+      interpretado == null ||
+      !interpretado.ok ||
+      interpretado.filas === undefined
+    ) {
       fallarCarga(
-        interpretado.error?.mensaje ?? 'No se pudo interpretar el PDF.',
+        interpretado?.error?.mensaje ??
+          'No se pudo interpretar el PDF. Si el archivo es grande, espera un momento y vuelve a intentar.',
       )
       return
     }
@@ -145,10 +150,10 @@ function PantallaDeCatalogo() {
         modo: 'validar',
       },
     })
-    if (!resultado.ok || resultado.resumen === undefined) {
+    if (!resultado?.ok || resultado.resumen === undefined) {
       setProductos(interpretado.filas)
       fallarCarga(
-        resultado.error?.mensaje ??
+        resultado?.error?.mensaje ??
           'El PDF se interpretó, pero no se pudo validar.',
       )
       return
@@ -178,11 +183,11 @@ function PantallaDeCatalogo() {
           modo: 'publicar',
         },
       })
-      if (!resultado.ok || resultado.resumen === undefined) {
+      if (!resultado?.ok || resultado.resumen === undefined) {
         usarNotificaciones.getState().mostrar({
           tono: 'error',
           mensaje:
-            resultado.error?.mensaje ?? 'No se pudo publicar el catálogo.',
+            resultado?.error?.mensaje ?? 'No se pudo publicar el catálogo.',
         })
         return
       }
@@ -302,7 +307,16 @@ function mensajeDeError(error: unknown): string {
       return error.mensajeParaVendedor
     }
     if ('message' in error && typeof error.message === 'string') {
-      return error.message
+      const texto = error.message
+      if (
+        texto.length === 0 ||
+        texto.startsWith('Cannot read') ||
+        texto.includes('Invariant failed') ||
+        texto === 'Internal Server Error'
+      ) {
+        return 'No se pudo importar el catálogo. El servidor no completó la lectura del PDF.'
+      }
+      return texto
     }
   }
   return 'No se pudo importar el catálogo.'
