@@ -327,7 +327,7 @@ Reglas confirmadas con el dueño del producto:
 
 ## Decisión 13 — Importación PDF de lista de precios (`unpdf`, sin LLM)
 
-**Fecha**: 2026-08-11 · **Contexto**: US2 / T078; columnas documentadas en `docs/productos.md`; fixture `docs/LISTAS.pdf` (~315 KB, miles de filas posibles).
+**Fecha**: 2026-08-11 · **Contexto**: US2 / T078; columnas del fixture `docs/LISTAS.pdf` (~315 KB, miles de filas posibles).
 
 **Decisión**: interpretar el PDF en el **servidor** con **`unpdf`** (`getDocumentProxy` + `extractTextItems`: ítems con `str`, `x`, `y`, `width`, `height` por página). Encima, reglas deterministas:
 

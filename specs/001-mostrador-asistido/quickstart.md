@@ -21,7 +21,7 @@ Cómo comprobar que la entrega funciona de verdad. No es documentación de insta
 - `.env.local` con `VITE_USAR_EMULADORES=false`, variables `VITE_FIREBASE_*` del proyecto `blayblocklabs-antrax`, y `PROVEEDOR_*` de demo.
 - Admin SDK en el proceso de `npm run dev`: Application Default Credentials (`gcloud auth application-default login`) o `GOOGLE_APPLICATION_CREDENTIALS`.
 - Primer administrador (una vez): `node scripts/bootstrap-admin.mjs` con `BOOTSTRAP_CORREO` / `BOOTSTRAP_CONTRASENA` / `BOOTSTRAP_NOMBRE`.
-- Semilla de catálogo (opcional, misma lógica que T081): `npx tsx scripts/publicar-catalogo.ts tmp/productos.js`. En el día a día usar `/administracion/catalogo`.
+- Catálogo vivo: en `/administracion/catalogo`, cargar el PDF de lista de precios (`docs/LISTAS.pdf` o el export SICO vigente), revisar la grilla y publicar. El JSON de tienda sigue siendo un formato de importación, no la fuente de verdad.
 - Emulator Suite: solo para pruebas de reglas (T022) cuando haya Java; **no** es el camino de venta en UI.
 
 ## Escenarios de validación
@@ -32,7 +32,7 @@ Cómo comprobar que la entrega funciona de verdad. No es documentación de insta
 2. **Usuarios**: crear un vendedor con rol y activo.
 3. **Series**: crear un establecimiento; asignar serie de boleta (y factura) al vendedor con `numeroInicial`.
 4. **Parámetros**: confirmar umbral (p. ej. 700 soles).
-5. **Catálogo**: cargar `tmp/productos.js` → validar → publicar (`catalogo/actual` en cloud).
+5. **Catálogo**: cargar el PDF de lista de precios (`docs/LISTAS.pdf` o equivalente) → revisar la grilla → validar → publicar (`catalogo/actual` en cloud). Nada se escribe hasta confirmar.
 6. Cerrar sesión; entrar como vendedor.
 
 ### V1 — Venta escrita de principio a fin (US1)
@@ -121,9 +121,11 @@ Con una venta en curso, escribir un RUC no registrado.
 
 ### V13 — Carga del catálogo (US2)
 
-Como administrador, en Configuración → Catálogo, cargar el JSON de la tienda (`tmp/productos.js` o export equivalente) en modo validación y luego publicarlo. Comprobar que un producto con variantes (p. ej. válvula esférica) aparece como **varios ítems** con precios mayoristas distintos, descripción `{marca} {nombre} {variante}` y **sin** el precio en el texto. Cargar después una versión con un precio cambiado, un producto nuevo, uno desaparecido y dos códigos repetidos.
+Como administrador, en Configuración → Catálogo, cargar el PDF de lista de precios (`docs/LISTAS.pdf` o el export SICO vigente) en modo validación y luego publicarlo. Comprobar que las columnas CODIGO | PRODUCTO | U.M. | PRECIO se reconocen, que `LINEA` queda como marca y que **nada se escribe** hasta confirmar. Cargar después una versión con un precio cambiado, un producto nuevo, uno desaparecido y dos códigos repetidos.
 
-**Observar**: el resumen previo muestra las diferencias antes de aplicar nada; los códigos duplicados se señalan **sin resolverse automáticamente**; tras publicar, los vendedores ven el catálogo nuevo al refrescar. Contar las escrituras de la publicación: **debe ser una sola**, no una por producto. Esperado del export actual: ~737 ítems a partir de ~465 productos de tienda.
+Si se carga un export JSON de la tienda (formato `json_tienda`, no la vía del día a día): un producto con variantes debe aparecer como **varios ítems** con precios mayoristas distintos, descripción `{marca} {nombre} {variante}` y **sin** el precio en el texto.
+
+**Observar**: el resumen previo muestra las diferencias antes de aplicar nada; los códigos duplicados se señalan **sin resolverse automáticamente**; tras publicar, los vendedores ven el catálogo nuevo al refrescar. Contar las escrituras de la publicación: **debe ser una sola**, no una por producto.
 
 ### V14 — Los comandos no escriben comprobantes (FR-048, principio I)
 
