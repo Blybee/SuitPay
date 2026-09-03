@@ -120,6 +120,12 @@ caveats no obvios para arrancar/probar en el VM (el update script ya corrio
   `emulador`. Requiere Java (ya presente: OpenJDK 21). La primera vez descarga los
   jars de los emuladores a `~/.cache/firebase/` (una sola vez). Pasan.
 - `npm run tipos` — typecheck, limpio.
+- `npm run build && npm run humo:produccion` — arranca `.output/server` y llama
+  a las funciones de servidor **del bundle** (no de las fuentes). Es la única
+  prueba que detecta fallos de empaquetado de Nitro (p. ej. `firebase-admin`
+  bundleado → todas las funciones 500 en producción y `respuesta` undefined en el
+  cliente). `vite dev` no empaqueta, así que en local nunca se ve. Correrla
+  siempre que se toque `vite.config.ts`, `nitro`, `vite` o `firebase-admin`.
 - `npm run prueba:e2e:completa` — Playwright dentro de `emulators:exec`. Necesita
   navegador: `npx playwright install chromium` (no incluido en el update script).
   **Dos specs de `tests/e2e/venta-escrita.spec.ts` fallan por causas preexistentes,
