@@ -16,7 +16,15 @@ const JPEG_QUALITY = 0.85
 
 async function redimensionarSiHaceFalta(file: Blob): Promise<Blob> {
   if (typeof createImageBitmap === 'undefined') return file
-  const bitmap = await createImageBitmap(file)
+  let bitmap: ImageBitmap
+  try {
+    bitmap = await createImageBitmap(file)
+  } catch {
+    // Formato que el navegador no decodifica (HEIC, JPEG raro): se manda el
+    // original y decide la asistencia. Antes esto rechazaba fuera del try del
+    // llamador y el panel quedaba en «Procesando…» para siempre.
+    return file
+  }
   const escala = Math.min(1, MAX_LADO / Math.max(bitmap.width, bitmap.height))
   if (escala >= 1 && file.type === 'image/jpeg') {
     bitmap.close()
