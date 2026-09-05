@@ -104,6 +104,9 @@ export interface Comprobante {
   readonly traslado?: TrasladoDeGuia | null
   readonly comprobanteOrigenId?: string | null
   readonly guiaAsociadaId?: string | null
+  readonly inventarioAplicado?: boolean
+  readonly inventarioAplicadoPor?: string | null
+  readonly inventarioRestaurado?: boolean
 }
 
 export interface Serie {
@@ -176,6 +179,9 @@ export interface CambiosDelComprobante {
   readonly nuevoIntento?: IntentoDeEmision
   readonly guiaAsociadaId?: string | null
   readonly comprobanteOrigenId?: string | null
+  readonly inventarioAplicado?: boolean
+  readonly inventarioAplicadoPor?: string | null
+  readonly inventarioRestaurado?: boolean
 }
 
 export interface AlmacenDeEmision {

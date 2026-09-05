@@ -55,8 +55,17 @@ service cloud.firestore {
 
     // --- Instantáneas de solo lectura ------------------------------------
     // Las escribe el backend al publicar. Una lectura por sesión.
+    // Sacar un SKU del maestro no es un delete de documento: Guardar
+    // reescribe catalogo/actual sin esa fila. El cliente no escribe aquí.
 
     match /catalogo/{documento} {
+      allow read: if personalDeLaEmpresa();
+      allow write: if false;
+    }
+
+    // Contadores orientativos. El cliente lee (mostrador perezoso, admin
+    // popover). Toda escritura es Admin SDK.
+    match /inventario/{codigo} {
       allow read: if personalDeLaEmpresa();
       allow write: if false;
     }

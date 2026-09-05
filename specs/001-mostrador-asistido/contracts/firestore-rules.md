@@ -16,7 +16,8 @@ Define quién puede leer y escribir cada colección. Es el contrato que sostiene
 
 | Colección | Vendedor | Administrador | Jefe | Notas |
 |-----------|----------|---------------|------|-------|
-| `catalogo/actual` | leer | leer | leer | Escribir solo el backend, al publicar. |
+| `catalogo/actual` | leer | leer | leer | Escribir solo el backend, al publicar o guardar. Quitar un SKU (tacho) recorta el arreglo en el cliente y el backend reescribe este documento; no hay `delete` de ficha suelta. |
+| `inventario/{codigo}` | leer | leer | leer | Escribir solo el backend (ajuste admin / movimiento al emitir). |
 | `indices/clientes` | leer | leer | leer | Escribir solo el backend. |
 | `config/parametros` | leer | leer | leer | Escribir solo el backend. |
 | `clientes/{id}` | leer, crear | leer, crear, editar | leer | El vendedor crea pero no edita: corregir los datos de un cliente ya registrado es una operación administrativa. |

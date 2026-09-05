@@ -4,11 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
 import { pedidoTienePrecioBajoCatalogo } from '../domain/totales/calculo.ts'
 import { usarBusqueda } from '../features/busqueda/almacen.ts'
-import {
-  usarCatalogo,
-  umbralVigente,
-  marcasDelCatalogo,
-} from '../features/catalogo/almacen.ts'
+import { usarCatalogo, umbralVigente } from '../features/catalogo/almacen.ts'
 import { PanelDictado } from '../features/captura/audio.tsx'
 import {
   extraerMencionDeCliente,
@@ -55,7 +51,10 @@ import { claveDeDiaLima } from '../domain/captura/hora-lima.ts'
 import { aplicarLineasAprobadasAlPedido } from '../features/captura/aprobar.ts'
 import type { LineaCapturaAprobada } from '../features/captura/aprobar.ts'
 import { resolverDestinoDeVecino } from '../domain/captura/mencion-vecino.ts'
-import { FiltrosDeCatalogo } from '../ui/componentes/FiltrosDeCatalogo.tsx'
+import {
+  avisoPerezosoDeCodigo,
+  vaciarCacheInventario,
+} from '../features/inventario/consultar.ts'
 import {
   alRecuperarConectividad,
   usarDegradacion,
@@ -194,6 +193,9 @@ function Mostrador() {
   const [altaTransportistaRuc, setAltaTransportistaRuc] = useState<
     string | null
   >(null)
+  const [avisosInventario, setAvisosInventario] = useState<
+    ReadonlyMap<string, string>
+  >(() => new Map())
 
   const catalogo = usarCatalogo()
   const ultimaBusqueda = usarBusqueda((estado) => estado.ultima)
@@ -239,6 +241,21 @@ function Mostrador() {
   useEffect(() => {
     registrarInyeccionDeCapturaParaPruebas()
   }, [])
+
+  function registrarAvisoInventario(codigo: string, aviso: string | null): void {
+    setAvisosInventario((previo) => {
+      const siguiente = new Map(previo)
+      if (aviso === null || aviso.length === 0) siguiente.delete(codigo)
+      else siguiente.set(codigo, aviso)
+      return siguiente
+    })
+  }
+
+  function consultarAvisoInventario(codigo: string): void {
+    void avisoPerezosoDeCodigo(codigo).then((aviso) => {
+      registrarAvisoInventario(codigo, aviso)
+    })
+  }
 
   useEffect(() => {
     if (sesion.uid === null) {
@@ -439,6 +456,7 @@ function Mostrador() {
     }
 
     const aplicadas = aplicarLineasAprobadasAlPedido(lineas, capturaId)
+    for (const linea of lineas) consultarAvisoInventario(linea.codigo)
     registrarParesEnSegundoPlano({
       medio: usarCaptura.getState().tipo ?? 'captura',
       pares: paresDesdeCaptura(lineas),
@@ -599,6 +617,7 @@ function Mostrador() {
       cantidad: 1,
       precio: producto.precio,
     })
+    consultarAvisoInventario(producto.codigo)
     setLineaSenalada((prev) => ({
       codigo: producto.codigo,
       tipo: agregada ? 'nueva' : 'existente',
@@ -654,6 +673,7 @@ function Mostrador() {
         cantidad: 1,
         precio: producto.precio,
       })
+      consultarAvisoInventario(producto.codigo)
       if (agregada) añadidos += 1
       else omitidos += 1
     }
@@ -773,6 +793,20 @@ function Mostrador() {
     if (!comenzarEmision()) return
 
     const clave = pedido.reclamarClaveDeIdempotencia()
+    const avisosAlEmitir = [
+      ...new Set(
+        pedido.lineas.flatMap((linea) => {
+          const aviso = avisosInventario.get(linea.codigo)
+          return aviso === undefined ? [] : [aviso]
+        }),
+      ),
+    ]
+    if (avisosAlEmitir.length > 0) {
+      usarNotificaciones.getState().mostrar({
+        tono: 'info',
+        mensaje: avisosAlEmitir.join(' '),
+      })
+    }
 
     try {
       const respuesta = await emitir({
@@ -798,6 +832,8 @@ function Mostrador() {
         conservarPedido: encadenarGuia,
       })
       if (respuesta.ok && respuesta.comprobante !== undefined) {
+        vaciarCacheInventario()
+        setAvisosInventario(new Map())
         limpiarContextoDeCotizacionEnCabecera()
         void resolverYPrecargarPdf(
           respuesta.comprobante.comprobanteId,
@@ -1042,12 +1078,6 @@ function Mostrador() {
             setPestana(siguiente)
           }}
         />
-        <FiltrosDeCatalogo
-          marcas={marcasDelCatalogo(catalogo)}
-          categorias={catalogo.categorias}
-          facetas={catalogo.facetas}
-          onCambiar={(facetas) => catalogo.fijarFacetas(facetas)}
-        />
         {faseCaptura === 'revision_texto' && (
           <BarraPasoTextoExtraido
             onContinuar={() => {
@@ -1180,6 +1210,7 @@ function Mostrador() {
                     lineaSenalada.codigo === linea.codigo
                   }
                   senal={lineaSenalada?.vez ?? 0}
+                  avisoInventario={avisosInventario.get(linea.codigo) ?? null}
                 />
               ))}
             </ul>

@@ -21,6 +21,8 @@ import {
   ventaEstaCerrada,
 } from './estados.ts'
 import { reclamarCorrelativo } from './series.ts'
+import type { AlmacenDeInventario } from '../inventario/almacen.ts'
+import { intentarTrasVenta } from '../inventario/aplicar.ts'
 
 /**
  * `emitirGuia`: único camino por el que nace una guía de remisión.
@@ -61,6 +63,7 @@ export interface ContextoDeGuia {
   readonly proveedor: ProveedorDeEmision
   readonly vendedorId: string
   readonly formatoImpresion: 'a4' | 'rollo'
+  readonly inventario?: AlmacenDeInventario
   readonly ahora?: () => Date
 }
 
@@ -298,6 +301,8 @@ async function invocarYRegistrar(
       emitido.numero,
     )
   }
+
+  await intentarTrasVenta(contexto.inventario, contexto.almacen, comprobante.id)
 
   return respuestaDe(
     {

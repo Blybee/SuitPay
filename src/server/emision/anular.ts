@@ -7,6 +7,8 @@ import { fallar } from '../errores.ts'
 import type { ProveedorDeEmision } from '../proveedor/interfaz.ts'
 import type { AlmacenDeEmision, Comprobante } from './almacen.ts'
 import { exigirTransicion } from './estados.ts'
+import type { AlmacenDeInventario } from '../inventario/almacen.ts'
+import { intentarTrasAnulacion } from '../inventario/aplicar.ts'
 
 /**
  * `anularComprobante`: baja de un comprobante emitido (`enviado` o `aceptado`)
@@ -31,6 +33,7 @@ export interface RespuestaDeAnular {
 export interface ContextoDeAnulacion {
   readonly almacen: AlmacenDeEmision
   readonly proveedor: ProveedorDeEmision
+  readonly inventario?: AlmacenDeInventario
   readonly ahora?: () => Date
 }
 
@@ -112,6 +115,12 @@ export async function anularComprobante(
     })
   }
 
+  await intentarTrasAnulacion(
+    contexto.inventario,
+    contexto.almacen,
+    peticion.comprobanteId,
+  )
+
   return {
     estado: 'anulado',
     anulacion,
@@ -138,12 +147,12 @@ async function confirmarBajaEnProveedor(
     })
   }
 
-  if (comprobante.numero === null) {
-    fallar('estado_no_anulable')
-  }
-
   if (!REGLAS[comprobante.tipoDocumento].valorTributario) {
     return
+  }
+
+  if (comprobante.numero === null) {
+    fallar('estado_no_anulable')
   }
 
   const resultado = await contexto.proveedor.anular({

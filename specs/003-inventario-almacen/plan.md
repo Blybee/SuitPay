@@ -1,64 +1,37 @@
 # Implementation Plan: Inventario y almacén
 
-**Branch**: `003-inventario-almacen` | **Date**: 2026-08-10 | **Spec**: [spec.md](./spec.md)
-
-**Input**: Feature specification from `/specs/003-inventario-almacen/spec.md`
+**Branch**: `003-inventario-almacen` | **Date**: 2026-09-04 | **Spec**: [spec.md](./spec.md)
 
 ## Summary
 
-Añadir existencias por producto, descuento idempotente al emitir (NV/bol/fact), herencia del movimiento cuando hay guía asociada, restauración una vez al anular el par, alertas de stock bajo y ajuste admin. **No implementar código** hasta cerrar si SuitPay es fuente de verdad durante la convivencia (FR-007).
+Contadores orientativos por SKU (`inventario/{codigo}`), descuento idempotente al emitir, herencia en guía asociada, reintegro único al anular, avisos no bloqueantes, ajuste en Catálogo (popover perezoso, sin motivo). **No** hay ruta `/administracion/inventario`.
 
 ## Technical Context
 
-**Language/Version**: TypeScript (mismo monorepo TanStack Start que `001`).
+**Language/Version**: TypeScript, TanStack Start, Firestore Admin SDK.
 
-**Primary Dependencies**: TanStack Start server functions, Firestore Admin SDK, dominio compartido en `src/domain/`.
+**Storage**: `inventario/{codigo}` separado de `catalogo/actual`. Un write por SKU vendido (no hotspot en el catálogo).
 
-**Storage**: Cloud Firestore. Preferencia: documento(s) de stock satélite o campos en `catalogo/actual` — decidir en research según tamaño (~500 SKUs) y coste de lecturas (una lectura de catálogo por sesión ya existe).
+**Testing**: Vitest dominio/servidor + emulador (idempotencia, indeterminado, cascada, reglas).
 
-**Testing**: Vitest + emulador Firestore; pruebas de idempotencia emisión/anulación obligatorias si tocan flujo tributario.
-
-**Target Platform**: web SuitPay.
-
-**Project Type**: extensión de la app única.
-
-**Performance Goals**: el descuento no añade latencia perceptible al mostrador (misma transacción o paso atómico inmediato post-registro).
-
-**Constraints**: principio II (no descontar dos veces); principio V (aviso no bloqueante por defecto); sin Cloud Scheduler.
-
-**Scale/Scope**: ~500 productos, 5 vendedores, un local.
+**Constraints**: principio II (un efecto por clave); principio V (aviso no bloquea; fallo de inventario no revierte emisión); descontar solo con venta cerrada (`enviado`/`aceptado`), también en `consultar-estado`.
 
 ## Constitution Check
 
-| # | Puerta | Verificación | Estado |
-|---|--------|--------------|--------|
-| I | Aprobación humana | Stock no emite ni anula solo; ajustes admin son explícitos | **pass** |
-| II | No documentar dos veces | Descuento atado a clave de idempotencia / estado del comprobante | **pass** |
-| III | Proveedor sustituible | Inventario no toca el módulo frontera | **pass** / n/a |
-| IV | Sin PII a IA | Solo códigos y cantidades | **pass** |
-| V | Mostrador no se detiene | Alerta no bloquea emisión por defecto | **pass** |
-| VI | Medir | No afirmar mejora de mermas sin línea base | **pass** |
-| — | Dominio | Anulación restaura; no “eliminar” comprobantes | **pass** |
-| — | Disciplina | Pruebas de reintento/anulación al tocar emisión | **pass** (cuando se implemente) |
-
-**Resultado**: puertas pasan; **FR-007 cerrado** (contadores orientativos en convivencia). El código (`T010+`) sigue bloqueado hasta go-live de almacén y `002` T021.
+| # | Puerta | Estado |
+|---|--------|--------|
+| I | Ajustes admin explícitos; stock no emite solo | pass |
+| II | Descuento atado a flags del comprobante | pass |
+| III | Inventario no toca la frontera del proveedor | pass |
+| IV | Solo códigos y cantidades | pass |
+| V | Aviso no bloqueante; NV aceptada sin proveedor | pass |
+| VI | No afirmar mermas sin línea base | pass |
 
 ## Project Structure
 
 ```text
-specs/003-inventario-almacen/
-├── plan.md
-├── spec.md
-├── data-model.md
-├── tasks.md
-└── checklists/requirements.md
-
-src/ (futuro, tras desbloqueo)
-├── domain/inventario/
-├── server/inventario/
-└── routes/administracion/…  # alertas / ajustes
+src/domain/inventario/
+src/server/inventario/
+src/features/inventario/
+src/routes/administracion/catalogo.tsx  # lista maestra + popover cantidad
 ```
-
-## Complexity Tracking
-
-Sin violaciones constitucionales. Bloqueo es de producto (convivencia), no de constitución.

@@ -8,6 +8,8 @@ import {
   transicionPermitida,
   ventaEstaCerrada,
 } from './estados.ts'
+import type { AlmacenDeInventario } from '../inventario/almacen.ts'
+import { intentarTrasVenta } from '../inventario/aplicar.ts'
 
 /**
  * Consulta bajo demanda el estado de un comprobante ante el proveedor
@@ -34,6 +36,7 @@ export interface ResultadoDeConsultaDeEstado {
 export interface ContextoDeConsulta {
   readonly almacen: AlmacenDeEmision
   readonly proveedor: ProveedorDeEmision
+  readonly inventario?: AlmacenDeInventario
   readonly ahora?: () => Date
 }
 
@@ -174,6 +177,8 @@ async function consultarUno(
       comprobante.numero,
     )
   }
+
+  await intentarTrasVenta(contexto.inventario, contexto.almacen, comprobante.id)
 
   return 'resuelto'
 }

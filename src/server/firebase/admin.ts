@@ -125,6 +125,7 @@ export const COLECCIONES = {
   usuarios: 'usuarios',
   config: 'config',
   transportistas: 'transportistas',
+  inventario: 'inventario',
   lotesAprendizaje: 'lotesAprendizaje',
   revisionesAprendizaje: 'revisionesAprendizaje',
 } as const

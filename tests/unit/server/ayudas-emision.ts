@@ -1,4 +1,5 @@
 import { AlmacenEnMemoria } from '../../../src/server/emision/almacen-memoria.ts'
+import { AlmacenDeInventarioMemoria } from '../../../src/server/inventario/almacen-memoria.ts'
 import { idDeSerie } from '../../../src/server/emision/almacen.ts'
 import { ProveedorSimulado } from '../../../src/server/proveedor/simulado.ts'
 import type {
@@ -27,6 +28,7 @@ export const UMBRAL = 70_000
 
 export interface Escenario {
   readonly almacen: AlmacenEnMemoria
+  readonly inventario: AlmacenDeInventarioMemoria
   readonly proveedor: ProveedorSimulado
   readonly contexto: ContextoDeEmision
 }
@@ -40,6 +42,7 @@ export function montarEscenario(
   } = {},
 ): Escenario {
   const almacen = new AlmacenEnMemoria()
+  const inventario = new AlmacenDeInventarioMemoria(almacen)
   const proveedor = new ProveedorSimulado()
 
   const prefijos: Partial<Record<TipoDeDocumento, string>> = {
@@ -73,10 +76,11 @@ export function montarEscenario(
     vendedorId: VENDEDOR,
     umbralIdentificacion: opciones.umbral ?? UMBRAL,
     formatoImpresion: 'a4',
+    inventario,
     ahora: () => momento,
   }
 
-  return { almacen, proveedor, contexto }
+  return { almacen, inventario, proveedor, contexto }
 }
 
 let contador = 0

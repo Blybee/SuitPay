@@ -16,6 +16,7 @@ solo cuando el control es de un flujo, no del sistema.
 | ------------ | ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `Boton`      | `primitivas.tsx` | Toda acción con texto. Variantes: `principal` · `secundario` · `peligro` · `discreto`. Cápsula con borde siempre visible, alto ≥ 44 px. No cubre icon buttons. |
 | `Campo`      | `primitivas.tsx` | Texto / número. Variantes `formulario` y `en-linea`; alineación semántica con `alineacion` o `numerico`.                                                       |
+| `CampoArea`  | `primitivas.tsx` | Mismo aspecto que `Campo`, en `<textarea>`. Para nombres que deben verse completos (columna Descripción).                                                      |
 | `Etiqueta`   | `primitivas.tsx` | Label mono uppercase de un campo. No la uses como título de sección.                                                                                           |
 | `Casilla`    | `primitivas.tsx` | Checkbox cápsula (Radix).                                                                                                                                      |
 | `Regla`      | `primitivas.tsx` | Separador 1 px (`border`).                                                                                                                                     |
@@ -46,7 +47,7 @@ solo cuando el control es de un flujo, no del sistema.
 | `CabeceraDocumento` | `CabeceraDocumento.tsx` | Tipo, serie, cliente. Incluye modos UX «Bol + Guía R» / «Fact + Guía R» (no son tipos fiscales). |
 | `PieTotal`          | `PieTotal.tsx`          | Total + emitir, anclado al pie.                                                                                                   |
 | `Selector`          | `Selector.tsx`          | Select personalizado Soft-Pill (Radix): trigger, listbox en portal, teclado y foco gestionados. No uses `<select>` nativo.        |
-| `FiltrosDeCatalogo` | `FiltrosDeCatalogo.tsx` | Facetas marca / categoría sobre el espejo local.                                                                                  |
+| Facetas de catálogo | `grilla-revision.tsx` | Marca / categoría en **administración** (importación y lista maestra). No en el mostrador. |
 | `EtiquetaSinValor`  | `EtiquetaSinValor.tsx`  | «SIN VALOR TRIBUTARIO». Recibe el **tipo**, no un booleano.                                                                       |
 | `Sello`             | `Sello.tsx`             | Violeta sobre lo ya emitido (REGISTRADO / ACEPTADO). Nunca en el pedido en curso.                                                 |
 | `RevisionCaptura`   | `RevisionCaptura.tsx`   | Contraste original vs propuesta (voz / foto).                                                                                     |
@@ -114,7 +115,9 @@ contextos distintos:
 | `formulario` | Formularios, filtros y datos que se completan como una tarea independiente. | Cápsula blanca, borde visible y sombra mínima.                                                                         |
 | `en-linea`   | Valores editables dentro de filas del pedido o de una grilla.               | Rectángulo suave `rounded-xl`, fondo `mesa` y borde transparente; evita que cada celda parezca un botón o una burbuja. |
 
-La variante `en-linea` conserva 44 px de alto. En reposo el fondo suave permite
+La variante `en-linea` conserva 44 px de alto mínimo. En descripciones largas
+de la grilla de catálogo usa `CampoArea`: envuelve el texto y crece. Un
+`<input>` no parte líneas. En reposo el fondo suave permite
 reconocer que el dato es editable sin llenar la tabla de contornos. Hover aclara
 la superficie y revela el borde; el foco añade borde tinta, anillo y sombra
 suave. `invalido` combina fondo de aviso y borde de aviso, por lo que el error no
@@ -202,7 +205,8 @@ No uses:
 | ---------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `ZonaDeCarga`    | `ZonaDeCarga.tsx`                       | Drop zone de un archivo (JSON / PDF). Título visible + file picker oculto. Slot `nota` para un callout.                                                |
 | `Nota`           | `Nota.tsx`                              | Callout como papeletas de origen (formato + escritorio), pensado para vivir _dentro_ de una drop zone. No es caja de info ni toast.                    |
-| `GrillaRevision` | `features/catalogo/grilla-revision.tsx` | Revisión virtualizada. Conflictos en la fila (callout plano + filtro «Con problemas»). El balance de la carga vive en su cabecera, no en cards aparte. |
+| `GrillaRevision` | `features/catalogo/grilla-revision.tsx` | Lista maestra y revisión de lote (`modo`). Facetas, categorías, baja lógica (`activo: false`) y tacho (borrado de la lista; persiste al Guardar). IconButton de cantidad orientativa en maestro; el panel vive fuera de la fila y la página hace `scrollIntoView` al abrirlo. Virtualizada con overscan. |
+| `PanelCantidad`  | `features/inventario/panel-cantidad.tsx` | Popover perezoso (`getDoc` al abrir). Cifra orientativa; jefe lee, admin escribe. Nunca «stock real». |
 
 ---
 

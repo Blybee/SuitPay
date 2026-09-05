@@ -51,6 +51,11 @@ export interface PropsDeLineaPedido {
   /** Tras agregar desde el combobox, el foco cae en cantidad. */
   readonly enfocarCantidad?: boolean
   readonly senal?: number
+  /**
+   * Aviso no bloqueante de cifra orientativa (0 o bajo umbral).
+   * No impide emitir.
+   */
+  readonly avisoInventario?: string | null
 }
 
 /** Convierte lo tecleado a céntimos. Acepta coma o punto, como se escriba. */
@@ -94,6 +99,7 @@ export function LineaPedido({
   onFinResalte,
   enfocarCantidad = false,
   senal = 0,
+  avisoInventario = null,
 }: PropsDeLineaPedido) {
   const [precioTecleado, setPrecioTecleado] = useState(() =>
     aTexto(linea.precio),
@@ -250,6 +256,23 @@ export function LineaPedido({
             Bajo el mayorista ({formatearImporte(precioDeCatalogo ?? 0)})
           </p>
         )}
+        <div
+          className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+          style={{
+            gridTemplateRows:
+              avisoInventario !== null && avisoInventario.length > 0
+                ? '1fr'
+                : '0fr',
+          }}
+        >
+          <div className="min-h-0 overflow-hidden">
+            {avisoInventario !== null && avisoInventario.length > 0 ? (
+              <p className="font-mono text-etiqueta font-bold uppercase text-aviso">
+                {avisoInventario}
+              </p>
+            ) : null}
+          </div>
+        </div>
       </div>
 
       <Campo

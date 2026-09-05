@@ -35,7 +35,7 @@ const ENLACES: readonly {
     to: '/administracion/catalogo',
     titulo: 'Catálogo',
     descripcion:
-      'Importar productos desde el JSON de la tienda virtual o el PDF (SICO).',
+      'Lista, alta, importar y cantidades orientativas. No es el inventario de registro.',
     icono: Package,
   },
   {

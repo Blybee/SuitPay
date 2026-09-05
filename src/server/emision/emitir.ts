@@ -29,7 +29,9 @@ import {
   sePuedeInvocarEmision,
   ventaEstaCerrada,
 } from './estados.ts'
-import { necesitaCorrelativoRegulado, reclamarCorrelativo } from './series.ts'
+import { reclamarCorrelativo, necesitaCorrelativoRegulado } from './series.ts'
+import type { AlmacenDeInventario } from '../inventario/almacen.ts'
+import { intentarTrasVenta } from '../inventario/aplicar.ts'
 
 /**
  * `emitirComprobante`: el único camino por el que nace un comprobante.
@@ -128,6 +130,7 @@ export interface ContextoDeEmision {
    * puede negociarse por debajo. Ausente = sin piso (pruebas / catálogo vacío).
    */
   readonly precioCatalogoPorCodigo?: ReadonlyMap<string, Centimos>
+  readonly inventario?: AlmacenDeInventario
   /** Inyectable para que las pruebas fijen el momento. */
   readonly ahora?: () => Date
 }
@@ -332,6 +335,11 @@ async function invocarProveedorYRegistrar(
         rastro: null,
       },
     })
+    await intentarTrasVenta(
+      contexto.inventario,
+      contexto.almacen,
+      comprobante.id,
+    )
     return respuestaDe(
       { ...comprobante, estado: 'aceptado' },
       { yaExistia: false, totalCorregido: opciones.totalCorregido },
@@ -433,6 +441,8 @@ async function invocarProveedorYRegistrar(
       emitido.numero,
     )
   }
+
+  await intentarTrasVenta(contexto.inventario, contexto.almacen, comprobante.id)
 
   return respuestaDe(
     {

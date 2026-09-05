@@ -87,4 +87,25 @@ describe('LineaPedido', () => {
 
     expect(screen.getByLabelText('Cantidad de Codo liviano')).toHaveFocus()
   })
+
+  it('muestra el aviso orientativo sin bloquear la fila', () => {
+    render(
+      <ul>
+        <LineaPedido
+          linea={linea}
+          indice={0}
+          precioDeCatalogo={250}
+          onCambiarCantidad={() => undefined}
+          onCambiarPrecio={() => undefined}
+          onQuitar={() => undefined}
+          avisoInventario="Cifra orientativa en 0. Se puede emitir."
+        />
+      </ul>,
+    )
+
+    expect(
+      screen.getByText('Cifra orientativa en 0. Se puede emitir.'),
+    ).toBeInTheDocument()
+    expect(screen.getByLabelText('Cantidad de Codo liviano')).toBeEnabled()
+  })
 })

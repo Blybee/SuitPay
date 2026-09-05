@@ -10,11 +10,11 @@ web
 
 **Vendedores (5, concurrentes).** El usuario primario. Atienden **de pie en el mostrador, con el cliente enfrente y con prisa**, en un centro mayorista ruidoso. El monitor está a cierta distancia, no a distancia de escritorio. Son de **edades mezcladas**: algunos tienen la vista cansada o poca soltura con pantallas. Su trabajo es tomar el pedido, cobrar y entregar el documento antes de que el cliente se impaciente; solo después van a sacar la mercadería.
 
-**Administrador / contador.** Configura usuarios, series y parámetros, y carga el catálogo. Trabaja sentado y sin prisa. Frecuencia baja.
+**Administrador / contador.** Configura usuarios, series y parámetros, administra el catálogo (lista, alta, importar) y resetea **cantidades orientativas** de inventario. Trabaja sentado y sin prisa. Frecuencia baja. Esas cifras no son el inventario de registro del depósito.
 
 **Jefe.** Consulta. Sus funciones propias quedan fuera de la primera entrega.
 
-**Almacenero.** Persona mayor que toma pedidos en guías de papel y **no usará el sistema**, por decisión explícita del negocio. Otra persona fotografía sus guías. Es un usuario del proceso, no de la interfaz.
+**Almacenero.** Persona mayor que toma pedidos en guías de papel y **no usará el sistema**, por decisión explícita del negocio. Otra persona fotografía sus guías. El stock físico no vive en SuitPay; el admin solo mantiene contadores orientativos.
 
 ## Product Purpose
 

@@ -1,31 +1,29 @@
 # Data Model: Inventario y almacén
 
-**Feature**: `003-inventario-almacen` | **Date**: 2026-08-10 | **Updated**: 2026-08-18 (dueño del movimiento / herencia)
+**Feature**: `003-inventario-almacen` | **Updated**: 2026-09-04
 
-## Opción preferida (borrador)
-
-Documento satélite `inventario/actual` (o `inventario/{codigo}`) separado de `catalogo/actual` para no inflar la lectura del catálogo de mostrador si solo se necesitan precios/descripciones.
+## `inventario/{codigo}`
 
 | Campo | Tipo | Notas |
-|-------|------|-------|
-| `codigo` | string | Misma clave que producto del catálogo |
-| `cantidad` | number | Entero ≥ 0 (o permitir negativo solo si se decide aviso-only) |
-| `maximo` | number | Base del umbral: alerta si `cantidad < 0.10 * maximo` (T003, 2026-08-19) |
-| `umbral` | number | Override opcional por SKU; si falta, rige el 10% de `maximo` |
-| `alerta` | boolean | Derivado o persistido |
-| `ajustes` | subcolección o arreglo acotado | motivo, delta, autor, momento |
+| --- | --- | --- |
+| `codigo` | string | Misma clave que el producto |
+| `cantidad` | number | Puede ser negativa |
+| `maximo` | number | Primera escritura; un reset de cantidad no lo cambia salvo edición explícita |
+| `umbral` | number opcional | Si falta, rige 10% de `maximo` |
+| `alerta` | boolean | Persistido: `cantidad < (umbral ?? 0.10 * maximo)` |
+| `actualizadoPor` | string | uid |
+| `actualizadoEn` | timestamp | |
 
-## Integración con comprobantes
+Sin documento = sin control. No inventar 0.
 
-- Tras emisión exitosa de nota de venta, boleta o factura: aplicar deltas negativos una vez. Marcar `inventarioAplicado: true` y `inventarioAplicadoPor` = id de ese comprobante (o ledger por `comprobanteId`).
-- Al emitir una guía **asociada** a una boleta/factura que ya aplicó inventario: **no** aplicar deltas otra vez. Actualizar `inventarioAplicadoPor` al id de la guía (herencia). La boleta/factura conserva `inventarioAplicado: true`.
-- Tras anulación del dueño actual (o del par en cascada): deltas positivos **una vez** (`inventarioRestaurado: true` en el dueño). El segundo documento del par no vuelve a restaurar.
-- Guía sin par (traslado entre almacenes): no mueve stock en esta feature.
+## Comprobante (flags)
 
-## Índices
-
-Consultas admin: `alerta == true` (campo único suele bastar en Standard).
+- `inventarioAplicado`: boolean
+- `inventarioAplicadoPor`: id del dueño actual (comprobante o guía) o null
+- `inventarioRestaurado`: boolean
 
 ## Lecturas
 
-Mostrador: no descargar inventario completo al arranque; aviso bajo demanda al agregar línea o al emitir (lazy).
+- Mostrador: `getDoc` al agregar línea o al emitir (perezoso).
+- Admin Catálogo: `getDoc` al abrir el popover de esa fila. Chip «En alerta»: query `alerta == true`.
+- Prohibido: meter cantidades en `catalogo/actual` o un `inventario/actual` único.

@@ -9,6 +9,7 @@ import { emitirGuia } from '../../server/emision/emitir-guia.ts'
 import type { RespuestaDeEmitirGuia } from '../../server/emision/emitir-guia.ts'
 import { DOCUMENTOS, bd } from '../../server/firebase/admin.ts'
 import { proveedorActual } from '../../server/proveedor/actual.ts'
+import { AlmacenDeInventarioFirestore } from '../../server/inventario/almacen-firestore.ts'
 
 export type { RespuestaDeEmitirGuia }
 
@@ -100,6 +101,7 @@ export const emitirGuiaFn = createServerFn({ method: 'POST' })
           proveedor: proveedorActual(),
           vendedorId: identidad.uid,
           formatoImpresion,
+          inventario: new AlmacenDeInventarioFirestore(),
         },
         data,
       )

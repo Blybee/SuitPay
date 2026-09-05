@@ -20,6 +20,7 @@ import { anularComprobante } from '../../server/emision/anular.ts'
 import type { RespuestaDeAnular } from '../../server/emision/anular.ts'
 import { emitirComprobante } from '../../server/emision/emitir.ts'
 import type { RespuestaDeEmitir } from '../../server/emision/emitir.ts'
+import { AlmacenDeInventarioFirestore } from '../../server/inventario/almacen-firestore.ts'
 import { consultarEstadoEmision } from '../../server/emision/consultar-estado.ts'
 import type { ResultadoDeConsultaDeEstado } from '../../server/emision/consultar-estado.ts'
 import type { Comprobante } from '../../server/emision/almacen.ts'
@@ -166,6 +167,7 @@ export const emitir = createServerFn({ method: 'POST' })
           umbralIdentificacion: parametros.umbralIdentificacionBoleta,
           formatoImpresion: parametros.formatoImpresionPorDefecto,
           precioCatalogoPorCodigo,
+          inventario: new AlmacenDeInventarioFirestore(),
         },
         { ...data, cliente: data.cliente ?? null },
       )
@@ -239,7 +241,11 @@ export const consultarEstado = createServerFn({ method: 'POST' })
 
     try {
       const resultado = await consultarEstadoEmision(
-        { almacen, proveedor: proveedorActual() },
+        {
+          almacen,
+          proveedor: proveedorActual(),
+          inventario: new AlmacenDeInventarioFirestore(),
+        },
         data.comprobanteId,
       )
       return { ok: true, resultado }
@@ -281,6 +287,7 @@ export const anular = createServerFn({ method: 'POST' })
         {
           almacen: new AlmacenFirestore(),
           proveedor: proveedorActual(),
+          inventario: new AlmacenDeInventarioFirestore(),
         },
         {
           comprobanteId: data.comprobanteId,

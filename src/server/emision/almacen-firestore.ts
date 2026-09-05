@@ -115,6 +115,12 @@ function aComprobante(id: string, datos: DocumentData): Comprobante {
       typeof datos['guiaAsociadaId'] === 'string'
         ? datos['guiaAsociadaId']
         : null,
+    inventarioAplicado: datos['inventarioAplicado'] === true,
+    inventarioAplicadoPor:
+      typeof datos['inventarioAplicadoPor'] === 'string'
+        ? datos['inventarioAplicadoPor']
+        : null,
+    inventarioRestaurado: datos['inventarioRestaurado'] === true,
   }
 }
 
@@ -143,6 +149,9 @@ function desdeComprobante(comprobante: Comprobante): DocumentData {
     traslado: comprobante.traslado ?? null,
     comprobanteOrigenId: comprobante.comprobanteOrigenId ?? null,
     guiaAsociadaId: comprobante.guiaAsociadaId ?? null,
+    inventarioAplicado: comprobante.inventarioAplicado === true,
+    inventarioAplicadoPor: comprobante.inventarioAplicadoPor ?? null,
+    inventarioRestaurado: comprobante.inventarioRestaurado === true,
   })
 }
 

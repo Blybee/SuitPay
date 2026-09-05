@@ -490,6 +490,34 @@ describeConEmulador('instantáneas de solo lectura', () => {
   })
 })
 
+describeConEmulador('inventario orientativo', () => {
+  it('el personal lee inventario/{codigo} y nadie escribe desde el cliente', async () => {
+    await entorno.withSecurityRulesDisabled(async (contexto) => {
+      await setDoc(doc(contexto.firestore(), 'inventario/TUB-1-2'), {
+        codigo: 'TUB-1-2',
+        cantidad: 10,
+        maximo: 10,
+        alerta: false,
+        actualizadoPor: 'admin',
+        actualizadoEn: serverTimestamp(),
+      })
+    })
+    await assertSucceeds(getDoc(doc(comoVendedor(), 'inventario/TUB-1-2')))
+    await assertSucceeds(getDoc(doc(comoJefe(), 'inventario/TUB-1-2')))
+    await assertFails(
+      setDoc(doc(comoAdministrador(), 'inventario/TUB-1-2'), {
+        cantidad: 99,
+      }),
+    )
+    await assertFails(
+      setDoc(doc(comoVendedor(), 'inventario/NUEVO'), {
+        codigo: 'NUEVO',
+        cantidad: 1,
+      }),
+    )
+  })
+})
+
 describeConEmulador('lista de requerimiento', () => {
   it('un vendedor escribe y lee la de su día', async () => {
     await assertSucceeds(
