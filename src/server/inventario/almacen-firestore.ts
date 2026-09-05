@@ -42,6 +42,19 @@ export class AlmacenDeInventarioFirestore implements AlmacenDeInventario {
     return aExistencia(codigo, snap.data() ?? {})
   }
 
+  async borrar(codigos: readonly string[]): Promise<void> {
+    const unicos = [...new Set(codigos.filter((codigo) => codigo.length > 0))]
+    const TAMANO = 400
+    for (let i = 0; i < unicos.length; i += TAMANO) {
+      const lote = unicos.slice(i, i + TAMANO)
+      const batch = this.base.batch()
+      for (const codigo of lote) {
+        batch.delete(this.base.collection(COLECCIONES.inventario).doc(codigo))
+      }
+      await batch.commit()
+    }
+  }
+
   async fijar(entrada: FijarExistencia): Promise<Existencia> {
     const ref = this.base.collection(COLECCIONES.inventario).doc(entrada.codigo)
     const previa = await this.leer(entrada.codigo)

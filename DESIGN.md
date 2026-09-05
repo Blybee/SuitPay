@@ -115,6 +115,8 @@ Los componentes deben parecer **suaves**. Separación por contraste: `bg-white` 
 
 **NUEVA REGLA — Cápsulas:** todos los botones, badges y controles interactivos son tipo píldora: `rounded-full` (radio 9999px).
 
+**NUEVA REGLA — Icon button circular:** un control que solo muestra un icono es un círculo de 44×44 (`size-11 p-0 rounded-full`), nunca una píldora alargada. En `Boton` usa `tamano="icono"`. No pelees el `px-5` por defecto con `px-0` / `min-w-11`: Tailwind no resuelve el conflicto y el botón queda ovalado (~58×44).
+
 **NUEVA REGLA — Contenedores:** tarjetas y contenedores mayores usan radios amplios pero no completos: `rounded-2xl` o `rounded-3xl`.
 
 Campos de texto e inputs siguen la misma familia suave (cápsula o radio amplio coherente con el control); nunca esquinas a cero.
@@ -129,6 +131,7 @@ El sello sobre lo emitido puede conservar carácter propio (ligera rotación); n
 - **Do** usar sidebar con marca arriba y perfil+logout abajo.
 - **Do** llenar el área de trabajo a todo el ancho útil; capas gris/blanco.
 - **Do** poner controles interactivos en `rounded-full` y paneles en `rounded-2xl` / `rounded-3xl`.
+- **Do** hacer los icon button un círculo de 44×44 (`tamano="icono"`), no una cápsula estirada.
 - **Do** separar regiones con contraste de color; bordes solo `border-gray-200` si hacen falta.
 - **Do** alinear a la derecha y en cifras tabulares todo número comparable.
 - **Do** expresar una corrección con original tachado y propuesta limpia debajo.
@@ -141,7 +144,7 @@ El sello sobre lo emitido puede conservar carácter propio (ligera rotación); n
 
 - **Don't** hacer que la pantalla parezca un comprobante impreso.
 - **Don't** usar verde.
-- **Don't** usar `rounded-none`, `rounded-sm`, ni esquinas afiladas como lenguaje visual.
+- **Don't** alargar un botón de solo icono con padding horizontal; el contenedor debe ser circular.
 - **Don't** usar `border-2`, `border-4`, `border-black`, ni sombras sólidas brutales.
 - **Don't** volver al fondo papel/mesa amarillento (`#F7F4EC` / `#DED7C7`) como lienzo de la app.
 - **Don't** centrar el contenido en una columna estrecha decorativa dejando “mesa” a los lados.

@@ -23,7 +23,7 @@ function unir(...clases: readonly (string | false | undefined)[]): string {
 
 export type VarianteDeBoton =
   'principal' | 'secundario' | 'peligro' | 'discreto'
-export type TamanoDeBoton = 'normal' | 'grande'
+export type TamanoDeBoton = 'normal' | 'grande' | 'icono'
 
 const ESTILOS_DE_BOTON: Record<VarianteDeBoton, string> = {
   principal:
@@ -61,9 +61,11 @@ export function Boton({
         'focus-visible:outline-none focus-visible:border-tinta focus-visible:ring-2 focus-visible:ring-tinta/10',
         'disabled:cursor-not-allowed disabled:opacity-70 disabled:shadow-none disabled:hover:translate-y-0 disabled:active:translate-y-0',
         'motion-reduce:transition-none motion-reduce:hover:translate-y-0 motion-reduce:active:translate-y-0',
-        tamano === 'grande'
-          ? 'min-h-11 px-4 text-cuerpo md:min-h-14 md:px-8 md:text-entrada'
-          : 'min-h-11 px-5',
+        tamano === 'icono'
+          ? 'size-11 shrink-0 p-0'
+          : tamano === 'grande'
+            ? 'min-h-11 px-4 text-cuerpo md:min-h-14 md:px-8 md:text-entrada'
+            : 'min-h-11 px-5',
         ESTILOS_DE_BOTON[variante],
         className,
       )}

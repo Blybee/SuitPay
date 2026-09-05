@@ -153,4 +153,24 @@ describe('GrillaRevision maestro', () => {
     await usuario.click(screen.getByLabelText('Mostrar inactivos'))
     expect(screen.queryByLabelText('Código A')).not.toBeInTheDocument()
   })
+
+  it('el tacho y la cantidad son círculos de 44px, no cápsulas', () => {
+    render(
+      <GrillaMaestra
+        iniciales={[producto({ codigo: 'A', categoriaId: 'cat-valvulas' })]}
+      />,
+    )
+
+    const tacho = screen.getByRole('button', {
+      name: 'Eliminar 0 productos de la lista',
+    })
+    const cantidad = screen.getByRole('button', {
+      name: 'Cantidad orientativa de A',
+    })
+    expect(tacho.className).toContain('size-11')
+    expect(tacho.className).toContain('p-0')
+    expect(cantidad.className).toContain('size-11')
+    expect(cantidad.className).toContain('p-0')
+    expect(screen.getByRole('columnheader', { name: 'Categoría' })).toBeInTheDocument()
+  })
 })

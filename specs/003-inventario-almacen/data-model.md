@@ -16,6 +16,11 @@
 
 Sin documento = sin control. No inventar 0.
 
+Al publicar un catálogo recortado (tacho o importación que deja SKUs fuera),
+el servidor MUST borrar `inventario/{codigo}` de cada código que sale. No
+dejar documentos huérfanos: el catálogo y la existencia de ese SKU se van
+juntos.
+
 ## Comprobante (flags)
 
 - `inventarioAplicado`: boolean

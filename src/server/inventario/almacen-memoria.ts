@@ -39,6 +39,10 @@ export class AlmacenDeInventarioMemoria implements AlmacenDeInventario {
     return this.existencias.get(codigo) ?? null
   }
 
+  async borrar(codigos: readonly string[]): Promise<void> {
+    for (const codigo of codigos) this.existencias.delete(codigo)
+  }
+
   async fijar(entrada: FijarExistencia): Promise<Existencia> {
     const previa = this.existencias.get(entrada.codigo)
     const maximo = maximoAlFijar(entrada.cantidad, previa?.maximo)

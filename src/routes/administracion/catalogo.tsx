@@ -365,7 +365,7 @@ function PantallaDeCatalogo() {
   }, [codigoCantidad])
 
   return (
-    <div className="flex min-h-full flex-col gap-6 px-6 py-8">
+    <div className="flex min-h-full flex-col gap-3 px-6 py-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <CabeceraAdmin titulo="Catálogo" />
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
@@ -439,56 +439,58 @@ function PantallaDeCatalogo() {
         </div>
       </div>
 
-      <div
-        id={idImportar}
-        className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
-        style={{ gridTemplateRows: importarAbierto ? '1fr' : '0fr' }}
-      >
-        <div className="min-h-0 overflow-hidden">
-          <section className="rounded-3xl border border-borde bg-papel p-6 shadow-sm">
-            <ZonaDeCarga
-              titulo="Importar productos"
-              etiqueta="Archivo JSON o PDF"
-              nota={
-                <Nota linea="Descarga la lista de productos en:">
-                  <DestinoDeNota origen="Tienda virtual" formato="JSON" />
-                  <DestinoDeNota origen="SICO" formato="PDF" />
-                </Nota>
-              }
-              archivo={archivo}
-              estado={estadoCarga}
-              mensaje={mensajeCarga}
-              ocultarEstadoSinError
-              deshabilitado={ocupado || publicando || !puedeEscribir}
-              onArchivo={(elegido) => {
-                void leerArchivo(elegido)
-              }}
-              onQuitar={quitarArchivo}
-            />
-            {bloqueado && modo === 'revision' ? (
-              <AvisoPublicacionBloqueada />
-            ) : null}
-          </section>
-        </div>
-      </div>
-
-      <div
-        ref={anclaCantidad}
-        className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
-        style={{ gridTemplateRows: codigoCantidad !== null ? '1fr' : '0fr' }}
-      >
-        <div className="min-h-0 overflow-hidden">
-          {codigoCantidad !== null ? (
-            <div className="pb-1">
-              <PanelCantidad
-                codigo={codigoCantidad}
-                descripcion={descripcionCantidad}
-                puedeEscribir={puedeEscribir}
-                onCerrar={() => setCodigoCantidad(null)}
-                onGuardado={() => void refrescarAlertas()}
+      <div>
+        <div
+          id={idImportar}
+          className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+          style={{ gridTemplateRows: importarAbierto ? '1fr' : '0fr' }}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <section className="rounded-3xl border border-borde bg-papel p-6 shadow-sm">
+              <ZonaDeCarga
+                titulo="Importar productos"
+                etiqueta="Archivo JSON o PDF"
+                nota={
+                  <Nota linea="Descarga la lista de productos en:">
+                    <DestinoDeNota origen="Tienda virtual" formato="JSON" />
+                    <DestinoDeNota origen="SICO" formato="PDF" />
+                  </Nota>
+                }
+                archivo={archivo}
+                estado={estadoCarga}
+                mensaje={mensajeCarga}
+                ocultarEstadoSinError
+                deshabilitado={ocupado || publicando || !puedeEscribir}
+                onArchivo={(elegido) => {
+                  void leerArchivo(elegido)
+                }}
+                onQuitar={quitarArchivo}
               />
-            </div>
-          ) : null}
+              {bloqueado && modo === 'revision' ? (
+                <AvisoPublicacionBloqueada />
+              ) : null}
+            </section>
+          </div>
+        </div>
+
+        <div
+          ref={anclaCantidad}
+          className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+          style={{ gridTemplateRows: codigoCantidad !== null ? '1fr' : '0fr' }}
+        >
+          <div className="min-h-0 overflow-hidden">
+            {codigoCantidad !== null ? (
+              <div className="pb-1">
+                <PanelCantidad
+                  codigo={codigoCantidad}
+                  descripcion={descripcionCantidad}
+                  puedeEscribir={puedeEscribir}
+                  onCerrar={() => setCodigoCantidad(null)}
+                  onGuardado={() => void refrescarAlertas()}
+                />
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 

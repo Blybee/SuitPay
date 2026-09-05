@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { compararContraPublicado } from '../../../src/server/catalogo/diferencias.ts'
 import { importarCatalogo } from '../../../src/server/catalogo/importar.ts'
 import { AlmacenDeCatalogoEnMemoria } from '../../../src/server/catalogo/almacen-memoria.ts'
+import { AlmacenDeInventarioMemoria } from '../../../src/server/inventario/almacen-memoria.ts'
 import type { ProductoDeCatalogo } from '../../../src/server/catalogo/tipos.ts'
 
 /**
@@ -67,5 +68,87 @@ describe('diferencias de importación', () => {
       'viejo',
     ])
     expect(almacen.actual?.version).toBe(1)
+  })
+
+  it('validar no borra existencias de SKUs que saldrían', async () => {
+    const almacen = new AlmacenDeCatalogoEnMemoria({
+      version: 1,
+      publicadoEn: new Date('2026-01-01'),
+      publicadoPor: 'admin',
+      totalProductos: 1,
+      productos: [base('viejo', 100)],
+      categorias: [],
+    })
+    const inventario = new AlmacenDeInventarioMemoria()
+    inventario.sembrar({
+      codigo: 'viejo',
+      cantidad: 4,
+      maximo: 10,
+      alerta: false,
+      actualizadoPor: 'admin',
+      actualizadoEn: new Date('2026-01-01'),
+    })
+
+    await importarCatalogo(
+      almacen,
+      {
+        contenido: JSON.stringify({
+          productos: [base('nuevo', 50)],
+          categorias: [],
+        }),
+        formato: 'productos_revisados',
+        modo: 'validar',
+        administradorId: 'admin-1',
+      },
+      inventario,
+    )
+
+    expect(await inventario.leer('viejo')).not.toBeNull()
+  })
+
+  it('al publicar borra las existencias de los SKUs que salen del catálogo', async () => {
+    const almacen = new AlmacenDeCatalogoEnMemoria({
+      version: 1,
+      publicadoEn: new Date('2026-01-01'),
+      publicadoPor: 'admin',
+      totalProductos: 2,
+      productos: [base('viejo', 100), base('queda', 50)],
+      categorias: [],
+    })
+    const inventario = new AlmacenDeInventarioMemoria()
+    inventario.sembrar({
+      codigo: 'viejo',
+      cantidad: 4,
+      maximo: 10,
+      alerta: false,
+      actualizadoPor: 'admin',
+      actualizadoEn: new Date('2026-01-01'),
+    })
+    inventario.sembrar({
+      codigo: 'queda',
+      cantidad: 8,
+      maximo: 10,
+      alerta: false,
+      actualizadoPor: 'admin',
+      actualizadoEn: new Date('2026-01-01'),
+    })
+
+    await importarCatalogo(
+      almacen,
+      {
+        contenido: JSON.stringify({
+          productos: [base('queda', 50)],
+          categorias: [],
+        }),
+        formato: 'productos_revisados',
+        modo: 'publicar',
+        administradorId: 'admin-1',
+      },
+      inventario,
+    )
+
+    expect(await inventario.leer('viejo')).toBeNull()
+    expect(await inventario.leer('queda')).not.toBeNull()
+    expect(almacen.actual?.productos.map((p) => p.codigo)).toEqual(['queda'])
   })
 })

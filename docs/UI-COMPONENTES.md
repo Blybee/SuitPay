@@ -78,7 +78,7 @@ Todos los botones con texto usan `Boton`. Cambiar
 agentes no deben reconstruir bordes, hover, foco, pulsación ni disabled en cada
 feature.
 
-Los cuatro tipos permitidos —sin incluir icon buttons— son:
+Las cuatro variantes de color —el tamaño `icono` es independiente— son:
 
 | Variante     | Uso concreto                                                                                                                                  | Apariencia                                   |
 | ------------ | --------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------- |
@@ -87,9 +87,11 @@ Los cuatro tipos permitidos —sin incluir icon buttons— son:
 | `peligro`    | Acción destructiva o de alto riesgo: Quitar, Desactivar, Anular.                                                                              | Texto y borde de aviso; se rellena al hover. |
 | `discreto`   | Acción de baja prioridad que todavía debe reconocerse como botón: cerrar una ayuda o retirar un archivo sin competir con la acción principal. | Fondo papel, borde sutil y texto desvaído.   |
 
-El tamaño es independiente de la variante: `tamano="normal"` es el predeterminado
-y `tamano="grande"` se reserva para el CTA persistente del pie (`Emitir` /
-`Guardar`). Ambos heredan la apariencia de `principal`.
+El tamaño es independiente de la variante: `tamano="normal"` es el predeterminado,
+`tamano="grande"` se reserva para el CTA persistente del pie (`Emitir` /
+`Guardar`) y `tamano="icono"` es un círculo de 44×44 (`size-11 p-0`) para
+controles que solo muestran un icono. Los tres heredan la apariencia de la
+variante.
 
 Reglas:
 
@@ -99,8 +101,8 @@ Reglas:
 - `prefers-reduced-motion: reduce` elimina desplazamientos y transiciones.
 - `className` solo ajusta layout (`w-full`, `shrink-0`, etc.); no redefine la
   variante localmente.
-- Los botones que solo contienen un icono son controles distintos y quedan fuera
-  de estas cuatro variantes.
+- Un icon button usa `tamano="icono"` y `aria-label`. No anules `px-5` con
+  `px-0`: el padding por defecto gana y el círculo se vuelve óvalo.
 
 ---
 

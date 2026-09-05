@@ -44,9 +44,11 @@ const ALTO_LINEA = 22
 const ALTO_CALLOUT = 28
 const OVERSCAN = 24
 const COLUMNAS_REVISION =
-  'grid-cols-[2.5rem_8rem_minmax(14rem,2fr)_7rem_4.5rem_6rem_7rem]'
+  'grid-cols-[2.5rem_8rem_minmax(14rem,1fr)_7rem_4.5rem_6rem_7rem]'
 const COLUMNAS_MAESTRO =
-  'grid-cols-[2.5rem_8rem_minmax(14rem,2fr)_7rem_4.5rem_6rem_7rem_2.75rem]'
+  'grid-cols-[2.5rem_8rem_minmax(14rem,1fr)_7rem_4.5rem_6rem_7rem_3.25rem]'
+const ANCHO_MINIMO_REVISION = 'min-w-[52rem]'
+const ANCHO_MINIMO_MAESTRO = 'min-w-[56rem]'
 
 function estimarAltoDeFila(
   descripcion: string,
@@ -110,6 +112,8 @@ export function GrillaRevision({
 
   const columnas =
     modo === 'maestro' ? COLUMNAS_MAESTRO : COLUMNAS_REVISION
+  const anchoMinimo =
+    modo === 'maestro' ? ANCHO_MINIMO_MAESTRO : ANCHO_MINIMO_REVISION
   const soloLectura = !puedeEscribir
   const conflictos = useMemo(() => detectarConflictos(productos), [productos])
   const porCodigo = useMemo(
@@ -381,7 +385,7 @@ export function GrillaRevision({
               </Boton>
               <Boton
                 variante="peligro"
-                className="min-h-11 min-w-11 px-0"
+                tamano="icono"
                 aria-label={
                   seleccion.size === 1
                     ? 'Eliminar 1 producto de la lista'
@@ -459,10 +463,11 @@ export function GrillaRevision({
         }
         className="overflow-x-auto rounded-2xl border border-borde"
       >
-        <div
-          role="row"
-          className={`grid ${columnas} gap-1 border-b border-borde bg-mesa px-2 py-2 font-mono text-etiqueta uppercase text-desvaida`}
-        >
+        <div className={anchoMinimo}>
+          <div
+            role="row"
+            className={`grid ${columnas} gap-1 border-b border-borde bg-mesa px-2 py-2 font-mono text-etiqueta uppercase text-desvaida`}
+          >
           <span role="columnheader">Sel.</span>
           <span role="columnheader">Código</span>
           <span role="columnheader">Descripción</span>
@@ -471,14 +476,15 @@ export function GrillaRevision({
           <span role="columnheader">Precio</span>
           <span role="columnheader">Categoría</span>
           {modo === 'maestro' ? (
-            <span role="columnheader" className="sr-only">
-              Cantidad
+            <span role="columnheader" className="flex justify-center">
+              <Boxes className="size-4" aria-hidden />
+              <span className="sr-only">Cantidad</span>
             </span>
           ) : null}
         </div>
         <div
           ref={scrollRef}
-          className="max-h-[min(70dvh,40rem)] overflow-y-auto overflow-x-hidden bg-papel"
+          className="max-h-[min(70dvh,40rem)] overflow-y-auto bg-papel"
         >
           <div
             className="relative w-full"
@@ -613,10 +619,11 @@ export function GrillaRevision({
                       </span>
                     </span>
                     {modo === 'maestro' ? (
-                      <span role="cell">
+                      <span role="cell" className="flex justify-center">
                         <Boton
                           variante="discreto"
-                          className={`min-h-11 min-w-11 px-0 ${enAlerta ? 'text-aviso' : ''}`}
+                          tamano="icono"
+                          className={enAlerta ? 'text-aviso' : undefined}
                           aria-label={`Cantidad orientativa de ${producto.codigo}`}
                           onClick={() => onPedirCantidad?.(producto.codigo)}
                         >
@@ -641,6 +648,7 @@ export function GrillaRevision({
               )
             })}
           </div>
+        </div>
         </div>
       </div>
       <p className="font-mono text-etiqueta text-desvaida">

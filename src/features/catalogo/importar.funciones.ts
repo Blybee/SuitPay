@@ -5,6 +5,7 @@ import { exigirIdentidad } from '../../server/auth/verificar.ts'
 import { ErrorDeSuitPay, esErrorDeSuitPay } from '../../server/errores.ts'
 import { AlmacenDeCatalogoFirestore } from '../../server/catalogo/almacen-firestore.ts'
 import { importarCatalogo } from '../../server/catalogo/importar.ts'
+import { AlmacenDeInventarioFirestore } from '../../server/inventario/almacen-firestore.ts'
 import type { ResumenDeImportacion } from '../../server/catalogo/tipos.ts'
 import type { Producto } from '../../domain/esquemas/comunes.ts'
 
@@ -33,12 +34,16 @@ export const importarCatalogoFn = createServerFn({ method: 'POST' })
       const identidad = await exigirIdentidad(getRequestHeaders(), [
         'administrador',
       ])
-      const resumen = await importarCatalogo(new AlmacenDeCatalogoFirestore(), {
-        contenido: data.contenido,
-        formato: data.formato,
-        modo: data.modo,
-        administradorId: identidad.uid,
-      })
+      const resumen = await importarCatalogo(
+        new AlmacenDeCatalogoFirestore(),
+        {
+          contenido: data.contenido,
+          formato: data.formato,
+          modo: data.modo,
+          administradorId: identidad.uid,
+        },
+        new AlmacenDeInventarioFirestore(),
+      )
       return { ok: true, resumen }
     } catch (error) {
       if (esErrorDeSuitPay(error)) {

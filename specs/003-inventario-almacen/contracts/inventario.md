@@ -13,6 +13,9 @@
 
 `allow write: if false` para todos. El backend escribe con Admin SDK.
 
+Al publicar el catálogo, los SKUs que salen del arreglo disparan
+`inventario.borrar` (Admin SDK). El cliente no borra existencias.
+
 ## Server functions
 
 - `leerInventarioFn` — personal; un código.

@@ -3,6 +3,7 @@ import {
   esquemaDeProducto,
 } from '../../domain/esquemas/comunes.ts'
 import { fallar } from '../errores.ts'
+import type { AlmacenDeInventario } from '../inventario/almacen.ts'
 import type { AlmacenDeCatalogo } from './almacen.ts'
 import {
   detectarConflictos,
@@ -21,7 +22,8 @@ import type {
  * `importarCatalogo`: validar o publicar el catálogo desde un archivo.
  *
  * En `validar` no escribe nada. En `publicar` exige que no haya conflictos
- * bloqueantes y escribe el catálogo completo en una sola operación.
+ * bloqueantes, escribe el catálogo completo y borra `inventario/{codigo}` de
+ * los SKUs que salieron (si hay almacén de inventario).
  */
 
 export type FormatoDeImportacion =
@@ -41,6 +43,7 @@ export interface PeticionDeImportar {
 export async function importarCatalogo(
   almacen: AlmacenDeCatalogo,
   peticion: PeticionDeImportar,
+  inventario?: AlmacenDeInventario,
 ): Promise<ResumenDeImportacion> {
   const publicado = await almacen.leerPublicado()
   const interpretado = interpretarCarga(
@@ -79,6 +82,11 @@ export async function importarCatalogo(
     publicadoPor: peticion.administradorId,
     momento: peticion.momento ?? new Date(),
   })
+
+  const salientes = diferencias?.desaparecidos.map((p) => p.codigo) ?? []
+  if (inventario !== undefined && salientes.length > 0) {
+    await inventario.borrar(salientes)
+  }
 
   return {
     reconocidos: interpretado.productos.length,
