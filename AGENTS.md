@@ -126,6 +126,7 @@ caveats no obvios para arrancar/probar en el VM (el update script ya corrio
   bundleado → todas las funciones 500 en producción y `respuesta` undefined en el
   cliente). `vite dev` no empaqueta, así que en local nunca se ve. Correrla
   siempre que se toque `vite.config.ts`, `nitro`, `vite` o `firebase-admin`.
+  **No quitar** `traceDeps: ['firebase-admin']`. Runbook: `docs/BUNDLE-SERVIDOR.md`.
 - `npm run prueba:e2e:completa` — Playwright dentro de `emulators:exec`. Necesita
   navegador: `npx playwright install chromium` (no incluido en el update script).
   **Dos specs de `tests/e2e/venta-escrita.spec.ts` fallan por causas preexistentes,
