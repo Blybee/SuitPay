@@ -1,0 +1,22 @@
+---
+description: Nitro no debe empaquetar firebase-admin; un 500 de /_serverFn no es Gemini ni RAM.
+alwaysApply: true
+---
+
+# Empaquetado Nitro y funciones de servidor
+
+Nitro 3 empaqueta `node_modules` en `.output/server/_libs`. Empaquetar
+`firebase-admin` rompe la interop CJS→ESM (`SDK_VERSION` undefined) y **todas**
+las funciones de servidor responden `500 {"status":500,"unhandled":true}` sin
+`x-tss-serialized`. El cliente Start ve `respuesta` undefined y el mostrador
+declara «asistencia caída». `vite dev` no empaqueta: el fallo solo existe en
+el bundle de producción.
+
+- No quites ni «simplifiques» `nitro({ traceDeps: ['firebase-admin'] })` en
+  `vite.config.ts`.
+- No confundas `traceDeps` (externo + copiar a `node_modules` del output) con
+  `ssr.noExternal` (forzar bundle; aquí solo `unpdf`).
+- Un 500 masivo de `/_serverFn/` o `Cannot read properties of undefined
+  (reading 'ok')` es fallo de carga del módulo, no de Gemini, RAM ni timeout.
+- Tras tocar `vite.config.ts`, `nitro`, `vite` o `firebase-admin`:
+  `npm run build ; npm run humo:produccion`. Runbook: `docs/BUNDLE-SERVIDOR.md`.

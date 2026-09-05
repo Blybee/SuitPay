@@ -171,6 +171,7 @@ describe('extraerListaPdf (FR-061)', () => {
           mimeType: 'application/pdf',
           dataBase64: Buffer.from('%PDF-1.4 mini').toString('base64'),
         }),
+        leerCatalogo: async () => [],
         persistir: async () => undefined,
         depsModelo: {
           fetchFn: fetchFn as unknown as typeof fetch,
@@ -286,6 +287,7 @@ describe('extraerListaPdf (FR-061)', () => {
           dataBase64: Buffer.from('%PDF-1.4 fileapi').toString('base64'),
           bytes: Uint8Array.from(Buffer.from('%PDF-1.4 fileapi')),
         }),
+        leerCatalogo: async () => [],
         persistir: async () => undefined,
         depsModelo: {
           fetchFn: fetchFn as unknown as typeof fetch,

@@ -35,7 +35,18 @@ const config = defineConfig(({ mode }) => {
         spa: { enabled: true },
       }),
       // Nitro produce `.output/server` que App Hosting/Cloud Run arrancan en PORT.
-      nitro(),
+      nitro({
+        // Nitro 3 empaqueta TODO node_modules en `.output/server/_libs`. Al
+        // hacerlo con `firebase-admin`, la interop CJS→ESM de rolldown deja
+        // `import_app.default` indefinido en `firebase-admin/lib/esm/app` y el
+        // chunk lanza `Cannot read properties of undefined (reading
+        // 'SDK_VERSION')` al cargarse. Como cada función de servidor lo importa
+        // (sesión, Firestore, Storage), TODAS respondían 500 en producción y
+        // el cliente veía `respuesta` undefined. Dejarlo externo y trazado a
+        // `.output/server/node_modules` hace que Node resuelva la interop de
+        // forma nativa. Verificado por `scripts/humo-produccion.mjs`.
+        traceDeps: ['firebase-admin'],
+      }),
       viteReact(),
     ],
   }

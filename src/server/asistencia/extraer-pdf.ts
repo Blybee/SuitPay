@@ -21,6 +21,7 @@ import {
   asistenciaSimuladaActiva,
   extraerPdfSimulado,
 } from './simulado.ts'
+import type { CandidatoDeAsistencia } from './tipos.ts'
 
 /** Gemini: PDF inline hasta 50 MB. Por encima, File API. */
 export const TECHO_PDF_BYTES = 50 * 1024 * 1024
@@ -67,6 +68,8 @@ export interface DependenciasDeExtraerPdf {
   readonly depsModelo?: DependenciasDelClienteModelo
   readonly forzarSimulado?: boolean
   readonly forzarVia?: ViaDePdf
+  /** Catálogo compacto para el prompt; en pruebas evita tocar Firestore. */
+  readonly leerCatalogo?: () => Promise<readonly CandidatoDeAsistencia[]>
   readonly ahora?: () => Date
   readonly idCaptura?: () => string
   readonly persistir?: (entrada: {
@@ -177,11 +180,12 @@ export async function extraerListaPdf(
   let catalogoJson = ''
   if (!usarSimulado) {
     try {
-      const { leerCatalogoCompactoComoCandidatos } = await import(
-        '../aprendizaje/catalogo-compacto.ts'
-      )
       const { textoDeCandidatosParaPrompt } = await import('./payload.ts')
-      const candidatos = await leerCatalogoCompactoComoCandidatos()
+      const candidatos = deps.leerCatalogo
+        ? await deps.leerCatalogo()
+        : await (
+            await import('../aprendizaje/catalogo-compacto.ts')
+          ).leerCatalogoCompactoComoCandidatos()
       if (candidatos.length > 0) {
         catalogoJson = textoDeCandidatosParaPrompt(candidatos)
       }
