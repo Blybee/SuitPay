@@ -2,6 +2,11 @@ import { useRef, useState } from 'react'
 import { Camera, ImagePlus, X } from 'lucide-react'
 import { usarCatalogo } from '../catalogo/almacen.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
+import {
+  esFalloDeStorage,
+  formatearFalloDeCliente,
+  formatearMotivoAsistencia,
+} from '../degradacion/motivo-asistencia.ts'
 import { usarSesion } from '../sesion/almacen.ts'
 import { interpretarCapturaFn } from './captura.funciones.ts'
 import {
@@ -98,7 +103,9 @@ export function PanelFotografia({
       if (!respuesta.ok || !respuesta.resultado) {
         const codigo = respuesta.error?.codigo
         if (codigo === 'asistencia_no_disponible') {
-          usarDegradacion.getState().declarar('asistencia')
+          const motivo = formatearMotivoAsistencia(respuesta.error?.detalle)
+          console.warn('[SuitPay] foto: asistencia no disponible', respuesta.error?.detalle)
+          usarDegradacion.getState().declarar('asistencia', motivo)
           URL.revokeObjectURL(objectUrl)
           captura.cancelar()
           onCerrar()
@@ -135,7 +142,17 @@ export function PanelFotografia({
         URL.revokeObjectURL(objectUrl)
         return
       }
-      usarDegradacion.getState().declarar('asistencia')
+      if (esFalloDeStorage(error)) {
+        // No es la asistencia: la foto ni siquiera llegó al servidor.
+        captura.marcarError(
+          'No se pudo guardar la fotografía. Revisa la conexión y vuelve a intentarlo.',
+        )
+        URL.revokeObjectURL(objectUrl)
+        return
+      }
+      usarDegradacion
+        .getState()
+        .declarar('asistencia', formatearFalloDeCliente(error))
       URL.revokeObjectURL(objectUrl)
       captura.cancelar()
       onCerrar()

@@ -2,6 +2,11 @@ import { usarCatalogo } from '../catalogo/almacen.ts'
 import { leerClientePorDocumento } from '../clientes/existencia.ts'
 import { subirMedioDeCaptura } from '../captura/almacenamiento.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
+import {
+  esFalloDeStorage,
+  formatearFalloDeCliente,
+  formatearMotivoAsistencia,
+} from '../degradacion/motivo-asistencia.ts'
 import { usarNotificaciones } from '../notificaciones/almacen.ts'
 import { usarSesion } from '../sesion/almacen.ts'
 import { emparejarItemsPdf } from './emparejar-pdf.ts'
@@ -87,12 +92,20 @@ export async function procesarRequerimientoDeCotizar(entrada: {
     if (!respuesta.ok || respuesta.resultado === undefined) {
       const codigo = respuesta.error?.codigo
       if (codigo === 'asistencia_no_disponible') {
-        usarDegradacion.getState().declarar('asistencia')
+        console.warn(
+          '[SuitPay] PDF requerimiento: asistencia no disponible',
+          respuesta.error?.detalle,
+        )
+        usarDegradacion
+          .getState()
+          .declarar(
+            'asistencia',
+            formatearMotivoAsistencia(respuesta.error?.detalle),
+          )
       }
       usarPropuestasPdf.getState().actualizar(id, {
         fase: 'error',
-        mensajeError:
-          respuesta.error?.mensaje ?? 'No se pudo leer el PDF.',
+        mensajeError: respuesta.error?.mensaje ?? 'No se pudo leer el PDF.',
       })
       usarNotificaciones.getState().mostrar({
         tono: 'error',
@@ -140,13 +153,11 @@ export async function procesarRequerimientoDeCotizar(entrada: {
     })
   } catch (error) {
     console.error('[SuitPay] PDF requerimiento', error)
-    const codigo =
-      error !== null && typeof error === 'object' && 'code' in error
-        ? String(error.code)
-        : ''
-    const falloDeStorage = codigo.startsWith('storage/')
+    const falloDeStorage = esFalloDeStorage(error)
     if (!falloDeStorage) {
-      usarDegradacion.getState().declarar('asistencia')
+      usarDegradacion
+        .getState()
+        .declarar('asistencia', formatearFalloDeCliente(error))
     }
     usarPropuestasPdf.getState().actualizar(id, {
       fase: 'error',
