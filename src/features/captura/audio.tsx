@@ -3,6 +3,11 @@ import { ChevronDown, Mic, Square, X } from 'lucide-react'
 import { horaEnLima } from '../../domain/captura/hora-lima.ts'
 import { usarCatalogo } from '../catalogo/almacen.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
+import {
+  esFalloDeStorage,
+  formatearFalloDeCliente,
+  formatearMotivoAsistencia,
+} from '../degradacion/motivo-asistencia.ts'
 import { usarSesion } from '../sesion/almacen.ts'
 import { interpretarCapturaFn } from './captura.funciones.ts'
 import {
@@ -151,7 +156,13 @@ export function PanelDictado({
         const codigo = respuesta.error?.codigo
         if (codigo === 'asistencia_no_disponible') {
           // Un solo aviso: la banda global. Cierra el panel para no triplicar.
-          usarDegradacion.getState().declarar('asistencia')
+          console.warn('[SuitPay] dictado: asistencia no disponible', respuesta.error?.detalle)
+          usarDegradacion
+            .getState()
+            .declarar(
+              'asistencia',
+              formatearMotivoAsistencia(respuesta.error?.detalle),
+            )
           URL.revokeObjectURL(objectUrl)
           captura.cancelar()
           onCerrar()
@@ -189,7 +200,16 @@ export function PanelDictado({
           URL.revokeObjectURL(objectUrl)
           return
         }
-        usarDegradacion.getState().declarar('asistencia')
+        if (esFalloDeStorage(error)) {
+          captura.marcarError(
+            'No se pudo guardar el audio. Revisa la conexión y vuelve a intentarlo.',
+          )
+          URL.revokeObjectURL(objectUrl)
+          return
+        }
+        usarDegradacion
+          .getState()
+          .declarar('asistencia', formatearFalloDeCliente(error))
         URL.revokeObjectURL(objectUrl)
         captura.cancelar()
         onCerrar()

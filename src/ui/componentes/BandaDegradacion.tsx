@@ -44,6 +44,15 @@ export function BandaDegradacion({
       <div className="min-w-0 flex-1">
         <p className="text-aviso font-bold">{degradacion.capacidadPerdida}</p>
         <p className="text-cuerpo text-tinta">{degradacion.loQueSiFunciona}</p>
+        {degradacion.detalleTecnico !== undefined ? (
+          <p
+            className="mt-0.5 truncate font-mono text-etiqueta text-desvaida"
+            data-testid="detalle-tecnico-degradacion"
+            title={degradacion.detalleTecnico}
+          >
+            {degradacion.detalleTecnico}
+          </p>
+        ) : null}
       </div>
       {puedeReintentar ? (
         <button

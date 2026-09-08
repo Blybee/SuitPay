@@ -40,6 +40,12 @@ export interface Degradacion {
   readonly capacidadPerdida: string
   /** Qué sí puede hacer mientras tanto. Nunca vacío: siempre hay algo. */
   readonly loQueSiFunciona: string
+  /**
+   * Una línea para el administrador con la causa técnica (p. ej. «clave
+   * rechazada · HTTP 403»). El vendedor puede ignorarla; sin ella, la banda es
+   * un callejón sin salida para quien tiene que arreglarlo.
+   */
+  readonly detalleTecnico?: string
 }
 
 const DESCRIPCIONES: Record<
@@ -47,7 +53,8 @@ const DESCRIPCIONES: Record<
   { capacidadPerdida: string; loQueSiFunciona: string }
 > = {
   red: {
-    capacidadPerdida: 'Sin conexión: no se puede emitir ni guardar cotizaciones.',
+    capacidadPerdida:
+      'Sin conexión: no se puede emitir ni guardar cotizaciones.',
     loQueSiFunciona:
       'Puedes seguir armando el pedido; no se pierde. Prueba con el wifi del teléfono.',
   },
@@ -68,7 +75,7 @@ interface EstadoDeDegradacion {
 }
 
 interface AccionesDeDegradacion {
-  declarar: (causa: CausaDeDegradacion) => void
+  declarar: (causa: CausaDeDegradacion, detalleTecnico?: string) => void
   resolver: (causa: CausaDeDegradacion) => void
   resolverTodas: () => void
 }
@@ -78,15 +85,35 @@ export type AlmacenDeDegradacion = EstadoDeDegradacion & AccionesDeDegradacion
 export const usarDegradacion = create<AlmacenDeDegradacion>((set, get) => ({
   activas: [],
 
-  declarar(causa) {
+  declarar(causa, detalleTecnico) {
     // Declarar dos veces la misma causa no reinicia su antigüedad. El "desde"
     // sirve para poder decir cuánto lleva así, y reiniciarlo en cada reintento
-    // fallido lo volvería inútil.
-    if (get().activas.some((cada) => cada.causa === causa)) return
+    // fallido lo volvería inútil. El detalle técnico sí se actualiza: el último
+    // intento es el que describe el estado actual.
+    const existente = get().activas.find((cada) => cada.causa === causa)
+    if (existente !== undefined) {
+      if (
+        detalleTecnico === undefined ||
+        detalleTecnico === existente.detalleTecnico
+      ) {
+        return
+      }
+      set({
+        activas: get().activas.map((cada) =>
+          cada.causa === causa ? { ...cada, detalleTecnico } : cada,
+        ),
+      })
+      return
+    }
     set({
       activas: [
         ...get().activas,
-        { causa, desde: Date.now(), ...DESCRIPCIONES[causa] },
+        {
+          causa,
+          desde: Date.now(),
+          ...DESCRIPCIONES[causa],
+          ...(detalleTecnico !== undefined ? { detalleTecnico } : {}),
+        },
       ],
     })
   },

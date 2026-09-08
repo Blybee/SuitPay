@@ -2,6 +2,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
 import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
+import { PanelDiagnosticoAsistencia } from '../../features/asistencia/panel-diagnostico.tsx'
 import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import {
   guardarParametrosFn,
@@ -147,6 +148,8 @@ function PantallaDeParametros() {
           Guardar
         </Boton>
       </form>
+
+      <PanelDiagnosticoAsistencia />
     </div>
   )
 }
