@@ -6,6 +6,7 @@ import {
   pistaDeComando,
   placeholderDelBuscador,
   textoAlElegirComando,
+  nombreTrasCoti,
 } from '../../../src/features/comandos/pistas.ts'
 
 describe('pistas de comando en el buscador', () => {
@@ -61,8 +62,21 @@ describe('pistas de comando en el buscador', () => {
 
   it('filtra por prefijo parcial', () => {
     const lista = comandosCoincidentes('/cot')
+    expect(lista.some((c) => c.id === 'coti')).toBe(true)
     expect(lista.some((c) => c.id === 'cotizacion')).toBe(true)
     expect(lista.some((c) => c.id === 'cotizaciones')).toBe(true)
     expect(lista.some((c) => c.id === 'crear-vecino')).toBe(false)
+  })
+
+  it('tras /coti pide el nombre', () => {
+    expect(pistaDeComando('/coti').fantasma.trim()).toBe('{nombre}')
+    expect(pistaDeComando('/coti ').fantasma.trim()).toBe('{nombre}')
+  })
+
+  it('nombreTrasCoti distingue /coti de /cotizacion', () => {
+    expect(nombreTrasCoti('/coti')).toBeNull()
+    expect(nombreTrasCoti('/coti ')).toBeNull()
+    expect(nombreTrasCoti('/coti Test')).toBe('Test')
+    expect(nombreTrasCoti('/cotizacion 12')).toBeNull()
   })
 })

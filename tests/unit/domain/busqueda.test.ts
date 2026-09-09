@@ -15,6 +15,7 @@ const CATALOGO: ProductoBuscable[] = [
   { codigo: 'NIPFG12', descripcion: 'NIPLE FG 1/2', unidad: 'UND', precio: 900, activo: true },
   { codigo: 'LLPASO12', descripcion: 'LLAVE DE PASO BRONCE 1/2', unidad: 'UND', precio: 3500, activo: true },
   { codigo: 'VIEJO', descripcion: 'CODO FG 1/2 ANTIGUO', unidad: 'UND', precio: 1100, activo: false },
+  { codigo: 'AQUATO', descripcion: 'AQUATO- JUEGO', unidad: 'UND', precio: 4500, activo: true },
 ]
 
 const indice = crearIndice(CATALOGO)
@@ -104,5 +105,41 @@ describe('lote de candidatos para la asistencia', () => {
   it('manda un subconjunto y no el catálogo entero', () => {
     const lote = loteDeCandidatos(indice, ['codo'], 2)
     expect(lote.length).toBeLessThan(CATALOGO.length)
+  })
+})
+
+describe('tokens cortos y guion (Aquato- j)', () => {
+  it('sugiere con el primer carácter del segundo término', () => {
+    const resultado = buscarProductos(indice, 'Aquato- j')
+    expect(resultado.sinCoincidencias).toBe(false)
+    expect(resultado.coincidencias[0]?.elemento.codigo).toBe('AQUATO')
+  })
+
+  it('sigue encontrando el nombre completo', () => {
+    const resultado = buscarProductos(indice, 'Aquato- juego')
+    expect(resultado.sinCoincidencias).toBe(false)
+    expect(resultado.coincidencias[0]?.elemento.codigo).toBe('AQUATO')
+  })
+
+  it('encuentra aunque el guion no se teclee', () => {
+    const resultado = buscarProductos(indice, 'aquato j')
+    expect(resultado.sinCoincidencias).toBe(false)
+    expect(
+      resultado.coincidencias.map((cada) => cada.elemento.codigo),
+    ).toContain('AQUATO')
+  })
+
+  it('tolera una errata leve en el nombre con guion', () => {
+    const resultado = buscarProductos(indice, 'Aquato juego')
+    expect(resultado.sinCoincidencias).toBe(false)
+    expect(
+      resultado.coincidencias.map((cada) => cada.elemento.codigo),
+    ).toContain('AQUATO')
+  })
+
+  it('un término de un solo carácter no revienta ni finge un catálogo vacío distinto', () => {
+    const resultado = buscarProductos(indice, 'j')
+    expect(resultado.sinCoincidencias).toBe(true)
+    expect(resultado.coincidencias).toHaveLength(0)
   })
 })

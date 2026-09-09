@@ -1,16 +1,17 @@
 import { AlertTriangle, Download, Loader2, Printer, Share2 } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { MarcaDeEstado } from '../../ui/componentes/Sello.tsx'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
 import { YaUsada } from '../cotizaciones/ya-usada.tsx'
 import { compartirDocumento, nombreDelComprobante } from './compartir.ts'
-import { consultarEstado } from './emitir.funciones.ts'
+import { consultarEstado, leerComprobante } from './emitir.funciones.ts'
 import type { RespuestaDeEmitir } from './emitir.funciones.ts'
 import { sePuedeReintentar, usarEmision } from './flujo.ts'
 import type { FaseDeEmision } from './flujo.ts'
 import { imprimirDocumento } from './impresion.ts'
+import { blobDePdfDeNotaVenta } from './pdf-nota.ts'
 import { resolverYPrecargarPdf } from './precarga.ts'
 
 /**
@@ -38,26 +39,68 @@ function AccionesDePdf({
 }) {
   const [aviso, setAviso] = useState<string | null>(null)
   const [pdf, setPdf] = useState<string | null>(comprobante.archivos.pdf)
-  const nombre = nombreDelComprobante(comprobante.serie, comprobante.numero)
-  const sinPdf = pdf === null || pdf === ''
+  const [nombre, setNombre] = useState(() =>
+    nombreDelComprobante(comprobante.serie, comprobante.numero),
+  )
+  const blobNota = useRef<Blob | null>(null)
+  const sinPdf = (pdf === null || pdf === '') && blobNota.current === null
 
   useEffect(() => {
-    let vivo = true
-    void resolverYPrecargarPdf(
-      comprobante.comprobanteId,
-      comprobante.archivos.pdf,
-    ).then((url) => {
-      if (vivo && url !== null) setPdf(url)
-    })
+    const ciclo = { activo: true }
+    const sigue = (): boolean => ciclo.activo
+    let localUrl: string | null = null
+    blobNota.current = null
+    void (async () => {
+      const url = await resolverYPrecargarPdf(
+        comprobante.comprobanteId,
+        comprobante.archivos.pdf,
+      )
+      if (!sigue()) return
+      if (url !== null) {
+        setPdf(url)
+        return
+      }
+      try {
+        const leido = await leerComprobante({
+          data: { comprobanteId: comprobante.comprobanteId },
+        })
+        if (!sigue()) return
+        if (leido.tipoDocumento !== 'nota_venta') return
+        const blob = blobDePdfDeNotaVenta(leido)
+        const generado = URL.createObjectURL(blob)
+        if (!sigue()) {
+          URL.revokeObjectURL(generado)
+          return
+        }
+        blobNota.current = blob
+        localUrl = generado
+        setPdf(generado)
+        setNombre(
+          nombreDelComprobante(leido.serie, leido.numero, leido.tipoDocumento),
+        )
+      } catch {
+        // Sin PDF del proveedor y sin nota local: Imprimir sigue el fallback.
+      }
+    })()
     return () => {
-      vivo = false
+      ciclo.activo = false
+      if (localUrl !== null) URL.revokeObjectURL(localUrl)
     }
   }, [comprobante.comprobanteId, comprobante.archivos.pdf])
 
+  function urlFresco(): string | null {
+    if (blobNota.current !== null) {
+      return URL.createObjectURL(blobNota.current)
+    }
+    if (pdf !== null && pdf !== '') return pdf
+    return null
+  }
+
   function alImprimir(): void {
     setAviso(null)
-    if (!sinPdf) {
-      const resultado = imprimirDocumento(pdf)
+    const url = urlFresco()
+    if (url !== null) {
+      const resultado = imprimirDocumento(url)
       if (!resultado.ok) {
         setAviso(
           resultado.motivo === 'no_se_pudo_abrir'
@@ -72,12 +115,13 @@ function AccionesDePdf({
 
   function alGuardar(): void {
     setAviso(null)
-    if (sinPdf) {
+    const url = urlFresco()
+    if (url === null) {
       setAviso('Este comprobante no tiene archivo PDF para guardar.')
       return
     }
     const enlace = document.createElement('a')
-    enlace.href = pdf
+    enlace.href = url
     enlace.download = `${nombre}.pdf`
     enlace.rel = 'noopener noreferrer'
     enlace.target = '_blank'
@@ -86,8 +130,9 @@ function AccionesDePdf({
 
   async function alCompartir(): Promise<void> {
     setAviso(null)
-    if (!sinPdf) {
-      const resultado = await compartirDocumento(pdf, nombre)
+    const url = urlFresco()
+    if (url !== null) {
+      const resultado = await compartirDocumento(url, nombre)
       if (!resultado.ok && resultado.motivo !== 'cancelado') {
         setAviso(
           resultado.motivo === 'sin_archivo'
@@ -102,13 +147,6 @@ function AccionesDePdf({
 
   return (
     <div className="space-y-2 pt-1">
-      {sinPdf ? (
-        <p className="text-cuerpo text-desvaida">
-          Este documento no trae PDF en la respuesta (p. ej. nota de venta
-          interna). Imprimir/Compartir intentarán recuperarlo si existe
-          guardado.
-        </p>
-      ) : null}
       {aviso !== null ? (
         <p className="text-cuerpo font-bold text-aviso" role="status">
           {aviso}

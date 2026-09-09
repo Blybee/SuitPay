@@ -290,3 +290,61 @@ describe('Entrada — panel flotante', () => {
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
 })
+
+describe('Entrada — cotizaciones encima de comandos', () => {
+  it('pinta cotizaciones por encima de las pistas de /coti', () => {
+    const cotizacion = {
+      id: 'c1',
+      numero: 5,
+      estado: 'pendiente' as const,
+      canal: 'general' as const,
+      aliasVecino: null,
+      cliente: {
+        tipoDocumento: 'DNI',
+        numeroDocumento: '1',
+        denominacion: 'Cliente Test',
+      },
+      lineas: [
+        {
+          codigo: 'X',
+          descripcion: 'Pieza',
+          unidad: 'UND',
+          cantidad: 1,
+          precio: 900,
+        },
+      ],
+      total: 900,
+      creadoPor: 'v',
+      creadoEn: new Date(0),
+      actualizadoEn: null,
+      telefonoVecino: null,
+    }
+
+    render(
+      <Entrada
+        termino="/coti test"
+        onTerminoCambia={vi.fn()}
+        resultado={resultadoCon('/coti test', [])}
+        onElegirProducto={vi.fn()}
+        onElegirCotizacion={vi.fn()}
+        cotizacionesSugeridas={{
+          termino: 'TEST',
+          coincidencias: [
+            { elemento: cotizacion, distancia: 0, grado: 'exacta' },
+          ],
+          sinCoincidencias: false,
+          soloAproximadas: false,
+        }}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    const opciones = screen.getAllByRole('option')
+    expect(opciones[0]).toHaveTextContent('#5')
+    expect(opciones[0]).toHaveTextContent('Cliente Test')
+    expect(opciones.some((opcion) => opcion.textContent?.includes('/cotizacion'))).toBe(
+      true,
+    )
+  })
+})

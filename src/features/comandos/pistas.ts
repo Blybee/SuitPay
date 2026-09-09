@@ -46,6 +46,12 @@ export const CATALOGO_DE_COMANDOS: readonly DefinicionDeComando[] = [
     descripcion: 'Vaciar el pedido en curso',
   },
   {
+    id: 'coti',
+    prefijo: '/coti',
+    parametros: ['{nombre}'],
+    descripcion: 'Buscar cotización por nombre de cliente',
+  },
+  {
     id: 'cotizacion',
     prefijo: '/cotizacion',
     parametros: ['{n}'],
@@ -154,6 +160,21 @@ function plantillaDe(comando: DefinicionDeComando): string {
 
 function claveNormalizada(escrito: string): string {
   return escrito.trimStart().toLowerCase().replace(/\s+/g, ' ').trimEnd()
+}
+
+const PREFIJO_COTI = '/coti'
+
+/**
+ * Nombre tras `/coti`. `null` si el escrito no es ese comando o falta el nombre.
+ * No confunde `/cotizacion`: tras `/coti` tiene que ir un espacio.
+ */
+export function nombreTrasCoti(termino: string): string | null {
+  const escrito = termino.trimStart()
+  const clave = claveNormalizada(escrito)
+  if (clave === PREFIJO_COTI) return null
+  if (!clave.startsWith(`${PREFIJO_COTI} `)) return null
+  const nombre = escrito.slice(PREFIJO_COTI.length).trim()
+  return nombre.length > 0 ? nombre : null
 }
 
 /**

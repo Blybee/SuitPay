@@ -78,31 +78,54 @@ const DISTANCIA_MAXIMA_UTILIZABLE = 0.5
 const DISTANCIA_EXACTA = 0.02
 const DISTANCIA_FUERTE = 0.28
 
+/** Dos caracteres bastan para que "fg" cuente; uno solo no entra en Fuse. */
+export const LONGITUD_MINIMA_TERMINO = 2
+
 const OPCIONES: IFuseOptions<ProductoBuscable> = {
   keys: [
-    { name: 'descripcion', weight: 0.85 },
-    { name: 'codigo', weight: 0.15 },
+    {
+      name: 'descripcion',
+      weight: 0.85,
+      getFn: (producto) => normalizar(producto.descripcion),
+    },
+    {
+      name: 'codigo',
+      weight: 0.15,
+      getFn: (producto) => normalizar(producto.codigo),
+    },
   ],
   includeScore: true,
   // El término puede aparecer en cualquier posición de la descripción.
   ignoreLocation: true,
+  ignoreDiacritics: true,
   threshold: DISTANCIA_MAXIMA_UTILIZABLE,
-  // Dos caracteres bastan para que "fg" cuente como término propio.
-  minMatchCharLength: 2,
+  minMatchCharLength: LONGITUD_MINIMA_TERMINO,
 }
 
 /**
  * Normaliza para comparar: sin tildes, en mayúsculas y sin espacios de sobra.
  * Los nombres del catálogo están bien definidos, pero se teclean con prisa y de
  * pie, y nadie va a escribir "válvula" con tilde en el mostrador.
+ *
+ * El guion (y puntuación parecida) se vuelve espacio para que "AQUATO-JUEGO" y
+ * "AQUATO JUEGO" sean el mismo haystack. No se toca `/`: es parte de las
+ * medidas 1/2 y 3/4, y FR-008 depende de que sigan siendo un solo término.
  */
 export function normalizar(texto: string): string {
   return texto
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toUpperCase()
+    .replace(/[-_.,]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+/** Términos que Fuse puede puntuar. Los de un carácter no entran en la conjunción. */
+export function terminosDeConsulta(terminoLimpio: string): readonly string[] {
+  return terminoLimpio
+    .split(' ')
+    .filter((cada) => cada.length >= LONGITUD_MINIMA_TERMINO)
 }
 
 export interface IndiceDeProductos {
@@ -180,7 +203,19 @@ export function buscarProductos(
     }
   }
 
-  const terminos = terminoLimpio.split(' ').filter((cada) => cada.length > 0)
+  const terminos = terminosDeConsulta(terminoLimpio)
+
+  // "Aquato- j" deja solo AQUATO: el token de un carácter no puede exigir AND
+  // porque Fuse no lo indexa (minMatchCharLength). Sin términos útiles no hay
+  // búsqueda, no una lista vacía disfrazada de "no encontré nada".
+  if (terminos.length === 0) {
+    return {
+      coincidencias: [],
+      sinCoincidencias: true,
+      soloAproximadas: false,
+      termino: terminoLimpio,
+    }
+  }
 
   // Un producto coincide cuando lo encuentran todos los términos. Se arranca de
   // las coincidencias del primero y se van descartando las que fallen el resto,

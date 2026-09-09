@@ -4,6 +4,7 @@ import {
 } from './emitir.funciones.ts'
 import { compartirDocumento, nombreDelComprobante } from './compartir.ts'
 import { imprimirDocumento } from './impresion.ts'
+import { urlPdfDeNotaVenta } from './pdf-nota.ts'
 import type { ResultadoDeCompartir } from './compartir.ts'
 import type { ResultadoDeImpresion } from './impresion.ts'
 
@@ -36,7 +37,21 @@ export async function reimprimir(
     return { ok: false, motivo: 'no_encontrado', nombre: null }
   }
 
-  const nombre = nombreDelComprobante(comprobante.serie, comprobante.numero)
+  const nombre = nombreDelComprobante(
+    comprobante.serie,
+    comprobante.numero,
+    comprobante.tipoDocumento,
+  )
+
+  if (comprobante.tipoDocumento === 'nota_venta') {
+    const local = urlPdfDeNotaVenta(comprobante)
+    const resultado: ResultadoDeImpresion = imprimirDocumento(local)
+    if (!resultado.ok) {
+      URL.revokeObjectURL(local)
+      return { ok: false, motivo: 'no_se_pudo_abrir', nombre }
+    }
+    return { ok: true, nombre }
+  }
 
   const url = await obtenerUrlPdfComprobante({
     data: { comprobanteId },
@@ -70,8 +85,23 @@ export async function compartirComprobante(
     return { ok: false, motivo: 'sin_archivo' }
   }
 
+  if (comprobante.tipoDocumento === 'nota_venta') {
+    return compartirDocumento(
+      urlPdfDeNotaVenta(comprobante),
+      nombreDelComprobante(
+        comprobante.serie,
+        comprobante.numero,
+        comprobante.tipoDocumento,
+      ),
+    )
+  }
+
   return compartirDocumento(
     comprobante.proveedor?.pdf ?? null,
-    nombreDelComprobante(comprobante.serie, comprobante.numero),
+    nombreDelComprobante(
+      comprobante.serie,
+      comprobante.numero,
+      comprobante.tipoDocumento,
+    ),
   )
 }

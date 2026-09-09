@@ -70,7 +70,12 @@ export async function compartirDocumento(
 }
 
 /** El nombre legible de un comprobante, para el archivo y para decirlo en voz alta. */
-export function nombreDelComprobante(serie: string, numero: number | null): string {
+export function nombreDelComprobante(
+  serie: string,
+  numero: number | null,
+  tipoDocumento?: string,
+): string {
+  if (tipoDocumento === 'nota_venta') return 'nota-de-venta'
   if (serie === '' || numero === null) return 'documento-interno'
   return `${serie}-${String(numero).padStart(8, '0')}`
 }

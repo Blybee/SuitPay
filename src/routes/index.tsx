@@ -1,7 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
+import type {
+  ProductoBuscable,
+  ResultadoDeBusqueda,
+} from '../domain/busqueda/productos.ts'
+import { buscarCotizacionesPorNombre } from '../domain/busqueda/cotizaciones.ts'
 import { pedidoTienePrecioBajoCatalogo } from '../domain/totales/calculo.ts'
 import { usarBusqueda } from '../features/busqueda/almacen.ts'
 import { usarCatalogo, umbralVigente } from '../features/catalogo/almacen.ts'
@@ -27,6 +31,7 @@ import {
   despacharComando,
   mensajeDeProhibido,
 } from '../features/comandos/ejecutar.ts'
+import { nombreTrasCoti } from '../features/comandos/pistas.ts'
 import { InstruccionIncompleta } from '../features/comandos/incompletas.tsx'
 import { comandoDesdeDictado } from '../features/comandos/por-voz.ts'
 import {
@@ -148,6 +153,8 @@ function Mostrador() {
   const entradaRef = useRef<MangoDeEntrada>(null)
   const [pestana, setPestana] = useState<PestanaMostrador>('pedido')
   const [termino, setTermino] = useState('')
+  const [cotizacionesSugeridas, setCotizacionesSugeridas] =
+    useState<ResultadoDeBusqueda<Cotizacion> | null>(null)
   const [medioPago, setMedioPago] = useState('efectivo')
   const [seriesCabecera, setSeriesCabecera] = useState<SeriesEnCabecera>({
     boleta: null,
@@ -508,6 +515,18 @@ function Mostrador() {
   async function ejecutarComando(texto: string): Promise<void> {
     const recortado = texto.trim()
     const clave = recortado.toLowerCase()
+    const nombreCoti = nombreTrasCoti(recortado)
+    if (nombreCoti !== null) {
+      const pendientes = await queryClient.ensureQueryData({
+        queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
+        queryFn: () => listarCotizacionesPendientes('general'),
+        staleTime: 30_000,
+      })
+      setCotizacionesSugeridas(
+        buscarCotizacionesPorNombre(pendientes, nombreCoti),
+      )
+      return
+    }
     // La propuesta salta con Enter, no en cada tecla: si saltara al completar
     // el documento, el modal interrumpiría antes de poder escribir el
     // teléfono opcional.
@@ -1039,6 +1058,7 @@ function Mostrador() {
           termino={termino}
           onTerminoCambia={(siguiente) => {
             setTermino(siguiente)
+            setCotizacionesSugeridas(null)
             usarBusqueda.getState().recordar(siguiente)
           }}
           ultimaBusqueda={ultimaBusqueda}
@@ -1046,6 +1066,21 @@ function Mostrador() {
           onElegirProducto={agregar}
           onElegirProductos={agregarVarios}
           onEjecutarComando={(texto) => void ejecutarComando(texto)}
+          cotizacionesSugeridas={cotizacionesSugeridas}
+          onElegirCotizacion={(cotizacion) => {
+            usarPedido.getState().fijarModoCotizacion(true)
+            pedido.cargarDesdeCotizacion({
+              cotizacionId: cotizacion.id,
+              lineas: cotizacion.lineas,
+              cliente: cotizacion.cliente,
+            })
+            void queryClient.invalidateQueries({
+              queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
+            })
+            setPestana('pedido')
+            setTermino('')
+            setCotizacionesSugeridas(null)
+          }}
           asistenciaDisponible={asistenciaDisponible}
           motivoAsistenciaInerte={motivoAsistenciaInerte}
           onDictar={() => {

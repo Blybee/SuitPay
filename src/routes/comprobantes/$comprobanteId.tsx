@@ -231,7 +231,7 @@ function DetalleDeComprobante() {
                   tono: 'error',
                   mensaje:
                     resultado.motivo === 'sin_archivo_todavia'
-                      ? 'Este comprobante no tiene PDF del proveedor para imprimir.'
+                      ? 'Este comprobante no tiene PDF para imprimir.'
                       : 'No se pudo abrir el PDF.',
                 })
                 return

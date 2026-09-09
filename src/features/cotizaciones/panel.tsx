@@ -3,7 +3,7 @@ import { Loader2, Search, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { CLAVES_DE_CONSULTA } from '../../infra/consultas/cliente.ts'
-import { ZonaDeCarga } from '../../ui/componentes/ZonaDeCarga.tsx'
+import { ZonaDeCarga, clasificarArchivo } from '../../ui/componentes/ZonaDeCarga.tsx'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
 import { usarCaptura } from '../captura/estado.ts'
@@ -21,14 +21,12 @@ import { procesarRequerimientoDeCotizar } from './procesar-pdf.ts'
 import { usarPropuestasPdf } from './propuestas.ts'
 import type { PropuestaPdf } from './propuestas.ts'
 import type { Cotizacion } from './tipos.ts'
+import { filtrarPendientes } from './filtrar.ts'
 import { YaUsada } from './ya-usada.tsx'
 import { buscarCoincidenciasDeCliente } from '../clientes/coincidencias.ts'
-import {
-  leerClientePorDocumento,
-  type ClienteExistente,
-} from '../clientes/existencia.ts'
+import { leerClientePorDocumento } from '../clientes/existencia.ts'
+import type { ClienteExistente } from '../clientes/existencia.ts'
 import { actualizarClienteFn } from '../clientes/clientes.funciones.ts'
-import { clasificarArchivo } from '../../ui/componentes/ZonaDeCarga.tsx'
 
 /**
  * Lista y recuperación de cotizaciones (FR-017, FR-018, FR-019a).
@@ -81,6 +79,10 @@ export function PanelDeCotizaciones({
     queryFn: () => listarCotizacionesPendientes('general'),
     staleTime: 30_000,
   })
+  const pendientesFiltrados = filtrarPendientes(
+    pendientes.data ?? [],
+    consulta,
+  )
 
   const deepLinkHecho = useRef(false)
   useEffect(() => {
@@ -254,30 +256,34 @@ export function PanelDeCotizaciones({
         className="flex flex-wrap items-end gap-3"
         onSubmit={(evento) => {
           evento.preventDefault()
-          const numero = Number.parseInt(consulta.trim(), 10)
-          if (!Number.isFinite(numero) || numero <= 0) {
-            setAviso('Escribe un número de cotización válido.')
+          const recortado = consulta.trim()
+          const numero = Number.parseInt(recortado, 10)
+          if (Number.isFinite(numero) && numero > 0 && String(numero) === recortado) {
+            void recuperarPorNumero(numero)
             return
           }
-          void recuperarPorNumero(numero)
+          if (recortado.length === 0) {
+            setAviso('Escribe un número, un nombre o un monto.')
+          }
         }}
       >
         <div className="min-w-40 flex-1">
-          <Etiqueta htmlFor="numero-cotizacion">Número</Etiqueta>
+          <Etiqueta htmlFor="numero-cotizacion">Número, cliente o monto</Etiqueta>
           <div className="relative">
             <Campo
               id="numero-cotizacion"
-              inputMode="numeric"
               value={consulta}
               onChange={(evento) => setConsulta(evento.target.value)}
-              placeholder="ej. 1042"
+              placeholder="ej. 1042, cliente o 20.70"
               autoComplete="off"
               className="pr-12"
             />
             <button
               type="submit"
               className="absolute top-1/2 right-1 inline-flex size-11 -translate-y-1/2 items-center justify-center rounded-full text-tinta transition-[opacity,transform] duration-rapida ease-salida hover:bg-mesa focus-visible:border focus-visible:border-tinta focus-visible:outline-none disabled:opacity-50"
-              aria-label={buscando ? 'Buscando cotización' : 'Recuperar cotización'}
+              aria-label={
+                buscando ? 'Buscando cotización' : 'Buscar cotización'
+              }
               aria-busy={buscando || undefined}
               disabled={buscando}
             >
@@ -556,11 +562,13 @@ export function PanelDeCotizaciones({
               : null}
           </p>
         ) : null}
-        {(pendientes.data?.length ?? 0) === 0 &&
+        {pendientesFiltrados.length === 0 &&
         propuestasPdf.length === 0 &&
         !pendientes.isLoading ? (
           <p className="text-cuerpo text-desvaida">
-            No hay cotizaciones pendientes.
+            {consulta.trim().length > 0
+              ? 'Ninguna pendiente coincide con esa búsqueda.'
+              : 'No hay cotizaciones pendientes.'}
           </p>
         ) : null}
         <ul className="flex flex-col gap-2">
@@ -605,7 +613,7 @@ export function PanelDeCotizaciones({
               </div>
             </li>
           ))}
-          {(pendientes.data ?? []).map((cada) => (
+          {(pendientesFiltrados).map((cada) => (
             <li key={cada.id} className="flex items-stretch gap-2">
               <button
                 type="button"

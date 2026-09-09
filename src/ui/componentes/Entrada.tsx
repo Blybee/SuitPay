@@ -9,6 +9,7 @@ import {
   textoAlElegirComando,
 } from '../../features/comandos/pistas.ts'
 import type { DefinicionDeComando } from '../../features/comandos/pistas.ts'
+import type { Cotizacion } from '../../features/cotizaciones/tipos.ts'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type {
   ProductoBuscable,
@@ -47,6 +48,12 @@ export interface PropsDeEntrada {
   readonly ultimaBusqueda?: string
   /** Ejecuta un comando ya escrito (no completa el prefijo). */
   readonly onEjecutarComando?: (texto: string) => void
+  /**
+   * Resultado diferido de `/coti {nombre}` (null = aún no se buscó).
+   * Va encima de las pistas de comando.
+   */
+  readonly cotizacionesSugeridas?: ResultadoDeBusqueda<Cotizacion> | null
+  readonly onElegirCotizacion?: (cotizacion: Cotizacion) => void
   /** Imperative handle (React 19 ref-as-prop) para return focus to search. */
   readonly ref?: Ref<MangoDeEntrada>
 }
@@ -64,6 +71,8 @@ export function Entrada({
   enfocarAlMontar = true,
   ultimaBusqueda = '',
   onEjecutarComando,
+  cotizacionesSugeridas = null,
+  onElegirCotizacion,
   ref,
 }: PropsDeEntrada) {
   const campo = useRef<HTMLInputElement>(null)
@@ -87,11 +96,17 @@ export function Entrada({
     setResaltado(0)
     setMinimizado(false)
     setSeleccionados(new Set())
-  }, [termino])
+  }, [termino, cotizacionesSugeridas])
 
   const modoComando = esModoComando(termino)
   const pista = modoComando ? pistaDeComando(termino) : null
-  const comandos = modoComando ? comandosCoincidentes(termino) : []
+  const comandos = modoComando
+    ? cotizacionesSugeridas !== null
+      ? comandosCoincidentes('/coti')
+      : comandosCoincidentes(termino)
+    : []
+  const cotizacionesHalladas = cotizacionesSugeridas?.coincidencias ?? []
+  const itemsComando = cotizacionesHalladas.length + comandos.length
   const sugiriendoProducto = termino.length > 0 && !modoComando
   const sugiriendoComando = modoComando
   const coincidencias = resultado.coincidencias
@@ -154,6 +169,23 @@ export function Entrada({
     campo.current?.focus()
   }
 
+  function elegirCotizacion(indice: number): void {
+    const elegida = cotizacionesHalladas[indice]
+    if (elegida === undefined) return
+    onElegirCotizacion?.(elegida.elemento)
+    onTerminoCambia('')
+    setMinimizado(false)
+    campo.current?.focus()
+  }
+
+  function elegirItemComando(indice: number): void {
+    if (indice < cotizacionesHalladas.length) {
+      elegirCotizacion(indice)
+      return
+    }
+    elegirComando(indice - cotizacionesHalladas.length)
+  }
+
   function alPulsarTecla(evento: React.KeyboardEvent<HTMLInputElement>): void {
     if (modoComando) {
       if (evento.key === 'Escape') {
@@ -168,14 +200,14 @@ export function Entrada({
         }
         return
       }
-      if (comandos.length === 0) return
+      if (itemsComando === 0) return
       if (evento.key === 'ArrowDown') {
         evento.preventDefault()
-        setResaltado((actual) => (actual + 1) % comandos.length)
+        setResaltado((actual) => (actual + 1) % itemsComando)
       } else if (evento.key === 'ArrowUp') {
         evento.preventDefault()
         setResaltado(
-          (actual) => (actual - 1 + comandos.length) % comandos.length,
+          (actual) => (actual - 1 + itemsComando) % itemsComando,
         )
       } else if (evento.key === 'Enter' || evento.key === 'Tab') {
         // Completar prefijo desde la lista; no ejecuta el comando.
@@ -191,7 +223,11 @@ export function Entrada({
           elegirComando(resaltado)
         } else if (evento.key === 'Enter') {
           evento.preventDefault()
-          onEjecutarComando?.(termino)
+          if (cotizacionesSugeridas !== null && itemsComando > 0) {
+            elegirItemComando(resaltado)
+          } else {
+            onEjecutarComando?.(termino)
+          }
         }
       }
       return
@@ -291,8 +327,8 @@ export function Entrada({
                     : undefined
               }
               aria-activedescendant={
-                panelComandoAbierto && comandos.length > 0
-                  ? `comando-${resaltado}`
+                panelComandoAbierto && itemsComando > 0
+                  ? `comando-item-${resaltado}`
                   : panelProductoAbierto && coincidencias.length > 0
                     ? `sugerencia-${resaltado}`
                     : undefined
@@ -403,9 +439,12 @@ export function Entrada({
             </div>
             {panelComandoAbierto ? (
               <SugerenciasDeComando
+                cotizaciones={cotizacionesHalladas}
+                busquedaCoti={cotizacionesSugeridas}
                 comandos={comandos}
                 resaltado={resaltado}
-                onElegir={elegirComando}
+                onElegirCotizacion={elegirCotizacion}
+                onElegirComando={elegirComando}
                 onResaltar={setResaltado}
               />
             ) : (
@@ -462,17 +501,23 @@ function BotonDeCaptura({
 }
 
 function SugerenciasDeComando({
+  cotizaciones,
+  busquedaCoti,
   comandos,
   resaltado,
-  onElegir,
+  onElegirCotizacion,
+  onElegirComando,
   onResaltar,
 }: {
+  readonly cotizaciones: ResultadoDeBusqueda<Cotizacion>['coincidencias']
+  readonly busquedaCoti: ResultadoDeBusqueda<Cotizacion> | null
   readonly comandos: readonly DefinicionDeComando[]
   readonly resaltado: number
-  readonly onElegir: (indice: number) => void
+  readonly onElegirCotizacion: (indice: number) => void
+  readonly onElegirComando: (indice: number) => void
   readonly onResaltar: (indice: number) => void
 }) {
-  if (comandos.length === 0) {
+  if (comandos.length === 0 && cotizaciones.length === 0 && busquedaCoti === null) {
     return (
       <div className="w-full bg-papel px-4 py-3">
         <p className="text-cuerpo font-bold text-aviso">
@@ -487,31 +532,79 @@ function SugerenciasDeComando({
 
   return (
     <div className="w-full bg-papel">
+      {busquedaCoti !== null && busquedaCoti.sinCoincidencias ? (
+        <p className="border-b border-borde px-4 py-2 text-cuerpo font-bold text-aviso">
+          No hay cotizaciones con el nombre «{busquedaCoti.termino}»
+        </p>
+      ) : null}
       <ul
         id="sugerencias-de-comando"
         role="listbox"
-        aria-label="Comandos disponibles"
+        aria-label="Cotizaciones y comandos"
         className="max-h-80 overflow-y-auto"
       >
-        {comandos.map((comando, indice) => {
-          const plantilla =
-            comando.parametros.length === 0
-              ? comando.prefijo
-              : `${comando.prefijo} ${comando.parametros.join(' ')}`
+        {cotizaciones.map((coincidencia, indice) => {
+          const cotizacion = coincidencia.elemento
+          const activo = indice === resaltado
           return (
             <li
-              key={comando.id}
-              id={`comando-${indice}`}
+              key={cotizacion.id}
+              id={`comando-item-${indice}`}
               role="option"
-              aria-selected={indice === resaltado}
+              aria-selected={activo}
             >
               <button
                 type="button"
                 onMouseEnter={() => onResaltar(indice)}
-                onClick={() => onElegir(indice)}
+                onClick={() => onElegirCotizacion(indice)}
+                className={[
+                  'flex min-h-11 w-full items-baseline justify-between gap-3 px-4 py-2 text-left',
+                  activo ? 'bg-tinta text-papel' : 'text-tinta hover:bg-mesa',
+                ].join(' ')}
+              >
+                <span className="min-w-0">
+                  <span className="block truncate text-cuerpo font-bold">
+                    #{cotizacion.numero} ·{' '}
+                    {cotizacion.cliente?.denominacion ?? 'Sin cliente'}
+                  </span>
+                  <span
+                    className={[
+                      'block font-mono text-etiqueta',
+                      activo ? 'text-papel/70' : 'text-desvaida',
+                    ].join(' ')}
+                  >
+                    {cotizacion.lineas.length}{' '}
+                    {cotizacion.lineas.length === 1 ? 'línea' : 'líneas'}
+                  </span>
+                </span>
+                <span className="shrink-0 font-mono tabular-nums text-cuerpo font-bold">
+                  {formatearImporte(cotizacion.total)}
+                </span>
+              </button>
+            </li>
+          )
+        })}
+        {comandos.map((comando, indice) => {
+          const indiceGlobal = cotizaciones.length + indice
+          const plantilla =
+            comando.parametros.length === 0
+              ? comando.prefijo
+              : `${comando.prefijo} ${comando.parametros.join(' ')}`
+          const activo = indiceGlobal === resaltado
+          return (
+            <li
+              key={comando.id}
+              id={`comando-item-${indiceGlobal}`}
+              role="option"
+              aria-selected={activo}
+            >
+              <button
+                type="button"
+                onMouseEnter={() => onResaltar(indiceGlobal)}
+                onClick={() => onElegirComando(indice)}
                 className={[
                   'flex min-h-11 w-full flex-col items-start gap-0.5 px-4 py-2 text-left',
-                  indice === resaltado
+                  activo
                     ? 'bg-tinta text-papel'
                     : 'text-tinta hover:bg-mesa',
                 ].join(' ')}
@@ -522,7 +615,7 @@ function SugerenciasDeComando({
                 <span
                   className={[
                     'text-etiqueta',
-                    indice === resaltado ? 'text-papel/70' : 'text-desvaida',
+                    activo ? 'text-papel/70' : 'text-desvaida',
                   ].join(' ')}
                 >
                   {comando.descripcion}
