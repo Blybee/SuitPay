@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Pencil, Trash2 } from 'lucide-react'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
+import { EstadoVacio } from '../../ui/componentes/EstadoVacio.tsx'
 import { Selector } from '../../ui/componentes/Selector.tsx'
 import type { Cotizacion } from '../cotizaciones/tipos.ts'
 import type { ClienteDelPedido } from '../pedido/almacen.ts'
@@ -242,7 +243,7 @@ export function ModalDeVecino({
 
       {vista === 'todos' ? (
         vecinos.length === 0 ? (
-          <p className="text-cuerpo text-desvaida">No hay vecinos registrados.</p>
+          <EstadoVacio titulo="No hay vecinos registrados." />
         ) : (
           <ul className="divide-y divide-borde">
             {vecinos.map((cada) => (

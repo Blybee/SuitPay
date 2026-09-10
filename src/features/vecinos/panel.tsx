@@ -7,6 +7,7 @@ import {
 } from '../../domain/totales/calculo.ts'
 import { CLAVES_DE_CONSULTA } from '../../infra/consultas/cliente.ts'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
+import { EstadoVacio } from '../../ui/componentes/EstadoVacio.tsx'
 import {
   CabecerasDeColumna,
   LineaPedido,
@@ -207,13 +208,13 @@ export function PanelDeVecinos({
       ) : null}
 
       {!vecinos.isLoading && lista.length === 0 ? (
-        <p className="px-4 py-6 text-cuerpo text-desvaida">
-          No hay vecinos todavía. Pulsa + o escribe{' '}
+        <EstadoVacio titulo="No hay vecinos todavía.">
+          Pulsa + o escribe{' '}
           <span className="font-mono text-tinta">
             /crear vecino wilmer 12345678901 987654321
           </span>{' '}
           y confirma la propuesta.
-        </p>
+        </EstadoVacio>
       ) : null}
 
       {activa !== null ? (

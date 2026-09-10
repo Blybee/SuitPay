@@ -108,21 +108,36 @@
     translate var(--duration-media) var(--ease-salida);
 }
 
+.estado-vacio {
+  opacity: 1;
+  translate: 0;
+  transition:
+    opacity var(--duration-media) var(--ease-salida),
+    translate var(--duration-media) var(--ease-salida);
+}
+
 @starting-style {
   .fila-entrada {
     opacity: 0;
     translate: 0 -8px;
   }
+
+  .estado-vacio {
+    opacity: 0;
+    translate: 0 8px;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .fila-entrada {
+  .fila-entrada,
+  .estado-vacio {
     transition: none;
     translate: none;
   }
 
   @starting-style {
-    .fila-entrada {
+    .fila-entrada,
+    .estado-vacio {
       translate: none;
     }
   }

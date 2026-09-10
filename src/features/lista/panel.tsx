@@ -15,6 +15,7 @@ import { usarNotificaciones } from '../notificaciones/almacen.ts'
 import { usarSesion } from '../sesion/almacen.ts'
 import { CLAVES_DE_CONSULTA } from '../../infra/consultas/cliente.ts'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
+import { EstadoVacio } from '../../ui/componentes/EstadoVacio.tsx'
 import { usarDiaLista } from './dia-activo.ts'
 import {
   actualizarCantidadDeLista,
@@ -180,10 +181,9 @@ export function PanelDeListaRequerimiento() {
       ) : null}
 
       {!consulta.isLoading && lineas.length === 0 ? (
-        <p className="px-4 py-8 text-cuerpo text-desvaida" role="status">
-          No hay productos en la lista. Búscalos arriba o dicta con el
-          micrófono.
-        </p>
+        <EstadoVacio titulo="No hay productos en la lista.">
+          Búscalos arriba o dicta con el micrófono.
+        </EstadoVacio>
       ) : null}
 
       {lineas.length > 0 ? (

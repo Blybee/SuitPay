@@ -1,11 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Loader2, Search, Trash2 } from 'lucide-react'
+import { FileText, Loader2, Search, Trash2 } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { CLAVES_DE_CONSULTA } from '../../infra/consultas/cliente.ts'
 import { ZonaDeCarga, clasificarArchivo } from '../../ui/componentes/ZonaDeCarga.tsx'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
+import { EstadoVacio } from '../../ui/componentes/EstadoVacio.tsx'
 import { usarCaptura } from '../captura/estado.ts'
 import { usarCatalogo } from '../catalogo/almacen.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
@@ -22,6 +23,7 @@ import { usarPropuestasPdf } from './propuestas.ts'
 import type { PropuestaPdf } from './propuestas.ts'
 import type { Cotizacion } from './tipos.ts'
 import { filtrarPendientes } from './filtrar.ts'
+import { abrirPdfDeCotizacion } from './pdf.ts'
 import { YaUsada } from './ya-usada.tsx'
 import { buscarCoincidenciasDeCliente } from '../clientes/coincidencias.ts'
 import { leerClientePorDocumento } from '../clientes/existencia.ts'
@@ -565,11 +567,13 @@ export function PanelDeCotizaciones({
         {pendientesFiltrados.length === 0 &&
         propuestasPdf.length === 0 &&
         !pendientes.isLoading ? (
-          <p className="text-cuerpo text-desvaida">
-            {consulta.trim().length > 0
-              ? 'Ninguna pendiente coincide con esa búsqueda.'
-              : 'No hay cotizaciones pendientes.'}
-          </p>
+          <EstadoVacio
+            titulo={
+              consulta.trim().length > 0
+                ? 'Ninguna pendiente coincide con esa búsqueda.'
+                : 'No hay cotizaciones pendientes.'
+            }
+          />
         ) : null}
         <ul className="flex flex-col gap-2">
           {propuestasPdf.map((cada) => (
@@ -634,6 +638,29 @@ export function PanelDeCotizaciones({
                 <span className="shrink-0 font-mono tabular-nums font-bold text-tinta">
                   {formatearImporte(cada.total)}
                 </span>
+              </button>
+              <button
+                type="button"
+                className={[
+                  'inline-flex size-11 shrink-0 items-center justify-center self-center rounded-full',
+                  'text-desvaida transition-colors duration-rapida ease-salida',
+                  'hover:bg-mesa hover:text-tinta',
+                  'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
+                ].join(' ')}
+                aria-label={`Abrir PDF de la cotización ${cada.numero}`}
+                title="Abrir PDF"
+                onClick={() => {
+                  const resultado = abrirPdfDeCotizacion(cada)
+                  if (!resultado.ok) {
+                    setAviso(
+                      resultado.motivo === 'no_se_pudo_abrir'
+                        ? 'No se pudo abrir el PDF. Revisa el bloqueador de ventanas.'
+                        : 'No se pudo generar el PDF de la cotización.',
+                    )
+                  }
+                }}
+              >
+                <FileText className="size-5" aria-hidden />
               </button>
               <button
                 type="button"

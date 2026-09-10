@@ -8,10 +8,13 @@ export function blobDePdfDeNotaVenta(comprobante: Comprobante): Blob {
       : new Date(comprobante.emitidoEn)
   const bytes = bytesDePdfDeNotaVenta({
     emitidoEn,
+    numero: comprobante.numero,
     cliente: comprobante.cliente?.denominacion ?? null,
     lineas: comprobante.lineas.map((linea) => ({
+      codigo: linea.codigo,
       descripcion: linea.descripcion,
       cantidad: linea.cantidad,
+      precio: linea.precio,
       importe: linea.importe,
     })),
     total: comprobante.total,

@@ -2,6 +2,7 @@ import { Navigate } from '@tanstack/react-router'
 import type { ReactNode } from 'react'
 import { usarSesion } from './almacen.ts'
 import type { Rol } from './almacen.ts'
+import { ComprobandoSesion } from './ComprobandoSesion.tsx'
 
 /**
  * Redirige a `/acceso` si no hay sesión, o a Inicio si el rol no basta.
@@ -20,11 +21,7 @@ export function GuardaSesion({
   const activo = usarSesion((s) => s.activo)
 
   if (cargando) {
-    return (
-      <div className="flex min-h-full items-center justify-center p-8">
-        <p className="text-cuerpo text-desvaida">Comprobando sesión…</p>
-      </div>
-    )
+    return <ComprobandoSesion className="min-h-full" />
   }
 
   if (uid === null) {

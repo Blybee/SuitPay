@@ -18,6 +18,7 @@ import {
 } from '../features/degradacion/estado.ts'
 import { usarPedido } from '../features/pedido/almacen.ts'
 import { usarSesion } from '../features/sesion/almacen.ts'
+import { ComprobandoSesion } from '../features/sesion/ComprobandoSesion.tsx'
 import { Toaster } from 'sileo'
 import { BandaDegradacion } from '../ui/componentes/BandaDegradacion.tsx'
 import { BarraLateral } from '../ui/componentes/BarraLateral.tsx'
@@ -119,9 +120,7 @@ function Mostrador() {
         {enAcceso ? (
           <Outlet />
         ) : cargandoSesion ? (
-          <div className="flex min-h-0 flex-1 items-center justify-center p-8">
-            <p className="text-cuerpo text-desvaida">Comprobando sesión…</p>
-          </div>
+          <ComprobandoSesion className="min-h-0 flex-1" />
         ) : sinSesion ? (
           <Navigate to="/acceso" />
         ) : (

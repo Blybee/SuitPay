@@ -30,6 +30,7 @@ import type { ClienteEnIndice } from '../../infra/local/catalogo.ts'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { MarcaDeEstado } from '../../ui/componentes/Sello.tsx'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
+import { EstadoVacio } from '../../ui/componentes/EstadoVacio.tsx'
 
 /**
  * Resumen, filtros bajo demanda e impresión colaborativa (US4b / T191).
@@ -441,9 +442,7 @@ function ListaDeComprobantes() {
       ) : null}
 
       {modo !== 'inactivo' && items.length === 0 && !cargando && error === null ? (
-        <p className="mt-8 text-cuerpo text-desvaida">
-          No hay comprobantes para este filtro.
-        </p>
+        <EstadoVacio titulo="No hay comprobantes para este filtro." />
       ) : null}
 
       {modo === 'rango' && hayMas && ultimo ? (
