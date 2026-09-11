@@ -118,6 +118,25 @@ async function reclamarGuia(
       return { comprobante: existente, yaExistia: true }
     }
 
+    // Firestore exige todas las lecturas antes de cualquier escritura.
+    // `reclamarCorrelativo` escribe el contador: el origen y su guía asociada
+    // MUST leerse antes.
+    let origen: Comprobante | undefined
+    let guiaYaAsociada: Comprobante | undefined
+    if (peticion.comprobanteOrigenId !== null) {
+      origen = await transaccion.leerComprobante(peticion.comprobanteOrigenId)
+      if (origen === undefined) {
+        fallar('comprobante_no_encontrado')
+      }
+      if (
+        (origen.tipoDocumento === 'boleta' ||
+          origen.tipoDocumento === 'factura') &&
+        origen.guiaAsociadaId
+      ) {
+        guiaYaAsociada = await transaccion.leerComprobante(origen.guiaAsociadaId)
+      }
+    }
+
     const correlativo = await reclamarCorrelativo(
       transaccion,
       contexto.vendedorId,
@@ -127,19 +146,16 @@ async function reclamarGuia(
     let comprobanteOrigenId: string | null = null
     let origenParaVincular: Comprobante | undefined
 
-    if (peticion.comprobanteOrigenId !== null) {
-      const origen = await transaccion.leerComprobante(
-        peticion.comprobanteOrigenId,
-      )
-      if (origen === undefined) {
-        fallar('comprobante_no_encontrado')
-      }
-      if (origen.tipoDocumento === 'boleta' || origen.tipoDocumento === 'factura') {
-        if (origen.guiaAsociadaId) {
-          const asociada = await transaccion.leerComprobante(origen.guiaAsociadaId)
-          if (asociada !== undefined && guiaEstaVigente(asociada.estado)) {
-            fallar('guia_asociada_existente')
-          }
+    if (origen !== undefined) {
+      if (
+        origen.tipoDocumento === 'boleta' ||
+        origen.tipoDocumento === 'factura'
+      ) {
+        if (
+          guiaYaAsociada !== undefined &&
+          guiaEstaVigente(guiaYaAsociada.estado)
+        ) {
+          fallar('guia_asociada_existente')
         }
         comprobanteOrigenId = origen.id
         origenParaVincular = origen

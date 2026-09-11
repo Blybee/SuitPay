@@ -1,6 +1,7 @@
 import * as RadixSelect from '@radix-ui/react-select'
 import { Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { useId } from 'react'
+import { usarCapaDeDialogo } from './capa-dialogo.ts'
 
 /**
  * Select personalizado Soft-Pill sobre Radix Select.
@@ -70,6 +71,8 @@ export function Selector<T extends string>({
   const generado = useId()
   const idCampo = id ?? generado
   const valorRadix = valor.length === 0 ? VALOR_VACIO : valor
+  const capaDeDialogo = usarCapaDeDialogo()
+  const dentroDeDialogo = capaDeDialogo !== null
 
   return (
     <div
@@ -91,6 +94,7 @@ export function Selector<T extends string>({
         value={valorRadix}
         disabled={disabled}
         required={required}
+        modal={!dentroDeDialogo}
         onValueChange={(siguiente) =>
           onCambiar((siguiente === VALOR_VACIO ? '' : siguiente) as T)
         }
@@ -123,12 +127,12 @@ export function Selector<T extends string>({
           </RadixSelect.Icon>
         </RadixSelect.Trigger>
 
-        <RadixSelect.Portal>
+        <RadixSelect.Portal container={capaDeDialogo ?? undefined}>
           <RadixSelect.Content
             position="popper"
             sideOffset={8}
             collisionPadding={12}
-            className="selector-suitpay-contenido z-50 max-h-[var(--radix-select-content-available-height)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-2xl border border-borde bg-papel text-cuerpo text-tinta shadow-md"
+            className="selector-suitpay-contenido z-[80] max-h-[var(--radix-select-content-available-height)] min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-2xl border border-borde bg-papel text-cuerpo text-tinta shadow-md"
           >
             <RadixSelect.ScrollUpButton className="flex h-7 cursor-default items-center justify-center bg-papel text-desvaida">
               <ChevronUp className="size-4" aria-hidden />

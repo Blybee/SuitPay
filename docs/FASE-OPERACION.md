@@ -25,6 +25,12 @@ El entorno demo del proveedor a menudo **no permite** crear/sincronizar series (
 
 Esto **no** sustituye la emisión real ante la autoridad. Para emitir sin token real usa además `PROVEEDOR_SIMULADO=true` (doble local). Con proveedor real + series solo en Firestore demo, la emisión puede fallar en el proveedor si la serie no existe allí.
 
+### Guías de remisión
+
+La emisión de guías **está implementada** (papeleta → `emitirGuia` → frontera). Un «fallo inesperado» al asociar boleta/factura era un bug de SuitPay: la transacción leía el origen **después** de escribir el correlativo, y Firestore lo rechaza. Eso ya no aplica.
+
+Si el rechazo es del servicio de emisión (mensaje de guía rechazada): serie T solo local `demo-local-…` o cuenta demo sin GRE. Para el flujo sin el servicio real: `PROVEEDOR_SIMULADO=true`. Para GRE de verdad: serie T creada en el panel del proveedor.
+
 ### Obligatoriedad al lanzar
 
 Antes de producción oficial:

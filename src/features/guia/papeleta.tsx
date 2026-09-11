@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
-import { Printer } from 'lucide-react'
+import { useEffect, useId, useMemo, useState } from 'react'
+import { Plus, Printer } from 'lucide-react'
 import { sileo } from 'sileo'
 import type { TrasladoDeGuia } from '../../domain/guia/tipos.ts'
 import { faltantesDelTraslado } from '../../domain/guia/validar.ts'
@@ -7,18 +7,22 @@ import { generarClaveDeIdempotencia } from '../emision/clave.ts'
 import { emitirGuiaFn, leerIndiceDeTransportistasFn } from './guia.funciones.ts'
 import { debeMostrarToastRegenerar } from './recuperar.ts'
 import type { RespuestaDelServidor } from '../emision/flujo.ts'
+import { reimprimir } from '../emision/reimprimir.ts'
 import type { ClienteDelPedido } from '../pedido/almacen.ts'
 import type { LineaDePedido } from '../../domain/totales/calculo.ts'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
 import { Selector } from '../../ui/componentes/Selector.tsx'
-import { imprimirDocumento } from '../emision/impresion.ts'
 import { resolverYPrecargarPdf } from '../emision/precarga.ts'
+import { AltaTransportista } from '../transportistas/alta.tsx'
 
 export interface BorradorDeGuia {
   readonly claveIdempotencia: string
   readonly traslado: TrasladoDeGuia
 }
+
+const PLACEHOLDER_UBIGEO = '150101'
+const PLACEHOLDER_DIRECCION = 'Av. Central 122 LIMA - LIMA - LIMA'
 
 function itemsDesdePedido(
   lineas: readonly LineaDePedido[],
@@ -38,10 +42,33 @@ function trasladoVacio(lineas: readonly LineaDePedido[]): TrasladoDeGuia {
     pesoBruto: 1,
     unidadPeso: 'KGM',
     numeroBultos: 1,
-    direccionPartida: { ubigeo: '150101', direccion: '' },
-    direccionLlegada: { ubigeo: '150101', direccion: '' },
+    direccionPartida: { ubigeo: '', direccion: '' },
+    direccionLlegada: { ubigeo: '', direccion: '' },
     items: itemsDesdePedido(lineas),
   }
+}
+
+function etiquetaDeTransportista(denominacion: string, ruc: string): string {
+  return `${denominacion} · ${ruc}`
+}
+
+function mensajeDeErrorDeGuia(error: {
+  readonly codigo?: string
+  readonly mensaje?: string
+}): string {
+  if (error.codigo === 'emision_rechazada') {
+    return 'La guía fue rechazada. Revisa serie T, ubigeo, direcciones y transportista. Las series solo locales de DEMO a menudo no las acepta el servicio de emisión.'
+  }
+  if (error.codigo === 'serie_no_configurada') {
+    return (
+      error.mensaje ??
+      'No tienes serie de guía asignada. El administrador debe asignarte una serie T.'
+    )
+  }
+  return (
+    error.mensaje ??
+    'Ocurrió un fallo inesperado. Si vuelve a pasar, avisa al administrador.'
+  )
 }
 
 export function PapeletaDeGuia({
@@ -68,42 +95,54 @@ export function PapeletaDeGuia({
   readonly onEmitida: (respuesta: RespuestaDelServidor) => void
   readonly onRechazoDefinitivo: (borrador: BorradorDeGuia) => void
 }) {
+  const idListbox = useId()
   const [clave, setClave] = useState(() => generarClaveDeIdempotencia())
   const [traslado, setTraslado] = useState<TrasladoDeGuia>(() =>
     trasladoVacio(lineas),
   )
   const [busqueda, setBusqueda] = useState('')
+  const [listaAbierta, setListaAbierta] = useState(false)
   const [indice, setIndice] = useState<
     readonly { numeroDocumento: string; denominacion: string }[]
   >([])
   const [enviando, setEnviando] = useState(false)
+  const [imprimiendoOrigen, setImprimiendoOrigen] = useState(false)
+  const [altaAbierta, setAltaAbierta] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [avisoPdf, setAvisoPdf] = useState<string | null>(null)
-  const [urlPdf, setUrlPdf] = useState<string | null>(urlPdfOrigen ?? null)
 
   useEffect(() => {
     if (!abierta) return
     if (borradorInicial !== undefined && borradorInicial !== null) {
       setClave(borradorInicial.claveIdempotencia)
       setTraslado(borradorInicial.traslado)
+      const t = borradorInicial.traslado.transportista
+      setBusqueda(
+        t === undefined
+          ? ''
+          : etiquetaDeTransportista(t.denominacion, t.numeroDocumento),
+      )
     } else {
       setClave(generarClaveDeIdempotencia())
       setTraslado(trasladoVacio(lineas))
+      setBusqueda('')
     }
-    setError(null)
-    setAvisoPdf(null)
+    setListaAbierta(false)
+    setAltaAbierta(false)
     void leerIndiceDeTransportistasFn().then((r) => {
       setIndice(r.transportistas)
     })
     if (comprobanteOrigenId !== null) {
-      void resolverYPrecargarPdf(comprobanteOrigenId, urlPdfOrigen ?? null).then(
-        (url) => {
-          if (url !== null) setUrlPdf(url)
-        },
-      )
+      void resolverYPrecargarPdf(comprobanteOrigenId, urlPdfOrigen ?? null)
     }
-    // Solo al abrir o al recuperar un borrador; no al editar el pedido debajo.
-  }, [abierta, borradorInicial])
+    // Al abrir o recuperar borrador; no al editar el pedido debajo.
+  }, [abierta, borradorInicial, comprobanteOrigenId, urlPdfOrigen])
+
+  useEffect(() => {
+    if (!abierta) return
+    setError(null)
+    setAvisoPdf(null)
+  }, [abierta])
 
   const coincidencias = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
@@ -117,7 +156,9 @@ export function PapeletaDeGuia({
       .slice(0, 8)
   }, [busqueda, indice])
 
+  const mostrarListbox = listaAbierta && coincidencias.length > 0
   const faltantes = faltantesDelTraslado(traslado)
+  const rucHintAlta = /^\d{11}$/.test(busqueda.trim()) ? busqueda.trim() : ''
 
   async function emitir(): Promise<void> {
     if (faltantes.length > 0) {
@@ -150,7 +191,7 @@ export function PapeletaDeGuia({
           sileo.action({
             title: 'Guía rechazada',
             description:
-              respuesta.error?.mensaje ??
+              mensajeDeErrorDeGuia(respuesta.error ?? {}) ||
               'La guía fue rechazada. Puedes volver a generar sin reescribir el traslado.',
             duration: null,
             button: {
@@ -164,6 +205,7 @@ export function PapeletaDeGuia({
             },
           })
         }
+        setError(mensajeDeErrorDeGuia(respuesta.error ?? {}))
         onEmitida({
           ok: false,
           error: respuesta.error,
@@ -172,6 +214,10 @@ export function PapeletaDeGuia({
       }
       onEmitida({ ok: true, comprobante: respuesta.comprobante })
       onCerrar()
+    } catch {
+      setError(
+        'Ocurrió un fallo inesperado. Si vuelve a pasar, avisa al administrador.',
+      )
     } finally {
       setEnviando(false)
     }
@@ -179,6 +225,40 @@ export function PapeletaDeGuia({
 
   function parche(cambio: Partial<TrasladoDeGuia>): void {
     setTraslado((prev) => ({ ...prev, ...cambio }))
+  }
+
+  function elegirTransportista(cada: {
+    readonly numeroDocumento: string
+    readonly denominacion: string
+  }): void {
+    parche({
+      transportista: {
+        numeroDocumento: cada.numeroDocumento,
+        denominacion: cada.denominacion,
+      },
+    })
+    setBusqueda(etiquetaDeTransportista(cada.denominacion, cada.numeroDocumento))
+    setListaAbierta(false)
+  }
+
+  async function imprimirOrigen(): Promise<void> {
+    if (comprobanteOrigenId === null) return
+    setAvisoPdf(null)
+    setImprimiendoOrigen(true)
+    try {
+      const resultado = await reimprimir(comprobanteOrigenId)
+      if (!resultado.ok) {
+        setAvisoPdf(
+          resultado.motivo === 'sin_archivo_todavia'
+            ? 'Este comprobante no tiene archivo PDF.'
+            : resultado.motivo === 'no_encontrado'
+              ? 'No se encontró el comprobante de origen.'
+              : 'No se pudo abrir el PDF. Revisa el bloqueador de ventanas.',
+        )
+      }
+    } finally {
+      setImprimiendoOrigen(false)
+    }
   }
 
   return (
@@ -190,6 +270,8 @@ export function PapeletaDeGuia({
       titulo="Guía de remisión"
       descripcion="Completa el traslado y confirma Emitir. El comando no emite por sí solo."
       noSeCierraSola={enviando}
+      cerrarConFondo={false}
+      className="overflow-visible"
       pie={
         <>
           <Boton disabled={enviando} onClick={onCerrar}>
@@ -205,7 +287,7 @@ export function PapeletaDeGuia({
         </>
       }
     >
-      <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto">
+      <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto overflow-x-visible">
         <p className="text-etiqueta text-desvaida">
           {cliente
             ? `Destinatario: ${cliente.denominacion}`
@@ -219,20 +301,14 @@ export function PapeletaDeGuia({
         {comprobanteOrigenId !== null ? (
           <div className="flex flex-wrap items-center gap-2">
             <Boton
+              disabled={imprimiendoOrigen}
+              aria-busy={imprimiendoOrigen}
               onClick={() => {
-                setAvisoPdf(null)
-                const resultado = imprimirDocumento(urlPdf)
-                if (!resultado.ok) {
-                  setAvisoPdf(
-                    resultado.motivo === 'no_se_pudo_abrir'
-                      ? 'No se pudo abrir el PDF. Revisa el bloqueador de ventanas.'
-                      : 'Este comprobante no tiene archivo PDF.',
-                  )
-                }
+                void imprimirOrigen()
               }}
             >
               <Printer className="size-5" aria-hidden />
-              Imprimir origen
+              {imprimiendoOrigen ? 'Abriendo…' : 'Imprimir origen'}
             </Boton>
             {avisoPdf !== null ? (
               <p className="text-cuerpo font-bold text-aviso" role="status">
@@ -240,6 +316,11 @@ export function PapeletaDeGuia({
               </p>
             ) : null}
           </div>
+        ) : null}
+        {error ? (
+          <p className="text-cuerpo font-bold text-aviso" role="alert">
+            {error}
+          </p>
         ) : null}
 
         <div className="grid gap-3 sm:grid-cols-2">
@@ -301,6 +382,8 @@ export function PapeletaDeGuia({
           <div className="mt-1 grid gap-2 sm:grid-cols-[8rem_1fr]">
             <Campo
               id="guia-partida-ubigeo"
+              inputMode="numeric"
+              placeholder={PLACEHOLDER_UBIGEO}
               value={traslado.direccionPartida.ubigeo}
               onChange={(e) =>
                 parche({
@@ -313,6 +396,7 @@ export function PapeletaDeGuia({
             />
             <Campo
               id="guia-partida"
+              placeholder={PLACEHOLDER_DIRECCION}
               value={traslado.direccionPartida.direccion}
               onChange={(e) =>
                 parche({
@@ -348,6 +432,8 @@ export function PapeletaDeGuia({
           <div className="mt-1 grid gap-2 sm:grid-cols-[8rem_1fr]">
             <Campo
               id="guia-llegada-ubigeo"
+              inputMode="numeric"
+              placeholder={PLACEHOLDER_UBIGEO}
               value={traslado.direccionLlegada.ubigeo}
               onChange={(e) =>
                 parche({
@@ -360,6 +446,7 @@ export function PapeletaDeGuia({
             />
             <Campo
               id="guia-llegada"
+              placeholder={PLACEHOLDER_DIRECCION}
               value={traslado.direccionLlegada.direccion}
               onChange={(e) =>
                 parche({
@@ -391,37 +478,55 @@ export function PapeletaDeGuia({
         {traslado.modoTransporte === 'publico' ? (
           <div>
             <Etiqueta htmlFor="guia-transportista">Transportista</Etiqueta>
-            <Campo
-              id="guia-transportista"
-              className="mt-1"
-              placeholder="RUC o denominación"
-              value={busqueda}
-              onChange={(e) => setBusqueda(e.target.value)}
-            />
-            {traslado.transportista ? (
-              <p className="mt-1 text-etiqueta text-tinta">
-                {traslado.transportista.denominacion} ·{' '}
-                {traslado.transportista.numeroDocumento}
-              </p>
-            ) : null}
-            {coincidencias.length > 0 ? (
-              <ul className="mt-1 rounded-2xl border border-borde">
+            <div className="mt-1 flex items-center gap-2">
+              <Campo
+                id="guia-transportista"
+                className="min-w-0 flex-1"
+                placeholder="RUC o denominación"
+                role="combobox"
+                aria-autocomplete="list"
+                aria-expanded={mostrarListbox}
+                aria-controls={idListbox}
+                value={busqueda}
+                onChange={(e) => {
+                  setBusqueda(e.target.value)
+                  setListaAbierta(true)
+                }}
+                onFocus={() => {
+                  if (coincidencias.length > 0) setListaAbierta(true)
+                }}
+              />
+              <Boton
+                tamano="icono"
+                aria-label="Crear transportista"
+                title="Crear transportista"
+                onClick={() => setAltaAbierta(true)}
+              >
+                <Plus className="size-5" aria-hidden />
+              </Boton>
+            </div>
+            {mostrarListbox ? (
+              <ul
+                id={idListbox}
+                role="listbox"
+                className="mt-1 rounded-2xl border border-borde"
+              >
                 {coincidencias.map((cada) => (
-                  <li key={cada.numeroDocumento}>
+                  <li key={cada.numeroDocumento} role="none">
                     <button
                       type="button"
+                      role="option"
+                      aria-selected={
+                        traslado.transportista?.numeroDocumento ===
+                        cada.numeroDocumento
+                      }
                       className="w-full px-3 py-2 text-left text-cuerpo hover:bg-mesa"
-                      onClick={() => {
-                        parche({
-                          transportista: {
-                            numeroDocumento: cada.numeroDocumento,
-                            denominacion: cada.denominacion,
-                          },
-                        })
-                        setBusqueda(cada.denominacion)
-                      }}
+                      onClick={() => elegirTransportista(cada)}
                     >
-                      {cada.denominacion} · {cada.numeroDocumento}
+                      {etiquetaDeTransportista(
+                        cada.denominacion,
+                        cada.numeroDocumento,
+                      )}
                     </button>
                   </li>
                 ))}
@@ -497,13 +602,21 @@ export function PapeletaDeGuia({
           {traslado.items.length} ítem{traslado.items.length === 1 ? '' : 's'}{' '}
           desde el pedido.
         </p>
-
-        {error ? (
-          <p className="text-cuerpo font-bold text-aviso" role="alert">
-            {error}
-          </p>
-        ) : null}
       </div>
+
+      <AltaTransportista
+        abierta={altaAbierta}
+        rucInicial={rucHintAlta}
+        onCerrar={() => setAltaAbierta(false)}
+        onCreado={(denominacion, ruc) => {
+          elegirTransportista({ numeroDocumento: ruc, denominacion })
+          void leerIndiceDeTransportistasFn().then((r) => {
+            setIndice(r.transportistas)
+          })
+        }}
+      />
     </Modal>
   )
 }
+
+export { mensajeDeErrorDeGuia }

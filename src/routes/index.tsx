@@ -1374,13 +1374,11 @@ function Mostrador() {
         }
         borradorInicial={borradorGuia}
         onEmitida={(respuesta) => {
-          if (fase.nombre === 'encadenando_guia' && !respuesta.ok) {
+          if (!respuesta.ok) {
             return
           }
           resolverEmision(respuesta)
-          if (respuesta.ok) {
-            setEncadenarGuia(false)
-          }
+          setEncadenarGuia(false)
         }}
         onRechazoDefinitivo={(borrador) => {
           setBorradorGuia(borrador)

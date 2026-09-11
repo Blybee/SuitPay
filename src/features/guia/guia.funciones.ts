@@ -110,6 +110,13 @@ export const emitirGuiaFn = createServerFn({ method: 'POST' })
       if (esErrorDeSuitPay(error)) {
         return { ok: false, error: error.aRespuesta() }
       }
+      const texto = error instanceof Error ? error.message : ''
+      if (texto.startsWith('Falta PROVEEDOR')) {
+        return {
+          ok: false,
+          error: new ErrorDeSuitPay('proveedor_no_disponible').aRespuesta(),
+        }
+      }
       console.error('[SuitPay] fallo inesperado al emitir guía', error)
       return {
         ok: false,

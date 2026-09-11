@@ -1,18 +1,18 @@
-import { useEffect, useId, useRef } from 'react'
+import {
+  useEffect,
+  useId,
+  useRef,
+  useState,
+} from 'react'
 import type { ReactNode } from 'react'
+import { CapaDeDialogo } from './capa-dialogo.ts'
 
 /**
  * Modal Soft-Pill reutilizable sobre `<dialog>` nativo.
  *
- * ## Por qué `<dialog>` y no Radix
- *
- * La guía modern-web-guidance (html / light-dismiss / declarative-dialog) pide
- * `showModal()` para atrapar el foco, `Esc` nativo, `::backdrop` y, cuando
- * aplique, `closedby` para light-dismiss. Eso es la base; el diseño Soft-Pill
- * va encima.
- *
- * API controlada (`abierta` / `alCambiar`) para encajar con el estado React
- * del mostrador sin depender de Invoker Commands (Newly Available + polyfill).
+ * `showModal()` atrapa el foco, Esc nativo y `::backdrop`. El nodo se publica
+ * en `CapaDeDialogo` para que un listbox (Selector) se porte dentro de la
+ * top layer y no quede detrás.
  */
 
 export interface PropsDeModal {
@@ -27,6 +27,11 @@ export interface PropsDeModal {
    * explícita (p. ej. emisión en verificación).
    */
   readonly noSeCierraSola?: boolean
+  /**
+   * Light-dismiss: clic en el fondo. Por omisión sí. `false` deja Esc y el
+   * botón de cerrar; el fondo no cierra (`closedby="closerequest"`).
+   */
+  readonly cerrarConFondo?: boolean
   readonly className?: string
   /** Acción en la esquina de la cabecera (p. ej. Ver todos). */
   readonly cabeceraExtra?: ReactNode
@@ -34,6 +39,14 @@ export interface PropsDeModal {
 
 function unir(...clases: readonly (string | false | undefined)[]): string {
   return clases.filter((cada) => typeof cada === 'string').join(' ')
+}
+
+function closedbyDe(opciones: {
+  readonly noSeCierraSola: boolean
+  readonly cerrarConFondo: boolean
+}): 'none' | 'any' | 'closerequest' {
+  if (opciones.noSeCierraSola) return 'none'
+  return opciones.cerrarConFondo ? 'any' : 'closerequest'
 }
 
 export function Modal({
@@ -44,10 +57,12 @@ export function Modal({
   children,
   pie,
   noSeCierraSola = false,
+  cerrarConFondo = true,
   className,
   cabeceraExtra,
 }: PropsDeModal) {
   const dialogo = useRef<HTMLDialogElement>(null)
+  const [capa, setCapa] = useState<HTMLElement | null>(null)
   const idTitulo = useId()
   const idDescripcion = useId()
   /** Evita eco: close() programático no debe notificar al padre otra vez. */
@@ -92,7 +107,7 @@ export function Modal({
      * Con soporte nativo, `closedby="any"` cubre el mismo gesto.
      */
     const alClic = (evento: MouseEvent) => {
-      if (noSeCierraSola) return
+      if (noSeCierraSola || !cerrarConFondo) return
       if (evento.target === nodo) nodo.close()
     }
 
@@ -104,41 +119,49 @@ export function Modal({
       nodo.removeEventListener('cancel', alCancelar)
       nodo.removeEventListener('click', alClic)
     }
-  }, [alCambiar, noSeCierraSola])
+  }, [alCambiar, noSeCierraSola, cerrarConFondo])
+
+  const desbordaVisible = className?.includes('overflow-visible') === true
 
   return (
     <dialog
-      ref={dialogo}
+      ref={(nodo) => {
+        dialogo.current = nodo
+        setCapa((prev) => (prev === nodo ? prev : nodo))
+      }}
       aria-labelledby={idTitulo}
       aria-describedby={descripcion === undefined ? undefined : idDescripcion}
       // Atributo HTML nativo (Baseline Newly Available). React 19 lo reenvía.
-      {...{ closedby: noSeCierraSola ? 'none' : 'any' }}
+      {...{ closedby: closedbyDe({ noSeCierraSola, cerrarConFondo }) }}
       className={unir(
         'modal-suitpay',
         'w-[min(34rem,calc(100vw-2rem))] max-h-[min(90vh,40rem)]',
-        'overflow-y-auto rounded-3xl border border-borde bg-papel p-6 shadow-papeleta',
+        desbordaVisible ? 'overflow-visible' : 'overflow-y-auto',
+        'rounded-3xl border border-borde bg-papel p-6 shadow-papeleta',
         'text-tinta focus-visible:outline-none focus-visible:border-tinta',
         className,
       )}
     >
-      <div className="flex items-start justify-between gap-3">
-        <h2 id={idTitulo} className="text-cabecera font-bold text-tinta">
-          {titulo}
-        </h2>
-        {cabeceraExtra}
-      </div>
+      <CapaDeDialogo.Provider value={capa}>
+        <div className="flex items-start justify-between gap-3">
+          <h2 id={idTitulo} className="text-cabecera font-bold text-tinta">
+            {titulo}
+          </h2>
+          {cabeceraExtra}
+        </div>
 
-      {descripcion !== undefined ? (
-        <p id={idDescripcion} className="mt-1 text-cuerpo text-desvaida">
-          {descripcion}
-        </p>
-      ) : null}
+        {descripcion !== undefined ? (
+          <p id={idDescripcion} className="mt-1 text-cuerpo text-desvaida">
+            {descripcion}
+          </p>
+        ) : null}
 
-      <div className="mt-4">{children}</div>
+        <div className="mt-4">{children}</div>
 
-      {pie !== undefined ? (
-        <div className="mt-5 flex flex-wrap justify-end gap-3">{pie}</div>
-      ) : null}
+        {pie !== undefined ? (
+          <div className="mt-5 flex flex-wrap justify-end gap-3">{pie}</div>
+        ) : null}
+      </CapaDeDialogo.Provider>
     </dialog>
   )
 }
