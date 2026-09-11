@@ -1,8 +1,12 @@
-import { consumeSerieRegulada, serieEsValida } from '../../domain/documentos/tipos.ts'
+import {
+  consumeCorrelativoInterno,
+  consumeSerieRegulada,
+  serieEsValida,
+} from '../../domain/documentos/tipos.ts'
 import type { TipoDeDocumento } from '../../domain/documentos/tipos.ts'
 import { fallar } from '../errores.ts'
-import { idDeSerie   } from './almacen.ts'
-import type {Serie, TransaccionDeEmision} from './almacen.ts';
+import { idDeSerie, tipoDeSerieEsCompartida } from './almacen.ts'
+import type { Serie, TransaccionDeEmision } from './almacen.ts'
 
 /**
  * El consumo del correlativo.
@@ -59,9 +63,9 @@ export async function reclamarCorrelativo(
   comprobarCoherencia(serie, tipo, vendedorId)
 
   const numero = serie.ultimoNumero + 1
-  transaccion.consumirCorrelativo(serieId, numero)
+  transaccion.consumirCorrelativo(serie.id, numero)
 
-  return { serieId, serie: serie.serie, numero }
+  return { serieId: serie.id, serie: serie.serie, numero }
 }
 
 /**
@@ -76,7 +80,13 @@ function comprobarCoherencia(
   tipo: TipoDeDocumento,
   vendedorId: string,
 ): void {
-  if (serie.tipoDocumento !== tipo || serie.vendedorId !== vendedorId) {
+  if (serie.tipoDocumento !== tipo) {
+    fallar('serie_no_configurada', { tipoDocumento: tipo })
+  }
+  if (
+    !tipoDeSerieEsCompartida(tipo) &&
+    serie.vendedorId !== vendedorId
+  ) {
     fallar('serie_no_configurada', { tipoDocumento: tipo })
   }
   if (!serieEsValida(tipo, serie.serie)) {
@@ -91,6 +101,14 @@ function comprobarCoherencia(
  */
 export function necesitaCorrelativoRegulado(tipo: TipoDeDocumento): boolean {
   return consumeSerieRegulada(tipo)
+}
+
+/**
+ * Reclama correlativo en Firestore: series reguladas y la numeración local
+ * de nota de venta. El documento interno de contingencia sigue sin número.
+ */
+export function necesitaCorrelativo(tipo: TipoDeDocumento): boolean {
+  return necesitaCorrelativoRegulado(tipo) || consumeCorrelativoInterno(tipo)
 }
 
 /** Cuántos números están reclamados y sin confirmar. Acota el sondeo. */

@@ -36,6 +36,7 @@ export interface SeriesEnCabecera {
   readonly boleta: string | null
   readonly factura: string | null
   readonly guia: string | null
+  readonly notaVenta: string | null
 }
 
 /** Los modos compuestos no son tipos fiscales: emiten boleta o factura. */
@@ -105,7 +106,9 @@ function etiquetaDeOpcionTipo(
   if (modo === 'factura_guia') {
     return `Fact + Guía R · ${series.factura ?? 'sin asignar'}`
   }
-  if (modo === 'nota_venta') return REGLAS.nota_venta.nombre
+  if (modo === 'nota_venta') {
+    return 'Nota de venta'
+  }
   return 'Cotización'
 }
 

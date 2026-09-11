@@ -118,6 +118,40 @@ export type TipoConSerieAdministrable =
   (typeof TIPOS_CON_SERIE_ADMINISTRABLE)[number]
 
 /**
+ * Numeración que el administrador configura: series reguladas más el
+ * correlativo local de nota de venta (sin serie B/F/T ni proveedor).
+ */
+export const TIPOS_CON_NUMERACION_ADMINISTRABLE = [
+  ...TIPOS_CON_SERIE_ADMINISTRABLE,
+  'nota_venta',
+] as const satisfies readonly TipoDeDocumento[]
+
+export type TipoConNumeracionAdministrable =
+  (typeof TIPOS_CON_NUMERACION_ADMINISTRABLE)[number]
+
+/** Nota de venta: correlativo interno en Firestore, nunca serie regulada. */
+export function consumeCorrelativoInterno(tipo: TipoDeDocumento): boolean {
+  return tipo === 'nota_venta'
+}
+
+/**
+ * Guía y nota de venta: un correlativo para todos los vendedores.
+ * Boleta y factura siguen siendo una serie por vendedor.
+ */
+export const VENDEDOR_DE_SERIE_COMPARTIDA = 'compartida'
+
+export function tipoDeSerieEsCompartida(tipo: TipoDeDocumento): boolean {
+  return tipo === 'guia' || tipo === 'nota_venta'
+}
+
+export function idDeSerie(vendedorId: string, tipo: TipoDeDocumento): string {
+  if (tipoDeSerieEsCompartida(tipo)) {
+    return `${VENDEDOR_DE_SERIE_COMPARTIDA}__${tipo}`
+  }
+  return `${vendedorId}__${tipo}`
+}
+
+/**
  * Todo documento sin valor tributario tiene que declararlo en la interfaz. La
  * etiqueta viaja con el tipo, y no como decisión de cada pantalla, para que no
  * haya ninguna superficie donde alguien olvide ponerla.

@@ -67,6 +67,17 @@ describe('principio IV — asistencia sin clientes', () => {
     expect(fuente).not.toMatch(/readonly precio/)
     expect(fuente).not.toMatch(/razonSocial/)
     expect(fuente).not.toMatch(/COLECCIONES\.clientes/)
+    expect(fuente).toMatch(/readonly m:/)
+  })
+
+  it('el entrenamiento no escribe clientes ni persiste medios', () => {
+    const fuente = readFileSync(
+      join(RAIZ, 'src/server/aprendizaje/entrenar-par.ts'),
+      'utf8',
+    )
+    expect(fuente).not.toMatch(/COLECCIONES\.clientes/)
+    expect(fuente).not.toMatch(/storage\(\)/)
+    expect(fuente).toMatch(/TECHO_MEDIO_ENTRENAMIENTO_BYTES/)
   })
 
   it('el requerimiento anonimiza notas y no manda razón social al modelo', () => {

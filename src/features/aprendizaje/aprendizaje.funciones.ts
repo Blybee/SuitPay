@@ -6,9 +6,14 @@ import { ErrorDeSuitPay, esErrorDeSuitPay } from '../../server/errores.ts'
 import {
   leerLotePorDia,
   leerLotesNoVencidos,
+  leerMarcasDeAprendizaje,
   leerMemoriaDeAprendizaje,
   registrarRevision,
 } from '../../server/aprendizaje/almacen.ts'
+import {
+  confirmarEntrenamiento,
+  proponerEntrenamiento,
+} from '../../server/aprendizaje/entrenar-par.ts'
 import { procesarLoteAprendizaje } from '../../server/aprendizaje/procesar-lote.ts'
 import { diaEnLima } from '../../domain/anulacion/ventana.ts'
 
@@ -76,8 +81,11 @@ export const leerMemoriaAprendizajeFn = createServerFn({ method: 'GET' })
   .handler(async () => {
     try {
       await exigirIdentidad(getRequestHeaders(), ['administrador', 'jefe'])
-      const productos = await leerMemoriaDeAprendizaje()
-      return { ok: true as const, productos }
+      const [productos, marcas] = await Promise.all([
+        leerMemoriaDeAprendizaje(),
+        leerMarcasDeAprendizaje(),
+      ])
+      return { ok: true as const, productos, marcas }
     } catch (error) {
       if (esErrorDeSuitPay(error)) {
         return { ok: false as const, error: error.aRespuesta() }
@@ -117,6 +125,98 @@ export const leerLoteAprendizajeFn = createServerFn({ method: 'POST' })
       await exigirIdentidad(getRequestHeaders(), ['administrador', 'jefe'])
       const lote = await leerLotePorDia(data.diaLima, new Date())
       return { ok: true as const, lote }
+    } catch (error) {
+      if (esErrorDeSuitPay(error)) {
+        return { ok: false as const, error: error.aRespuesta() }
+      }
+      return {
+        ok: false as const,
+        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
+      }
+    }
+  })
+
+const esquemaMedio = z.object({
+  mimeType: z.enum([
+    'application/pdf',
+    'image/jpeg',
+    'image/png',
+    'image/webp',
+  ]),
+  dataBase64: z.string().min(1).max(12_000_000),
+})
+
+const esquemaLado = z
+  .object({
+    medio: esquemaMedio.optional(),
+    texto: z.string().max(20_000).optional(),
+  })
+  .refine(
+    (lado) => (lado.texto?.trim() ?? '') !== '' || lado.medio !== undefined,
+    { message: 'sin_medio' },
+  )
+
+export const proponerEntrenamientoFn = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      pedido: esquemaLado,
+      oro: esquemaLado,
+    }),
+  )
+  .handler(async ({ data }) => {
+    try {
+      await exigirIdentidad(getRequestHeaders(), ['administrador', 'jefe'])
+      const propuesta = await proponerEntrenamiento(data)
+      return { ok: true as const, ...propuesta }
+    } catch (error) {
+      if (esErrorDeSuitPay(error)) {
+        return { ok: false as const, error: error.aRespuesta() }
+      }
+      return {
+        ok: false as const,
+        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
+      }
+    }
+  })
+
+const esquemaAlineacion = z.object({
+  textoPedido: z.string().trim().min(1).max(400),
+  codigo: z.string().max(40),
+  marca: z.string().max(120),
+  estado: z.enum(['emparejado', 'omitido', 'no_en_catalogo']),
+  aliases: z.array(z.string().max(120)).max(20),
+  etiquetas: z.array(z.string().max(40)).max(10),
+})
+
+export const confirmarEntrenamientoFn = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      alineaciones: z.array(esquemaAlineacion).max(200),
+      modelo: z.string().max(80),
+      marcasPermitidas: z
+        .array(
+          z.object({
+            familia: z.string().max(40),
+            marca: z.string().max(120),
+          }),
+        )
+        .max(80)
+        .optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    try {
+      const identidad = await exigirIdentidad(getRequestHeaders(), [
+        'administrador',
+        'jefe',
+      ])
+      const resultado = await confirmarEntrenamiento({
+        uid: identidad.uid,
+        alineaciones: data.alineaciones,
+        modelo: data.modelo,
+        marcasPermitidas: data.marcasPermitidas,
+      })
+      return { ok: true as const, ...resultado }
     } catch (error) {
       if (esErrorDeSuitPay(error)) {
         return { ok: false as const, error: error.aRespuesta() }

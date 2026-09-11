@@ -1,16 +1,18 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
 import {
   leerLoteAprendizajeFn,
   leerMemoriaAprendizajeFn,
   listarLotesAprendizajeFn,
 } from '../../features/aprendizaje/aprendizaje.funciones.ts'
+import { EntrenarAprendizaje } from '../../features/aprendizaje/entrenar.tsx'
 import type { DiffDeProducto } from '../../domain/aprendizaje/memoria.ts'
+import type { MapaDeMarcas } from '../../domain/aprendizaje/priores.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 
 /**
- * Monitor de aprendizaje: memoria viva al montar; detalle de lote al clic.
+ * Entrenar + monitor: memoria viva al montar; detalle de lote al clic.
  */
 
 export const Route = createFileRoute('/administracion/aprendizaje')({
@@ -25,6 +27,7 @@ function PantallaDeAprendizaje() {
   const [productos, setProductos] = useState<
     Record<string, { aliases: readonly string[]; etiquetas: readonly string[] }>
   >({})
+  const [marcas, setMarcas] = useState<MapaDeMarcas>({})
   const [lotes, setLotes] = useState<
     readonly {
       id: string
@@ -40,28 +43,32 @@ function PantallaDeAprendizaje() {
   const [diffs, setDiffs] = useState<readonly DiffDeProducto[] | null>(null)
   const [cargandoDiff, setCargandoDiff] = useState(false)
 
+  const cargarMemoria = useCallback(async (): Promise<void> => {
+    const [memoria, lista] = await Promise.all([
+      leerMemoriaAprendizajeFn(),
+      listarLotesAprendizajeFn(),
+    ])
+    if (!memoria.ok) {
+      setError(memoria.error.mensaje)
+      return
+    }
+    if (!lista.ok) {
+      setError(lista.error.mensaje)
+      return
+    }
+    setProductos(memoria.productos)
+    setMarcas(memoria.marcas)
+    setLotes(lista.lotes)
+    setError(null)
+  }, [])
+
   useEffect(() => {
     void (async () => {
       setOcupado(true)
-      const [memoria, lista] = await Promise.all([
-        leerMemoriaAprendizajeFn(),
-        listarLotesAprendizajeFn(),
-      ])
-      if (!memoria.ok) {
-        setError(memoria.error?.mensaje ?? 'No se leyó la memoria.')
-        setOcupado(false)
-        return
-      }
-      if (!lista.ok) {
-        setError(lista.error?.mensaje ?? 'No se leyeron los lotes.')
-        setOcupado(false)
-        return
-      }
-      setProductos(memoria.productos)
-      setLotes(lista.lotes)
+      await cargarMemoria()
       setOcupado(false)
     })()
-  }, [])
+  }, [cargarMemoria])
 
   async function abrirLote(diaLima: string): Promise<void> {
     if (loteAbierto === diaLima) {
@@ -73,7 +80,7 @@ function PantallaDeAprendizaje() {
     setCargandoDiff(true)
     const respuesta = await leerLoteAprendizajeFn({ data: { diaLima } })
     setCargandoDiff(false)
-    if (!respuesta.ok || respuesta.lote === null || respuesta.lote === undefined) {
+    if (!respuesta.ok || respuesta.lote === null) {
       setDiffs([])
       return
     }
@@ -81,12 +88,15 @@ function PantallaDeAprendizaje() {
   }
 
   const entradas = Object.entries(productos).sort(([a], [b]) => a.localeCompare(b))
+  const entradasMarca = Object.entries(marcas).sort(([a], [b]) =>
+    a.localeCompare(b),
+  )
 
   return (
     <div className="flex min-h-full flex-col gap-8 px-6 py-8">
       <CabeceraAdmin
         titulo="Aprendizaje"
-        descripcion="Alias y etiquetas que alimentan la asistencia. Sin datos de clientes."
+        descripcion="Entrena con un par de referencia y revisa alias, etiquetas y priores. Sin datos de clientes."
       />
 
       {error !== null ? (
@@ -94,6 +104,12 @@ function PantallaDeAprendizaje() {
           {error}
         </p>
       ) : null}
+
+      <EntrenarAprendizaje
+        onConfirmado={() => {
+          void cargarMemoria()
+        }}
+      />
 
       {ocupado ? (
         <p className="text-cuerpo text-desvaida">Cargando memoria…</p>
@@ -128,6 +144,29 @@ function PantallaDeAprendizaje() {
               ))}
             </ul>
           )}
+          {entradasMarca.length > 0 ? (
+            <div className="mt-6">
+              <h3 className="mb-3 font-mono text-etiqueta uppercase text-desvaida">
+                Priores de marca
+              </h3>
+              <ul className="flex flex-col gap-2">
+                {entradasMarca.map(([familia, grupo]) => (
+                  <li
+                    key={familia}
+                    className="rounded-2xl border border-borde bg-papel px-4 py-3"
+                  >
+                    <p className="font-mono font-bold text-tinta">{familia}</p>
+                    <p className="text-cuerpo text-desvaida">
+                      {Object.entries(grupo)
+                        .sort((a, b) => b[1].peso - a[1].peso)
+                        .map(([marca, c]) => `${marca} (${c.peso})`)
+                        .join(' · ')}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </section>
       )}
 
@@ -154,31 +193,45 @@ function PantallaDeAprendizaje() {
                     {lote.pares} pares · {lote.modelo || 'sin modelo'}
                   </span>
                 </button>
-                {loteAbierto === lote.diaLima ? (
-                  <div className="mt-2 rounded-2xl border border-borde bg-mesa/40 px-4 py-3">
-                    {cargandoDiff ? (
-                      <p className="text-cuerpo text-desvaida">Cargando diff…</p>
-                    ) : (diffs ?? []).length === 0 ? (
-                      <p className="text-cuerpo text-desvaida">
-                        Sin cambios ese día.
-                      </p>
-                    ) : (
-                      <ul className="flex flex-col gap-2 text-cuerpo">
-                        {(diffs ?? []).map((diff) => (
-                          <li key={diff.codigo}>
-                            <span className="font-mono font-bold">{diff.codigo}</span>
-                            {diff.agregados.length > 0 ? (
-                              <span> + {diff.agregados.join(', ')}</span>
-                            ) : null}
-                            {diff.quitados.length > 0 ? (
-                              <span> − {diff.quitados.join(', ')}</span>
-                            ) : null}
-                          </li>
-                        ))}
-                      </ul>
-                    )}
+                <div
+                  className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+                  style={{
+                    gridTemplateRows:
+                      loteAbierto === lote.diaLima ? '1fr' : '0fr',
+                  }}
+                >
+                  <div className="min-h-0 overflow-hidden">
+                    {loteAbierto === lote.diaLima ? (
+                      <div className="mt-2 rounded-2xl border border-borde bg-mesa/40 px-4 py-3">
+                        {cargandoDiff ? (
+                          <p className="text-cuerpo text-desvaida">
+                            Cargando diff…
+                          </p>
+                        ) : (diffs ?? []).length === 0 ? (
+                          <p className="text-cuerpo text-desvaida">
+                            Sin cambios ese día.
+                          </p>
+                        ) : (
+                          <ul className="flex flex-col gap-2 text-cuerpo">
+                            {(diffs ?? []).map((diff) => (
+                              <li key={diff.codigo}>
+                                <span className="font-mono font-bold">
+                                  {diff.codigo}
+                                </span>
+                                {diff.agregados.length > 0 ? (
+                                  <span> + {diff.agregados.join(', ')}</span>
+                                ) : null}
+                                {diff.quitados.length > 0 ? (
+                                  <span> − {diff.quitados.join(', ')}</span>
+                                ) : null}
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
+                    ) : null}
                   </div>
-                ) : null}
+                </div>
               </li>
             ))}
           </ul>

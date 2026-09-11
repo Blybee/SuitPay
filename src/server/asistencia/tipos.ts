@@ -11,6 +11,7 @@ export interface CandidatoDeAsistencia {
   readonly codigo: string
   readonly descripcion: string
   readonly unidad: string
+  readonly marca?: string
   readonly aliases?: readonly string[]
   readonly etiquetas?: readonly string[]
 }

@@ -1,6 +1,7 @@
 import { diaEnLima } from '../../domain/anulacion/ventana.ts'
 import type { DiffDeProducto } from '../../domain/aprendizaje/memoria.ts'
 import { diffsDesdePares } from '../../domain/aprendizaje/memoria.ts'
+import { deltasDeMarcaDesdeCodigos } from '../../domain/aprendizaje/priores.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
 import {
   invocarModeloConPartes,
@@ -16,6 +17,7 @@ import {
   marcarRevisionesProcesadas,
   reclamarLote,
 } from './almacen.ts'
+import { leerContextoDeAsistencia } from './catalogo-compacto.ts'
 
 const SCHEMA_CONSOLIDACION = {
   type: 'OBJECT',
@@ -110,7 +112,13 @@ Refuerza, actualiza o quita. No dupliques sinónimos. Devuelve solo productos qu
     }
   }
 
-  await aplicarYPersistirDiff(diffs)
+  await aplicarYPersistirDiff(
+    diffs,
+    deltasDeMarcaDesdeCodigos(
+      pares.map((p) => p.codigoAprobado),
+      (await leerContextoDeAsistencia()).porCodigo,
+    ),
+  )
   await marcarRevisionesProcesadas(
     pendientes.map((p) => p.id),
     ahora,

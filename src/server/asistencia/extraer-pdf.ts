@@ -178,16 +178,23 @@ export async function extraerListaPdf(
     (deps.forzarSimulado !== false && asistenciaSimuladaActiva())
 
   let catalogoJson = ''
+  let prioresJson = ''
   if (!usarSimulado) {
     try {
       const { textoDeCandidatosParaPrompt } = await import('./payload.ts')
-      const candidatos = deps.leerCatalogo
-        ? await deps.leerCatalogo()
-        : await (
-            await import('../aprendizaje/catalogo-compacto.ts')
-          ).leerCatalogoCompactoComoCandidatos()
-      if (candidatos.length > 0) {
-        catalogoJson = textoDeCandidatosParaPrompt(candidatos)
+      if (deps.leerCatalogo) {
+        const candidatos = await deps.leerCatalogo()
+        if (candidatos.length > 0) {
+          catalogoJson = textoDeCandidatosParaPrompt(candidatos)
+        }
+      } else {
+        const contexto = await (
+          await import('../aprendizaje/catalogo-compacto.ts')
+        ).leerContextoDeAsistencia()
+        if (contexto.candidatos.length > 0) {
+          catalogoJson = textoDeCandidatosParaPrompt(contexto.candidatos)
+        }
+        prioresJson = contexto.prioresJson
       }
     } catch (error) {
       console.error('[SuitPay] extraerListaPdf: catálogo compacto no disponible', error)
@@ -204,6 +211,7 @@ export async function extraerListaPdf(
         dataBase64: medio.dataBase64,
         bytes,
         catalogoJson,
+        prioresJson,
         instrucciones: peticion.instrucciones,
         depsModelo: deps.depsModelo,
       })
@@ -282,10 +290,15 @@ async function invocarPdf(entrada: {
   readonly dataBase64: string
   readonly bytes: Uint8Array
   readonly catalogoJson?: string
+  readonly prioresJson?: string
   readonly instrucciones?: readonly string[]
   readonly depsModelo?: DependenciasDelClienteModelo
 }): Promise<unknown> {
-  const prompt = promptDeListaPdf(entrada.catalogoJson, entrada.instrucciones)
+  const prompt = promptDeListaPdf(
+    entrada.catalogoJson,
+    entrada.instrucciones,
+    entrada.prioresJson,
+  )
   const deps = entrada.depsModelo ?? {}
 
   if (entrada.via === 'inline') {

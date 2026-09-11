@@ -125,6 +125,7 @@ import { listarCotizacionesPendientes } from '../features/cotizaciones/leer.ts'
 import { intentarLoteAprendizaje } from '../features/aprendizaje/empujar-lote.ts'
 import {
   paresDesdeCaptura,
+  paresDesdePedido,
   registrarParesEnSegundoPlano,
 } from '../features/aprendizaje/registrar.ts'
 
@@ -160,6 +161,7 @@ function Mostrador() {
     boleta: null,
     factura: null,
     guia: null,
+    notaVenta: null,
   })
   const [encadenarGuia, setEncadenarGuia] = useState(false)
   const [altaClienteAbierta, setAltaClienteAbierta] = useState(false)
@@ -266,15 +268,21 @@ function Mostrador() {
 
   useEffect(() => {
     if (sesion.uid === null) {
-      setSeriesCabecera({ boleta: null, factura: null, guia: null })
+      setSeriesCabecera({
+        boleta: null,
+        factura: null,
+        guia: null,
+        notaVenta: null,
+      })
       return
     }
     const estado = { vivo: true }
     void (async () => {
-      const [boleta, factura, guia] = await Promise.all([
+      const [boleta, factura, guia, notaVenta] = await Promise.all([
         leerMiSerieFn({ data: { tipoDocumento: 'boleta' } }),
         leerMiSerieFn({ data: { tipoDocumento: 'factura' } }),
         leerMiSerieFn({ data: { tipoDocumento: 'guia' } }),
+        leerMiSerieFn({ data: { tipoDocumento: 'nota_venta' } }),
       ])
       if (!estado.vivo) return
       const serieDe = (
@@ -283,10 +291,18 @@ function Mostrador() {
         const serie = respuesta.ok ? (respuesta.serie ?? null) : null
         return serie !== null && serie.activa ? serie.serie : null
       }
+      const notaDe = (
+        respuesta: Awaited<ReturnType<typeof leerMiSerieFn>>,
+      ): string | null => {
+        const serie = respuesta.ok ? (respuesta.serie ?? null) : null
+        if (serie === null || !serie.activa) return null
+        return String(serie.ultimoNumero + 1).padStart(10, '0')
+      }
       setSeriesCabecera({
         boleta: serieDe(boleta),
         factura: serieDe(factura),
         guia: serieDe(guia),
+        notaVenta: notaDe(notaVenta),
       })
     })()
     return () => {
@@ -908,11 +924,7 @@ function Mostrador() {
       }
       registrarParesEnSegundoPlano({
         medio: 'cotizar',
-        pares: pedido.lineas.map((linea) => ({
-          textoOriginal: linea.descripcion,
-          codigoAprobado: linea.codigo,
-          descripcionAprobada: linea.descripcion,
-        })),
+        pares: paresDesdePedido(pedido.lineas),
         clienteId: pedido.cliente?.numeroDocumento,
       })
       // Cierra el borrador en Pedido: la cotización vive en su tab.

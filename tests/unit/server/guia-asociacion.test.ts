@@ -49,7 +49,9 @@ describe('asociación 1:1 boleta/factura ↔ guía', () => {
   })
 
   it('la nota de venta no escribe el par', async () => {
-    const { almacen, contexto } = montarEscenario({ series: ['guia'] })
+    const { almacen, contexto } = montarEscenario({
+      series: ['guia', 'nota_venta'],
+    })
     const nv = await emitirComprobante(
       contexto,
       peticion({ tipoDocumento: 'nota_venta' }),

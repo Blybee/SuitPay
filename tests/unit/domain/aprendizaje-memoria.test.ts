@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   aplicarDiffDeMemoria,
+  diffsDesdeAlineaciones,
   diffsDesdePares,
 } from '../../../src/domain/aprendizaje/memoria.ts'
 
@@ -45,5 +46,44 @@ describe('aplicarDiffDeMemoria', () => {
       aliases: ['codo media'],
       etiquetas: ['economico'],
     })
+  })
+})
+
+describe('diffsDesdeAlineaciones', () => {
+  it('no crea alias para omitido ni no_en_catalogo', () => {
+    const diffs = diffsDesdeAlineaciones(
+      [
+        {
+          textoPedido: 'codo de media',
+          codigo: 'C1',
+          marca: 'Pavco',
+          estado: 'emparejado',
+          aliases: ['codo media'],
+          etiquetas: [],
+        },
+        {
+          textoPedido: 'llave que no tenemos',
+          codigo: '',
+          marca: '',
+          estado: 'omitido',
+          aliases: ['no debe entrar'],
+          etiquetas: [],
+        },
+        {
+          textoPedido: 'cosa rara',
+          codigo: 'X9',
+          marca: '',
+          estado: 'no_en_catalogo',
+          aliases: ['tampoco'],
+          etiquetas: [],
+        },
+      ],
+      {},
+    )
+    expect(diffs).toHaveLength(1)
+    expect(diffs[0]?.codigo).toBe('C1')
+    expect(diffs[0]?.aliases).toEqual(
+      expect.arrayContaining(['codo de media', 'codo media']),
+    )
   })
 })

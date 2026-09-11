@@ -1,7 +1,9 @@
 /**
  * Prompt y schema de extraerListaPdf (FR-061).
- * Distinto de dictado/foto: no hay lote de catálogo.
+ * Comparte REGLAS_EMPAREJADO con foto/dictado; añade extracción de PDF y cliente.
  */
+
+import { REGLAS_EMPAREJADO, bloqueDePriores } from './prompts.ts'
 
 export const SCHEMA_RESPUESTA_PDF = {
   type: 'OBJECT',
@@ -38,11 +40,12 @@ export const SCHEMA_RESPUESTA_PDF = {
 export function promptDeListaPdf(
   catalogoJson?: string,
   notas?: readonly string[],
+  prioresJson?: string,
 ): string {
   const bloqueCatalogo =
     catalogoJson !== undefined && catalogoJson.trim() !== ''
       ? `
-Catálogo compacto (id, n, a, e). Empareja cada renglón a un id si hay coincidencia semántica clara; si no, codigo="" y confidence="low".
+Catálogo compacto (id, n, m, a, e). Empareja cada renglón a un id si hay coincidencia semántica clara; si no, codigo="" y confidence="low".
 ${catalogoJson}
 `
       : `
@@ -59,10 +62,13 @@ ${notas.join('\n')}
   return `
 Lee este PDF o imagen de requerimiento de un cliente (ferretería / gasfitería) y devuelve SOLO JSON puro.
 
-Reglas de mercadería:
+${REGLAS_EMPAREJADO}
+${bloqueDePriores(prioresJson)}
+
+Reglas de mercadería del PDF:
 - Extrae SOLO renglones de producto (cantidad + descripción). Un renglón = un elemento de "items".
 - Ignora precios, descuentos, condiciones de pago, totales, membrete operativo, fechas de entrega e instrucciones logísticas.
-- "textoOriginal": el texto del renglón tal cual aparece, antes de normalizar.
+- "textoOriginal": el texto del renglón tal cual aparece, antes de normalizar. No reescribas medidas ahí.
 - "cantidad": unidades pedidas. Por defecto 1. NO confundas medida (1/2", 3/4) con cantidad.
 - "unidad": la de despacho si se indica; si no, "NIU".
 ${bloqueCatalogo}

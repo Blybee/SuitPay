@@ -48,6 +48,9 @@ export function construirPayloadDeAsistencia(entrada: {
     codigo: c.codigo,
     descripcion: c.descripcion,
     unidad: c.unidad,
+    ...(c.marca !== undefined && c.marca.trim() !== ''
+      ? { marca: c.marca.trim() }
+      : {}),
     ...(c.aliases !== undefined && c.aliases.length > 0
       ? { aliases: [...c.aliases] }
       : {}),
@@ -77,6 +80,7 @@ export function textoDeCandidatosParaPrompt(
     candidatos.map((c) => ({
       id: c.codigo,
       n: c.descripcion,
+      m: c.marca ?? '',
       a: c.aliases ?? [],
       e: c.etiquetas ?? [],
     })),

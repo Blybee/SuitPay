@@ -10,6 +10,9 @@ describe('alta de serie (reglas)', () => {
   it('el id es vendedor__tipo', () => {
     expect(idDeSerie('uid-abc', 'boleta')).toBe('uid-abc__boleta')
     expect(idDeSerie('uid-abc', 'factura')).toBe('uid-abc__factura')
+    expect(idDeSerie('uid-abc', 'nota_venta')).toBe('compartida__nota_venta')
+    expect(idDeSerie('otro', 'guia')).toBe('compartida__guia')
+    expect(idDeSerie('uid-abc', 'guia')).toBe('compartida__guia')
   })
 
   it('boleta exige prefijo B y factura F', () => {

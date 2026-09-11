@@ -319,6 +319,11 @@ service cloud.firestore {
       allow read, write: if false;
     }
 
+    match /sesionesEntrenamiento/{sesionId} {
+      allow read: if esAdministrador() || esJefe();
+      allow write: if false;
+    }
+
     // --- Regla por defecto: negar ----------------------------------------
 
     match /{documento=**} {

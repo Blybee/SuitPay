@@ -1,4 +1,4 @@
-import type { EstadoDeComprobante, TipoDeDocumento  } from '../../domain/documentos/tipos.ts'
+import type { EstadoDeComprobante, TipoDeDocumento } from '../../domain/documentos/tipos.ts'
 import type { TrasladoDeGuia } from '../../domain/guia/tipos.ts'
 import type { ClaseDeFallo, RastroDelProveedor } from '../proveedor/interfaz.ts'
 
@@ -131,10 +131,11 @@ export interface Cotizacion {
   readonly estado: 'pendiente' | 'convertida' | 'descartada'
 }
 
-/** El identificador de una serie es determinista: vendedor y tipo. */
-export function idDeSerie(vendedorId: string, tipo: TipoDeDocumento): string {
-  return `${vendedorId}__${tipo}`
-}
+export {
+  idDeSerie,
+  tipoDeSerieEsCompartida,
+  VENDEDOR_DE_SERIE_COMPARTIDA,
+} from '../../domain/documentos/tipos.ts'
 
 // ---------------------------------------------------------------------------
 // La transacción

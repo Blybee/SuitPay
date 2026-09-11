@@ -55,6 +55,14 @@ gcloud firestore fields ttls update caducaEn \
 
 El admin ignora lotes vencidos (el borrado de Firestore no es inmediato).
 
+Las sesiones de entrenamiento supervisado (`sesionesEntrenamiento/{id}`) llevan `caducaEn` a 3 días. No guardan archivos ni PII; solo cobertura, uid y modelo. La memoria en `aprendizaje/memoria` no caduca.
+
+```bash
+gcloud firestore fields ttls update caducaEn \
+    --collection-group=sesionesEntrenamiento \
+    --enable-ttl
+```
+
 ## WhatsApp de la captura del vecino
 
 `https://wa.me/{telefono}` abre el chat. No admite adjuntar PNG. SuitPay copia la imagen al portapapeles y abre el chat para que el vendedor la pegue.

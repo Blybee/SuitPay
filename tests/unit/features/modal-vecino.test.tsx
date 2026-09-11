@@ -4,13 +4,14 @@ import userEvent from '@testing-library/user-event'
 import { ModalDeVecino } from '../../../src/features/vecinos/modal.tsx'
 import type { Cotizacion } from '../../../src/features/cotizaciones/tipos.ts'
 
-const { persistirDatosDeVecino } = vi.hoisted(() => ({
+const { persistirDatosDeVecino, eliminarCotizacionVecino } = vi.hoisted(() => ({
   persistirDatosDeVecino: vi.fn(),
+  eliminarCotizacionVecino: vi.fn(),
 }))
 
 vi.mock('../../../src/features/vecinos/datos.ts', () => ({
   persistirDatosDeVecino,
-  eliminarCotizacionVecino: vi.fn(),
+  eliminarCotizacionVecino,
 }))
 
 function vecinoDePrueba(): Cotizacion {
@@ -49,6 +50,8 @@ describe('ModalDeVecino', () => {
   beforeEach(() => {
     persistirDatosDeVecino.mockReset()
     persistirDatosDeVecino.mockResolvedValue({ ok: true })
+    eliminarCotizacionVecino.mockReset()
+    eliminarCotizacionVecino.mockResolvedValue({ ok: true })
   })
   it('en Editar vecino muestra DNI/RUC y guarda el teléfono sin reasignar cliente', async () => {
     const usuario = userEvent.setup()
@@ -62,6 +65,7 @@ describe('ModalDeVecino', () => {
         creando={false}
         onCrear={onCrear}
         onRefrescar={() => undefined}
+        onEliminado={() => undefined}
       />,
     )
 
@@ -100,6 +104,7 @@ describe('ModalDeVecino', () => {
         creando={false}
         onCrear={onCrear}
         onRefrescar={() => undefined}
+        onEliminado={() => undefined}
       />,
     )
 
@@ -119,5 +124,41 @@ describe('ModalDeVecino', () => {
       cotizacionId: 'cot-wilmer',
       telefono: '987654321',
     })
+  })
+
+  it('al confirmar el borrado muestra ocupado y notifica el id eliminado', async () => {
+    const usuario = userEvent.setup()
+    const onEliminado = vi.fn()
+    let resolver: ((valor: { ok: true }) => void) | undefined
+    eliminarCotizacionVecino.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          resolver = resolve
+        }),
+    )
+
+    render(
+      <ModalDeVecino
+        abierta
+        onCerrar={() => undefined}
+        vecinos={[vecinoDePrueba()]}
+        creando={false}
+        onCrear={() => undefined}
+        onRefrescar={() => undefined}
+        onEliminado={onEliminado}
+      />,
+    )
+
+    await usuario.click(screen.getByRole('button', { name: 'Ver todos' }))
+    await usuario.click(screen.getByRole('button', { name: 'Eliminar wilmer' }))
+    await usuario.click(screen.getByRole('button', { name: 'Confirmar' }))
+
+    expect(screen.getByRole('button', { name: /Eliminando/ })).toHaveAttribute(
+      'aria-busy',
+      'true',
+    )
+    resolver?.({ ok: true })
+    await screen.findByRole('button', { name: 'Eliminar wilmer' })
+    expect(onEliminado).toHaveBeenCalledWith('cot-wilmer')
   })
 })

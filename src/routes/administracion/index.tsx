@@ -60,7 +60,7 @@ const ENLACES: readonly {
     to: '/administracion/aprendizaje',
     titulo: 'Aprendizaje',
     descripcion:
-      'Memoria de alias y etiquetas de asistencia, y bitácora de lotes diarios.',
+      'Entrena con pares de referencia y revisa alias, etiquetas y priores.',
     icono: Brain,
   },
 ]

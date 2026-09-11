@@ -228,7 +228,9 @@ export function EstadoDeEmision({
             </dt>
             <dd className="font-mono text-cuerpo text-tinta">
               {comprobante.serie === ''
-                ? 'sin numeración regulada'
+                ? comprobante.numero === null
+                  ? 'sin numeración regulada'
+                  : String(comprobante.numero).padStart(10, '0')
                 : `${comprobante.serie}-${String(comprobante.numero ?? 0).padStart(8, '0')}`}
             </dd>
             <dt className="font-mono text-etiqueta uppercase text-desvaida">

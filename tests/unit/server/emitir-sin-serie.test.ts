@@ -104,10 +104,12 @@ describe('emisión sin serie configurada', () => {
     expect(proveedor.llamadasA('emitir')).toBe(0)
   })
 
-  it('una nota de venta no necesita serie regulada', async () => {
-    // No tiene valor tributario, así que gastar numeración regulada en ella
-    // abriría un hueco imposible de justificar.
-    const { almacen, proveedor, contexto } = montarEscenario({ series: [] })
+  it('una nota de venta reclama correlativo local, no serie regulada', async () => {
+    // No tiene valor tributario, así que no gasta B/F/T ni llama al proveedor.
+    // Sí consume el correlativo interno que el administrador configura.
+    const { almacen, proveedor, contexto } = montarEscenario({
+      series: ['nota_venta'],
+    })
 
     const resultado = await emitirComprobante(
       contexto,
@@ -116,9 +118,40 @@ describe('emisión sin serie configurada', () => {
 
     expect(resultado.estado).toBe('aceptado')
     expect(resultado.serie).toBe('')
-    expect(resultado.numero).toBeNull()
-    // Y no se le pide al proveedor: no existe ante la autoridad.
+    expect(resultado.numero).toBe(1)
     expect(proveedor.llamadasA('emitir')).toBe(0)
     expect(almacen.totalDeComprobantes).toBe(1)
+    const serie = await almacen.leerSerie('compartida__nota_venta')
+    expect(serie?.ultimoNumero).toBe(1)
+    expect(serie?.ultimoNumeroConfirmado).toBe(1)
+  })
+
+  it('dos vendedores comparten el correlativo de nota de venta', async () => {
+    const { almacen, contexto } = montarEscenario({ series: ['nota_venta'] })
+    await emitirComprobante(
+      contexto,
+      peticion({ tipoDocumento: 'nota_venta' }),
+    )
+    const segundo = await emitirComprobante(
+      { ...contexto, vendedorId: 'vendedor-2' },
+      peticion({ tipoDocumento: 'nota_venta' }),
+    )
+    expect(segundo.numero).toBe(2)
+    const serie = await almacen.leerSerie('compartida__nota_venta')
+    expect(serie?.ultimoNumero).toBe(2)
+  })
+
+  it('una nota de venta sin numeración local se rechaza antes de emitir', async () => {
+    const { almacen, proveedor, contexto } = montarEscenario({ series: [] })
+
+    await expect(
+      emitirComprobante(
+        contexto,
+        peticion({ tipoDocumento: 'nota_venta' }),
+      ),
+    ).rejects.toMatchObject({ codigo: 'serie_no_configurada' })
+
+    expect(almacen.totalDeComprobantes).toBe(0)
+    expect(proveedor.llamadasA('emitir')).toBe(0)
   })
 })

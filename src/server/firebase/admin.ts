@@ -128,6 +128,7 @@ export const COLECCIONES = {
   inventario: 'inventario',
   lotesAprendizaje: 'lotesAprendizaje',
   revisionesAprendizaje: 'revisionesAprendizaje',
+  sesionesEntrenamiento: 'sesionesEntrenamiento',
 } as const
 
 export const DOCUMENTOS = {

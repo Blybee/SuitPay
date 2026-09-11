@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest'
 import {
   TIPOS_DE_DOCUMENTO,
   TIPOS_ELEGIBLES,
+  consumeCorrelativoInterno,
   consumeSerieRegulada,
   estadoEsAnulable,
   etiquetaDeAdvertencia,
+  idDeSerie,
   serieEsValida,
   tieneValorTributario,
 } from '#/domain/documentos/tipos.ts'
@@ -56,6 +58,18 @@ describe('consumo de series reguladas', () => {
     // Gastar numeración regulada en un papel que no existe ante SUNAT abriría un
     // hueco en la secuencia que después habría que justificar.
     expect(consumeSerieRegulada('interno_contingencia')).toBe(false)
+  })
+
+  it('la nota de venta consume correlativo interno, no regulado', () => {
+    expect(consumeSerieRegulada('nota_venta')).toBe(false)
+    expect(consumeCorrelativoInterno('nota_venta')).toBe(true)
+    expect(consumeCorrelativoInterno('boleta')).toBe(false)
+  })
+
+  it('guía y nota de venta comparten id de serie', () => {
+    expect(idDeSerie('a', 'guia')).toBe(idDeSerie('b', 'guia'))
+    expect(idDeSerie('a', 'nota_venta')).toBe(idDeSerie('b', 'nota_venta'))
+    expect(idDeSerie('a', 'boleta')).not.toBe(idDeSerie('b', 'boleta'))
   })
 })
 

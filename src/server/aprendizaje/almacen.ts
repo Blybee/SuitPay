@@ -2,6 +2,11 @@ import { Timestamp } from 'firebase-admin/firestore'
 import type { EntradaDeMemoria } from '../../domain/aprendizaje/compacto.ts'
 import type { DiffDeProducto, MapaDeMemoria } from '../../domain/aprendizaje/memoria.ts'
 import { aplicarDiffDeMemoria, VIDA_LOTE_MS } from '../../domain/aprendizaje/memoria.ts'
+import {
+  aplicarDeltasDeMarca,
+  marcasDesdeDocumento,
+} from '../../domain/aprendizaje/priores.ts'
+import type { DeltaDeMarca, MapaDeMarcas } from '../../domain/aprendizaje/priores.ts'
 import { COLECCIONES, DOCUMENTOS, bd } from '../firebase/admin.ts'
 
 export interface ParDeRevision {
@@ -45,23 +50,44 @@ export async function leerMemoriaDeAprendizaje(): Promise<MapaDeMemoria> {
   return mapaDesdeDocumento(snap.data())
 }
 
+export async function leerMarcasDeAprendizaje(): Promise<MapaDeMarcas> {
+  const [coleccion, id] = DOCUMENTOS.aprendizajeMemoria.split('/')
+  const snap = await bd().collection(coleccion ?? 'aprendizaje').doc(id ?? 'memoria').get()
+  if (!snap.exists) return {}
+  return marcasDesdeDocumento(snap.data()?.['marcas'])
+}
+
 export async function escribirMemoriaDeAprendizaje(
   mapa: MapaDeMemoria,
+  marcas?: MapaDeMarcas,
 ): Promise<void> {
   const [coleccion, id] = DOCUMENTOS.aprendizajeMemoria.split('/')
   await bd()
     .collection(coleccion ?? 'aprendizaje')
     .doc(id ?? 'memoria')
-    .set({ productos: mapa, actualizadoEn: Timestamp.now() }, { merge: true })
+    .set(
+      {
+        productos: mapa,
+        ...(marcas !== undefined ? { marcas } : {}),
+        actualizadoEn: Timestamp.now(),
+      },
+      { merge: true },
+    )
 }
 
 export async function aplicarYPersistirDiff(
   diffs: readonly DiffDeProducto[],
-): Promise<MapaDeMemoria> {
+  deltasMarca: readonly DeltaDeMarca[] = [],
+): Promise<{ productos: MapaDeMemoria; marcas: MapaDeMarcas }> {
   const actual = await leerMemoriaDeAprendizaje()
+  const marcasActuales = await leerMarcasDeAprendizaje()
   const siguiente = aplicarDiffDeMemoria(actual, diffs)
-  await escribirMemoriaDeAprendizaje(siguiente)
-  return siguiente
+  const marcas =
+    deltasMarca.length > 0
+      ? aplicarDeltasDeMarca(marcasActuales, deltasMarca)
+      : marcasActuales
+  await escribirMemoriaDeAprendizaje(siguiente, marcas)
+  return { productos: siguiente, marcas }
 }
 
 export async function registrarRevision(entrada: {
@@ -236,4 +262,25 @@ export function memoriaComoEntradas(
   mapa: MapaDeMemoria,
 ): Readonly<Record<string, EntradaDeMemoria>> {
   return mapa
+}
+
+export async function registrarSesionEntrenamiento(entrada: {
+  readonly diaLima: string
+  readonly uid: string
+  readonly cobertura: { pedidos: number; cotizados: number; omitidos: number }
+  readonly pares: number
+  readonly modelo: string
+}): Promise<string> {
+  const referencia = bd().collection(COLECCIONES.sesionesEntrenamiento).doc()
+  const ahora = Timestamp.now()
+  await referencia.set({
+    diaLima: entrada.diaLima,
+    uid: entrada.uid,
+    cobertura: entrada.cobertura,
+    pares: entrada.pares,
+    modelo: entrada.modelo,
+    creadoEn: ahora,
+    caducaEn: Timestamp.fromMillis(ahora.toMillis() + VIDA_LOTE_MS),
+  })
+  return referencia.id
 }

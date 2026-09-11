@@ -38,6 +38,8 @@ export interface LineaDePedido {
   readonly cantidad: number
   /** Precio unitario con el impuesto ya incluido. */
   readonly precio: Centimos
+  /** Coloquial del requerimiento; no viaja al comprobante. */
+  readonly textoOriginal?: string
 }
 
 export interface LineaCalculada extends LineaDePedido {

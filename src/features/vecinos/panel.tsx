@@ -209,7 +209,14 @@ export function PanelDeVecinos({
 
       {!vecinos.isLoading && lista.length === 0 ? (
         <EstadoVacio titulo="No hay vecinos todavía.">
-          Pulsa + o escribe{' '}
+          Pulsa{' '}
+          <span
+            className="mx-0.5 inline-flex size-6 shrink-0 items-center justify-center rounded-full border border-borde bg-papel align-text-bottom text-tinta"
+            aria-hidden
+          >
+            <Plus className="size-3.5" />
+          </span>{' '}
+          o escribe{' '}
           <span className="font-mono text-tinta">
             /crear vecino wilmer 12345678901 987654321
           </span>{' '}
@@ -230,27 +237,35 @@ export function PanelDeVecinos({
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
-            <CabecerasDeColumna numeroDeLineas={activa.lineas.length} />
-            <ul>
-              {activa.lineas.map((linea, indice) => (
-                <LineaPedido
-                  key={`${linea.codigo}-${indice}`}
-                  linea={linea}
-                  indice={indice}
-                  precioDeCatalogo={productoPorCodigo(linea.codigo)?.precio}
-                  onCambiarCantidad={(cantidad) => {
-                    void cambiarCantidad(indice, cantidad)
-                  }}
-                  onCambiarPrecio={(precio) => {
-                    void cambiarPrecio(indice, precio)
-                  }}
-                  onQuitar={() => {
-                    void quitarLinea(indice)
-                  }}
-                  onVolverAlBuscador={onVolverAlBuscador}
-                />
-              ))}
-            </ul>
+            {activa.lineas.length === 0 ? (
+              <EstadoVacio titulo="No hay productos en la lista.">
+                Búscalos arriba o dicta con el micrófono.
+              </EstadoVacio>
+            ) : (
+              <>
+                <CabecerasDeColumna numeroDeLineas={activa.lineas.length} />
+                <ul>
+                  {activa.lineas.map((linea, indice) => (
+                    <LineaPedido
+                      key={`${linea.codigo}-${indice}`}
+                      linea={linea}
+                      indice={indice}
+                      precioDeCatalogo={productoPorCodigo(linea.codigo)?.precio}
+                      onCambiarCantidad={(cantidad) => {
+                        void cambiarCantidad(indice, cantidad)
+                      }}
+                      onCambiarPrecio={(precio) => {
+                        void cambiarPrecio(indice, precio)
+                      }}
+                      onQuitar={() => {
+                        void quitarLinea(indice)
+                      }}
+                      onVolverAlBuscador={onVolverAlBuscador}
+                    />
+                  ))}
+                </ul>
+              </>
+            )}
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-borde bg-papel px-4 py-3">
@@ -279,6 +294,12 @@ export function PanelDeVecinos({
         }}
         onRefrescar={() => {
           void refrescar()
+        }}
+        onEliminado={(id) => {
+          queryClient.setQueryData<Cotizacion[]>(
+            CLAVES_DE_CONSULTA.cotizacionesVecinos,
+            (actual) => (actual ?? []).filter((cada) => cada.id !== id),
+          )
         }}
       />
     </div>

@@ -1,6 +1,10 @@
 import { AlmacenEnMemoria } from '../../../src/server/emision/almacen-memoria.ts'
 import { AlmacenDeInventarioMemoria } from '../../../src/server/inventario/almacen-memoria.ts'
-import { idDeSerie } from '../../../src/server/emision/almacen.ts'
+import {
+  idDeSerie,
+  tipoDeSerieEsCompartida,
+  VENDEDOR_DE_SERIE_COMPARTIDA,
+} from '../../../src/server/emision/almacen.ts'
 import { ProveedorSimulado } from '../../../src/server/proveedor/simulado.ts'
 import type {
   ContextoDeEmision,
@@ -49,6 +53,7 @@ export function montarEscenario(
     boleta: 'B001',
     factura: 'F001',
     guia: 'T001',
+    nota_venta: '',
   }
 
   for (const tipo of opciones.series ?? ['boleta', 'factura']) {
@@ -59,7 +64,9 @@ export function montarEscenario(
       id: idDeSerie(VENDEDOR, tipo),
       serie,
       tipoDocumento: tipo,
-      vendedorId: VENDEDOR,
+      vendedorId: tipoDeSerieEsCompartida(tipo)
+        ? VENDEDOR_DE_SERIE_COMPARTIDA
+        : VENDEDOR,
       // Por omisión: origen 1 con ultimoNumero 0 (primer reclamado = 1).
       numeroInicial: ultimoNumero + 1,
       ultimoNumero,

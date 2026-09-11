@@ -30,7 +30,7 @@ function sembrarTubo(escenario: Escenario): void {
 
 describe('inventario al emitir y anular', () => {
   it('descuenta una vez y reintegra al anular NV', async () => {
-    const escenario = montarEscenario({ series: [] })
+    const escenario = montarEscenario({ series: ['nota_venta'] })
     sembrarTubo(escenario)
 
     const emitido = await emitirComprobante(
@@ -58,7 +58,7 @@ describe('inventario al emitir y anular', () => {
   })
 
   it('no inventa cantidad si el SKU no está controlado', async () => {
-    const escenario = montarEscenario({ series: [] })
+    const escenario = montarEscenario({ series: ['nota_venta'] })
     await emitirComprobante(
       escenario.contexto,
       peticion({ tipoDocumento: 'nota_venta' }),
@@ -89,7 +89,7 @@ describe('inventario al emitir y anular', () => {
   })
 
   it('una segunda anulación no vuelve a reintegrar', async () => {
-    const escenario = montarEscenario({ series: [] })
+    const escenario = montarEscenario({ series: ['nota_venta'] })
     sembrarTubo(escenario)
     const emitido = await emitirComprobante(
       escenario.contexto,
@@ -112,7 +112,7 @@ describe('inventario al emitir y anular', () => {
   })
 
   it('anular sin haber aplicado no inventa un documento', async () => {
-    const escenario = montarEscenario({ series: [] })
+    const escenario = montarEscenario({ series: ['nota_venta'] })
     const emitido = await emitirComprobante(
       escenario.contexto,
       peticion({ tipoDocumento: 'nota_venta' }),

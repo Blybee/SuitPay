@@ -1,6 +1,26 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.2.0 → 1.3.0
+Bump rationale: MINOR. Se amplía el principio IV: el catálogo compacto MAY
+incluir marca (`m`) y un bloque de priores de marca por familia; los medios
+de un par de entrenamiento admin (pedido + cotización oro) MAY enviarse al
+modelo. MUST NOT persistirse esos medios ni escribir `clientes/{id}`.
+Aprobado al pedir entrenamiento supervisado (spec 006).
+
+Principios modificados:
+  IV.  Compacto `{ id, n, m, a[], e[] }` + priores; excepción de medios de
+       entrenamiento admin (sin PII persistida).
+
+Secciones añadidas: ninguna.
+Plantillas: sin cambio estructural. Spec `006`.
+
+TODO diferidos: ninguno.
+-->
+
+<!--
+SYNC IMPACT REPORT (histórico)
+==================
 Version change: 1.1.0 → 1.2.0
 Bump rationale: MINOR. Se amplía el principio IV: el catálogo compacto
 (código, nombre, alias y etiquetas de asistencia), las notas de instrucción
@@ -125,10 +145,11 @@ manual.
 imagen o texto pegado— MAY enviarse al modelo (el membrete puede viajar en el archivo). Audio y
 fotografía del pedido siguen siendo contenido que produce el vendedor.
 
-**Catálogo compacto (v1.2.0).** En cotizar, fotografía y dictado MAY enviarse un catálogo
-minimizado `{ id, n, a[], e[] }` (código, nombre, alias y etiquetas de asistencia). MUST NOT
-enviarse precio, stock, ni la colección `clientes`. La búsqueda escrita del mostrador MUST
-seguir siendo local (principio V).
+**Catálogo compacto (v1.2.0, ampliado v1.3.0).** En cotizar, fotografía, dictado y
+entrenamiento MAY enviarse un catálogo minimizado `{ id, n, m, a[], e[] }` (código, nombre,
+marca, alias y etiquetas de asistencia) y un bloque opaco de priores de marca por familia.
+MUST NOT enviarse precio, stock, ni la colección `clientes`. La búsqueda escrita del
+mostrador MUST seguir siendo local (principio V).
 
 **Notas de instrucción (v1.2.0).** El texto de las notas que el vendedor escribe sobre un
 cliente MAY enviarse, sin RUC, DNI, razón social, teléfono ni historial. El servidor MUST
@@ -138,6 +159,11 @@ anonimizar dígitos de documento antes de incluirlas.
 aprobados y la memoria de productos vigente (solo alias/etiquetas), con agrupaciones opacas.
 MUST NOT enviarse identidad de cliente. El lote MUST NOT escribir `clientes/{id}`; solo
 `aprendizaje/memoria`.
+
+**Entrenamiento admin (v1.3.0).** El par pedido del cliente + cotización oro —PDF, imagen o
+texto— MAY enviarse al modelo. MUST NOT persistirse esos medios. MUST NOT escribirse
+`clientes/{id}`. La salida MUST limitarse a alias, etiquetas, estados de alineación y
+priores de marca. Confirmar en admin es el único write inmediato a `aprendizaje/memoria`.
 
 El modelo MAY devolver un número de documento y una denominación; la etiqueta que ve el
 vendedor MUST resolverse dentro del sistema. El modelo no es la fuente de verdad del cliente.
@@ -151,7 +177,8 @@ No se escribe `clientes/{id}` a partir de la respuesta del modelo.
 
 **Razón**: decisión explícita del negocio. La excepción del PDF (v1.1.0) y su ampliación a
 imagen/texto, catálogo compacto y aprendizaje (v1.2.0) las pidió el mismo dueño: sin visión
-del requerimiento y sin matching semántico, la cotización no entra al mostrador.
+del requerimiento y sin matching semántico, la cotización no entra al mostrador. El
+entrenamiento admin (v1.3.0) cierra el mismo hueco con pares históricos, sin PII persistida.
 
 ### V. El mostrador no se detiene
 
@@ -259,4 +286,4 @@ consideró y se descartó. La plantilla de plan reserva una tabla para ello.
 **Guía en tiempo de ejecución.** `.cursor/rules/specify-rules.mdc` es el archivo de contexto del
 agente de codificación y se mantiene mediante la extensión `agent-context`.
 
-**Version**: 1.2.0 | **Ratified**: 2026-07-28 | **Last Amended**: 2026-08-29
+**Version**: 1.3.0 | **Ratified**: 2026-07-28 | **Last Amended**: 2026-09-10

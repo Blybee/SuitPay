@@ -83,6 +83,7 @@ export function aprobarPropuestaDeCaptura():
       unidad: linea.unidad,
       cantidad: linea.cantidad,
       precio: producto?.precio ?? 0,
+      textoOriginal: linea.textoOriginal,
     })
     if (agregada) agregadas += 1
     else omitidas += 1
@@ -114,6 +115,7 @@ export function aplicarLineasAprobadasAlPedido(
       unidad: linea.unidad,
       cantidad: linea.cantidad,
       precio: producto?.precio ?? 0,
+      textoOriginal: linea.textoOriginal,
     })
     if (agregada) agregadas += 1
     else omitidas += 1

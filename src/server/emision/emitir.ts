@@ -29,7 +29,7 @@ import {
   sePuedeInvocarEmision,
   ventaEstaCerrada,
 } from './estados.ts'
-import { reclamarCorrelativo, necesitaCorrelativoRegulado } from './series.ts'
+import { reclamarCorrelativo, necesitaCorrelativo } from './series.ts'
 import type { AlmacenDeInventario } from '../inventario/almacen.ts'
 import { intentarTrasVenta } from '../inventario/aplicar.ts'
 
@@ -258,8 +258,7 @@ async function reclamarEnTransaccion(
       }
     }
 
-    const regulado = necesitaCorrelativoRegulado(peticion.tipoDocumento)
-    const correlativo = regulado
+    const correlativo = necesitaCorrelativo(peticion.tipoDocumento)
       ? await reclamarCorrelativo(
           transaccion,
           contexto.vendedorId,
@@ -335,6 +334,12 @@ async function invocarProveedorYRegistrar(
         rastro: null,
       },
     })
+    if (comprobante.numero !== null) {
+      await contexto.almacen.confirmarCorrelativo(
+        idDeSerie(contexto.vendedorId, comprobante.tipoDocumento),
+        comprobante.numero,
+      )
+    }
     await intentarTrasVenta(
       contexto.inventario,
       contexto.almacen,

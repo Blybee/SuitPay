@@ -439,6 +439,7 @@ export async function invocarModelo(entrada: {
   readonly medio: MedioEnPayload
   readonly candidatos: readonly CandidatoDeAsistencia[]
   readonly instrucciones?: readonly string[]
+  readonly prioresJson?: string
   readonly deps?: DependenciasDelClienteModelo
 }): Promise<RespuestaDelModelo> {
   const deps = entrada.deps ?? {}
@@ -451,6 +452,7 @@ export async function invocarModelo(entrada: {
     entrada.tipo,
     entrada.candidatos,
     entrada.instrucciones ?? [],
+    entrada.prioresJson,
   )
   const partes: ParteGemini[] = [
     { text: prompt },

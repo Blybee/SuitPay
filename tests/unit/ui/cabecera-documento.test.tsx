@@ -8,7 +8,12 @@ import {
   tipoFiscalDeModo,
 } from '../../../src/ui/componentes/CabeceraDocumento.tsx'
 
-const series = { boleta: 'B001', factura: 'F001', guia: 'T001' }
+const series = {
+  boleta: 'B001',
+  factura: 'F001',
+  guia: 'T001',
+  notaVenta: '0000000001',
+}
 
 const base = {
   series,
@@ -139,6 +144,16 @@ describe('modos compuestos Bol/Fact + Guía R', () => {
     rerender(<CabeceraDocumento {...base} modo="factura_guia" />)
     expect(screen.getByLabelText('Tipo de documento')).toHaveTextContent(
       'Fact + Guía R · F001',
+    )
+  })
+
+  it('nota de venta no muestra el correlativo en el trigger', () => {
+    render(<CabeceraDocumento {...base} modo="nota_venta" />)
+    expect(screen.getByLabelText('Tipo de documento')).toHaveTextContent(
+      'Nota de venta',
+    )
+    expect(screen.getByLabelText('Tipo de documento')).not.toHaveTextContent(
+      '0000000001',
     )
   })
 })

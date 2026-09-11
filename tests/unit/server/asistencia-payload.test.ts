@@ -3,6 +3,7 @@ import {
   clavesDelPayload,
   construirPayloadDeAsistencia,
   payloadContieneDatosDeCliente,
+  textoDeCandidatosParaPrompt,
 } from '../../../src/server/asistencia/payload.ts'
 
 describe('principio IV — payload de asistencia (T116)', () => {
@@ -110,5 +111,29 @@ describe('principio IV — payload de asistencia (T116)', () => {
       etiquetas: ['economico'],
     })
     expect(JSON.stringify(payload.candidatos)).not.toMatch(/precio/)
+  })
+
+  it('incluye marca del SKU en el candidato y en el compacto del prompt', () => {
+    const payload = construirPayloadDeAsistencia({
+      tipo: 'imagen',
+      medio: { mimeType: 'image/jpeg', dataBase64: 'eA==' },
+      candidatos: [
+        {
+          codigo: 'C1',
+          descripcion: 'CODO FG 1/2',
+          unidad: 'NIU',
+          marca: 'Pavco',
+        },
+      ],
+    })
+    expect(payload.candidatos[0]).toEqual({
+      codigo: 'C1',
+      descripcion: 'CODO FG 1/2',
+      unidad: 'NIU',
+      marca: 'Pavco',
+    })
+    expect(textoDeCandidatosParaPrompt(payload.candidatos)).toContain(
+      '"m":"Pavco"',
+    )
   })
 })

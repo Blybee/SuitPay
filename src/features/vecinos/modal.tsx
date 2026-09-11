@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Pencil, Trash2 } from 'lucide-react'
+import { Loader2, Pencil, Trash2 } from 'lucide-react'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
 import { EstadoVacio } from '../../ui/componentes/EstadoVacio.tsx'
@@ -33,6 +33,7 @@ export function ModalDeVecino({
   creando,
   onCrear,
   onRefrescar,
+  onEliminado,
 }: {
   readonly abierta: boolean
   readonly onCerrar: () => void
@@ -40,6 +41,7 @@ export function ModalDeVecino({
   readonly creando: boolean
   readonly onCrear: (propuesta: PropuestaCrearVecino) => void
   readonly onRefrescar: () => void
+  readonly onEliminado: (id: string) => void
 }) {
   const [vista, setVista] = useState<Vista>('nuevo')
   const [alias, setAlias] = useState('')
@@ -49,6 +51,7 @@ export function ModalDeVecino({
   const [editando, setEditando] = useState<Cotizacion | null>(null)
   const [pendienteBorrar, setPendienteBorrar] = useState<string | null>(null)
   const [guardando, setGuardando] = useState(false)
+  const [eliminando, setEliminando] = useState(false)
 
   function resetearAlta(): void {
     setAlias('')
@@ -63,6 +66,7 @@ export function ModalDeVecino({
       resetearAlta()
       setEditando(null)
       setPendienteBorrar(null)
+      setEliminando(false)
       onCerrar()
     }
   }
@@ -279,11 +283,17 @@ export function ModalDeVecino({
                     <Boton
                       variante="peligro"
                       className="min-h-11 px-3 text-etiqueta"
+                      disabled={eliminando}
+                      aria-busy={eliminando || undefined}
                       onClick={() => {
+                        if (eliminando) return
                         void (async () => {
-                          const resultado = await eliminarCotizacionVecino(cada.id)
-                          setPendienteBorrar(null)
+                          setEliminando(true)
+                          const resultado = await eliminarCotizacionVecino(
+                            cada.id,
+                          )
                           if (!resultado.ok) {
+                            setEliminando(false)
                             usarNotificaciones.getState().mostrar({
                               tono: 'error',
                               mensaje:
@@ -291,11 +301,23 @@ export function ModalDeVecino({
                             })
                             return
                           }
-                          onRefrescar()
+                          onEliminado(cada.id)
+                          setPendienteBorrar(null)
+                          setEliminando(false)
                         })()
                       }}
                     >
-                      Confirmar
+                      {eliminando ? (
+                        <>
+                          <Loader2
+                            className="size-4 animate-spin motion-reduce:animate-none"
+                            aria-hidden
+                          />
+                          Eliminando…
+                        </>
+                      ) : (
+                        'Confirmar'
+                      )}
                     </Boton>
                   ) : (
                     <button

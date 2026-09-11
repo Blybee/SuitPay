@@ -150,12 +150,18 @@ export async function interpretarCaptura(
   deps: DependenciasDeInterpretar = {},
 ): Promise<ResultadoDeInterpretacion> {
   let candidatos = [...(peticion.candidatos ?? [])]
+  let prioresJson = ''
   if (candidatos.length === 0) {
-    const { leerCatalogoCompactoComoCandidatos } = await import(
+    const { leerContextoDeAsistencia } = await import(
       '../aprendizaje/catalogo-compacto.ts'
     )
-    candidatos = await (deps.leerCatalogo?.() ??
-      leerCatalogoCompactoComoCandidatos())
+    if (deps.leerCatalogo) {
+      candidatos = await deps.leerCatalogo()
+    } else {
+      const contexto = await leerContextoDeAsistencia()
+      candidatos = [...contexto.candidatos]
+      prioresJson = contexto.prioresJson
+    }
   }
   if (candidatos.length === 0) {
     throw new ErrorDeSuitPay('peticion_invalida', {
@@ -194,6 +200,7 @@ export async function interpretarCaptura(
         medio: payload.medio,
         candidatos: payload.candidatos,
         instrucciones: peticion.instrucciones ?? [],
+        prioresJson,
         deps: deps.depsModelo,
       })
     }

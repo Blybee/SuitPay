@@ -4,7 +4,6 @@ import { COLECCIONES, bd } from '../firebase/admin.ts'
 import { extraerListaPdf } from './extraer-pdf.ts'
 import type { ResultadoDeListaPdf } from './extraer-pdf.ts'
 import { interpretarCaptura } from './interpretar.ts'
-import { leerCatalogoCompactoComoCandidatos } from '../aprendizaje/catalogo-compacto.ts'
 import { SCHEMA_RESPUESTA_ASISTENCIA, promptDeAsistencia } from './prompts.ts'
 import { invocarModeloConPartes } from './cliente-modelo.ts'
 import {
@@ -74,7 +73,10 @@ export async function interpretarRequerimiento(entrada: {
     })
   }
 
-  const candidatos = await leerCatalogoCompactoComoCandidatos()
+  const contexto = await (
+    await import('../aprendizaje/catalogo-compacto.ts')
+  ).leerContextoDeAsistencia()
+  const candidatos = contexto.candidatos
   if (candidatos.length === 0) {
     throw new ErrorDeSuitPay('peticion_invalida', { motivo: 'sin_catalogo' })
   }
@@ -87,7 +89,12 @@ export async function interpretarRequerimiento(entrada: {
       candidatos,
     })
   } else {
-    const prompt = promptDeAsistencia('imagen', candidatos, instrucciones)
+    const prompt = promptDeAsistencia(
+      'texto',
+      candidatos,
+      instrucciones,
+      contexto.prioresJson,
+    )
     const crudo = await invocarModeloConPartes({
       partes: [{ text: prompt }],
       schema: SCHEMA_RESPUESTA_ASISTENCIA,

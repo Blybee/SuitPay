@@ -36,15 +36,14 @@ export function paresDesdeCaptura(
 }
 
 export function paresDesdePedido(
-  originales: readonly string[],
   lineas: readonly LineaDePedido[],
 ): {
   readonly textoOriginal: string
   readonly codigoAprobado: string
   readonly descripcionAprobada: string
 }[] {
-  return lineas.map((linea, i) => ({
-    textoOriginal: originales[i] ?? linea.descripcion,
+  return lineas.map((linea) => ({
+    textoOriginal: linea.textoOriginal?.trim() || linea.descripcion,
     codigoAprobado: linea.codigo,
     descripcionAprobada: linea.descripcion,
   }))

@@ -109,4 +109,16 @@ describe('frontera emitirGuiaRemision (simulado)', () => {
       codigo: 'emision_indeterminada',
     })
   })
+
+  it('dos vendedores comparten la serie de guía', async () => {
+    const { almacen, contexto } = montarEscenario({ series: ['guia'] })
+    const primera = await emitirGuia(contexto, peticionGuia())
+    const segunda = await emitirGuia(
+      { ...contexto, vendedorId: 'vendedor-2' },
+      peticionGuia(),
+    )
+    expect(segunda.numero).toBe((primera.numero ?? 0) + 1)
+    const serie = await almacen.leerSerie('compartida__guia')
+    expect(serie?.ultimoNumero).toBe(2)
+  })
 })

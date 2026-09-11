@@ -8,13 +8,13 @@ describe('compactarCatalogo', () => {
   it('omite inactivos y no incluye precio', () => {
     const compacto = compactarCatalogo(
       [
-        { codigo: 'C1', descripcion: 'CODO 1/2', activo: true },
+        { codigo: 'C1', descripcion: 'CODO 1/2', activo: true, marca: 'Pavco' },
         { codigo: 'X1', descripcion: 'BAJA', activo: false },
       ],
       { C1: { aliases: ['codo media'], etiquetas: ['economico'] } },
     )
     expect(compacto).toEqual([
-      { id: 'C1', n: 'CODO 1/2', a: ['codo media'], e: ['economico'] },
+      { id: 'C1', n: 'CODO 1/2', m: 'Pavco', a: ['codo media'], e: ['economico'] },
     ])
     expect(JSON.stringify(compacto)).not.toMatch(/precio/)
     expect(JSON.stringify(compacto)).not.toMatch(/stock/)

@@ -51,7 +51,7 @@ solo cuando el control es de un flujo, no del sistema.
 | `EtiquetaSinValor`  | `EtiquetaSinValor.tsx`  | «SIN VALOR TRIBUTARIO». Recibe el **tipo**, no un booleano.                                                                       |
 | `Sello`             | `Sello.tsx`             | Violeta sobre lo ya emitido (REGISTRADO / ACEPTADO). Nunca en el pedido en curso.                                                 |
 | `RevisionCaptura`   | `RevisionCaptura.tsx`   | Contraste original vs propuesta (voz / foto).                                                                                     |
-| `EstadoVacio`       | `EstadoVacio.tsx`       | Empty state de listas del mostrador: título + ilustración centrados. Pista opcional en `children`. No usar dentro de un combobox. |
+| `EstadoVacio`       | `EstadoVacio.tsx`       | Empty state de listas del mostrador: ilustración, título debajo y pista opcional en `children`. No usar dentro de un combobox. |
 
 El mostrador (`src/routes/index.tsx`) ocupa `h-full overflow-hidden`. Cada
 pestaña entra en `CuerpoPestana`: Pedido, Vecinos y Lista recortan el slot
