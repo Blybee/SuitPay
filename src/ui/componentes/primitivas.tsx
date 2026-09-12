@@ -53,7 +53,7 @@ export function Boton({
   const Componente = asChild ? Slot : 'button'
   return (
     <Componente
-      type={type}
+      {...(asChild ? {} : { type })}
       className={unir(
         'inline-flex items-center justify-center gap-2 rounded-full border font-bold',
         'transition-[color,background-color,border-color,box-shadow,transform] duration-rapida ease-salida',

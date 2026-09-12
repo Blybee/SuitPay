@@ -167,10 +167,13 @@ Una serie por vendedor y tipo de documento. Documentos pequeños con el contador
 | `total` | número | |
 | `creadoPor`, `creadoEn` | cadena, marca de tiempo | |
 | `actualizadoEn` | marca de tiempo | Útil en cotizaciones vivas de vecino que se reescriben al agregar/quitar líneas. |
+| `generacionPedido` | número | Contador de generación del pedido vivo. Empieza en 0. En canal `vecino`, la emisión lo incrementa en la misma transacción y vacía `lineas`/`total`. En canal `general` no se usa: el documento se borra (FR-019). |
 
 **Campos retirados**: `comprobanteId` y `convertidaEn` ya no se escriben. El rastro de origen queda en el comprobante (`cotizacionId`), no en la cotización.
 
-**Transición de conversión (FR-019)**: **borrar en duro** la cotización ocurre **en la misma transacción** que crea el comprobante. Si el documento ya no existe, la emisión se rechaza con error estable (`cotizacion_ya_usada`). Esto impide que dos dispositivos con la misma cotización abierta produzcan dos comprobantes, caso que la clave de idempotencia por sí sola no cubre porque cada dispositivo genera una clave distinta.
+**Transición de conversión (FR-019)**: en canal `general`, **borrar en duro** la cotización ocurre **en la misma transacción** que crea el comprobante. Si el documento ya no existe, la emisión se rechaza con error estable (`cotizacion_ya_usada`). Esto impide que dos dispositivos con la misma cotización abierta produzcan dos comprobantes, caso que la clave de idempotencia por sí sola no cubre porque cada dispositivo genera una clave distinta.
+
+**Canal vecinos (FR-035a)**: el documento **persiste**. La transacción de emisión compara `generacionPedido` con el valor capturado al convertir; si coincide, incrementa el contador y vacía líneas/total. Si no coincide, `cotizacion_ya_usada`. La identidad (alias, teléfono, cliente) no se toca.
 
 **Borrado manual (FR-019a)**: cualquier vendedor autorizado puede eliminar una cotización `pendiente` desde el cliente (con confirmación en UI). Coherente con FR-017 (acceso compartido).
 

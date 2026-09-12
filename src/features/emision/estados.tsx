@@ -26,6 +26,8 @@ export interface PropsDeEstadoDeEmision {
   /** Fallback si la respuesta no trae PDF (releer Firestore). */
   readonly onImprimir: (comprobanteId: string) => void
   readonly onCompartir: (comprobanteId: string) => void
+  readonly onIrAComprobantes: () => void
+  readonly onNuevoPedido: () => void
 }
 
 function AccionesDePdf({
@@ -38,6 +40,7 @@ function AccionesDePdf({
   readonly onCompartir: (comprobanteId: string) => void
 }) {
   const [aviso, setAviso] = useState<string | null>(null)
+  const [compartiendo, setCompartiendo] = useState(false)
   const [pdf, setPdf] = useState<string | null>(comprobante.archivos.pdf)
   const [nombre, setNombre] = useState(() =>
     nombreDelComprobante(comprobante.serie, comprobante.numero),
@@ -130,19 +133,27 @@ function AccionesDePdf({
 
   async function alCompartir(): Promise<void> {
     setAviso(null)
-    const url = urlFresco()
-    if (url !== null) {
-      const resultado = await compartirDocumento(url, nombre)
-      if (!resultado.ok && resultado.motivo !== 'cancelado') {
-        setAviso(
-          resultado.motivo === 'sin_archivo'
-            ? 'Este comprobante no tiene archivo PDF.'
-            : 'No se pudo compartir el PDF.',
-        )
+    setCompartiendo(true)
+    try {
+      const resultado = await compartirDocumento({
+        nombreSugerido: nombre,
+        archivo: blobNota.current,
+        urlDelPdf: pdf,
+      })
+      if (resultado.ok) return
+      if (resultado.motivo === 'cancelado') return
+      if (resultado.motivo === 'sin_archivo') {
+        onCompartir(comprobante.comprobanteId)
+        return
       }
-      return
+      setAviso(
+        resultado.motivo === 'sin_hoja'
+          ? 'No se pudo abrir la hoja de compartir. Usa Guardar y adjúntalo en WhatsApp.'
+          : 'No se pudo compartir el PDF.',
+      )
+    } finally {
+      setCompartiendo(false)
     }
-    onCompartir(comprobante.comprobanteId)
   }
 
   return (
@@ -162,11 +173,17 @@ function AccionesDePdf({
           Guardar
         </Boton>
         <Boton
+          disabled={compartiendo}
+          aria-busy={compartiendo || undefined}
           onClick={() => {
             void alCompartir()
           }}
         >
-          <Share2 className="size-5" aria-hidden />
+          {compartiendo ? (
+            <Loader2 className="size-5 animate-spin" aria-hidden />
+          ) : (
+            <Share2 className="size-5" aria-hidden />
+          )}
           Compartir
         </Boton>
       </div>
@@ -180,6 +197,8 @@ export function EstadoDeEmision({
   onReintentar,
   onImprimir,
   onCompartir,
+  onIrAComprobantes,
+  onNuevoPedido,
 }: PropsDeEstadoDeEmision) {
   if (fase.nombre === 'inactiva' || fase.nombre === 'encadenando_guia') {
     return null
@@ -277,7 +296,11 @@ export function EstadoDeEmision({
         }}
         titulo="Cotización ya usada"
       >
-        <YaUsada mensaje={fase.mensaje} onCerrar={onCerrar} />
+        <YaUsada
+          mensaje={fase.mensaje}
+          onIrAComprobantes={onIrAComprobantes}
+          onNuevoPedido={onNuevoPedido}
+        />
       </Modal>
     )
   }

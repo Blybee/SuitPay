@@ -17,6 +17,7 @@ import type {ProveedorDeEmision} from '../proveedor/interfaz.ts';
 import type {
   AlmacenDeEmision,
   Comprobante,
+  Cotizacion,
   DatosDelProveedor,
   IntentoDeEmision,
   LineaDelComprobante,
@@ -93,6 +94,11 @@ export interface PeticionDeEmitir {
   } | null
   readonly cotizacionId: string | null
   readonly capturaId: string | null
+  /**
+   * Generación del pedido de vecino capturada al convertir. Nulo en cotización
+   * general o venta suelta. Debe coincidir con el documento al emitir.
+   */
+  readonly generacionPedido: number | null
   /** El total que calculó el cliente. Solo para comparar; manda el servidor. */
   readonly totalDeclarado?: Centimos
 }
@@ -245,16 +251,24 @@ async function reclamarEnTransaccion(
       return { comprobante: existente, yaExistia: true }
     }
 
-    // La cotización se **borra en duro** en este mismo acto. Es lo que impide
-    // que dos dispositivos con la misma cotización abierta produzcan dos
-    // comprobantes: la clave de idempotencia no cubre ese caso, porque cada
-    // dispositivo genera una clave distinta (FR-019).
+    // Cotización general: borrado duro (FR-019). Vecino: consume generación
+    // y vacía el pedido vivo sin borrar la identidad (FR-035a).
+    let cotizacionViva: Cotizacion | undefined
     if (peticion.cotizacionId !== null) {
-      const cotizacion = await transaccion.leerCotizacion(peticion.cotizacionId)
-      if (cotizacion === undefined || cotizacion.estado !== 'pendiente') {
+      cotizacionViva = await transaccion.leerCotizacion(peticion.cotizacionId)
+      if (cotizacionViva === undefined || cotizacionViva.estado !== 'pendiente') {
         fallar('cotizacion_ya_usada', {
           cotizacionId: peticion.cotizacionId,
         })
+      }
+      if (cotizacionViva.canal === 'vecino') {
+        const actual = cotizacionViva.generacionPedido ?? 0
+        const pedida = peticion.generacionPedido ?? 0
+        if (pedida !== actual) {
+          fallar('cotizacion_ya_usada', {
+            cotizacionId: peticion.cotizacionId,
+          })
+        }
       }
     }
 
@@ -304,7 +318,14 @@ async function reclamarEnTransaccion(
     transaccion.crearComprobante(comprobante)
 
     if (peticion.cotizacionId !== null) {
-      transaccion.eliminarCotizacion(peticion.cotizacionId)
+      if (cotizacionViva?.canal === 'vecino') {
+        transaccion.consumirPedidoDeVecino(
+          peticion.cotizacionId,
+          (cotizacionViva.generacionPedido ?? 0) + 1,
+        )
+      } else {
+        transaccion.eliminarCotizacion(peticion.cotizacionId)
+      }
     }
 
     return { comprobante, yaExistia: false }

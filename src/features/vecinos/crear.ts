@@ -59,6 +59,7 @@ export async function crearCotizacionVecino(datos: {
       cliente,
       lineas: [],
       total: 0,
+      generacionPedido: 0,
       creadoPor: datos.uid,
       creadoEn: serverTimestamp(),
       actualizadoEn: serverTimestamp(),

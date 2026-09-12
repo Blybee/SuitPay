@@ -129,6 +129,9 @@ export interface Cotizacion {
   readonly id: string
   /** Solo `pendiente` mientras el documento exista. Legacy puede traer otros. */
   readonly estado: 'pendiente' | 'convertida' | 'descartada'
+  readonly canal?: 'general' | 'vecino'
+  /** Contador de generación del pedido vivo. Ausente o 0 en documentos viejos. */
+  readonly generacionPedido?: number
 }
 
 export {
@@ -168,6 +171,14 @@ export interface TransaccionDeEmision {
   actualizarComprobanteEnTransaccion: (comprobante: Comprobante) => void
   /** Borrado duro en la misma transacción que crea el comprobante (FR-019). */
   eliminarCotizacion: (cotizacionId: string) => void
+  /**
+   * Canal vecino: incrementa `generacionPedido` y vacía líneas/total en el
+   * mismo acto que crea el comprobante. La identidad del vecino persiste.
+   */
+  consumirPedidoDeVecino: (
+    cotizacionId: string,
+    generacionSiguiente: number,
+  ) => void
 }
 
 export interface CambiosDelComprobante {

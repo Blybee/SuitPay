@@ -72,4 +72,51 @@ describe('conversión de cotización en emisión', () => {
 
     expect(almacen.totalDeComprobantes).toBe(0)
   })
+
+  it('conserva al vecino, incrementa generación y rechaza la misma generación', async () => {
+    const { almacen, contexto } = montarEscenario()
+    almacen.sembrarCotizacion({
+      id: 'cot-vecino',
+      estado: 'pendiente',
+      canal: 'vecino',
+      generacionPedido: 0,
+    })
+
+    const primero = await emitirComprobante(
+      contexto,
+      peticion({
+        claveIdempotencia: 'clave-vecino-a',
+        cotizacionId: 'cot-vecino',
+        generacionPedido: 0,
+      }),
+    )
+    expect(primero.comprobanteId).toBe('clave-vecino-a')
+    expect(almacen.cotizacionPorId('cot-vecino')).toMatchObject({
+      estado: 'pendiente',
+      canal: 'vecino',
+      generacionPedido: 1,
+    })
+
+    await expect(
+      emitirComprobante(
+        contexto,
+        peticion({
+          claveIdempotencia: 'clave-vecino-b',
+          cotizacionId: 'cot-vecino',
+          generacionPedido: 0,
+        }),
+      ),
+    ).rejects.toMatchObject({ codigo: 'cotizacion_ya_usada' })
+
+    const suelto = await emitirComprobante(
+      contexto,
+      peticion({
+        claveIdempotencia: 'clave-vecino-nuevo',
+        cotizacionId: null,
+        generacionPedido: null,
+      }),
+    )
+    expect(suelto.comprobanteId).toBe('clave-vecino-nuevo')
+    expect(almacen.cotizacionPorId('cot-vecino')?.generacionPedido).toBe(1)
+  })
 })

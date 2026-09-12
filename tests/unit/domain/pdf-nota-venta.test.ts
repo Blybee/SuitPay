@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest'
-import { bytesDePdfInterno } from '../../../src/domain/documentos/pdf-interno.ts'
+import {
+  bytesDePdfInterno,
+  LAYOUT_COLUMNAS_PDF_INTERNO,
+} from '../../../src/domain/documentos/pdf-interno.ts'
 import { bytesDePdfDeNotaVenta } from '../../../src/domain/documentos/pdf-nota-venta.ts'
 
 const fixture = {
@@ -68,6 +71,17 @@ describe('PDF de nota de venta', () => {
   it('declara WinAnsi para el signo de numero', () => {
     expect(texto).toContain('/WinAnsiEncoding')
     expect(texto).toContain('\\260')
+  })
+
+  it('compacta PRECIO y TOTAL y cede el espacio a DESCRIPCIÓN', () => {
+    expect(LAYOUT_COLUMNAS_PDF_INTERNO).toEqual({
+      codigo: 68,
+      descripcion: 266,
+      cantidad: 65,
+      precio: 58,
+      total: 58,
+      margenDerecho: 555,
+    })
   })
 })
 

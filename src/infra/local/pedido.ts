@@ -27,6 +27,7 @@ export interface PedidoPersistido {
   readonly tipoDocumento: string
   readonly cotizacionId: string | null
   readonly capturaId: string | null
+  readonly generacionPedido?: number | null
   /**
    * La clave de idempotencia se genera al **confirmar**, no al empezar, y se
    * persiste desde ese momento. Así un reintento tras recargar la página

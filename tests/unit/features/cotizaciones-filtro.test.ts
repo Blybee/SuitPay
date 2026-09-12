@@ -37,6 +37,7 @@ function cotizacion(parcial: {
     creadoEn: new Date(0),
     actualizadoEn: null,
     telefonoVecino: null,
+    generacionPedido: 0,
   }
 }
 

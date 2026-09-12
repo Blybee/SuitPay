@@ -163,6 +163,7 @@ export function PanelDeCotizaciones({
     usarPedido.getState().fijarModoCotizacion(true)
     cargarDesdeCotizacion({
       cotizacionId: cotizacion.id,
+      generacionPedido: cotizacion.generacionPedido,
       lineas: cotizacion.lineas,
       cliente: cotizacion.cliente,
     })

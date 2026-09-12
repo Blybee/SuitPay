@@ -54,6 +54,8 @@ interface EstadoDelPedido {
   readonly tipoDocumento: TipoElegible
   readonly cotizacionId: string | null
   readonly capturaId: string | null
+  /** Generación del pedido de vecino al convertir. Nulo si no hay origen vivo. */
+  readonly generacionPedido: number | null
   readonly claveIdempotencia: string | null
   /** Comprobante (boleta/factura) desde el que se reutilizó el pedido. */
   readonly comprobanteOrigenId: string | null
@@ -78,6 +80,7 @@ interface AccionesDelPedido {
   fijarOrigen: (origen: {
     cotizacionId?: string | null
     capturaId?: string | null
+    generacionPedido?: number | null
   }) => void
   /**
    * Sustituye el pedido en curso por el contenido de una cotización recuperada.
@@ -86,6 +89,7 @@ interface AccionesDelPedido {
    */
   cargarDesdeCotizacion: (datos: {
     readonly cotizacionId: string
+    readonly generacionPedido?: number | null
     readonly lineas: readonly LineaDePedido[]
     readonly cliente: ClienteDelPedido | null
   }) => void
@@ -127,6 +131,7 @@ const ESTADO_INICIAL: EstadoDelPedido = {
   tipoDocumento: 'nota_venta',
   cotizacionId: null,
   capturaId: null,
+  generacionPedido: null,
   claveIdempotencia: null,
   comprobanteOrigenId: null,
   comprobanteOrigenEtiqueta: null,
@@ -146,6 +151,7 @@ const VACIO_CONTENIDO: Omit<
   tipoDocumento: 'nota_venta',
   cotizacionId: null,
   capturaId: null,
+  generacionPedido: null,
   claveIdempotencia: null,
   comprobanteOrigenId: null,
   comprobanteOrigenEtiqueta: null,
@@ -163,6 +169,7 @@ function contenidoDe(
     tipoDocumento: estado.tipoDocumento,
     cotizacionId: estado.cotizacionId,
     capturaId: estado.capturaId,
+    generacionPedido: estado.generacionPedido,
     claveIdempotencia: estado.claveIdempotencia,
     comprobanteOrigenId: estado.comprobanteOrigenId,
     comprobanteOrigenEtiqueta: estado.comprobanteOrigenEtiqueta,
@@ -179,6 +186,7 @@ function hidratar(
     tipoDocumento: guardado.tipoDocumento as TipoElegible,
     cotizacionId: guardado.cotizacionId,
     capturaId: guardado.capturaId,
+    generacionPedido: guardado.generacionPedido ?? null,
     claveIdempotencia: guardado.claveIdempotencia,
     comprobanteOrigenId: guardado.comprobanteOrigenId ?? null,
     comprobanteOrigenEtiqueta: guardado.comprobanteOrigenEtiqueta ?? null,
@@ -263,6 +271,9 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         ...(origen.capturaId !== undefined
           ? { capturaId: origen.capturaId }
           : {}),
+        ...(origen.generacionPedido !== undefined
+          ? { generacionPedido: origen.generacionPedido }
+          : {}),
       })
     },
 
@@ -274,6 +285,7 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         })),
         cliente: datos.cliente,
         cotizacionId: datos.cotizacionId,
+        generacionPedido: datos.generacionPedido ?? 0,
         capturaId: null,
         comprobanteOrigenId: null,
         comprobanteOrigenEtiqueta: null,
@@ -288,6 +300,7 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         })),
         cliente: datos.cliente,
         cotizacionId: null,
+        generacionPedido: null,
         capturaId: null,
         comprobanteOrigenId: datos.comprobanteOrigenId,
         comprobanteOrigenEtiqueta: datos.comprobanteOrigenEtiqueta ?? null,

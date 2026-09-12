@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import type {
@@ -151,6 +151,7 @@ function MostradorConGuarda() {
 
 function Mostrador() {
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
   const entradaRef = useRef<MangoDeEntrada>(null)
   const [pestana, setPestana] = useState<PestanaMostrador>('pedido')
   const [termino, setTermino] = useState('')
@@ -814,6 +815,7 @@ function Mostrador() {
   function convertirVecinoEnPedido(cotizacion: Cotizacion): void {
     pedido.cargarDesdeCotizacion({
       cotizacionId: cotizacion.id,
+      generacionPedido: cotizacion.generacionPedido,
       lineas: cotizacion.lineas,
       cliente: cotizacion.cliente,
     })
@@ -860,6 +862,7 @@ function Mostrador() {
           medioPago: { medio: medioPago, montoRecibido: total },
           cotizacionId: pedido.cotizacionId,
           capturaId: pedido.capturaId,
+          generacionPedido: pedido.generacionPedido,
           totalDeclarado: total,
         },
       })
@@ -1083,6 +1086,7 @@ function Mostrador() {
             usarPedido.getState().fijarModoCotizacion(true)
             pedido.cargarDesdeCotizacion({
               cotizacionId: cotizacion.id,
+              generacionPedido: cotizacion.generacionPedido,
               lineas: cotizacion.lineas,
               cliente: cotizacion.cliente,
             })
@@ -1300,6 +1304,23 @@ function Mostrador() {
             onReintentar={() => void lanzarEmision()}
             onImprimir={(id) => void reimprimir(id)}
             onCompartir={(id) => void compartirComprobante(id)}
+            onIrAComprobantes={() => {
+              pedido.fijarOrigen({
+                cotizacionId: null,
+                generacionPedido: null,
+              })
+              cerrarEmision()
+              setEncadenarGuia(false)
+              void navigate({ to: '/comprobantes' })
+            }}
+            onNuevoPedido={() => {
+              pedido.fijarOrigen({
+                cotizacionId: null,
+                generacionPedido: null,
+              })
+              cerrarEmision()
+              setEncadenarGuia(false)
+            }}
           />
         </CuerpoPestana>
       )}

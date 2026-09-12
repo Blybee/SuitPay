@@ -1,4 +1,4 @@
-import { Timestamp } from 'firebase-admin/firestore'
+import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import type {
   DocumentData,
   Firestore,
@@ -209,6 +209,11 @@ export class AlmacenFirestore implements AlmacenDeEmision {
           return {
             id: cotizacionId,
             estado: datos['estado'],
+            canal: datos['canal'] === 'vecino' ? 'vecino' : 'general',
+            generacionPedido:
+              typeof datos['generacionPedido'] === 'number'
+                ? datos['generacionPedido']
+                : 0,
           } satisfies Cotizacion
         },
 
@@ -235,6 +240,18 @@ export class AlmacenFirestore implements AlmacenDeEmision {
         eliminarCotizacion: (cotizacionId) => {
           tx.delete(
             this.base.collection(COLECCIONES.cotizaciones).doc(cotizacionId),
+          )
+        },
+
+        consumirPedidoDeVecino: (cotizacionId, generacionSiguiente) => {
+          tx.update(
+            this.base.collection(COLECCIONES.cotizaciones).doc(cotizacionId),
+            {
+              generacionPedido: generacionSiguiente,
+              lineas: [],
+              total: 0,
+              actualizadoEn: FieldValue.serverTimestamp(),
+            },
           )
         },
       }

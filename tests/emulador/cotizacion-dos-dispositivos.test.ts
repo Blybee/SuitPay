@@ -170,6 +170,7 @@ function peticion(clave: string) {
     medioPago: { medio: 'efectivo', montoRecibido: 2_500 },
     cotizacionId: COTIZACION_ID,
     capturaId: null,
+    generacionPedido: null,
   }
 }
 

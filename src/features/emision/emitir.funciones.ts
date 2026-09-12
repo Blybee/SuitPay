@@ -94,6 +94,7 @@ const esquemaDeEmision = z.object({
     .nullable(),
   cotizacionId: z.string().nullable(),
   capturaId: z.string().nullable(),
+  generacionPedido: z.number().int().nonnegative().nullable(),
   totalDeclarado: z.number().int().optional(),
 })
 

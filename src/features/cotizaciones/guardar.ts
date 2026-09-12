@@ -88,7 +88,13 @@ export async function guardarCotizacion(datos: {
         total,
         actualizadoEn: serverTimestamp(),
       })
-      usarPedido.getState().fijarOrigen({ cotizacionId: idExistente })
+      usarPedido.getState().fijarOrigen({
+        cotizacionId: idExistente,
+        generacionPedido:
+          typeof datosActuales['generacionPedido'] === 'number'
+            ? datosActuales['generacionPedido']
+            : 0,
+      })
       const numero = Number(datosActuales['numero'])
       return {
         ok: true,
@@ -123,6 +129,7 @@ export async function guardarCotizacion(datos: {
       cliente,
       lineas,
       total,
+      generacionPedido: 0,
       creadoPor: datos.uid,
       creadoEn: serverTimestamp(),
       actualizadoEn: serverTimestamp(),
@@ -135,7 +142,10 @@ export async function guardarCotizacion(datos: {
     }
   }
 
-  usarPedido.getState().fijarOrigen({ cotizacionId: referencia.id })
+  usarPedido.getState().fijarOrigen({
+    cotizacionId: referencia.id,
+    generacionPedido: 0,
+  })
 
   return {
     ok: true,

@@ -12,27 +12,31 @@ export function OpcionesAmbiguas({
 }) {
   if (candidatos.length === 0) {
     return (
-      <p className="text-cuerpo text-aviso">
+      <p className="text-cuerpo text-desvaida">
         Sin candidatos. Corrige el texto o escribe el producto a mano.
       </p>
     )
   }
 
   return (
-    <ul className="mt-1 flex flex-col gap-1" data-testid="opciones-ambiguas">
+    <ul className="mt-2 flex flex-col gap-1.5" data-testid="opciones-ambiguas">
       {candidatos.map((c) => (
         <li key={c.codigo}>
           <button
             type="button"
             onClick={() => onElegir(c.codigo)}
             className={[
-              'w-full rounded-lg border border-aviso/60 bg-aviso/10 px-3 py-2',
-              'text-left text-cuerpo text-aviso',
-              'hover:bg-aviso/20 focus-visible:outline-none focus-visible:border-aviso',
+              'w-full rounded-2xl border border-borde bg-papel px-3 py-2.5 text-left',
+              'transition-[color,background-color,border-color,box-shadow] duration-rapida ease-salida',
+              'hover:border-tinta/40 hover:bg-mesa hover:shadow-sm',
+              'focus-visible:outline-none focus-visible:border-tinta focus-visible:ring-2 focus-visible:ring-tinta/10',
+              'motion-reduce:transition-none',
             ].join(' ')}
           >
-            <span className="font-bold">{c.descripcion}</span>
-            <span className="ml-2 font-mono text-etiqueta opacity-80">
+            <span className="block text-cuerpo font-bold text-tinta">
+              {c.descripcion}
+            </span>
+            <span className="mt-0.5 block font-mono text-etiqueta text-desvaida">
               {c.codigo} · ×{c.cantidad}
             </span>
           </button>

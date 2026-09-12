@@ -12,7 +12,7 @@ import { ProveedorSimulado } from '../../src/server/proveedor/simulado.ts'
 import { esErrorDeSuitPay } from '../../src/server/errores.ts'
 
 /**
- * T138 — emitir desde cotización de vecino borra el documento (FR-035a).
+ * T138 — emitir desde cotización de vecino consume la generación (FR-035a).
  */
 
 const EMULADOR = { host: '127.0.0.1', puerto: 8080 }
@@ -131,6 +131,7 @@ beforeEach(async () => {
     total: 2_500,
     creadoPor: VENDEDOR,
     creadoEn: Timestamp.now(),
+    generacionPedido: 0,
   })
 })
 
@@ -146,7 +147,7 @@ function contexto(): ContextoDeEmision {
 }
 
 describeConEmulador('emisión desde cotización de vecino', () => {
-  it('flujo vecino: líneas en cotización → emitir borra el documento', async () => {
+  it('flujo vecino: emitir conserva al vecino y consume la generación', async () => {
     const primero = await emitirComprobante(contexto(), {
       claveIdempotencia: 'clave-vecino-a',
       tipoDocumento: 'boleta',
@@ -168,6 +169,7 @@ describeConEmulador('emisión desde cotización de vecino', () => {
       medioPago: { medio: 'efectivo', montoRecibido: 2_500 },
       cotizacionId: COTIZACION_ID,
       capturaId: null,
+      generacionPedido: 0,
     })
     expect(primero.comprobanteId).toBe('clave-vecino-a')
 
@@ -175,7 +177,10 @@ describeConEmulador('emisión desde cotización de vecino', () => {
       .collection(COLECCIONES.cotizaciones)
       .doc(COTIZACION_ID)
       .get()
-    expect(cotizacion.exists).toBe(false)
+    expect(cotizacion.exists).toBe(true)
+    expect(cotizacion.data()?.['generacionPedido']).toBe(1)
+    expect(cotizacion.data()?.['lineas']).toEqual([])
+    expect(cotizacion.data()?.['aliasVecino']).toBe('wilmer')
 
     try {
       await emitirComprobante(contexto(), {
@@ -195,6 +200,7 @@ describeConEmulador('emisión desde cotización de vecino', () => {
         medioPago: { medio: 'efectivo', montoRecibido: 2_500 },
         cotizacionId: COTIZACION_ID,
         capturaId: null,
+        generacionPedido: 0,
       })
       expect.unreachable()
     } catch (error) {
@@ -203,5 +209,36 @@ describeConEmulador('emisión desde cotización de vecino', () => {
         expect(error.codigo).toBe('cotizacion_ya_usada')
       }
     }
+
+    const suelto = await emitirComprobante(contexto(), {
+      claveIdempotencia: 'clave-vecino-nuevo',
+      tipoDocumento: 'boleta',
+      cliente: {
+        tipoDocumento: 'RUC',
+        numeroDocumento: '20123456789',
+        denominacion: 'Wilmer SAC',
+      },
+      lineas: [
+        {
+          codigo: 'TUB-1-2',
+          descripcion: 'TUBO PVC 1/2 PULGADA',
+          unidad: 'UND',
+          cantidad: 2,
+          precio: 1_250,
+        },
+      ],
+      condicionPago: { tipo: 'contado' },
+      medioPago: { medio: 'efectivo', montoRecibido: 2_500 },
+      cotizacionId: null,
+      capturaId: null,
+      generacionPedido: null,
+    })
+    expect(suelto.comprobanteId).toBe('clave-vecino-nuevo')
+    const vecinoTrasSuelto = await base
+      .collection(COLECCIONES.cotizaciones)
+      .doc(COTIZACION_ID)
+      .get()
+    expect(vecinoTrasSuelto.exists).toBe(true)
+    expect(vecinoTrasSuelto.data()?.['generacionPedido']).toBe(1)
   })
 })

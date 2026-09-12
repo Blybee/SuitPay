@@ -1,15 +1,21 @@
 import { Boton } from '../../ui/componentes/primitivas.tsx'
 
 /**
- * Aviso cuando la cotización ya no existe (convertida o eliminada) (FR-019).
+ * Aviso cuando la cotización ya no existe (convertida o eliminada) (FR-019)
+ * o cuando el pedido de vecino ya consumió esa generación (FR-035a).
  */
 export function YaUsada({
   mensaje,
-  onCerrar,
+  onIrAComprobantes,
+  onNuevoPedido,
 }: {
   readonly mensaje?: string
-  readonly onCerrar?: () => void
+  readonly onIrAComprobantes?: () => void
+  readonly onNuevoPedido?: () => void
 }) {
+  const conAcciones =
+    onIrAComprobantes !== undefined && onNuevoPedido !== undefined
+
   return (
     <div className="space-y-3" role="status">
       <p className="text-cuerpo font-bold text-aviso">
@@ -20,10 +26,15 @@ export function YaUsada({
         Si ya se emitió, búscalo en la lista de comprobantes. No vuelvas a emitir
         con la misma cotización.
       </p>
-      {onCerrar !== undefined ? (
-        <Boton variante="secundario" onClick={onCerrar}>
-          Volver
-        </Boton>
+      {conAcciones ? (
+        <div className="flex flex-wrap gap-2 pt-1">
+          <Boton variante="principal" onClick={onIrAComprobantes}>
+            Comprobantes
+          </Boton>
+          <Boton variante="secundario" onClick={onNuevoPedido}>
+            Nuevo pedido
+          </Boton>
+        </div>
       ) : null}
     </div>
   )

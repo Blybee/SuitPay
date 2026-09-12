@@ -9,6 +9,7 @@ import { MiniaturaCaptura } from '../../features/captura/miniatura.tsx'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { usarCatalogo } from '../../features/catalogo/almacen.ts'
 import { CabecerasDeColumna } from './LineaPedido.tsx'
+import { Boton } from './primitivas.tsx'
 
 /**
  * Revisión contrastada de una captura (T122 / FR-042).
@@ -132,7 +133,7 @@ export function RevisionCaptura({
               key={`cap-${indice}`}
               className={[
                 'border-b border-borde px-4 py-3',
-                ambigua || pendiente ? 'bg-aviso/5' : '',
+                ambigua || pendiente ? 'border-l-2 border-l-aviso pl-[calc(1rem-2px)]' : '',
               ].join(' ')}
               data-testid={`linea-captura-${indice}`}
               data-estado={linea.estadoLinea}
@@ -148,20 +149,37 @@ export function RevisionCaptura({
                 >
                   {linea.textoOriginal}
                 </p>
-                <button
-                  type="button"
-                  data-testid={`quitar-linea-captura-${indice}`}
-                  className={[
-                    'inline-flex size-11 shrink-0 items-center justify-center rounded-full',
-                    'text-desvaida transition-[color,background-color] duration-rapida ease-salida',
-                    'hover:bg-aviso/15 hover:text-aviso',
-                    'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
-                  ].join(' ')}
-                  aria-label={`Quitar ${linea.textoOriginal} de la revisión`}
-                  onClick={() => quitar(indice)}
-                >
-                  <X className="size-5" aria-hidden />
-                </button>
+                <div className="flex shrink-0 items-center gap-1">
+                  {(ambigua || pendiente) && (
+                    <Boton
+                      variante="discreto"
+                      tamano="icono"
+                      aria-label={
+                        ambigua
+                          ? 'Buscar otro producto'
+                          : 'Buscar producto para esta línea'
+                      }
+                      aria-expanded={lupaEn === indice}
+                      onClick={() =>
+                        setLupaEn((actual) =>
+                          actual === indice ? null : indice,
+                        )
+                      }
+                    >
+                      <Search className="size-4" aria-hidden />
+                    </Boton>
+                  )}
+                  <Boton
+                    variante="discreto"
+                    tamano="icono"
+                    data-testid={`quitar-linea-captura-${indice}`}
+                    className="hover:border-aviso/40 hover:bg-aviso/10 hover:text-aviso"
+                    aria-label={`Quitar ${linea.textoOriginal} de la revisión`}
+                    onClick={() => quitar(indice)}
+                  >
+                    <X className="size-5" aria-hidden />
+                  </Boton>
+                </div>
               </div>
 
               {linea.estadoLinea === 'resuelta' && elegido && (
@@ -183,66 +201,64 @@ export function RevisionCaptura({
 
               {ambigua && (
                 <div className="ml-4 mt-2">
-                  <div className="flex items-center justify-between gap-2">
-                    <p className="font-mono text-etiqueta uppercase text-aviso">
-                      Elige un candidato
-                    </p>
-                    <button
-                      type="button"
-                      className="inline-flex size-11 items-center justify-center rounded-full text-desvaida hover:bg-mesa hover:text-tinta focus-visible:border focus-visible:border-tinta focus-visible:outline-none"
-                      aria-label="Buscar otro producto"
-                      aria-expanded={lupaEn === indice}
-                      onClick={() =>
-                        setLupaEn((actual) => (actual === indice ? null : indice))
-                      }
-                    >
-                      <Search className="size-4" aria-hidden />
-                    </button>
-                  </div>
+                  <p className="font-mono text-etiqueta uppercase tracking-wide text-desvaida">
+                    Elige un candidato
+                  </p>
                   <OpcionesAmbiguas
                     candidatos={linea.candidatos}
                     onElegir={(codigo) => elegir(indice, codigo)}
                   />
-                  {lupaEn === indice ? (
-                    <ComboboxProductoLinea
-                      onElegir={(producto) => {
-                        asignar(indice, producto)
-                        setLupaEn(null)
-                      }}
-                      onCerrar={() => setLupaEn(null)}
-                    />
-                  ) : null}
+                  <div
+                    className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+                    style={{
+                      gridTemplateRows: lupaEn === indice ? '1fr' : '0fr',
+                    }}
+                  >
+                    <div
+                      className="min-h-0 overflow-hidden"
+                      inert={lupaEn === indice ? undefined : true}
+                    >
+                      <ComboboxProductoLinea
+                        autoFocus={lupaEn === indice}
+                        onElegir={(producto) => {
+                          asignar(indice, producto)
+                          setLupaEn(null)
+                        }}
+                        onCerrar={() => setLupaEn(null)}
+                      />
+                    </div>
+                  </div>
                 </div>
               )}
 
               {pendiente && (
                 <div className="ml-4 mt-2">
-                  <div className="flex items-start justify-between gap-2">
-                    <p className="text-cuerpo text-aviso">
-                      Pendiente: no se pudo interpretar. Búscalo o escríbelo a
-                      mano.
-                    </p>
-                    <button
-                      type="button"
-                      className="inline-flex size-11 shrink-0 items-center justify-center rounded-full text-desvaida hover:bg-mesa hover:text-tinta focus-visible:border focus-visible:border-tinta focus-visible:outline-none"
-                      aria-label="Buscar producto para esta línea"
-                      aria-expanded={lupaEn === indice}
-                      onClick={() =>
-                        setLupaEn((actual) => (actual === indice ? null : indice))
-                      }
+                  <p className="font-mono text-etiqueta uppercase tracking-wide text-desvaida">
+                    Sin interpretar
+                  </p>
+                  <p className="mt-1 text-cuerpo text-tinta">
+                    No se pudo interpretar. Búscalo o escríbelo a mano.
+                  </p>
+                  <div
+                    className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+                    style={{
+                      gridTemplateRows: lupaEn === indice ? '1fr' : '0fr',
+                    }}
+                  >
+                    <div
+                      className="min-h-0 overflow-hidden"
+                      inert={lupaEn === indice ? undefined : true}
                     >
-                      <Search className="size-4" aria-hidden />
-                    </button>
+                      <ComboboxProductoLinea
+                        autoFocus={lupaEn === indice}
+                        onElegir={(producto) => {
+                          asignar(indice, producto)
+                          setLupaEn(null)
+                        }}
+                        onCerrar={() => setLupaEn(null)}
+                      />
+                    </div>
                   </div>
-                  {lupaEn === indice ? (
-                    <ComboboxProductoLinea
-                      onElegir={(producto) => {
-                        asignar(indice, producto)
-                        setLupaEn(null)
-                      }}
-                      onCerrar={() => setLupaEn(null)}
-                    />
-                  ) : null}
                 </div>
               )}
             </li>

@@ -17,6 +17,7 @@ describe('workspaces de pedido', () => {
       tipoDocumento: 'nota_venta',
       cotizacionId: null,
       capturaId: null,
+      generacionPedido: null,
       claveIdempotencia: null,
       comprobanteOrigenId: null,
       comprobanteOrigenEtiqueta: null,
@@ -53,5 +54,26 @@ describe('workspaces de pedido', () => {
     expect(usarPedido.getState().slotActivo).toBe(1)
     expect(usarPedido.getState().segundoAbierto).toBe(false)
     expect(usarPedido.getState().lineas).toHaveLength(0)
+  })
+
+  it('suelta el origen obsoleto y la clave sin vaciar las líneas', () => {
+    usarPedido.getState().agregarLinea(producto)
+    usarPedido.getState().fijarOrigen({
+      cotizacionId: 'cot-vecino',
+      generacionPedido: 0,
+    })
+    usarPedido.getState().reclamarClaveDeIdempotencia()
+    expect(usarPedido.getState().claveIdempotencia).not.toBeNull()
+
+    usarPedido.getState().fijarOrigen({
+      cotizacionId: null,
+      generacionPedido: null,
+    })
+
+    expect(usarPedido.getState().cotizacionId).toBeNull()
+    expect(usarPedido.getState().generacionPedido).toBeNull()
+    expect(usarPedido.getState().claveIdempotencia).toBeNull()
+    expect(usarPedido.getState().lineas).toHaveLength(1)
+    expect(usarPedido.getState().lineas[0]?.codigo).toBe('C1')
   })
 })

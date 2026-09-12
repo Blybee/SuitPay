@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react'
-import { Camera, ImagePlus, X } from 'lucide-react'
+import { Camera, ImagePlus, Loader2, X } from 'lucide-react'
+import { Boton } from '../../ui/componentes/primitivas.tsx'
 import { usarCatalogo } from '../catalogo/almacen.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
 import {
@@ -175,10 +176,14 @@ export function PanelFotografia({
     <div
       className="border-b border-borde bg-mesa px-4 py-3"
       data-testid="panel-fotografia"
+      aria-busy={ocupado || undefined}
     >
       <div className="flex items-center justify-between gap-3">
         <div>
-          <p className="text-cuerpo font-bold text-tinta">
+          <p className="flex items-center gap-2 text-cuerpo font-bold text-tinta">
+            {ocupado ? (
+              <Loader2 className="size-5 animate-spin" aria-hidden />
+            ) : null}
             {ocupado ? 'Procesando fotografía…' : 'Fotografiar guía'}
           </p>
           <p className="font-mono text-etiqueta text-desvaida">
@@ -193,41 +198,42 @@ export function PanelFotografia({
         <div className="flex items-center gap-2">
           {!ocupado && (
             <>
-              <button
-                type="button"
+              <Boton
+                variante="secundario"
                 data-testid="elegir-foto"
                 aria-label="Elegir fotografía"
                 onClick={() => inputRef.current?.click()}
-                className="flex min-h-12 items-center gap-2 rounded-full border border-borde bg-papel px-4 text-tinta"
               >
                 <ImagePlus className="size-5" aria-hidden />
                 Galería
-              </button>
-              <label className="flex min-h-12 cursor-pointer items-center gap-2 rounded-full bg-tinta px-4 text-papel">
-                <Camera className="size-5" aria-hidden />
-                Cámara
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  className="sr-only"
-                  data-testid="input-camara"
-                  onChange={(e) => {
-                    const f = e.target.files?.[0]
-                    if (f) void procesarArchivo(f)
-                  }}
-                />
-              </label>
+              </Boton>
+              <Boton variante="principal" asChild>
+                <label>
+                  <Camera className="size-5" aria-hidden />
+                  Cámara
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    className="sr-only"
+                    data-testid="input-camara"
+                    onChange={(e) => {
+                      const f = e.target.files?.[0]
+                      if (f) void procesarArchivo(f)
+                    }}
+                  />
+                </label>
+              </Boton>
             </>
           )}
-          <button
-            type="button"
+          <Boton
+            variante="discreto"
+            tamano="icono"
             aria-label="Cancelar fotografía"
             onClick={abandonar}
-            className="flex size-12 items-center justify-center rounded-full border border-borde"
           >
             <X className="size-5" aria-hidden />
-          </button>
+          </Boton>
         </div>
       </div>
       <input

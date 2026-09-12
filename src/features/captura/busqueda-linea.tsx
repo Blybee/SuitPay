@@ -8,9 +8,11 @@ import type { ProductoBuscable } from '../../domain/busqueda/productos.ts'
 export function ComboboxProductoLinea({
   onElegir,
   onCerrar,
+  autoFocus = true,
 }: {
   readonly onElegir: (producto: ProductoBuscable) => void
   readonly onCerrar: () => void
+  readonly autoFocus?: boolean
 }) {
   const id = useId()
   const listboxId = `${id}-listbox`
@@ -23,8 +25,8 @@ export function ComboboxProductoLinea({
   const activo = coincidencias[resaltado]
 
   useEffect(() => {
-    campo.current?.focus()
-  }, [])
+    if (autoFocus) campo.current?.focus()
+  }, [autoFocus])
 
   useEffect(() => {
     setResaltado(0)

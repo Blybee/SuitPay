@@ -149,6 +149,17 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
         borrador.cotizacionesEliminadas.add(cotizacionId)
         borrador.cotizaciones.delete(cotizacionId)
       },
+
+      consumirPedidoDeVecino: (cotizacionId, generacionSiguiente) => {
+        const actual =
+          borrador.cotizaciones.get(cotizacionId) ??
+          this.cotizaciones.get(cotizacionId)?.valor
+        if (actual === undefined) return
+        borrador.cotizaciones.set(cotizacionId, {
+          ...actual,
+          generacionPedido: generacionSiguiente,
+        })
+      },
     }
 
     // Si `trabajo` lanza, la excepción sube y el borrador muere con esta llamada

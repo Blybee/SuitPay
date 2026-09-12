@@ -4,7 +4,7 @@ import {
 } from './emitir.funciones.ts'
 import { compartirDocumento, nombreDelComprobante } from './compartir.ts'
 import { imprimirDocumento } from './impresion.ts'
-import { urlPdfDeNotaVenta } from './pdf-nota.ts'
+import { blobDePdfDeNotaVenta, urlPdfDeNotaVenta } from './pdf-nota.ts'
 import type { ResultadoDeCompartir } from './compartir.ts'
 import type { ResultadoDeImpresion } from './impresion.ts'
 
@@ -85,23 +85,21 @@ export async function compartirComprobante(
     return { ok: false, motivo: 'sin_archivo' }
   }
 
+  const nombre = nombreDelComprobante(
+    comprobante.serie,
+    comprobante.numero,
+    comprobante.tipoDocumento,
+  )
+
   if (comprobante.tipoDocumento === 'nota_venta') {
-    return compartirDocumento(
-      urlPdfDeNotaVenta(comprobante),
-      nombreDelComprobante(
-        comprobante.serie,
-        comprobante.numero,
-        comprobante.tipoDocumento,
-      ),
-    )
+    return compartirDocumento({
+      nombreSugerido: nombre,
+      archivo: blobDePdfDeNotaVenta(comprobante),
+    })
   }
 
-  return compartirDocumento(
-    comprobante.proveedor?.pdf ?? null,
-    nombreDelComprobante(
-      comprobante.serie,
-      comprobante.numero,
-      comprobante.tipoDocumento,
-    ),
-  )
+  return compartirDocumento({
+    nombreSugerido: nombre,
+    urlDelPdf: comprobante.proveedor?.pdf ?? null,
+  })
 }

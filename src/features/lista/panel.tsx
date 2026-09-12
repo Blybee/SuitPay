@@ -11,6 +11,7 @@ import {
   semanaLaboralEnLima,
 } from '../../domain/lista/semana.ts'
 import type { LineaDeRequerimiento } from '../../domain/lista/tipos.ts'
+import { compartirDocumento } from '../emision/compartir.ts'
 import { usarNotificaciones } from '../notificaciones/almacen.ts'
 import { usarSesion } from '../sesion/almacen.ts'
 import { CLAVES_DE_CONSULTA } from '../../infra/consultas/cliente.ts'
@@ -47,33 +48,18 @@ async function compartirPdfPorWhatsApp(
   lineas: readonly LineaDeRequerimiento[],
 ): Promise<void> {
   const blob = blobDePdf(bytesDePdfDeRequerimiento(lineas, new Date()))
-  const archivo = new File([blob], 'lista-requerimiento.pdf', {
-    type: 'application/pdf',
+  const resultado = await compartirDocumento({
+    nombreSugerido: 'lista-requerimiento',
+    archivo: blob,
+    descargarSiFalla: true,
   })
-  const puedeCompartir =
-    typeof navigator !== 'undefined' &&
-    'share' in navigator &&
-    (typeof navigator.canShare !== 'function' ||
-      navigator.canShare({ files: [archivo] }))
-
-  if (puedeCompartir) {
-    try {
-      await navigator.share({
-        title: 'Lista de requerimiento',
-        files: [archivo],
-      })
-      return
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') return
-    }
+  if (resultado.ok && resultado.via === 'descarga') {
+    usarNotificaciones.getState().mostrar({
+      tono: 'info',
+      mensaje:
+        'PDF descargado. Adjúntalo en WhatsApp: el navegador no pudo abrir la hoja de compartir.',
+    })
   }
-
-  await descargarPdf(lineas)
-  usarNotificaciones.getState().mostrar({
-    tono: 'info',
-    mensaje:
-      'PDF descargado. Adjúntalo en WhatsApp: el navegador no pudo abrir la hoja de compartir.',
-  })
 }
 
 /**

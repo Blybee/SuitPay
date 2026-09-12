@@ -87,6 +87,8 @@ function mapearCotizacion(
       canal === 'vecino' && typeof datos['telefonoVecino'] === 'string'
         ? datos['telefonoVecino'].trim() || null
         : null,
+    generacionPedido:
+      typeof datos['generacionPedido'] === 'number' ? datos['generacionPedido'] : 0,
   }
 }
 

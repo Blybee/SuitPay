@@ -114,6 +114,7 @@ export function peticion(
     medioPago: { medio: 'efectivo', montoRecibido: 2_500 },
     cotizacionId: null,
     capturaId: null,
+    generacionPedido: null,
     ...cambios,
   }
 }

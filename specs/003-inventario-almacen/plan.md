@@ -17,7 +17,6 @@ Contadores orientativos por SKU (`inventario/{codigo}`), descuento idempotente a
 **Constraints**: principio II (un efecto por clave); principio V (aviso no bloquea; fallo de inventario no revierte emisión); descontar solo con venta cerrada (`enviado`/`aceptado`), también en `consultar-estado`.
 
 ## Constitution Check
-
 | # | Puerta | Estado |
 |---|--------|--------|
 | I | Ajustes admin explícitos; stock no emite solo | pass |

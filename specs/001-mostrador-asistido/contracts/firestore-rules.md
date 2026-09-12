@@ -23,7 +23,7 @@ Define quién puede leer y escribir cada colección. Es el contrato que sostiene
 | `clientes/{id}` | leer, crear | leer, crear, editar | leer | El vendedor crea pero no edita: corregir los datos de un cliente ya registrado es una operación administrativa. |
 | `comprobantes/{id}` | **leer** | **leer** | **leer** | **Ningún rol escribe. Nunca.** Solo el backend. |
 | `series/{id}` | leer las propias | leer, editar | leer | El contador solo lo toca el backend, en transacción. |
-| `cotizaciones/{id}` | leer, crear, editar y **borrar** las pendientes | leer, crear, editar, borrar pendientes | leer | La conversión las borra el backend en la transacción de emisión (FR-019). El cliente puede borrar pendientes tras confirmación en UI (FR-019a). En canal `vecino` se admite `telefonoVecino` y editar `aliasVecino`. |
+| `cotizaciones/{id}` | leer, crear, editar y **borrar** las pendientes | leer, crear, editar, borrar pendientes | leer | Canal `general`: la conversión las borra el backend en la transacción de emisión (FR-019). Canal `vecino`: la conversión actualiza `generacionPedido` y vacía líneas (FR-035a). El cliente puede borrar pendientes tras confirmación en UI (FR-019a). En canal `vecino` se admite `telefonoVecino` y editar `aliasVecino`. |
 | `listasRequerimiento/{uid}/diasLista/{AAAA-MM-DD}` | leer, crear, editar, borrar **los propios** | leer, crear, editar, borrar los propios | leer los propios | Lista de requerimiento por día laboral; TTL 1 semana (`caducaEn`) sobre el collection group `diasLista`. |
 | `capturas/{id}` | leer, crear las propias | leer | — | El estado y las propuestas los escribe el backend. |
 | `usuarios/{uid}` | leer el propio | leer, crear, editar | leer | El rol solo lo asigna el administrador, y se propaga al token. |

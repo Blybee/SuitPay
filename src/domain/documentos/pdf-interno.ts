@@ -31,11 +31,21 @@ const CENTRO = ANCHO_PAGINA / 2
 const COL_CODIGO = 40
 const COL_DESC = 108
 const ANCHO_CODIGO = 64
-const ANCHO_DESC = 204
-const COL_CANT_IZQ = 320
-const COL_CANT_DER = 385
-const COL_PRECIO_DER = 470
+const ANCHO_DESC = 258
+const COL_CANT_IZQ = 374
+const COL_CANT_DER = 439
+const COL_PRECIO_DER = 497
 const COL_TOTAL_DER = 555
+
+/** Anchos de celda (pt). PRECIO/TOTAL compactos; el margen derecho 555 no se mueve. */
+export const LAYOUT_COLUMNAS_PDF_INTERNO = {
+  codigo: COL_DESC - COL_CODIGO,
+  descripcion: COL_CANT_IZQ - COL_DESC,
+  cantidad: COL_CANT_DER - COL_CANT_IZQ,
+  precio: COL_PRECIO_DER - COL_CANT_DER,
+  total: COL_TOTAL_DER - COL_PRECIO_DER,
+  margenDerecho: COL_TOTAL_DER,
+} as const
 
 const CELDAS_ENCABEZADO: readonly { readonly x: number; readonly w: number }[] =
   [

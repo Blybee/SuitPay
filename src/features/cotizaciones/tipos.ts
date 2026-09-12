@@ -23,4 +23,6 @@ export interface Cotizacion {
   readonly actualizadoEn: Date | null
   /** Celular del vecino (canal vecino). Ausente en cotizaciones generales. */
   readonly telefonoVecino: string | null
+  /** Contador de generación del pedido vivo (canal vecino). */
+  readonly generacionPedido: number
 }

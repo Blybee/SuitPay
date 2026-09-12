@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
-import { ChevronDown, Mic, Square, X } from 'lucide-react'
+import { ChevronDown, Loader2, Mic, Square, X } from 'lucide-react'
+import { Boton } from '../../ui/componentes/primitivas.tsx'
 import { horaEnLima } from '../../domain/captura/hora-lima.ts'
 import { usarCatalogo } from '../catalogo/almacen.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
@@ -258,10 +259,13 @@ export function PanelDictado({
     <div
       className="border-b border-borde bg-mesa px-4 py-3"
       data-testid="panel-dictado"
+      aria-busy={procesando || undefined}
     >
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-3">
-          {grabando ? (
+          {procesando ? (
+            <Loader2 className="size-6 animate-spin text-tinta" aria-hidden />
+          ) : grabando ? (
             <Mic className="size-6 text-aviso" aria-hidden />
           ) : (
             <Mic className="size-6 text-desvaida" aria-hidden />
@@ -284,12 +288,12 @@ export function PanelDictado({
         </div>
 
         <div className="flex items-center gap-2">
-          <button
-            type="button"
+          <Boton
+            variante="secundario"
             popoverTarget="lista-audios-hoy"
             popoverTargetAction="toggle"
             aria-label="Audios grabados hoy"
-            className="flex min-h-12 items-center gap-1 rounded-full border border-borde px-3 text-tinta"
+            className="px-3"
             onClick={() => {
               if (!('popover' in HTMLElement.prototype)) {
                 setListaAbierta((abierta) => !abierta)
@@ -297,31 +301,28 @@ export function PanelDictado({
             }}
           >
             <ChevronDown className="size-4" aria-hidden />
-            <span className="font-mono text-etiqueta">
-              {visibles.length}
-            </span>
-          </button>
+            <span className="font-mono text-etiqueta">{visibles.length}</span>
+          </Boton>
           {grabando && (
-            <button
-              type="button"
+            <Boton
+              variante="principal"
               data-testid="detener-dictado"
               aria-label="Detener y enviar dictado"
               onClick={() => void detenerYEnviar()}
-              className="flex min-h-12 items-center gap-2 rounded-full bg-tinta px-4 text-papel"
             >
               <Square className="size-4 fill-current" aria-hidden />
               Listo
-            </button>
+            </Boton>
           )}
-          <button
-            type="button"
+          <Boton
+            variante="discreto"
+            tamano="icono"
             data-testid="cancelar-dictado"
             aria-label="Cancelar y seguir escribiendo"
             onClick={abandonar}
-            className="flex size-12 items-center justify-center rounded-full border border-borde text-tinta"
           >
             <X className="size-5" aria-hidden />
-          </button>
+          </Boton>
         </div>
       </div>
 
