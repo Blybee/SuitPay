@@ -1,16 +1,16 @@
-import { AlertTriangle, Download, Loader2, Printer, Share2 } from 'lucide-react'
-import { useEffect, useRef, useState } from 'react'
+import { AlertTriangle, Loader2 } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { MarcaDeEstado } from '../../ui/componentes/Sello.tsx'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
 import { YaUsada } from '../cotizaciones/ya-usada.tsx'
-import { compartirDocumento, nombreDelComprobante } from './compartir.ts'
+import { AccionesDePdf } from './acciones-pdf.tsx'
+import { nombreDelComprobante } from './compartir.ts'
 import { consultarEstado, leerComprobante } from './emitir.funciones.ts'
 import type { RespuestaDeEmitir } from './emitir.funciones.ts'
 import { sePuedeReintentar, usarEmision } from './flujo.ts'
 import type { FaseDeEmision } from './flujo.ts'
-import { imprimirDocumento } from './impresion.ts'
 import { blobDePdfDeNotaVenta } from './pdf-nota.ts'
 import { resolverYPrecargarPdf } from './precarga.ts'
 
@@ -30,7 +30,7 @@ export interface PropsDeEstadoDeEmision {
   readonly onNuevoPedido: () => void
 }
 
-function AccionesDePdf({
+function AccionesDePdfDeComprobante({
   comprobante,
   onImprimir,
   onCompartir,
@@ -39,20 +39,17 @@ function AccionesDePdf({
   readonly onImprimir: (comprobanteId: string) => void
   readonly onCompartir: (comprobanteId: string) => void
 }) {
-  const [aviso, setAviso] = useState<string | null>(null)
-  const [compartiendo, setCompartiendo] = useState(false)
   const [pdf, setPdf] = useState<string | null>(comprobante.archivos.pdf)
+  const [blobLocal, setBlobLocal] = useState<Blob | null>(null)
   const [nombre, setNombre] = useState(() =>
     nombreDelComprobante(comprobante.serie, comprobante.numero),
   )
-  const blobNota = useRef<Blob | null>(null)
-  const sinPdf = (pdf === null || pdf === '') && blobNota.current === null
 
   useEffect(() => {
     const ciclo = { activo: true }
     const sigue = (): boolean => ciclo.activo
     let localUrl: string | null = null
-    blobNota.current = null
+    setBlobLocal(null)
     void (async () => {
       const url = await resolverYPrecargarPdf(
         comprobante.comprobanteId,
@@ -75,8 +72,8 @@ function AccionesDePdf({
           URL.revokeObjectURL(generado)
           return
         }
-        blobNota.current = blob
         localUrl = generado
+        setBlobLocal(blob)
         setPdf(generado)
         setNombre(
           nombreDelComprobante(leido.serie, leido.numero, leido.tipoDocumento),
@@ -91,103 +88,18 @@ function AccionesDePdf({
     }
   }, [comprobante.comprobanteId, comprobante.archivos.pdf])
 
-  function urlFresco(): string | null {
-    if (blobNota.current !== null) {
-      return URL.createObjectURL(blobNota.current)
-    }
-    if (pdf !== null && pdf !== '') return pdf
-    return null
-  }
-
-  function alImprimir(): void {
-    setAviso(null)
-    const url = urlFresco()
-    if (url !== null) {
-      const resultado = imprimirDocumento(url)
-      if (!resultado.ok) {
-        setAviso(
-          resultado.motivo === 'no_se_pudo_abrir'
-            ? 'No se pudo abrir el PDF. Revisa el bloqueador de ventanas.'
-            : 'Este comprobante no tiene archivo PDF.',
-        )
-      }
-      return
-    }
-    onImprimir(comprobante.comprobanteId)
-  }
-
-  function alGuardar(): void {
-    setAviso(null)
-    const url = urlFresco()
-    if (url === null) {
-      setAviso('Este comprobante no tiene archivo PDF para guardar.')
-      return
-    }
-    const enlace = document.createElement('a')
-    enlace.href = url
-    enlace.download = `${nombre}.pdf`
-    enlace.rel = 'noopener noreferrer'
-    enlace.target = '_blank'
-    enlace.click()
-  }
-
-  async function alCompartir(): Promise<void> {
-    setAviso(null)
-    setCompartiendo(true)
-    try {
-      const resultado = await compartirDocumento({
-        nombreSugerido: nombre,
-        archivo: blobNota.current,
-        urlDelPdf: pdf,
-      })
-      if (resultado.ok) return
-      if (resultado.motivo === 'cancelado') return
-      if (resultado.motivo === 'sin_archivo') {
-        onCompartir(comprobante.comprobanteId)
-        return
-      }
-      setAviso(
-        resultado.motivo === 'sin_hoja'
-          ? 'No se pudo abrir la hoja de compartir. Usa Guardar y adjúntalo en WhatsApp.'
-          : 'No se pudo compartir el PDF.',
-      )
-    } finally {
-      setCompartiendo(false)
-    }
-  }
-
   return (
-    <div className="space-y-2 pt-1">
-      {aviso !== null ? (
-        <p className="text-cuerpo font-bold text-aviso" role="status">
-          {aviso}
-        </p>
-      ) : null}
-      <div className="flex flex-wrap gap-2">
-        <Boton variante="principal" onClick={alImprimir}>
-          <Printer className="size-5" aria-hidden />
-          Imprimir
-        </Boton>
-        <Boton onClick={alGuardar} disabled={sinPdf}>
-          <Download className="size-5" aria-hidden />
-          Guardar
-        </Boton>
-        <Boton
-          disabled={compartiendo}
-          aria-busy={compartiendo || undefined}
-          onClick={() => {
-            void alCompartir()
-          }}
-        >
-          {compartiendo ? (
-            <Loader2 className="size-5 animate-spin" aria-hidden />
-          ) : (
-            <Share2 className="size-5" aria-hidden />
-          )}
-          Compartir
-        </Boton>
-      </div>
-    </div>
+    <AccionesDePdf
+      nombre={nombre}
+      blob={blobLocal}
+      url={pdf}
+      onImprimirFallback={() => {
+        onImprimir(comprobante.comprobanteId)
+      }}
+      onCompartirFallback={() => {
+        onCompartir(comprobante.comprobanteId)
+      }}
+    />
   )
 }
 
@@ -267,7 +179,7 @@ export function EstadoDeEmision({
             </p>
           )}
 
-          <AccionesDePdf
+          <AccionesDePdfDeComprobante
             comprobante={comprobante}
             onImprimir={onImprimir}
             onCompartir={onCompartir}

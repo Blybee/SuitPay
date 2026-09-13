@@ -47,8 +47,8 @@ Define quién puede leer y escribir cada colección. Es el contrato que sostiene
 Las reglas comprueban forma, no lógica de negocio. La lógica vive en las funciones, donde puede validarse en serio.
 
 - Al crear un cliente: el identificador del documento coincide con el campo del número de documento, los campos obligatorios están presentes, y `creadoPor` coincide con el usuario autenticado.
-- Al crear una cotización: `creadoPor` coincide con el usuario autenticado, el estado inicial es `pendiente`, `canal` es `general` o `vecino`, y si `canal` es `vecino` entonces `aliasVecino` está presente y no vacío.
-- Al editar una cotización: el estado sigue siendo `pendiente`, no se altera la autoría ni el `canal`; las claves afectadas MUST pertenecer a `{aliasVecino, telefonoVecino, cliente, lineas, total, actualizadoEn}`. El alias, el teléfono y la instantánea embebida de cliente sí pueden cambiar en canal vecino. Un documento con campos residuales de un esquema previo no bloquea ese update.
+- Al crear una cotización: `creadoPor` coincide con el usuario autenticado, el estado inicial es `pendiente`, `canal` es `general` o `vecino`, y si `canal` es `vecino` entonces `aliasVecino` está presente y no vacío. `generacionPedido` MAY estar presente y, si lo está, MUST ser `0`.
+- Al editar una cotización: el estado sigue siendo `pendiente`, no se altera la autoría, el `canal` ni `generacionPedido`; las claves afectadas MUST pertenecer a `{aliasVecino, telefonoVecino, cliente, lineas, total, actualizadoEn}`. El alias, el teléfono y la instantánea embebida de cliente sí pueden cambiar en canal vecino. Un documento con campos residuales de un esquema previo no bloquea ese update. El contador de generación solo lo incrementa el backend (FR-035a).
 - Al escribir `listasRequerimiento/{uid}/diasLista/{dia}`: el segmento `{uid}` coincide con el vendedor autenticado, `{dia}` tiene forma `AAAA-MM-DD`, `lineas` es un arreglo y `caducaEn` es marca de tiempo.
 - Al borrar una cotización: el documento existía en estado `pendiente` (el cliente no “borra” comprobantes disfrazados).
 - En create se rechazan campos no previstos en el documento completo; en update se rechazan claves afectadas fuera del conjunto mutable.
@@ -62,6 +62,8 @@ Las reglas se prueban con el emulador, y las pruebas son obligatorias porque pro
 - Un vendedor intenta borrar un comprobante. **Debe fallar.**
 - Un vendedor intenta incrementar el contador de su serie. **Debe fallar.**
 - Un vendedor intenta escribir un campo `comprobanteId` o `estado: convertida` en una cotización. **Debe fallar** (campos no previstos / estado inválido).
+- Un vendedor crea una cotización con `generacionPedido: 0`. **Debe funcionar.**
+- Un vendedor intenta crear o editar una cotización con `generacionPedido` distinto de 0. **Debe fallar** (solo el backend lo incrementa).
 - Un vendedor borra una cotización `pendiente` (propia o de otro). **Debe funcionar** (FR-019a / FR-017).
 - Un vendedor desactivado intenta cualquier escritura. **Debe fallar.**
 - Un vendedor intenta cambiar su propio rol a administrador. **Debe fallar.**

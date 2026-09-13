@@ -73,13 +73,18 @@ describe('RevisionCaptura layout', () => {
       />,
     )
     const fila = screen.getByTestId('linea-captura-0')
-    expect(fila.className).toMatch(/border-l-aviso/)
+    expect(fila.className).not.toMatch(/border-l-aviso/)
     expect(fila.className).not.toMatch(/bg-aviso/)
+    const original = screen.getByText('codo')
+    expect(original.className).toMatch(/bg-sello/)
+    expect(original.className).not.toMatch(/line-through/)
     expect(screen.getByText('Elige un candidato')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: 'Buscar otro producto' })).toBeInTheDocument()
     expect(
       screen.getByRole('button', { name: 'Quitar codo de la revisión' }),
     ).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Aprobar' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Descartar' })).toBeInTheDocument()
     const candidato = screen.getByRole('button', { name: /CODO FG 1\/2/ })
     expect(candidato.className).toMatch(/rounded-2xl/)
     expect(candidato.className).toMatch(/bg-papel/)

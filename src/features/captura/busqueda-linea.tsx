@@ -45,7 +45,7 @@ export function ComboboxProductoLinea({
         ref={campo}
         type="search"
         role="combobox"
-        aria-expanded
+        aria-expanded={termino.length > 0}
         aria-controls={listboxId}
         aria-autocomplete="list"
         aria-activedescendant={
@@ -83,7 +83,7 @@ export function ComboboxProductoLinea({
         <ul
           id={listboxId}
           role="listbox"
-          className="absolute z-20 mt-1 max-h-56 w-full overflow-auto rounded-2xl border border-borde bg-papel shadow-md"
+          className="mt-1 max-h-56 w-full overflow-auto rounded-2xl border border-borde bg-papel shadow-md"
         >
           {resultado.sinCoincidencias ? (
             <li className="px-4 py-3 text-cuerpo text-desvaida">

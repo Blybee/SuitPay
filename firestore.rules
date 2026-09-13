@@ -167,11 +167,21 @@ service cloud.firestore {
       function cotizacionBienFormada() {
         return soloEstosCampos([
                  'numero', 'estado', 'canal', 'aliasVecino', 'telefonoVecino',
-                 'cliente', 'lineas', 'total', 'creadoPor', 'creadoEn',
-                 'actualizadoEn'
+                 'cliente', 'lineas', 'total', 'generacionPedido',
+                 'creadoPor', 'creadoEn', 'actualizadoEn'
                ])
                && canalValido()
-               && aliasCoherente();
+               && aliasCoherente()
+               && generacionInicial();
+      }
+
+      // El cliente solo puede nacer en 0. Subirlo es el backend, en la
+      // transacción de emisión de vecino (FR-035a). Un create con otro valor
+      // saltaría esa comparación.
+      function generacionInicial() {
+        return !('generacionPedido' in request.resource.data)
+               || (request.resource.data.generacionPedido is int
+                   && request.resource.data.generacionPedido == 0);
       }
 
       // Update: lista blanca de claves afectadas, no hasOnly del documento
@@ -198,6 +208,7 @@ service cloud.firestore {
                     && sinCambiar('creadoPor')
                     && sinCambiar('numero')
                     && sinCambiar('canal')
+                    && sinCambiar('generacionPedido')
                     && canalValido()
                     && aliasCoherente()
                     && camposMutablesCotizacion();

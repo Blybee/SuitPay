@@ -4,6 +4,10 @@ import { imprimirDocumento } from '../emision/impresion.ts'
 import type { ResultadoDeImpresion } from '../emision/impresion.ts'
 import type { Cotizacion } from './tipos.ts'
 
+export function nombreDeArchivoDeCotizacion(numero: number): string {
+  return `cotizacion-${numero}`
+}
+
 export function blobDePdfDeCotizacion(cotizacion: Cotizacion): Blob {
   const creadoEn =
     cotizacion.creadoEn instanceof Date

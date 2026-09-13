@@ -42,6 +42,7 @@ import type { OperacionDeConsulta } from '../features/comandos/catalogo.ts'
 import { PapeletaDeGuia } from '../features/guia/papeleta.tsx'
 import type { BorradorDeGuia } from '../features/guia/papeleta.tsx'
 import { AltaTransportista } from '../features/transportistas/alta.tsx'
+import { CotizacionEmitida } from '../features/cotizaciones/emitida.tsx'
 import { guardarCotizacion } from '../features/cotizaciones/guardar.ts'
 import { PanelDeCotizaciones } from '../features/cotizaciones/panel.tsx'
 import { crearCotizacionVecino } from '../features/vecinos/crear.ts'
@@ -177,6 +178,9 @@ function Mostrador() {
   const [consultandoPadron, setConsultandoPadron] = useState(false)
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false)
   const [avisoCotizacion, setAvisoCotizacion] = useState<string | null>(null)
+  const [cotizacionEmitida, setCotizacionEmitida] = useState<Cotizacion | null>(
+    null,
+  )
   const [panelDictado, setPanelDictado] = useState(false)
   const [panelFoto, setPanelFoto] = useState(false)
   const [vecinoActivoId, setVecinoActivoId] = useState<string | null>(null)
@@ -906,6 +910,7 @@ function Mostrador() {
 
   function limpiarContextoDeCotizacionEnCabecera(): void {
     pedido.fijarModoCotizacion(false)
+    setAvisoCotizacion(null)
   }
 
   async function lanzarGuardadoDeCotizacion(): Promise<void> {
@@ -919,7 +924,11 @@ function Mostrador() {
         cliente: pedido.cliente,
         cotizacionId: pedido.cotizacionId,
       })
-      if (!resultado.ok || resultado.numero === undefined) {
+      if (
+        !resultado.ok ||
+        resultado.numero === undefined ||
+        resultado.cotizacionId === undefined
+      ) {
         setAvisoCotizacion(
           resultado.mensaje ?? 'No se pudo guardar la cotización.',
         )
@@ -930,15 +939,28 @@ function Mostrador() {
         pares: paresDesdePedido(pedido.lineas),
         clienteId: pedido.cliente?.numeroDocumento,
       })
-      // Cierra el borrador en Pedido: la cotización vive en su tab.
-      // Sin aviso persistente en Pedido (el listado de Cotizaciones basta).
+      const snapshot: Cotizacion = {
+        id: resultado.cotizacionId,
+        numero: resultado.numero,
+        estado: 'pendiente',
+        canal: 'general',
+        aliasVecino: null,
+        cliente: pedido.cliente,
+        lineas: pedido.lineas,
+        total,
+        creadoPor: sesion.uid,
+        creadoEn: new Date(),
+        actualizadoEn: new Date(),
+        telefonoVecino: null,
+        generacionPedido: pedido.generacionPedido ?? 0,
+      }
       usarPedido.getState().vaciar()
       limpiarContextoDeCotizacionEnCabecera()
       setAvisoCotizacion(null)
       void queryClient.invalidateQueries({
         queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
       })
-      setPestana('cotizaciones')
+      setCotizacionEmitida(snapshot)
     } finally {
       setGuardandoCotizacion(false)
     }
@@ -1309,6 +1331,7 @@ function Mostrador() {
                 cotizacionId: null,
                 generacionPedido: null,
               })
+              limpiarContextoDeCotizacionEnCabecera()
               cerrarEmision()
               setEncadenarGuia(false)
               void navigate({ to: '/comprobantes' })
@@ -1318,6 +1341,7 @@ function Mostrador() {
                 cotizacionId: null,
                 generacionPedido: null,
               })
+              limpiarContextoDeCotizacionEnCabecera()
               cerrarEmision()
               setEncadenarGuia(false)
             }}
@@ -1373,6 +1397,14 @@ function Mostrador() {
           void ejecutarComando(`${prefijo} ${argumentos.join(' ')}`)
         }}
       />
+      {cotizacionEmitida !== null ? (
+        <CotizacionEmitida
+          cotizacion={cotizacionEmitida}
+          onCerrar={() => {
+            setCotizacionEmitida(null)
+          }}
+        />
+      ) : null}
       <PapeletaDeGuia
         abierta={papeletaGuiaAbierta}
         onCerrar={() => {

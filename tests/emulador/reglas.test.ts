@@ -291,8 +291,35 @@ describeConEmulador('cotizaciones', () => {
         cliente: null,
         lineas: [],
         total: 1000,
+        generacionPedido: 0,
         creadoPor: 'vendedor-1',
         creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+      }),
+    )
+  })
+
+  it('un vendedor NO puede crear una cotización con generación distinta de 0', async () => {
+    await assertFails(
+      setDoc(doc(comoVendedor(), 'cotizaciones/generacion-inventada'), {
+        numero: 45,
+        estado: 'pendiente',
+        canal: 'general',
+        cliente: null,
+        lineas: [],
+        total: 1000,
+        generacionPedido: 1,
+        creadoPor: 'vendedor-1',
+        creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+      }),
+    )
+  })
+
+  it('un vendedor NO puede cambiar la generación de una cotización pendiente', async () => {
+    await assertFails(
+      updateDoc(doc(comoVendedor(), 'cotizaciones/cot-de-otro'), {
+        generacionPedido: 1,
       }),
     )
   })

@@ -52,6 +52,7 @@ solo cuando el control es de un flujo, no del sistema.
 | `Sello`             | `Sello.tsx`             | Violeta sobre lo ya emitido (REGISTRADO / ACEPTADO). Nunca en el pedido en curso.                                                 |
 | `RevisionCaptura`   | `RevisionCaptura.tsx`   | Contraste original vs propuesta (voz / foto).                                                                                     |
 | `EstadoVacio`       | `EstadoVacio.tsx`       | Empty state de listas del mostrador: ilustración, título debajo y pista opcional en `children`. No usar dentro de un combobox. |
+| `IndicadorDeCarga`  | `IndicadorDeCarga.tsx`  | Lectura en curso (Firestore, sesión): texto + spinner centrados. Mismo patrón que «Comprobando sesión…». No un overlay a pantalla completa. |
 
 El mostrador (`src/routes/index.tsx`) ocupa `h-full overflow-hidden`. Cada
 pestaña entra en `CuerpoPestana`: Pedido, Vecinos y Lista recortan el slot

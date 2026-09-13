@@ -10,10 +10,12 @@ import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { usarCatalogo } from '../../features/catalogo/almacen.ts'
 import { CabecerasDeColumna } from './LineaPedido.tsx'
 import { Boton } from './primitivas.tsx'
+import type { ProductoBuscable } from '../../domain/busqueda/productos.ts'
 
 /**
  * Revisión contrastada de una captura (T122 / FR-042).
- * Original tachado solo si ya hay propuesta; pendiente se lee sin tachar.
+ * Original pendiente o ambiguo: resaltado al ancho del texto.
+ * Original ya resuelto: tachado, con la propuesta debajo.
  */
 export function RevisionCaptura({
   onAprobada,
@@ -72,12 +74,17 @@ export function RevisionCaptura({
     })
   }
 
+  function asignarYCerrar(indice: number, producto: ProductoBuscable): void {
+    asignar(indice, producto)
+    setLupaEn(null)
+  }
+
   return (
     <div
       className="flex min-h-0 flex-1 flex-col border-b border-borde bg-papel"
       data-testid="revision-captura"
     >
-      <div className="sticky top-0 z-10 flex shrink-0 items-start justify-between gap-3 bg-papel px-4 py-3">
+      <div className="sticky top-0 z-10 flex shrink-0 items-center justify-between gap-3 bg-papel px-4 py-3">
         <div className="flex min-w-0 flex-1 gap-3">
           {tipo === 'imagen' && <MiniaturaCaptura src={medioObjectUrl} />}
           <div>
@@ -90,30 +97,24 @@ export function RevisionCaptura({
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
-          <button
-            type="button"
+          <Boton
+            variante="principal"
             data-testid="aprobar-captura"
             disabled={hayBloqueo || guardando || lineas.length === 0}
+            aria-busy={guardando || undefined}
             onClick={() => void aprobar()}
-            className={[
-              'flex min-h-12 items-center gap-2 rounded-full px-4',
-              hayBloqueo || guardando
-                ? 'cursor-not-allowed bg-mesa text-desvaida'
-                : 'bg-tinta text-papel',
-            ].join(' ')}
           >
             <Check className="size-4" aria-hidden />
             Aprobar
-          </button>
-          <button
-            type="button"
+          </Boton>
+          <Boton
+            variante="secundario"
             data-testid="descartar-captura"
             onClick={descartar}
-            className="flex min-h-12 items-center gap-2 rounded-full border border-borde px-4 text-tinta"
           >
             <X className="size-4" aria-hidden />
             Descartar
-          </button>
+          </Boton>
         </div>
       </div>
 
@@ -127,30 +128,29 @@ export function RevisionCaptura({
               : undefined
           const ambigua = linea.estadoLinea === 'ambigua'
           const pendiente = linea.estadoLinea === 'pendiente'
+          const sinResolver = ambigua || pendiente
 
           return (
             <li
               key={`cap-${indice}`}
-              className={[
-                'border-b border-borde px-4 py-3',
-                ambigua || pendiente ? 'border-l-2 border-l-aviso pl-[calc(1rem-2px)]' : '',
-              ].join(' ')}
+              className="border-b border-borde px-4 py-3"
               data-testid={`linea-captura-${indice}`}
               data-estado={linea.estadoLinea}
             >
-              <div className="flex items-start gap-2">
-                <p
-                  className={[
-                    'min-w-0 flex-1 text-cuerpo',
-                    pendiente
-                      ? 'text-tinta'
-                      : 'text-desvaida line-through decoration-desvaida/80',
-                  ].join(' ')}
-                >
-                  {linea.textoOriginal}
+              <div className="flex items-center gap-2">
+                <p className="min-w-0 flex-1">
+                  <span
+                    className={
+                      sinResolver
+                        ? 'inline w-fit rounded-md bg-sello/15 px-1.5 py-0.5 text-renglon font-bold text-tinta'
+                        : 'text-cuerpo text-desvaida line-through decoration-desvaida/80'
+                    }
+                  >
+                    {linea.textoOriginal}
+                  </span>
                 </p>
                 <div className="flex shrink-0 items-center gap-1">
-                  {(ambigua || pendiente) && (
+                  {sinResolver && (
                     <Boton
                       variante="discreto"
                       tamano="icono"
@@ -200,7 +200,12 @@ export function RevisionCaptura({
               )}
 
               {ambigua && (
-                <div className="ml-4 mt-2">
+                <div className="mt-2">
+                  <BusquedaEnLinea
+                    abierta={lupaEn === indice}
+                    onElegir={(producto) => asignarYCerrar(indice, producto)}
+                    onCerrar={() => setLupaEn(null)}
+                  />
                   <p className="font-mono text-etiqueta uppercase tracking-wide text-desvaida">
                     Elige un candidato
                   </p>
@@ -208,63 +213,56 @@ export function RevisionCaptura({
                     candidatos={linea.candidatos}
                     onElegir={(codigo) => elegir(indice, codigo)}
                   />
-                  <div
-                    className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
-                    style={{
-                      gridTemplateRows: lupaEn === indice ? '1fr' : '0fr',
-                    }}
-                  >
-                    <div
-                      className="min-h-0 overflow-hidden"
-                      inert={lupaEn === indice ? undefined : true}
-                    >
-                      <ComboboxProductoLinea
-                        autoFocus={lupaEn === indice}
-                        onElegir={(producto) => {
-                          asignar(indice, producto)
-                          setLupaEn(null)
-                        }}
-                        onCerrar={() => setLupaEn(null)}
-                      />
-                    </div>
-                  </div>
                 </div>
               )}
 
               {pendiente && (
-                <div className="ml-4 mt-2">
+                <div className="mt-2">
                   <p className="font-mono text-etiqueta uppercase tracking-wide text-desvaida">
                     Sin interpretar
                   </p>
                   <p className="mt-1 text-cuerpo text-tinta">
                     No se pudo interpretar. Búscalo o escríbelo a mano.
                   </p>
-                  <div
-                    className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
-                    style={{
-                      gridTemplateRows: lupaEn === indice ? '1fr' : '0fr',
-                    }}
-                  >
-                    <div
-                      className="min-h-0 overflow-hidden"
-                      inert={lupaEn === indice ? undefined : true}
-                    >
-                      <ComboboxProductoLinea
-                        autoFocus={lupaEn === indice}
-                        onElegir={(producto) => {
-                          asignar(indice, producto)
-                          setLupaEn(null)
-                        }}
-                        onCerrar={() => setLupaEn(null)}
-                      />
-                    </div>
-                  </div>
+                  <BusquedaEnLinea
+                    abierta={lupaEn === indice}
+                    onElegir={(producto) => asignarYCerrar(indice, producto)}
+                    onCerrar={() => setLupaEn(null)}
+                  />
                 </div>
               )}
             </li>
           )
         })}
       </ul>
+      </div>
+    </div>
+  )
+}
+
+function BusquedaEnLinea({
+  abierta,
+  onElegir,
+  onCerrar,
+}: {
+  readonly abierta: boolean
+  readonly onElegir: (producto: ProductoBuscable) => void
+  readonly onCerrar: () => void
+}) {
+  return (
+    <div
+      className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+      style={{ gridTemplateRows: abierta ? '1fr' : '0fr' }}
+    >
+      <div
+        className={abierta ? 'min-h-0' : 'min-h-0 overflow-hidden'}
+        inert={abierta ? undefined : true}
+      >
+        <ComboboxProductoLinea
+          autoFocus={abierta}
+          onElegir={onElegir}
+          onCerrar={onCerrar}
+        />
       </div>
     </div>
   )

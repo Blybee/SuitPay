@@ -7,6 +7,7 @@ import { ZonaDeCarga, clasificarArchivo } from '../../ui/componentes/ZonaDeCarga
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
 import { EstadoVacio } from '../../ui/componentes/EstadoVacio.tsx'
+import { IndicadorDeCarga } from '../../ui/componentes/IndicadorDeCarga.tsx'
 import { usarCaptura } from '../captura/estado.ts'
 import { usarCatalogo } from '../catalogo/almacen.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
@@ -256,7 +257,7 @@ export function PanelDeCotizaciones({
   return (
     <div className="flex flex-1 flex-col gap-6 px-6 py-6">
       <form
-        className="flex flex-wrap items-end gap-3"
+        className="flex flex-wrap items-center gap-3"
         onSubmit={(evento) => {
           evento.preventDefault()
           const recortado = consulta.trim()
@@ -271,13 +272,13 @@ export function PanelDeCotizaciones({
         }}
       >
         <div className="min-w-40 flex-1">
-          <Etiqueta htmlFor="numero-cotizacion">Número, cliente o monto</Etiqueta>
           <div className="relative">
             <Campo
               id="numero-cotizacion"
               value={consulta}
               onChange={(evento) => setConsulta(evento.target.value)}
-              placeholder="ej. 1042, cliente o 20.70"
+              placeholder="#numero-coti, nombre o monto"
+              aria-label="#numero-coti, nombre o monto"
               autoComplete="off"
               className="pr-12"
             />
@@ -493,15 +494,33 @@ export function PanelDeCotizaciones({
         </div>
       ) : null}
 
-      {buscada !== null ? (
+      {buscando ? (
+        <IndicadorDeCarga mensaje="Cargando cotizaciones…" />
+      ) : null}
+
+      {buscada !== null && !buscando ? (
         <article className="rounded-3xl border border-borde bg-papel p-5 shadow-sm">
-          <header className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
             <h3 className="text-entrada font-bold text-tinta">
               Cotización {buscada.numero}
             </h3>
-            <p className="font-mono tabular-nums text-cuerpo font-bold text-tinta">
-              {formatearImporte(buscada.total)}
-            </p>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <Boton
+                variante="principal"
+                onClick={() => abrirEnPedido(buscada)}
+              >
+                Abrir en el pedido
+              </Boton>
+              <Boton
+                variante="discreto"
+                tamano="icono"
+                aria-label="Eliminar cotización"
+                className="hover:border-aviso/40 hover:bg-aviso/10 hover:text-aviso"
+                onClick={() => setAEliminar(buscada)}
+              >
+                <Trash2 className="size-5" aria-hidden />
+              </Boton>
+            </div>
           </header>
 
           {diferencias.length > 0 ? (
@@ -524,7 +543,7 @@ export function PanelDeCotizaciones({
             </div>
           ) : null}
 
-          <ul className="mb-4 space-y-1 text-cuerpo text-tinta">
+          <ul className="mb-3 space-y-1 text-cuerpo text-tinta">
             {buscada.lineas.map((linea, indice) => (
               <li key={`${linea.codigo}-${indice}`}>
                 {linea.cantidad} × {linea.descripcion} —{' '}
@@ -532,21 +551,9 @@ export function PanelDeCotizaciones({
               </li>
             ))}
           </ul>
-
-          <div className="flex flex-wrap gap-2">
-            <Boton
-              variante="principal"
-              onClick={() => abrirEnPedido(buscada)}
-            >
-              Abrir en el pedido
-            </Boton>
-            <Boton
-              variante="secundario"
-              onClick={() => setAEliminar(buscada)}
-            >
-              Eliminar
-            </Boton>
-          </div>
+          <p className="text-right font-mono tabular-nums text-cuerpo font-bold text-tinta">
+            {formatearImporte(buscada.total)}
+          </p>
         </article>
       ) : null}
 
@@ -555,7 +562,7 @@ export function PanelDeCotizaciones({
           Pendientes recientes
         </h3>
         {pendientes.isLoading ? (
-          <p className="text-cuerpo text-desvaida">Cargando…</p>
+          <IndicadorDeCarga mensaje="Cargando cotizaciones…" />
         ) : null}
         {pendientes.isError ? (
           <p className="text-cuerpo font-bold text-aviso" role="alert">
@@ -628,13 +635,15 @@ export function PanelDeCotizaciones({
                   setConsulta(String(cada.numero))
                 }}
               >
-                <span className="font-mono font-bold text-tinta">
-                  #{cada.numero}
-                </span>
-                <span className="truncate text-cuerpo text-desvaida">
-                  {cada.cliente?.denominacion ?? 'Sin cliente'} ·{' '}
-                  {cada.lineas.length}{' '}
-                  {cada.lineas.length === 1 ? 'línea' : 'líneas'}
+                <span className="flex min-w-0 items-center gap-3">
+                  <span className="shrink-0 font-mono font-bold text-tinta">
+                    #{cada.numero}
+                  </span>
+                  <span className="truncate text-cuerpo text-desvaida">
+                    {cada.cliente?.denominacion ?? 'Sin cliente'} ·{' '}
+                    {cada.lineas.length}{' '}
+                    {cada.lineas.length === 1 ? 'línea' : 'líneas'}
+                  </span>
                 </span>
                 <span className="shrink-0 font-mono tabular-nums font-bold text-tinta">
                   {formatearImporte(cada.total)}
