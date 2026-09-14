@@ -16,10 +16,9 @@ import { listarCotizacionesPendientes } from '../cotizaciones/leer.ts'
 import type { Cotizacion } from '../cotizaciones/tipos.ts'
 import { usarCatalogo } from '../catalogo/almacen.ts'
 import { persistirLineasDeVecino } from './persistir.ts'
-import { copiarCapturaYAbrirWhatsApp, pintarListaDeVecino } from './captura.ts'
+import { capturarListaDeProductos } from './captura.ts'
 import { ModalDeVecino } from './modal.tsx'
 import type { PropuestaCrearVecino } from '../comandos/crear-vecino.ts'
-import { usarNotificaciones } from '../notificaciones/almacen.ts'
 
 /**
  * Tab Vecinos: sub-tabs por alias + líneas + total (FR-034, FR-035).
@@ -108,22 +107,11 @@ export function PanelDeVecinos({
     if (capturandoId !== null) return
     setCapturandoId(cotizacion.id)
     try {
-      const total = calcularTotal(cotizacion.lineas)
-      const imagen = await pintarListaDeVecino({
-        alias: cotizacion.aliasVecino ?? `H${cotizacion.numero}`,
+      await capturarListaDeProductos({
+        titulo: cotizacion.aliasVecino ?? `H${cotizacion.numero}`,
         lineas: cotizacion.lineas,
-        total,
-      })
-      await copiarCapturaYAbrirWhatsApp({
-        imagen,
+        total: calcularTotal(cotizacion.lineas),
         telefono: cotizacion.telefonoVecino,
-        alias: cotizacion.aliasVecino ?? `H${cotizacion.numero}`,
-      })
-    } catch (error) {
-      console.error('[SuitPay] captura vecino', error)
-      usarNotificaciones.getState().mostrar({
-        tono: 'error',
-        mensaje: 'No se pudo generar la captura.',
       })
     } finally {
       setCapturandoId(null)
@@ -169,10 +157,10 @@ export function PanelDeVecinos({
                 aria-label={`Capturar lista de ${cada.aliasVecino ?? cada.numero}`}
                 disabled={capturandoId !== null}
                 className={[
-                  'flex size-9 items-center justify-center rounded-full',
+                  'flex size-9 items-center justify-center rounded-full border',
                   seleccionada
-                    ? 'text-papel hover:bg-papel/15'
-                    : 'text-tinta hover:bg-mesa',
+                    ? 'border-papel text-papel hover:bg-papel/15'
+                    : 'border-borde text-tinta hover:bg-mesa',
                 ].join(' ')}
                 onClick={(evento) => {
                   evento.stopPropagation()

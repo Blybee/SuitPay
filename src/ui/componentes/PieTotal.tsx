@@ -1,3 +1,4 @@
+import { Camera, Loader2 } from 'lucide-react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type { Centimos } from '../../domain/totales/calculo.ts'
 import { Boton } from './primitivas.tsx'
@@ -24,6 +25,9 @@ export interface PropsDePieTotal {
   readonly puedeGuardarCotizacion?: boolean
   readonly proveedorCaido?: boolean
   readonly sinRed?: boolean
+  readonly onCapturarLista: () => void
+  readonly capturandoLista?: boolean
+  readonly puedeCapturarLista?: boolean
 }
 
 const OPCIONES_PAGO = [
@@ -47,6 +51,9 @@ export function PieTotal({
   puedeGuardarCotizacion = false,
   proveedorCaido = false,
   sinRed = false,
+  onCapturarLista,
+  capturandoLista = false,
+  puedeCapturarLista = false,
 }: PropsDePieTotal) {
   const bloqueado = estado === 'inhabilitado' || motivoDeBloqueo !== null
   const enVuelo = estado === 'emitiendo'
@@ -82,25 +89,42 @@ export function PieTotal({
 
       <div
         className={[
-          // Una sola fila en móvil: pago | total | CTA (sin wrap disperso).
+          // Una sola fila en móvil: pago+cámara | total | CTA (sin wrap disperso).
           'grid w-full grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 px-3 py-2',
           'md:flex md:flex-wrap md:gap-4 md:px-4 md:py-3',
         ].join(' ')}
       >
-        {!modoCotizacion ? (
-          <div className="flex min-h-11 min-w-0 items-center md:contents">
-            <Selector
-              etiqueta="Pago"
-              ocultarEtiqueta
-              valor={medioPago}
-              onCambiar={onCambiarMedioPago}
-              opciones={OPCIONES_PAGO}
-              variante="compacto"
-            />
-          </div>
-        ) : (
-          <span className="min-w-0 md:hidden" aria-hidden />
-        )}
+        <div className="flex min-h-11 min-w-0 items-center gap-2">
+          {!modoCotizacion ? (
+            <div className="min-w-0 flex-1">
+              <Selector
+                etiqueta="Pago"
+                ocultarEtiqueta
+                valor={medioPago}
+                onCambiar={onCambiarMedioPago}
+                opciones={OPCIONES_PAGO}
+                variante="compacto"
+              />
+            </div>
+          ) : null}
+          <Boton
+            tamano="icono"
+            variante="secundario"
+            aria-label="Capturar lista de productos"
+            aria-busy={capturandoLista || undefined}
+            disabled={!puedeCapturarLista || capturandoLista}
+            onClick={onCapturarLista}
+          >
+            {capturandoLista ? (
+              <Loader2
+                className="size-5 animate-spin motion-reduce:animate-none"
+                aria-hidden
+              />
+            ) : (
+              <Camera className="size-5" aria-hidden />
+            )}
+          </Boton>
+        </div>
 
         <div className="flex min-h-11 shrink-0 items-center gap-1.5 md:ml-auto md:gap-3">
           <span className="font-mono text-etiqueta uppercase text-desvaida">

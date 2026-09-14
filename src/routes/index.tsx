@@ -48,6 +48,7 @@ import { PanelDeCotizaciones } from '../features/cotizaciones/panel.tsx'
 import { crearCotizacionVecino } from '../features/vecinos/crear.ts'
 import { persistirDatosDeVecino } from '../features/vecinos/datos.ts'
 import { agregarProductoAVecino } from '../features/vecinos/lineas.ts'
+import { capturarListaDeProductos } from '../features/vecinos/captura.ts'
 import { PanelDeVecinos } from '../features/vecinos/panel.tsx'
 import { PanelDeListaRequerimiento } from '../features/lista/panel.tsx'
 import { usarDiaLista } from '../features/lista/dia-activo.ts'
@@ -177,6 +178,7 @@ function Mostrador() {
   const modoCotizacion = usarPedido((s) => s.modoCotizacion)
   const [consultandoPadron, setConsultandoPadron] = useState(false)
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false)
+  const [capturandoPedido, setCapturandoPedido] = useState(false)
   const [avisoCotizacion, setAvisoCotizacion] = useState<string | null>(null)
   const [cotizacionEmitida, setCotizacionEmitida] = useState<Cotizacion | null>(
     null,
@@ -816,6 +818,21 @@ function Mostrador() {
     }
   }
 
+  async function capturarListaDelPedido(): Promise<void> {
+    if (capturandoPedido || pedido.lineas.length === 0) return
+    setCapturandoPedido(true)
+    try {
+      await capturarListaDeProductos({
+        titulo: pedido.cliente?.denominacion ?? 'Pedido',
+        lineas: pedido.lineas,
+        total,
+        telefono: null,
+      })
+    } finally {
+      setCapturandoPedido(false)
+    }
+  }
+
   function convertirVecinoEnPedido(cotizacion: Cotizacion): void {
     pedido.cargarDesdeCotizacion({
       cotizacionId: cotizacion.id,
@@ -1315,6 +1332,9 @@ function Mostrador() {
             }
             proveedorCaido={proveedorCaido}
             sinRed={sinRed}
+            onCapturarLista={() => void capturarListaDelPedido()}
+            capturandoLista={capturandoPedido}
+            puedeCapturarLista={pedido.lineas.length > 0}
           />
 
           <EstadoDeEmision

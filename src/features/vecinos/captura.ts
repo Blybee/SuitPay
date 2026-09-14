@@ -4,12 +4,13 @@ import { enlaceChatWhatsApp } from '../../domain/vecinos/telefono.ts'
 import { mostrarNotificacion } from '../notificaciones/almacen.ts'
 
 /**
- * Dibuja la lista del vecino (productos + total) y la copia al portapapeles.
- * Si hay celular, abre wa.me (click-to-chat no admite adjuntar la imagen).
+ * Rasteriza productos + total en un lienzo fuera del DOM (offscreen canvas).
+ * El alto crece con cada fila: no recorta al viewport. Luego se copia al
+ * portapapeles; si hay celular, abre wa.me (click-to-chat no adjunta la imagen).
  */
 
 export async function pintarListaDeVecino(datos: {
-  readonly alias: string
+  readonly titulo: string
   readonly lineas: readonly LineaDePedido[]
   readonly total: number
 }): Promise<Blob> {
@@ -31,7 +32,7 @@ export async function pintarListaDeVecino(datos: {
   ctx.fillRect(0, 0, ancho, alto)
   ctx.fillStyle = '#1a1714'
   ctx.font = 'bold 22px sans-serif'
-  ctx.fillText(datos.alias, 24, 40)
+  ctx.fillText(datos.titulo, 24, 40)
   ctx.font = '12px monospace'
   ctx.fillStyle = '#6b7280'
   ctx.fillText('Producto', 24, 64)
@@ -72,7 +73,7 @@ export async function pintarListaDeVecino(datos: {
 export async function copiarCapturaYAbrirWhatsApp(datos: {
   readonly imagen: Blob
   readonly telefono: string | null
-  readonly alias: string
+  readonly titulo: string
 }): Promise<void> {
   let copiado = false
   try {
@@ -93,13 +94,13 @@ export async function copiarCapturaYAbrirWhatsApp(datos: {
     mostrarNotificacion({
       tono: 'exito',
       duracionMs: 6_000,
-      mensaje: `Captura copiada. WhatsApp abierto: pega la imagen en el chat de ${datos.alias}.`,
+      mensaje: `Captura copiada. WhatsApp abierto: pega la imagen en el chat de ${datos.titulo}.`,
     })
   } else if (copiado) {
     mostrarNotificacion({
       tono: 'exito',
       duracionMs: 6_000,
-      mensaje: `Captura de ${datos.alias} copiada. Pégala en WhatsApp.`,
+      mensaje: `Captura de ${datos.titulo} copiada. Pégala en WhatsApp.`,
     })
   } else if (chat !== null) {
     mostrarNotificacion({
@@ -119,5 +120,32 @@ export async function copiarCapturaYAbrirWhatsApp(datos: {
     window.setTimeout(() => {
       window.open(chat, '_blank', 'noopener,noreferrer')
     }, 300)
+  }
+}
+
+/** Pinta todas las líneas, copia la PNG y, si hay teléfono, abre WhatsApp. */
+export async function capturarListaDeProductos(datos: {
+  readonly titulo: string
+  readonly lineas: readonly LineaDePedido[]
+  readonly total: number
+  readonly telefono: string | null
+}): Promise<void> {
+  try {
+    const imagen = await pintarListaDeVecino({
+      titulo: datos.titulo,
+      lineas: datos.lineas,
+      total: datos.total,
+    })
+    await copiarCapturaYAbrirWhatsApp({
+      imagen,
+      telefono: datos.telefono,
+      titulo: datos.titulo,
+    })
+  } catch (error) {
+    console.error('[SuitPay] captura lista', error)
+    mostrarNotificacion({
+      tono: 'error',
+      mensaje: 'No se pudo generar la captura.',
+    })
   }
 }
