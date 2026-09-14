@@ -13,6 +13,7 @@ import { deltasDeMarcaDesdeCodigos } from '../../domain/aprendizaje/priores.ts'
 import { diaEnLima } from '../../domain/anulacion/ventana.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
 import {
+  MODELO_POR_DEFECTO,
   invocarModeloConPartes,
 } from '../asistencia/cliente-modelo.ts'
 import type { ParteGemini } from '../asistencia/cliente-modelo.ts'
@@ -220,7 +221,7 @@ export async function proponerEntrenamiento(entrada: {
       contexto.porCodigo,
     )
   } else {
-    modelo = process.env.ASISTENCIA_MODELO ?? 'gemini'
+    modelo = process.env.ASISTENCIA_MODELO ?? MODELO_POR_DEFECTO
     const prompt = promptDeEntrenamiento({
       catalogoJson: textoDeCandidatosParaPrompt(contexto.candidatos),
       memoriaJson: JSON.stringify(memoria),

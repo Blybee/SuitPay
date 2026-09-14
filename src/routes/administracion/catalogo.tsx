@@ -21,6 +21,7 @@ import type {
   Producto,
 } from '../../domain/esquemas/comunes.ts'
 import { DestinoDeNota, Nota } from '../../ui/componentes/Nota.tsx'
+import { IndicadorDeCarga } from '../../ui/componentes/IndicadorDeCarga.tsx'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
 import {
   clasificarArchivo,
@@ -495,10 +496,7 @@ function PantallaDeCatalogo() {
       </div>
 
       {cargando ? (
-        <p className="flex items-center gap-2 text-cuerpo text-desvaida">
-          <Loader2 className="size-5 animate-spin" aria-hidden />
-          Cargando catálogo…
-        </p>
+        <IndicadorDeCarga mensaje="Cargando catálogo…" />
       ) : null}
 
       {vacio ? (

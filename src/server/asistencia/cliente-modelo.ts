@@ -10,12 +10,12 @@ import type {
 
 const GEMINI_API_BASE =
   'https://generativelanguage.googleapis.com/v1beta/models'
-/** Mismo preview que la tienda virtual; sobreescribir con ASISTENCIA_MODELO. */
-export const MODELO_POR_DEFECTO = 'gemini-3-flash-preview'
+/** Gemini 3.8 Flash (GA). Sobreescribir con ASISTENCIA_MODELO. */
+export const MODELO_POR_DEFECTO = 'gemini-3.8-flash'
 /**
- * Al que se pasa si el principal responde 404 (preview retirado o renombrado).
- * Estable con soporte largo; sobreescribir con ASISTENCIA_MODELO_RESPALDO
- * (vacío = sin respaldo).
+ * Si el principal responde 404 (retirado o no habilitado en la clave), se
+ * intenta este. Sobreescribir con ASISTENCIA_MODELO_RESPALDO (vacío = sin
+ * respaldo).
  */
 export const MODELO_DE_RESPALDO_POR_DEFECTO = 'gemini-3.5-flash'
 

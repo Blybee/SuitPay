@@ -4,6 +4,7 @@ import { diffsDesdePares } from '../../domain/aprendizaje/memoria.ts'
 import { deltasDeMarcaDesdeCodigos } from '../../domain/aprendizaje/priores.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
 import {
+  MODELO_POR_DEFECTO,
   invocarModeloConPartes,
 } from '../asistencia/cliente-modelo.ts'
 import {
@@ -94,7 +95,7 @@ export async function procesarLoteAprendizaje(
   if (asistenciaSimuladaActiva()) {
     diffs = diffsDesdePares(pares, memoria)
   } else {
-    modelo = process.env.ASISTENCIA_MODELO ?? 'gemini'
+    modelo = process.env.ASISTENCIA_MODELO ?? MODELO_POR_DEFECTO
     const prompt = `Consolida la memoria de asistencia de ferretería/gasfitería.
 Memoria vigente (JSON): ${JSON.stringify(memoria)}
 Pares nuevos textoOriginal → codigoAprobado: ${JSON.stringify(pares.map((p) => ({ t: p.textoOriginal, id: p.codigoAprobado })))}

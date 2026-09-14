@@ -80,7 +80,7 @@ describe('motivo de fallo de la asistencia', () => {
     // Dos claves, un solo modelo: una clave inválida no se arregla con otro modelo.
     expect(fetchFn).toHaveBeenCalledTimes(2)
     const urls = fetchFn.mock.calls.map((c) => String((c as unknown[])[0]))
-    expect(urls.every((u) => u.includes('gemini-3-flash-preview'))).toBe(true)
+    expect(urls.every((u) => u.includes('gemini-3.8-flash'))).toBe(true)
   })
 
   it('el detalle nunca lleva el mensaje crudo de Gemini', async () => {
@@ -111,11 +111,11 @@ describe('motivo de fallo de la asistencia', () => {
 
   it('modelo retirado (404): conmuta al modelo de respaldo con la misma clave', async () => {
     const fetchFn = vi.fn(async (url: string) => {
-      if (url.includes('gemini-3-flash-preview')) {
+      if (url.includes('gemini-3.8-flash')) {
         return errorGemini(
           404,
           'NOT_FOUND',
-          'models/gemini-3-flash-preview is not found for API version v1beta',
+          'models/gemini-3.8-flash is not found for API version v1beta',
         )
       }
       return respuestaOk({
@@ -145,7 +145,7 @@ describe('motivo de fallo de la asistencia', () => {
     expect(resultado.items[0]?.codigo).toBe('C1')
     const urls = fetchFn.mock.calls.map((c) => String((c as unknown[])[0]))
     expect(urls).toHaveLength(2)
-    expect(urls[0]).toContain('gemini-3-flash-preview')
+    expect(urls[0]).toContain('gemini-3.8-flash')
     expect(urls[1]).toContain('gemini-3.5-flash')
   })
 
@@ -184,6 +184,27 @@ describe('motivo de fallo de la asistencia', () => {
     expect(modelosAIntentar({ modelo: 'a', modeloRespaldo: 'a' })).toEqual([
       'a',
     ])
+  })
+
+  it('por omisión: Gemini 3.8 Flash y respaldo 3.5 Flash', () => {
+    const anteriorModelo = process.env.ASISTENCIA_MODELO
+    const anteriorRespaldo = process.env.ASISTENCIA_MODELO_RESPALDO
+    delete process.env.ASISTENCIA_MODELO
+    delete process.env.ASISTENCIA_MODELO_RESPALDO
+    try {
+      expect(modelosAIntentar({})).toEqual([
+        'gemini-3.8-flash',
+        'gemini-3.5-flash',
+      ])
+    } finally {
+      if (anteriorModelo === undefined) delete process.env.ASISTENCIA_MODELO
+      else process.env.ASISTENCIA_MODELO = anteriorModelo
+      if (anteriorRespaldo === undefined) {
+        delete process.env.ASISTENCIA_MODELO_RESPALDO
+      } else {
+        process.env.ASISTENCIA_MODELO_RESPALDO = anteriorRespaldo
+      }
+    }
   })
 
   it('las claves se sanean: un salto de línea en el secreto no llega a la cabecera', async () => {
