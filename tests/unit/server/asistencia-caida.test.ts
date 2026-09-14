@@ -26,6 +26,7 @@ describe('asistencia caída (T118)', () => {
           fetchFn: fetchFn as unknown as typeof fetch,
           clavePrimaria: 'k1',
           claveSecundaria: 'k2',
+          modeloRespaldo: null,
           timeoutMs: 2_000,
         },
       }),
