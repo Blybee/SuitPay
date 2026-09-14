@@ -1,6 +1,6 @@
-import { useEffect, useImperativeHandle, useRef, useState } from 'react'
-import type { Ref } from 'react'
-import { Camera, Eye, Mic, Search } from 'lucide-react'
+import { useEffect, useId, useImperativeHandle, useRef, useState } from 'react'
+import type { ButtonHTMLAttributes, Ref } from 'react'
+import { Camera, EllipsisVertical, Eye, Mic, Search } from 'lucide-react'
 import {
   comandosCoincidentes,
   esModoComando,
@@ -370,6 +370,7 @@ export function Entrada({
           </div>
 
           <BotonDeCaptura
+            className="hidden md:flex"
             etiqueta="Dictar el pedido"
             disponible={asistenciaDisponible}
             motivoInerte={motivoAsistenciaInerte}
@@ -379,6 +380,7 @@ export function Entrada({
           </BotonDeCaptura>
 
           <BotonDeCaptura
+            className="hidden md:flex"
             etiqueta="Fotografiar el pedido"
             disponible={asistenciaDisponible}
             motivoInerte={motivoAsistenciaInerte}
@@ -386,6 +388,13 @@ export function Entrada({
           >
             <Camera className="size-6" aria-hidden />
           </BotonDeCaptura>
+
+          <MenuDeCapturaMovil
+            disponible={asistenciaDisponible}
+            motivoInerte={motivoAsistenciaInerte}
+            onDictar={onDictar}
+            onFotografiar={onFotografiar}
+          />
         </div>
 
         {/* El motivo vive en la banda global (BandaDegradacion) y en title/aria
@@ -470,11 +479,65 @@ function BotonDeCaptura({
   motivoInerte,
   onClick,
   children,
+  className,
+  ref,
+  ...resto
 }: {
   readonly etiqueta: string
   readonly disponible: boolean
   readonly motivoInerte?: string | null
   readonly onClick: (() => void) | undefined
+  readonly children: React.ReactNode
+  readonly className?: string
+  readonly ref?: Ref<HTMLButtonElement>
+} & Omit<
+  ButtonHTMLAttributes<HTMLButtonElement>,
+  | 'children'
+  | 'className'
+  | 'disabled'
+  | 'onClick'
+  | 'type'
+  | 'aria-label'
+  | 'title'
+  | 'ref'
+>) {
+  const titulo = disponible
+    ? etiqueta
+    : `${etiqueta} — ${motivoInerte ?? 'no disponible'}`
+  return (
+    <button
+      {...resto}
+      ref={ref}
+      type="button"
+      aria-label={titulo}
+      title={titulo}
+      disabled={!disponible}
+      onClick={onClick}
+      className={[
+        className ?? 'flex',
+        'min-h-14 w-14 shrink-0 items-center justify-center rounded-full border',
+        'focus-visible:outline-none focus-visible:border-tinta',
+        disponible
+          ? 'border-borde bg-papel text-tinta shadow-sm hover:bg-tinta hover:text-papel'
+          : 'cursor-not-allowed border-borde bg-mesa text-desvaida',
+      ].join(' ')}
+    >
+      {children}
+    </button>
+  )
+}
+
+function AccionDeCaptura({
+  etiqueta,
+  disponible,
+  motivoInerte,
+  onClick,
+  children,
+}: {
+  readonly etiqueta: string
+  readonly disponible: boolean
+  readonly motivoInerte?: string | null
+  readonly onClick: () => void
   readonly children: React.ReactNode
 }) {
   const titulo = disponible
@@ -488,15 +551,96 @@ function BotonDeCaptura({
       disabled={!disponible}
       onClick={onClick}
       className={[
-        'flex min-h-14 w-14 shrink-0 items-center justify-center rounded-full border',
-        'focus-visible:outline-none focus-visible:border-tinta',
+        'flex min-h-11 w-full items-center gap-3 rounded-full px-4 text-left text-cuerpo font-bold',
+        'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
         disponible
-          ? 'border-borde bg-papel text-tinta shadow-sm hover:bg-tinta hover:text-papel'
-          : 'cursor-not-allowed border-borde bg-mesa text-desvaida',
+          ? 'text-tinta hover:bg-mesa'
+          : 'cursor-not-allowed text-desvaida',
       ].join(' ')}
     >
       {children}
     </button>
+  )
+}
+
+function MenuDeCapturaMovil({
+  disponible,
+  motivoInerte,
+  onDictar,
+  onFotografiar,
+}: {
+  readonly disponible: boolean
+  readonly motivoInerte?: string | null
+  readonly onDictar: (() => void) | undefined
+  readonly onFotografiar: (() => void) | undefined
+}) {
+  const idMenu = useId()
+  const [abierto, setAbierto] = useState(false)
+  const cajaRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!abierto) return
+    function alPuntero(evento: PointerEvent): void {
+      if (cajaRef.current?.contains(evento.target as Node)) return
+      setAbierto(false)
+    }
+    function alTecla(evento: KeyboardEvent): void {
+      if (evento.key === 'Escape') setAbierto(false)
+    }
+    document.addEventListener('pointerdown', alPuntero)
+    document.addEventListener('keydown', alTecla)
+    return () => {
+      document.removeEventListener('pointerdown', alPuntero)
+      document.removeEventListener('keydown', alTecla)
+    }
+  }, [abierto])
+
+  function elegir(accion: (() => void) | undefined): void {
+    setAbierto(false)
+    accion?.()
+  }
+
+  return (
+    <div ref={cajaRef} className="relative flex md:hidden">
+      <BotonDeCaptura
+        className="flex"
+        etiqueta={
+          abierto ? 'Cerrar formas de capturar' : 'Más formas de capturar'
+        }
+        disponible
+        data-testid="menu-captura"
+        aria-expanded={abierto}
+        aria-controls={idMenu}
+        onClick={() => setAbierto((actual) => !actual)}
+      >
+        <EllipsisVertical className="size-6" aria-hidden />
+      </BotonDeCaptura>
+      <div
+        id={idMenu}
+        data-testid="menu-captura-panel"
+        data-open={abierto ? 'true' : undefined}
+        className="menu-captura-entrada absolute top-full right-0 z-40 mt-2 min-w-56 flex-col gap-1 rounded-2xl border border-borde bg-papel p-2 shadow-md"
+      >
+        <AccionDeCaptura
+          etiqueta="Dictar el pedido"
+          disponible={disponible}
+          motivoInerte={motivoInerte}
+          onClick={() => elegir(onDictar)}
+        >
+          <Mic className="size-5 shrink-0" aria-hidden />
+          Dictar
+        </AccionDeCaptura>
+        <AccionDeCaptura
+          etiqueta="Fotografiar el pedido"
+          disponible={disponible}
+          motivoInerte={motivoInerte}
+          onClick={() => elegir(onFotografiar)}
+        >
+          <Camera className="size-5 shrink-0" aria-hidden />
+          Fotografiar
+        </AccionDeCaptura>
+      </div>
+    </div>
   )
 }
 

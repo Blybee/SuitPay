@@ -312,6 +312,46 @@
   display: block;
 }
 
+/*
+ * Menú kebab de captura (móvil). Disclosure anclado al disparador.
+ * Entrada/salida: @starting-style + allow-discrete.
+ */
+.menu-captura-entrada {
+  display: none;
+  opacity: 0;
+  transform: scale(0.97);
+  transform-origin: top right;
+  transition-property: opacity, transform, display;
+  transition-duration: var(--duration-rapida);
+  transition-timing-function: var(--ease-salida);
+  transition-behavior: allow-discrete;
+}
+
+.menu-captura-entrada[data-open] {
+  display: flex;
+  opacity: 1;
+  transform: scale(1);
+  transition-duration: var(--duration-media);
+
+  @starting-style {
+    opacity: 0;
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .menu-captura-entrada {
+    transform: none;
+    transition: none;
+  }
+
+  .menu-captura-entrada[data-open] {
+    @starting-style {
+      transform: none;
+    }
+  }
+}
+
 @media (min-width: 768px) {
   .barra-lateral-menu-movil {
     display: none !important;

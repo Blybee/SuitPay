@@ -68,6 +68,7 @@ export function PanelFotografia({
   const indice = usarCatalogo((s) => s.indice)
   const captura = usarCaptura()
   const inputRef = useRef<HTMLInputElement>(null)
+  const camaraRef = useRef<HTMLInputElement>(null)
   const [enviando, setEnviando] = useState(false)
 
   if (!abierto) return null
@@ -200,29 +201,22 @@ export function PanelFotografia({
             <>
               <Boton
                 variante="secundario"
+                tamano="icono"
                 data-testid="elegir-foto"
                 aria-label="Elegir fotografía"
+                title="Galería"
                 onClick={() => inputRef.current?.click()}
               >
                 <ImagePlus className="size-5" aria-hidden />
-                Galería
               </Boton>
-              <Boton variante="principal" asChild>
-                <label>
-                  <Camera className="size-5" aria-hidden />
-                  Cámara
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    className="sr-only"
-                    data-testid="input-camara"
-                    onChange={(e) => {
-                      const f = e.target.files?.[0]
-                      if (f) void procesarArchivo(f)
-                    }}
-                  />
-                </label>
+              <Boton
+                variante="principal"
+                tamano="icono"
+                aria-label="Abrir cámara"
+                title="Cámara"
+                onClick={() => camaraRef.current?.click()}
+              >
+                <Camera className="size-5" aria-hidden />
               </Boton>
             </>
           )}
@@ -242,6 +236,18 @@ export function PanelFotografia({
         accept="image/*"
         className="sr-only"
         data-testid="input-galeria"
+        onChange={(e) => {
+          const f = e.target.files?.[0]
+          if (f) void procesarArchivo(f)
+        }}
+      />
+      <input
+        ref={camaraRef}
+        type="file"
+        accept="image/*"
+        capture="environment"
+        className="sr-only"
+        data-testid="input-camara"
         onChange={(e) => {
           const f = e.target.files?.[0]
           if (f) void procesarArchivo(f)

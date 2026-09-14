@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Entrada } from '../../../src/ui/componentes/Entrada.tsx'
 import type {
@@ -288,6 +288,77 @@ describe('Entrada — panel flotante', () => {
     await usuario.keyboard('{Enter}')
     expect(onTerminoCambia).not.toHaveBeenCalled()
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
+  })
+})
+
+describe('Entrada — menú de captura en móvil', () => {
+  it('abre el kebab y dispara dictar / fotografiar', async () => {
+    const usuario = userEvent.setup()
+    const onDictar = vi.fn()
+    const onFotografiar = vi.fn()
+
+    render(
+      <Entrada
+        termino=""
+        onTerminoCambia={vi.fn()}
+        resultado={resultadoCon('', [])}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible
+        onDictar={onDictar}
+        onFotografiar={onFotografiar}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    await usuario.click(
+      screen.getByRole('button', { name: 'Más formas de capturar' }),
+    )
+
+    const menu = screen.getByTestId('menu-captura-panel')
+    await usuario.click(
+      within(menu).getByRole('button', { name: 'Dictar el pedido' }),
+    )
+    expect(onDictar).toHaveBeenCalledOnce()
+
+    await usuario.click(
+      screen.getByRole('button', { name: 'Más formas de capturar' }),
+    )
+    await usuario.click(
+      within(screen.getByTestId('menu-captura-panel')).getByRole('button', {
+        name: 'Fotografiar el pedido',
+      }),
+    )
+    expect(onFotografiar).toHaveBeenCalledOnce()
+  })
+
+  it('deja las acciones inertes si la asistencia no está disponible', async () => {
+    const usuario = userEvent.setup()
+    const onDictar = vi.fn()
+
+    render(
+      <Entrada
+        termino=""
+        onTerminoCambia={vi.fn()}
+        resultado={resultadoCon('', [])}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible={false}
+        motivoAsistenciaInerte="Asistencia caída"
+        onDictar={onDictar}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    await usuario.click(
+      screen.getByRole('button', { name: 'Más formas de capturar' }),
+    )
+
+    const dictar = within(screen.getByTestId('menu-captura-panel')).getByRole(
+      'button',
+      { name: /Dictar el pedido/ },
+    )
+    expect(dictar).toBeDisabled()
+    await usuario.click(dictar)
+    expect(onDictar).not.toHaveBeenCalled()
   })
 })
 
