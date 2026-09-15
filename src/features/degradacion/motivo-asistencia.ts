@@ -10,6 +10,7 @@ const EXPLICACION: Record<string, string> = {
   sin_claves: 'sin claves de asistencia en el servidor',
   cuota: 'cuota o límite de peticiones agotado',
   modelo_no_disponible: 'el modelo no existe o fue retirado',
+  modelo_saturado: 'el modelo está saturado o en alta demanda',
   clave_rechazada: 'la clave fue rechazada por el servicio',
   http_error: 'el servicio respondió con error',
   timeout: 'el servicio no respondió a tiempo',

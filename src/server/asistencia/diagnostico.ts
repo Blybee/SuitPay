@@ -17,10 +17,12 @@ import { asistenciaSimuladaActiva } from './simulado.ts'
  *
  * Cuando Gemini rechaza una llamada, el vendedor ve la banda «asistencia no
  * disponible» y nada más: el porqué (clave rechazada, cuota, modelo retirado,
- * red) queda en los logs de Cloud Run, que nadie del mostrador mira. Esto hace la
- * misma llamada que haría una foto, pero con un prompt fijo de una línea, y
- * devuelve el resultado por clave y modelo. **No sale ningún dato de clientes ni
- * del pedido**: el único contenido es la instrucción de responder `{"ok":true}`.
+ * saturado, red) queda en los logs de Cloud Run, que nadie del mostrador mira.
+ * Esto sondea cada clave y modelo con un ping de texto de una línea —no es una
+ * foto ni un dictado— y devuelve el resultado. Un 200 aquí no garantiza que
+ * foto/audio pasen: un 503 UNAVAILABLE en multimodal conmuta al respaldo.
+ * **No sale ningún dato de clientes ni del pedido**: el único contenido es la
+ * instrucción de responder `{"ok":true}`.
  *
  * Las claves nunca se devuelven; solo si están presentes y su longitud, que
  * basta para notar un secreto vacío o con salto de línea.

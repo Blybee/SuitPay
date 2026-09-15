@@ -11,10 +11,10 @@ import type {
 } from './diagnostico.funciones.ts'
 
 /**
- * «Probar asistencia»: la misma llamada a Gemini que hace una foto, desde el
- * servidor de producción, con un prompt fijo. Muestra por clave y modelo qué
- * respondió el servicio para que el administrador sepa qué arreglar sin abrir
- * los logs de Cloud Run.
+ * «Probar asistencia»: ping de texto desde el servidor de producción, por
+ * clave y modelo. No replica foto ni dictado (esos van con el medio y el
+ * catálogo). Un OK aquí confirma claves; un 503 en el mostrador conmuta al
+ * respaldo. Sin datos de clientes ni del pedido.
  */
 
 const LEYENDA_CLAVE = {
@@ -111,8 +111,9 @@ export function PanelDiagnosticoAsistencia() {
             Asistencia (foto, PDF y dictado)
           </h2>
           <p className="mt-1 text-cuerpo text-desvaida">
-            Hace una llamada real al servicio desde el servidor, con cada clave
-            configurada. No envía datos de clientes ni del pedido.
+            Ping de texto real desde el servidor, con cada clave y modelo. No
+            envía foto, audio ni datos de clientes. Si el principal se satura
+            en el mostrador, se usa el modelo de respaldo.
           </p>
         </div>
         <Boton

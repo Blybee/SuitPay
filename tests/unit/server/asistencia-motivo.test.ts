@@ -10,8 +10,9 @@ import { diagnosticarAsistencia } from '../../../src/server/asistencia/diagnosti
 /**
  * Cuando Gemini falla, el vendedor ve la banda y el administrador necesita
  * saber por qué. Estas pruebas fijan que el motivo viaja estructurado en
- * `detalle` (sin texto crudo del proveedor), que un modelo retirado conmuta al
- * de respaldo y que la sonda de diagnóstico describe cada clave.
+ * `detalle` (sin texto crudo del proveedor), que un modelo retirado (404) o
+ * saturado (503 UNAVAILABLE) conmuta al de respaldo y que la sonda de
+ * diagnóstico describe cada clave.
  */
 
 function respuestaOk(json: unknown, extraParts: unknown[] = []): Response {
@@ -147,6 +148,92 @@ describe('motivo de fallo de la asistencia', () => {
     expect(urls).toHaveLength(2)
     expect(urls[0]).toContain('gemini-3.8-flash')
     expect(urls[1]).toContain('gemini-3.5-flash')
+  })
+
+  it('503 UNAVAILABLE en el principal: conmuta al respaldo sin gastar la otra clave en el modelo saturado', async () => {
+    const fetchFn = vi.fn(async (url: string) => {
+      if (url.includes('gemini-3.8-flash')) {
+        return errorGemini(
+          503,
+          'UNAVAILABLE',
+          'This model is currently experiencing high demand',
+        )
+      }
+      return respuestaOk({
+        ilegible: false,
+        items: [
+          {
+            textoOriginal: 'codo fg 1/2',
+            codigo: 'C1',
+            cantidad: 1,
+            unidad: 'NIU',
+            confidence: 'high',
+          },
+        ],
+      })
+    })
+
+    const resultado = await invocarModelo({
+      ...entradaAudio,
+      deps: {
+        fetchFn: fetchFn as unknown as typeof fetch,
+        clavePrimaria: 'k1',
+        claveSecundaria: 'k2',
+        timeoutMs: 2_000,
+      },
+    })
+
+    expect(resultado.items[0]?.codigo).toBe('C1')
+    const urls = fetchFn.mock.calls.map((c) => String((c as unknown[])[0]))
+    expect(urls).toHaveLength(2)
+    expect(urls[0]).toContain('gemini-3.8-flash')
+    expect(urls[1]).toContain('gemini-3.5-flash')
+    const claves = fetchFn.mock.calls.map((c) => {
+      const headers = (c as unknown as [string, RequestInit])[1]?.headers as
+        | Record<string, string>
+        | undefined
+      return headers?.['x-goog-api-key']
+    })
+    expect(claves).toEqual(['k1', 'k1'])
+  })
+
+  it('503 en principal y respaldo: motivo modelo_saturado y último modelo el de respaldo', async () => {
+    const fetchFn = vi.fn(async () =>
+      errorGemini(
+        503,
+        'UNAVAILABLE',
+        'This model is currently experiencing high demand',
+      ),
+    )
+
+    await expect(
+      invocarModelo({
+        ...entradaAudio,
+        deps: {
+          fetchFn: fetchFn as unknown as typeof fetch,
+          clavePrimaria: 'k1',
+          claveSecundaria: 'k2',
+          timeoutMs: 2_000,
+        },
+      }),
+    ).rejects.toMatchObject({
+      codigo: 'asistencia_no_disponible',
+      detalle: {
+        motivo: 'modelo_saturado',
+        status: 503,
+        estadoGemini: 'UNAVAILABLE',
+        modelo: 'gemini-3.5-flash',
+        clave: 'secundaria',
+        intentos: 3,
+      },
+    })
+
+    const urls = fetchFn.mock.calls.map((c) => String((c as unknown[])[0]))
+    expect(urls).toEqual([
+      expect.stringContaining('gemini-3.8-flash'),
+      expect.stringContaining('gemini-3.5-flash'),
+      expect.stringContaining('gemini-3.5-flash'),
+    ])
   })
 
   it('si también falla el respaldo, el detalle señala el último modelo probado', async () => {

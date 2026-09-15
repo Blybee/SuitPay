@@ -29,6 +29,17 @@ describe('motivo técnico de la asistencia en la banda', () => {
     ).toBe(
       'Asistencia: la clave fue rechazada por el servicio (HTTP 403 · PERMISSION_DENIED · gemini-3-flash-preview · clave secundaria)',
     )
+    expect(
+      formatearMotivoAsistencia({
+        motivo: 'modelo_saturado',
+        status: 503,
+        estadoGemini: 'UNAVAILABLE',
+        modelo: 'gemini-3.8-flash',
+        clave: 'secundaria',
+      }),
+    ).toBe(
+      'Asistencia: el modelo está saturado o en alta demanda (HTTP 503 · UNAVAILABLE · gemini-3.8-flash · clave secundaria)',
+    )
     expect(formatearMotivoAsistencia({ motivo: 'timeout', status: null })).toBe(
       'Asistencia: el servicio no respondió a tiempo',
     )

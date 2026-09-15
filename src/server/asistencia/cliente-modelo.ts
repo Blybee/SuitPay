@@ -13,9 +13,9 @@ const GEMINI_API_BASE =
 /** Gemini 3.8 Flash (GA). Sobreescribir con ASISTENCIA_MODELO. */
 export const MODELO_POR_DEFECTO = 'gemini-3.8-flash'
 /**
- * Si el principal responde 404 (retirado o no habilitado en la clave), se
- * intenta este. Sobreescribir con ASISTENCIA_MODELO_RESPALDO (vacío = sin
- * respaldo).
+ * Si el principal responde 404 (retirado) o 503 UNAVAILABLE (saturado: la
+ * sonda de texto puede pasar y foto/audio no), se intenta este.
+ * Sobreescribir con ASISTENCIA_MODELO_RESPALDO (vacío = sin respaldo).
  */
 export const MODELO_DE_RESPALDO_POR_DEFECTO = 'gemini-3.5-flash'
 
@@ -46,6 +46,7 @@ export type MotivoDeFalloAsistencia =
   | 'sin_claves'
   | 'cuota'
   | 'modelo_no_disponible'
+  | 'modelo_saturado'
   | 'clave_rechazada'
   | 'http_error'
   | 'timeout'
@@ -158,6 +159,34 @@ function esModeloNoDisponible(status: number, cuerpo: string): boolean {
   )
 }
 
+/**
+ * 503 UNAVAILABLE (y 5xx de capacidad) es por modelo, no por clave: la sonda
+ * de admin (texto de una línea) puede responder 200 y la foto/audio, no.
+ */
+function esModeloSaturado(status: number, cuerpo: string): boolean {
+  if (status === 503 || status === 502 || status === 504) return true
+  const estado = estadoGeminiDe(cuerpo)
+  if (
+    estado === 'UNAVAILABLE' ||
+    (typeof estado === 'string' && estado.startsWith('UNAVAILABLE/'))
+  ) {
+    return true
+  }
+  const bajo = cuerpo.toLowerCase()
+  return (
+    bajo.includes('high demand') ||
+    bajo.includes('currently unavailable') ||
+    bajo.includes('overloaded')
+  )
+}
+
+/** 404 o saturación: el otro modelo puede servir; otra clave, no. */
+export function debeCambiarDeModelo(fallo: FalloDeLlamada): boolean {
+  return (
+    fallo.motivo === 'modelo_no_disponible' || fallo.motivo === 'modelo_saturado'
+  )
+}
+
 function esClaveRechazada(status: number, cuerpo: string): boolean {
   if (status === 401 || status === 403) return true
   const bajo = cuerpo.toLowerCase()
@@ -174,6 +203,7 @@ function clasificarHttp(
   if (esErrorDeCuota(status, cuerpo)) return 'cuota'
   if (esModeloNoDisponible(status, cuerpo)) return 'modelo_no_disponible'
   if (esClaveRechazada(status, cuerpo)) return 'clave_rechazada'
+  if (esModeloSaturado(status, cuerpo)) return 'modelo_saturado'
   return 'http_error'
 }
 
@@ -357,9 +387,9 @@ export async function llamarConClave(
 
 /**
  * Recorre modelos × claves. La clave secundaria es la contingencia ante cuota o
- * clave rechazada; el modelo de respaldo, la contingencia ante un modelo
- * retirado (404). Un timeout corta: repetirlo con otra clave solo multiplica la
- * espera del vendedor.
+ * clave rechazada. El modelo de respaldo cubre 404 (retirado) y 503 UNAVAILABLE
+ * (saturado: la sonda de texto del admin puede pasar y foto/audio no). Un
+ * timeout corta: repetirlo con otra clave solo multiplica la espera.
  */
 async function intentarLlamadas(entrada: {
   readonly partes: readonly ParteGemini[]
@@ -380,8 +410,11 @@ async function intentarLlamadas(entrada: {
   if (primaria) claves.push({ clave: primaria, etiqueta: 'primaria' })
   if (secundaria) claves.push({ clave: secundaria, etiqueta: 'secundaria' })
 
+  const cadena = modelosAIntentar(entrada.deps)
   const fallos: FalloDeLlamada[] = []
-  modelos: for (const modelo of modelosAIntentar(entrada.deps)) {
+  modelos: for (let i = 0; i < cadena.length; i++) {
+    const modelo = cadena[i]!
+    const hayOtroModelo = i < cadena.length - 1
     for (const { clave, etiqueta } of claves) {
       const resultado = await llamarConClave(
         clave,
@@ -394,11 +427,12 @@ async function intentarLlamadas(entrada: {
         return { json: resultado.json, modelo: resultado.modelo }
       fallos.push(resultado)
       if (resultado.motivo === 'timeout') break modelos
-      if (resultado.motivo === 'modelo_no_disponible') continue modelos
+      // 404/503: otra clave del mismo modelo no ayuda; el respaldo sí.
+      if (hayOtroModelo && debeCambiarDeModelo(resultado)) continue modelos
     }
     const ultimo = fallos[fallos.length - 1]
-    // Si el modelo respondió (cuota, clave, 5xx…), cambiar de modelo no ayuda.
-    if (ultimo && ultimo.motivo !== 'modelo_no_disponible') break
+    // Cuota o clave rechazada: cambiar de modelo no ayuda.
+    if (ultimo && !debeCambiarDeModelo(ultimo)) break
   }
 
   throw new ErrorDeSuitPay('asistencia_no_disponible', detalleDeFallos(fallos))
