@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { LineaDePedido } from '../../../src/domain/totales/calculo.ts'
-import { pintarListaDeVecino } from '../../../src/features/vecinos/captura.ts'
+import { pintarListaDeVecino, pintarDeudasDeVecino } from '../../../src/features/vecinos/captura.ts'
 
 const CABECERA = 72
 const FILA = 36
@@ -63,5 +63,38 @@ describe('pintarListaDeVecino', () => {
     expect(alturas[0]).toBe(altoEsperado(1))
     expect(alturas[1]).toBe(altoEsperado(3))
     expect(alturas[1]).toBe((72 + 3 * 36 + 64) * 2)
+  })
+})
+
+describe('pintarDeudasDeVecino', () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('el alto incluye cabecera de cada día y el total en el pie', async () => {
+    const alturas: number[] = []
+    vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockImplementation(
+      () => contextoFalso(),
+    )
+    HTMLCanvasElement.prototype.toBlob = function (
+      this: HTMLCanvasElement,
+      callback: BlobCallback,
+    ) {
+      alturas.push(this.height)
+      callback(new Blob(['png'], { type: 'image/png' }))
+    }
+
+    await pintarDeudasDeVecino({
+      titulo: 'Deudas',
+      grupos: [
+        { etiqueta: '13 sept 2026', lineas: [linea(1), linea(2)] },
+        { etiqueta: '12 sept 2026', lineas: [linea(3)] },
+      ],
+      total: 300,
+    })
+
+    const filaGrupo = 28
+    const esperado = (72 + (filaGrupo + 2 * 36) + (filaGrupo + 36) + 64) * 2
+    expect(alturas[0]).toBe(esperado)
   })
 })

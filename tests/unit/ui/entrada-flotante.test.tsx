@@ -390,6 +390,8 @@ describe('Entrada — cotizaciones encima de comandos', () => {
       actualizadoEn: null,
       telefonoVecino: null,
       generacionPedido: 0,
+      diaCivilLineas: null,
+      totalDeudas: 0,
     }
 
     render(

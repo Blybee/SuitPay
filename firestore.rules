@@ -168,6 +168,7 @@ service cloud.firestore {
         return soloEstosCampos([
                  'numero', 'estado', 'canal', 'aliasVecino', 'telefonoVecino',
                  'cliente', 'lineas', 'total', 'generacionPedido',
+                 'diaCivilLineas', 'totalDeudas',
                  'creadoPor', 'creadoEn', 'actualizadoEn'
                ])
                && canalValido()
@@ -191,7 +192,8 @@ service cloud.firestore {
         return request.resource.data.diff(resource.data).affectedKeys()
                .hasOnly([
                  'aliasVecino', 'telefonoVecino', 'cliente',
-                 'lineas', 'total', 'actualizadoEn'
+                 'lineas', 'total', 'actualizadoEn',
+                 'diaCivilLineas', 'totalDeudas'
                ]);
       }
 
@@ -215,6 +217,34 @@ service cloud.firestore {
 
       allow delete: if (esVendedor() || esAdministrador())
                     && resource.data.estado == 'pendiente';
+    }
+
+    match /cotizaciones/{cotizacionId}/deudasPorDia/{dia} {
+      function diaCivil() {
+        return dia.matches('^[0-9]{4}-[0-9]{2}-[0-9]{2}$');
+      }
+
+      function deudaBienFormada() {
+        return soloEstosCampos(['fecha', 'lineas', 'total', 'generacion'])
+               && request.resource.data.fecha == dia
+               && request.resource.data.lineas is list
+               && request.resource.data.total is int
+               && request.resource.data.generacion is int
+               && request.resource.data.generacion == 0;
+      }
+
+      allow read: if personalDeLaEmpresa();
+
+      allow create: if (esVendedor() || esAdministrador())
+                    && diaCivil()
+                    && deudaBienFormada();
+
+      allow update: if (esVendedor() || esAdministrador())
+                    && diaCivil()
+                    && deudaBienFormada()
+                    && sinCambiar('generacion');
+
+      allow delete: if (esVendedor() || esAdministrador());
     }
 
     // --- Lista de requerimiento ------------------------------------------

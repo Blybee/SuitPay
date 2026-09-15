@@ -171,6 +171,7 @@ function peticion(clave: string) {
     cotizacionId: COTIZACION_ID,
     capturaId: null,
     generacionPedido: null,
+    fechasDeuda: null,
   }
 }
 

@@ -142,3 +142,41 @@
     }
   }
 }
+
+.t-icon-swap {
+  position: relative;
+  display: inline-grid;
+  place-items: center;
+}
+
+.t-icon-swap .t-icon {
+  grid-area: 1 / 1;
+  transition:
+    opacity var(--duration-media) var(--ease-salida),
+    filter var(--duration-media) var(--ease-salida);
+}
+
+.t-icon-swap[data-state='a'] .t-icon[data-icon='a'],
+.t-icon-swap[data-state='b'] .t-icon[data-icon='b'] {
+  opacity: 1;
+  filter: blur(0);
+}
+
+.t-icon-swap[data-state='a'] .t-icon[data-icon='b'],
+.t-icon-swap[data-state='b'] .t-icon[data-icon='a'] {
+  opacity: 0;
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.vista-vecino {
+  transition: opacity var(--duration-media) var(--ease-salida);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .t-icon-swap .t-icon,
+  .vista-vecino {
+    transition: none;
+    filter: none;
+  }
+}

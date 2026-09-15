@@ -22,6 +22,7 @@ import {
 import { CLAVES, leer } from '../../infra/local/almacenes.ts'
 import type { PedidoPersistido } from '../../infra/local/pedido.ts'
 import { generarClaveDeIdempotencia } from '../emision/clave.ts'
+import type { FechaDeDeudaOrigen } from '../../domain/vecinos/deudas.ts'
 
 /**
  * El almacén del pedido en curso.
@@ -56,6 +57,8 @@ interface EstadoDelPedido {
   readonly capturaId: string | null
   /** Generación del pedido de vecino al convertir. Nulo si no hay origen vivo. */
   readonly generacionPedido: number | null
+  /** Días de deuda al convertir. Nulo si el origen es el pedido vivo. */
+  readonly fechasDeuda: readonly FechaDeDeudaOrigen[] | null
   readonly claveIdempotencia: string | null
   /** Comprobante (boleta/factura) desde el que se reutilizó el pedido. */
   readonly comprobanteOrigenId: string | null
@@ -81,6 +84,7 @@ interface AccionesDelPedido {
     cotizacionId?: string | null
     capturaId?: string | null
     generacionPedido?: number | null
+    fechasDeuda?: readonly FechaDeDeudaOrigen[] | null
   }) => void
   /**
    * Sustituye el pedido en curso por el contenido de una cotización recuperada.
@@ -90,6 +94,7 @@ interface AccionesDelPedido {
   cargarDesdeCotizacion: (datos: {
     readonly cotizacionId: string
     readonly generacionPedido?: number | null
+    readonly fechasDeuda?: readonly FechaDeDeudaOrigen[] | null
     readonly lineas: readonly LineaDePedido[]
     readonly cliente: ClienteDelPedido | null
   }) => void
@@ -132,6 +137,7 @@ const ESTADO_INICIAL: EstadoDelPedido = {
   cotizacionId: null,
   capturaId: null,
   generacionPedido: null,
+  fechasDeuda: null,
   claveIdempotencia: null,
   comprobanteOrigenId: null,
   comprobanteOrigenEtiqueta: null,
@@ -152,6 +158,7 @@ const VACIO_CONTENIDO: Omit<
   cotizacionId: null,
   capturaId: null,
   generacionPedido: null,
+  fechasDeuda: null,
   claveIdempotencia: null,
   comprobanteOrigenId: null,
   comprobanteOrigenEtiqueta: null,
@@ -170,6 +177,7 @@ function contenidoDe(
     cotizacionId: estado.cotizacionId,
     capturaId: estado.capturaId,
     generacionPedido: estado.generacionPedido,
+    fechasDeuda: estado.fechasDeuda,
     claveIdempotencia: estado.claveIdempotencia,
     comprobanteOrigenId: estado.comprobanteOrigenId,
     comprobanteOrigenEtiqueta: estado.comprobanteOrigenEtiqueta,
@@ -187,6 +195,7 @@ function hidratar(
     cotizacionId: guardado.cotizacionId,
     capturaId: guardado.capturaId,
     generacionPedido: guardado.generacionPedido ?? null,
+    fechasDeuda: guardado.fechasDeuda ?? null,
     claveIdempotencia: guardado.claveIdempotencia,
     comprobanteOrigenId: guardado.comprobanteOrigenId ?? null,
     comprobanteOrigenEtiqueta: guardado.comprobanteOrigenEtiqueta ?? null,
@@ -274,6 +283,10 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         ...(origen.generacionPedido !== undefined
           ? { generacionPedido: origen.generacionPedido }
           : {}),
+        ...(origen.fechasDeuda !== undefined
+          ? { fechasDeuda: origen.fechasDeuda }
+          : {}),
+        ...(origen.cotizacionId === null ? { fechasDeuda: null } : {}),
       })
     },
 
@@ -285,7 +298,8 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         })),
         cliente: datos.cliente,
         cotizacionId: datos.cotizacionId,
-        generacionPedido: datos.generacionPedido ?? 0,
+        generacionPedido: datos.generacionPedido ?? null,
+        fechasDeuda: datos.fechasDeuda ?? null,
         capturaId: null,
         comprobanteOrigenId: null,
         comprobanteOrigenEtiqueta: null,
@@ -301,6 +315,7 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
         cliente: datos.cliente,
         cotizacionId: null,
         generacionPedido: null,
+        fechasDeuda: null,
         capturaId: null,
         comprobanteOrigenId: datos.comprobanteOrigenId,
         comprobanteOrigenEtiqueta: datos.comprobanteOrigenEtiqueta ?? null,

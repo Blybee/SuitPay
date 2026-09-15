@@ -25,4 +25,8 @@ export interface Cotizacion {
   readonly telefonoVecino: string | null
   /** Contador de generación del pedido vivo (canal vecino). */
   readonly generacionPedido: number
+  /** Día civil America/Lima del pedido vivo. Nulo en documentos previos. */
+  readonly diaCivilLineas: string | null
+  /** Suma de deudas archivadas (céntimos). */
+  readonly totalDeudas: number
 }

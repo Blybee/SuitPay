@@ -3,6 +3,7 @@ import type {
   CambiosDelComprobante,
   Comprobante,
   Cotizacion,
+  DeudaDeVecino,
   Serie,
   TransaccionDeEmision,
 } from './almacen.ts'
@@ -40,6 +41,7 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
   private readonly comprobantes = new Map<string, Version<Comprobante>>()
   private readonly series = new Map<string, Version<Serie>>()
   private readonly cotizaciones = new Map<string, Version<Cotizacion>>()
+  private readonly deudas = new Map<string, Version<DeudaDeVecino>>()
 
   /** Cuántas veces hubo que reintentar por conflicto. Se observa en pruebas. */
   reintentosPorConflicto = 0
@@ -67,6 +69,17 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
 
   cotizacionPorId(id: string): Cotizacion | undefined {
     return this.cotizaciones.get(id)?.valor
+  }
+
+  sembrarDeuda(cotizacionId: string, deuda: DeudaDeVecino): void {
+    this.deudas.set(`${cotizacionId}/${deuda.fecha}`, {
+      valor: deuda,
+      version: 1,
+    })
+  }
+
+  deudaPorDia(cotizacionId: string, fecha: string): DeudaDeVecino | undefined {
+    return this.deudas.get(`${cotizacionId}/${fecha}`)?.valor
   }
 
   todosLosComprobantes(): readonly Comprobante[] {
@@ -98,6 +111,8 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
       series: new Map<string, Serie>(),
       cotizaciones: new Map<string, Cotizacion>(),
       cotizacionesEliminadas: new Set<string>(),
+      deudas: new Map<string, DeudaDeVecino>(),
+      deudasEliminadas: new Set<string>(),
     }
 
     const anotarLectura = (clave: string, version: number | undefined): void => {
@@ -131,6 +146,18 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
         return borrador.cotizaciones.get(cotizacionId) ?? guardada?.valor
       },
 
+      leerDeudaDeVecino: async (cotizacionId, fecha) => {
+        const clave = `${cotizacionId}/${fecha}`
+        if (borrador.deudasEliminadas.has(clave)) {
+          const guardada = this.deudas.get(clave)
+          anotarLectura(`deuda:${clave}`, guardada?.version)
+          return undefined
+        }
+        const guardada = this.deudas.get(clave)
+        anotarLectura(`deuda:${clave}`, guardada?.version)
+        return borrador.deudas.get(clave) ?? guardada?.valor
+      },
+
       consumirCorrelativo: (serieId, ultimoNumero) => {
         const actual = this.series.get(serieId)
         if (actual === undefined) return
@@ -158,6 +185,23 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
         borrador.cotizaciones.set(cotizacionId, {
           ...actual,
           generacionPedido: generacionSiguiente,
+        })
+      },
+
+      eliminarDeudaDeVecino: (cotizacionId, fecha) => {
+        const clave = `${cotizacionId}/${fecha}`
+        borrador.deudasEliminadas.add(clave)
+        borrador.deudas.delete(clave)
+      },
+
+      actualizarTotalDeudas: (cotizacionId, totalDeudas) => {
+        const actual =
+          borrador.cotizaciones.get(cotizacionId) ??
+          this.cotizaciones.get(cotizacionId)?.valor
+        if (actual === undefined) return
+        borrador.cotizaciones.set(cotizacionId, {
+          ...actual,
+          totalDeudas,
         })
       },
     }
@@ -198,6 +242,17 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
         version: (previo?.version ?? 0) + 1,
       })
     }
+    for (const clave of borrador.deudasEliminadas) {
+      this.deudas.delete(clave)
+    }
+    for (const [clave, valor] of borrador.deudas) {
+      if (borrador.deudasEliminadas.has(clave)) continue
+      const previo = this.deudas.get(clave)
+      this.deudas.set(clave, {
+        valor,
+        version: (previo?.version ?? 0) + 1,
+      })
+    }
 
     return resultado
   }
@@ -211,7 +266,9 @@ export class AlmacenEnMemoria implements AlmacenDeEmision {
           ? this.comprobantes
           : tipo === 'serie'
             ? this.series
-            : this.cotizaciones
+            : tipo === 'deuda'
+              ? this.deudas
+              : this.cotizaciones
       const actual = (mapa as Map<string, Version<unknown>>).get(id)
       if ((actual?.version ?? 0) !== version) return false
     }

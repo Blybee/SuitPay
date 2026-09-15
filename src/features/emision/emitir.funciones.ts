@@ -95,6 +95,16 @@ const esquemaDeEmision = z.object({
   cotizacionId: z.string().nullable(),
   capturaId: z.string().nullable(),
   generacionPedido: z.number().int().nonnegative().nullable(),
+  fechasDeuda: z
+    .array(
+      z.object({
+        fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        generacion: z.number().int().nonnegative(),
+      }),
+    )
+    .max(366)
+    .nullable()
+    .optional(),
   totalDeclarado: z.number().int().optional(),
 })
 
@@ -170,7 +180,7 @@ export const emitir = createServerFn({ method: 'POST' })
           precioCatalogoPorCodigo,
           inventario: new AlmacenDeInventarioFirestore(),
         },
-        { ...data, cliente: data.cliente ?? null },
+        { ...data, cliente: data.cliente ?? null, fechasDeuda: data.fechasDeuda ?? null },
       )
       return { ok: true, comprobante }
     } catch (error) {

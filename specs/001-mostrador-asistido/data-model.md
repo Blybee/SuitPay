@@ -168,6 +168,8 @@ Una serie por vendedor y tipo de documento. Documentos pequeños con el contador
 | `creadoPor`, `creadoEn` | cadena, marca de tiempo | |
 | `actualizadoEn` | marca de tiempo | Útil en cotizaciones vivas de vecino que se reescriben al agregar/quitar líneas. |
 | `generacionPedido` | número | Contador de generación del pedido vivo. Empieza en 0. En canal `vecino`, la emisión lo incrementa en la misma transacción y vacía `lineas`/`total`. En canal `general` no se usa: el documento se borra (FR-019). |
+| `diaCivilLineas` | cadena | Día civil America/Lima (`AAAA-MM-DD`) del pedido vivo. Ausente en documentos previos al rollover: se infiere de `actualizadoEn`. |
+| `totalDeudas` | número | Suma en céntimos de las deudas archivadas. Agregado desnormalizado para el pill sin leer la subcolección. |
 
 **Campos retirados**: `comprobanteId` y `convertidaEn` ya no se escriben. El rastro de origen queda en el comprobante (`cotizacionId`), no en la cotización.
 
@@ -180,6 +182,8 @@ Una serie por vendedor y tipo de documento. Documentos pequeños con el contador
 **Advertencia al recuperar** (FR-018): al abrir una cotización, el cliente compara sus líneas contra el catálogo en caché y señala los precios que cambiaron y los productos que ya no existen. No requiere lecturas adicionales.
 
 **Canal vecinos (US8)**: una cotización viva por vecino (`canal: vecino` + `aliasVecino`). El tab Vecinos filtra por canal; el tab Cotizaciones solo lista `canal: general`. `aliasVecino` y `telefonoVecino` se pueden editar mientras la cotización esté pendiente.
+
+**Deudas por día (FR-035g)**: el historial no vive en el padre (la lista de vecinos ya lee el documento entero). Subcolección `cotizaciones/{id}/deudasPorDia/{AAAA-MM-DD}` con `{ fecha, lineas, total, generacion }`. Se lee bajo demanda al abrir el ojito del vecino activo. El corte de día (cliente, transacción, sin cron) archiva `lineas` vivas si `diaCivilLineas` es anterior a hoy Lima. Emitir desde deudas borra esos días y resta `totalDeudas`; no toca `lineas` ni `generacionPedido`.
 
 ---
 

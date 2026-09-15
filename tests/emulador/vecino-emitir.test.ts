@@ -170,6 +170,7 @@ describeConEmulador('emisión desde cotización de vecino', () => {
       cotizacionId: COTIZACION_ID,
       capturaId: null,
       generacionPedido: 0,
+      fechasDeuda: null,
     })
     expect(primero.comprobanteId).toBe('clave-vecino-a')
 
@@ -201,6 +202,7 @@ describeConEmulador('emisión desde cotización de vecino', () => {
         cotizacionId: COTIZACION_ID,
         capturaId: null,
         generacionPedido: 0,
+        fechasDeuda: null,
       })
       expect.unreachable()
     } catch (error) {
@@ -232,6 +234,7 @@ describeConEmulador('emisión desde cotización de vecino', () => {
       cotizacionId: null,
       capturaId: null,
       generacionPedido: null,
+      fechasDeuda: null,
     })
     expect(suelto.comprobanteId).toBe('clave-vecino-nuevo')
     const vecinoTrasSuelto = await base
@@ -240,5 +243,84 @@ describeConEmulador('emisión desde cotización de vecino', () => {
       .get()
     expect(vecinoTrasSuelto.exists).toBe(true)
     expect(vecinoTrasSuelto.data()?.['generacionPedido']).toBe(1)
+  })
+
+  it('emitir deudas borra el día y conserva el pedido vivo', async () => {
+    await base
+      .collection(COLECCIONES.cotizaciones)
+      .doc(COTIZACION_ID)
+      .collection('deudasPorDia')
+      .doc('2026-09-12')
+      .set({
+        fecha: '2026-09-12',
+        lineas: [
+          {
+            codigo: 'TUB-1-2',
+            descripcion: 'TUBO PVC 1/2 PULGADA',
+            unidad: 'UND',
+            cantidad: 2,
+            precio: 1_250,
+          },
+        ],
+        total: 2_500,
+        generacion: 0,
+      })
+    await base.collection(COLECCIONES.cotizaciones).doc(COTIZACION_ID).update({
+      totalDeudas: 2_500,
+      lineas: [
+        {
+          codigo: 'COD-1',
+          descripcion: 'CODO',
+          unidad: 'UND',
+          cantidad: 1,
+          precio: 800,
+        },
+      ],
+      total: 800,
+      generacionPedido: 0,
+    })
+
+    const emitido = await emitirComprobante(contexto(), {
+      claveIdempotencia: 'clave-deuda-emulador',
+      tipoDocumento: 'boleta',
+      cliente: {
+        tipoDocumento: 'RUC',
+        numeroDocumento: '20123456789',
+        denominacion: 'Wilmer SAC',
+      },
+      lineas: [
+        {
+          codigo: 'TUB-1-2',
+          descripcion: 'TUBO PVC 1/2 PULGADA',
+          unidad: 'UND',
+          cantidad: 2,
+          precio: 1_250,
+        },
+      ],
+      condicionPago: { tipo: 'contado' },
+      medioPago: { medio: 'efectivo', montoRecibido: 2_500 },
+      cotizacionId: COTIZACION_ID,
+      capturaId: null,
+      generacionPedido: null,
+      fechasDeuda: [{ fecha: '2026-09-12', generacion: 0 }],
+    })
+    expect(emitido.comprobanteId).toBe('clave-deuda-emulador')
+
+    const padre = await base
+      .collection(COLECCIONES.cotizaciones)
+      .doc(COTIZACION_ID)
+      .get()
+    expect(padre.data()?.['generacionPedido']).toBe(0)
+    expect(padre.data()?.['totalDeudas']).toBe(0)
+    expect(padre.data()?.['lineas']).toHaveLength(1)
+    expect(padre.data()?.['lineas'][0]?.['codigo']).toBe('COD-1')
+
+    const dia = await base
+      .collection(COLECCIONES.cotizaciones)
+      .doc(COTIZACION_ID)
+      .collection('deudasPorDia')
+      .doc('2026-09-12')
+      .get()
+    expect(dia.exists).toBe(false)
   })
 })

@@ -4,6 +4,7 @@ import {
   serverTimestamp,
   setDoc,
 } from 'firebase/firestore'
+import { diaEnLima } from '../../domain/anulacion/ventana.ts'
 import { obtenerBaseDeDatos } from '../../infra/firebase/cliente.ts'
 import { reservarNumeroCotizacionFn } from '../cotizaciones/cotizaciones.funciones.ts'
 import type { ClienteDelPedido } from '../pedido/almacen.ts'
@@ -60,6 +61,8 @@ export async function crearCotizacionVecino(datos: {
       lineas: [],
       total: 0,
       generacionPedido: 0,
+      diaCivilLineas: diaEnLima(new Date()),
+      totalDeudas: 0,
       creadoPor: datos.uid,
       creadoEn: serverTimestamp(),
       actualizadoEn: serverTimestamp(),

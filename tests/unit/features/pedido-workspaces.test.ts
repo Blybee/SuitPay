@@ -25,6 +25,7 @@ describe('workspaces de pedido', () => {
       restaurando: false,
       slotActivo: 1,
       segundoAbierto: false,
+      fechasDeuda: null,
     })
   })
 

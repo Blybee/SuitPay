@@ -186,6 +186,7 @@ function Mostrador() {
   const [panelDictado, setPanelDictado] = useState(false)
   const [panelFoto, setPanelFoto] = useState(false)
   const [vecinoActivoId, setVecinoActivoId] = useState<string | null>(null)
+  const [senalAltaVecino, setSenalAltaVecino] = useState(0)
   const [propuestaVecino, setPropuestaVecino] =
     useState<PropuestaCrearVecino | null>(null)
   const [pendienteAltaVecino, setPendienteAltaVecino] =
@@ -430,7 +431,6 @@ function Mostrador() {
         setAvisoVecino('Ese vecino ya no está disponible.')
         return false
       }
-      let actuales = [...activa.lineas]
       for (const linea of lineas) {
         const producto: ProductoBuscable = {
           codigo: linea.codigo,
@@ -443,7 +443,6 @@ function Mostrador() {
         }
         const resultado = await agregarProductoAVecino({
           cotizacionId: activa.id,
-          lineasActuales: actuales,
           producto,
           cantidad: linea.cantidad,
         })
@@ -451,29 +450,8 @@ function Mostrador() {
           setAvisoVecino(resultado.mensaje ?? 'No se pudo agregar el producto.')
           return false
         }
-        const indice = actuales.findIndex(
-          (cada) => cada.codigo === linea.codigo,
-        )
-        if (indice >= 0) {
-          const previa = actuales[indice]!
-          actuales = actuales.map((cada, i) =>
-            i === indice
-              ? { ...previa, cantidad: previa.cantidad + linea.cantidad }
-              : cada,
-          )
-        } else {
-          actuales = [
-            ...actuales,
-            {
-              codigo: linea.codigo,
-              descripcion: linea.descripcion,
-              unidad: linea.unidad,
-              cantidad: linea.cantidad,
-              precio: producto.precio,
-            },
-          ]
-        }
       }
+      setSenalAltaVecino((n) => n + 1)
       setVecinoActivoId(destinoId)
       void queryClient.invalidateQueries({
         queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
@@ -637,13 +615,13 @@ function Mostrador() {
         }
         const resultado = await agregarProductoAVecino({
           cotizacionId: activa.id,
-          lineasActuales: activa.lineas,
           producto,
         })
         if (!resultado.ok) {
           setAvisoVecino(resultado.mensaje ?? 'No se pudo agregar el producto.')
           return
         }
+        setSenalAltaVecino((n) => n + 1)
         setAvisoVecino(null)
         void queryClient.invalidateQueries({
           queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
@@ -833,17 +811,28 @@ function Mostrador() {
     }
   }
 
-  function convertirVecinoEnPedido(cotizacion: Cotizacion): void {
+  function convertirVecinoEnPedido(origen: {
+    readonly cotizacion: Cotizacion
+    readonly lineas: Cotizacion['lineas']
+    readonly fechasDeuda: readonly {
+      readonly fecha: string
+      readonly generacion: number
+    }[] | null
+  }): void {
     pedido.cargarDesdeCotizacion({
-      cotizacionId: cotizacion.id,
-      generacionPedido: cotizacion.generacionPedido,
-      lineas: cotizacion.lineas,
-      cliente: cotizacion.cliente,
+      cotizacionId: origen.cotizacion.id,
+      generacionPedido:
+        origen.fechasDeuda === null ? origen.cotizacion.generacionPedido : null,
+      fechasDeuda: origen.fechasDeuda,
+      lineas: origen.lineas,
+      cliente: origen.cotizacion.cliente,
     })
     pedido.fijarModoCotizacion(false)
     setPestana('pedido')
     setAvisoCotizacion(
-      `Cotización de vecino #${cotizacion.numero} abierta. Elige boleta, factura o nota de venta y emite.`,
+      origen.fechasDeuda === null
+        ? `Cotización de vecino #${origen.cotizacion.numero} abierta. Elige boleta, factura o nota de venta y emite.`
+        : `Deudas de ${origen.cotizacion.aliasVecino ?? `#${origen.cotizacion.numero}`} abiertas. Elige boleta, factura o nota de venta y emite.`,
     )
   }
 
@@ -884,6 +873,7 @@ function Mostrador() {
           cotizacionId: pedido.cotizacionId,
           capturaId: pedido.capturaId,
           generacionPedido: pedido.generacionPedido,
+          fechasDeuda: pedido.fechasDeuda === null ? null : [...pedido.fechasDeuda],
           totalDeclarado: total,
         },
       })
@@ -891,9 +881,18 @@ function Mostrador() {
         conservarPedido: encadenarGuia,
       })
       if (respuesta.ok && respuesta.comprobante !== undefined) {
+        const origenVecino = pedido.cotizacionId
         vaciarCacheInventario()
         setAvisosInventario(new Map())
         limpiarContextoDeCotizacionEnCabecera()
+        void queryClient.invalidateQueries({
+          queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+        })
+        if (origenVecino !== null) {
+          void queryClient.invalidateQueries({
+            queryKey: CLAVES_DE_CONSULTA.deudasVecino(origenVecino),
+          })
+        }
         void resolverYPrecargarPdf(
           respuesta.comprobante.comprobanteId,
           respuesta.comprobante.archivos.pdf,
@@ -970,6 +969,8 @@ function Mostrador() {
         actualizadoEn: new Date(),
         telefonoVecino: null,
         generacionPedido: pedido.generacionPedido ?? 0,
+        diaCivilLineas: null,
+        totalDeudas: 0,
       }
       usarPedido.getState().vaciar()
       limpiarContextoDeCotizacionEnCabecera()
@@ -1387,6 +1388,7 @@ function Mostrador() {
             onCambiarActiva={setVecinoActivoId}
             onConvertir={convertirVecinoEnPedido}
             aviso={avisoVecino}
+            senalAlta={senalAltaVecino}
             onVolverAlBuscador={() => entradaRef.current?.enfocar()}
             creandoVecino={creandoVecino}
             onCrearDesdeModal={(propuesta) => {

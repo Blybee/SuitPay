@@ -96,9 +96,16 @@ export interface PeticionDeEmitir {
   readonly capturaId: string | null
   /**
    * Generación del pedido de vecino capturada al convertir. Nulo en cotización
-   * general o venta suelta. Debe coincidir con el documento al emitir.
+   * general, venta suelta o conversión desde deudas.
    */
   readonly generacionPedido: number | null
+  /**
+   * Días de deuda a consumir. Si hay elementos, no se vacía el pedido vivo.
+   */
+  readonly fechasDeuda: readonly {
+    readonly fecha: string
+    readonly generacion: number
+  }[] | null
   /** El total que calculó el cliente. Solo para comparar; manda el servidor. */
   readonly totalDeclarado?: Centimos
 }
@@ -251,9 +258,12 @@ async function reclamarEnTransaccion(
       return { comprobante: existente, yaExistia: true }
     }
 
-    // Cotización general: borrado duro (FR-019). Vecino: consume generación
-    // y vacía el pedido vivo sin borrar la identidad (FR-035a).
+    // Cotización general: borrado duro (FR-019). Vecino vivo: consume
+    // generación (FR-035a). Vecino deudas: borra días, no toca el vivo (FR-035g).
     let cotizacionViva: Cotizacion | undefined
+    const fechasDeuda = peticion.fechasDeuda ?? []
+    const consumeDeudas = fechasDeuda.length > 0
+    const deudasLeidas: { fecha: string; total: number }[] = []
     if (peticion.cotizacionId !== null) {
       cotizacionViva = await transaccion.leerCotizacion(peticion.cotizacionId)
       if (cotizacionViva === undefined || cotizacionViva.estado !== 'pendiente') {
@@ -262,13 +272,32 @@ async function reclamarEnTransaccion(
         })
       }
       if (cotizacionViva.canal === 'vecino') {
-        const actual = cotizacionViva.generacionPedido ?? 0
-        const pedida = peticion.generacionPedido ?? 0
-        if (pedida !== actual) {
-          fallar('cotizacion_ya_usada', {
-            cotizacionId: peticion.cotizacionId,
-          })
+        if (consumeDeudas) {
+          for (const cada of fechasDeuda) {
+            const dia = await transaccion.leerDeudaDeVecino(
+              peticion.cotizacionId,
+              cada.fecha,
+            )
+            if (dia === undefined || dia.generacion !== cada.generacion) {
+              fallar('cotizacion_ya_usada', {
+                cotizacionId: peticion.cotizacionId,
+              })
+            }
+            deudasLeidas.push({ fecha: cada.fecha, total: dia.total })
+          }
+        } else {
+          const actual = cotizacionViva.generacionPedido ?? 0
+          const pedida = peticion.generacionPedido ?? 0
+          if (pedida !== actual) {
+            fallar('cotizacion_ya_usada', {
+              cotizacionId: peticion.cotizacionId,
+            })
+          }
         }
+      } else if (consumeDeudas) {
+        fallar('cotizacion_ya_usada', {
+          cotizacionId: peticion.cotizacionId,
+        })
       }
     }
 
@@ -319,10 +348,22 @@ async function reclamarEnTransaccion(
 
     if (peticion.cotizacionId !== null) {
       if (cotizacionViva?.canal === 'vecino') {
-        transaccion.consumirPedidoDeVecino(
-          peticion.cotizacionId,
-          (cotizacionViva.generacionPedido ?? 0) + 1,
-        )
+        if (consumeDeudas) {
+          let aRestar = 0
+          for (const cada of deudasLeidas) {
+            transaccion.eliminarDeudaDeVecino(peticion.cotizacionId, cada.fecha)
+            aRestar += cada.total
+          }
+          transaccion.actualizarTotalDeudas(
+            peticion.cotizacionId,
+            Math.max(0, (cotizacionViva.totalDeudas ?? 0) - aRestar),
+          )
+        } else {
+          transaccion.consumirPedidoDeVecino(
+            peticion.cotizacionId,
+            (cotizacionViva.generacionPedido ?? 0) + 1,
+          )
+        }
       } else {
         transaccion.eliminarCotizacion(peticion.cotizacionId)
       }

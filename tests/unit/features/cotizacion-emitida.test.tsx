@@ -36,6 +36,8 @@ function cotizacionDePrueba(): Cotizacion {
     creadoEn: new Date('2026-09-12T12:00:00Z'),
     actualizadoEn: new Date('2026-09-12T12:00:00Z'),
     generacionPedido: 0,
+    diaCivilLineas: null,
+    totalDeudas: 0,
   }
 }
 

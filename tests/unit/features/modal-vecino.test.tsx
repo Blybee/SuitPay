@@ -33,6 +33,8 @@ function vecinoDePrueba(): Cotizacion {
     creadoEn: new Date('2026-08-27T12:00:00Z'),
     actualizadoEn: null,
     generacionPedido: 0,
+    diaCivilLineas: null,
+    totalDeudas: 0,
   }
 }
 

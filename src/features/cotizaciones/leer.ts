@@ -89,6 +89,13 @@ function mapearCotizacion(
         : null,
     generacionPedido:
       typeof datos['generacionPedido'] === 'number' ? datos['generacionPedido'] : 0,
+    diaCivilLineas:
+      typeof datos['diaCivilLineas'] === 'string' &&
+      datos['diaCivilLineas'].trim() !== ''
+        ? datos['diaCivilLineas'].trim()
+        : null,
+    totalDeudas:
+      typeof datos['totalDeudas'] === 'number' ? datos['totalDeudas'] : 0,
   }
 }
 

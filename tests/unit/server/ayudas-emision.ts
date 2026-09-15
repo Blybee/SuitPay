@@ -115,6 +115,7 @@ export function peticion(
     cotizacionId: null,
     capturaId: null,
     generacionPedido: null,
+    fechasDeuda: null,
     ...cambios,
   }
 }

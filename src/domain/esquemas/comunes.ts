@@ -134,6 +134,16 @@ export const esquemaDePeticionDeEmision = z.object({
   cotizacionId: z.string().trim().min(1).max(200).nullable(),
   capturaId: z.string().trim().min(1).max(200).nullable(),
   generacionPedido: z.number().int().nonnegative().nullable(),
+  fechasDeuda: z
+    .array(
+      z.object({
+        fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        generacion: z.number().int().nonnegative(),
+      }),
+    )
+    .max(366)
+    .nullable()
+    .optional(),
 })
 
 export type PeticionDeEmision = z.infer<typeof esquemaDePeticionDeEmision>

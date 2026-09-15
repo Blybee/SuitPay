@@ -38,6 +38,8 @@ function cotizacion(parcial: {
     actualizadoEn: null,
     telefonoVecino: null,
     generacionPedido: 0,
+    diaCivilLineas: null,
+    totalDeudas: 0,
   }
 }
 

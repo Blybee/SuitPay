@@ -1,27 +1,47 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useState } from 'react'
-import { Camera, Plus } from 'lucide-react'
+import { Camera, Eye, EyeClosed, Plus, Trash2 } from 'lucide-react'
 import {
   calcularTotal,
   formatearImporte,
 } from '../../domain/totales/calculo.ts'
+import type { LineaDePedido } from '../../domain/totales/calculo.ts'
+import {
+  formatearDiaDeDeuda,
+  fusionarLineasPorCodigo,
+  totalDeGrupos,
+  type FechaDeDeudaOrigen,
+  type PedidoDeDeuda,
+} from '../../domain/vecinos/deudas.ts'
 import { CLAVES_DE_CONSULTA } from '../../infra/consultas/cliente.ts'
-import { Boton } from '../../ui/componentes/primitivas.tsx'
+import { Boton, Casilla } from '../../ui/componentes/primitivas.tsx'
 import { EstadoVacio } from '../../ui/componentes/EstadoVacio.tsx'
 import {
   CabecerasDeColumna,
   LineaPedido,
 } from '../../ui/componentes/LineaPedido.tsx'
+import { Modal } from '../../ui/componentes/Modal.tsx'
 import { listarCotizacionesPendientes } from '../cotizaciones/leer.ts'
 import type { Cotizacion } from '../cotizaciones/tipos.ts'
 import { usarCatalogo } from '../catalogo/almacen.ts'
-import { persistirLineasDeVecino } from './persistir.ts'
-import { capturarListaDeProductos } from './captura.ts'
+import { mutarLineasDeVecino, asegurarCorteDeDia } from './persistir.ts'
+import {
+  capturarDeudasDeVecino,
+  capturarListaDeProductos,
+} from './captura.ts'
+import { eliminarDeudaDeDia, listarDeudasDeVecino } from './deudas.ts'
 import { ModalDeVecino } from './modal.tsx'
 import type { PropuestaCrearVecino } from '../comandos/crear-vecino.ts'
+import { mostrarNotificacion } from '../notificaciones/almacen.ts'
+
+export interface OrigenDeConversionDeVecino {
+  readonly cotizacion: Cotizacion
+  readonly lineas: readonly LineaDePedido[]
+  readonly fechasDeuda: readonly FechaDeDeudaOrigen[] | null
+}
 
 /**
- * Tab Vecinos: sub-tabs por alias + líneas + total (FR-034, FR-035).
+ * Tab Vecinos: sub-tabs por alias + líneas + deudas (FR-034, FR-035, FR-035g).
  */
 export function PanelDeVecinos({
   activaId,
@@ -31,14 +51,16 @@ export function PanelDeVecinos({
   onVolverAlBuscador,
   onCrearDesdeModal,
   creandoVecino,
+  senalAlta = 0,
 }: {
   readonly activaId: string | null
   readonly onCambiarActiva: (id: string) => void
-  readonly onConvertir: (cotizacion: Cotizacion) => void
+  readonly onConvertir: (origen: OrigenDeConversionDeVecino) => void
   readonly aviso?: string | null
   readonly onVolverAlBuscador?: () => void
   readonly onCrearDesdeModal: (propuesta: PropuestaCrearVecino) => void
   readonly creandoVecino: boolean
+  readonly senalAlta?: number
 }) {
   const queryClient = useQueryClient()
   const productoPorCodigo = usarCatalogo((s) => s.productoPorCodigo)
@@ -53,6 +75,21 @@ export function PanelDeVecinos({
   const activa = lista.find((cada) => cada.id === activaId) ?? lista[0] ?? null
   const [modalAbierto, setModalAbierto] = useState(false)
   const [capturandoId, setCapturandoId] = useState<string | null>(null)
+  const [vistaDeudas, setVistaDeudas] = useState(false)
+  const [fechasMarcadas, setFechasMarcadas] = useState<ReadonlySet<string>>(
+    new Set(),
+  )
+  const [deudaAEliminar, setDeudaAEliminar] = useState<PedidoDeDeuda | null>(
+    null,
+  )
+  const [eliminandoDeuda, setEliminandoDeuda] = useState(false)
+
+  const deudas = useQuery({
+    queryKey: CLAVES_DE_CONSULTA.deudasVecino(activa?.id ?? ''),
+    queryFn: () => listarDeudasDeVecino(activa!.id),
+    enabled: vistaDeudas && activa !== null,
+    staleTime: 15_000,
+  })
 
   useEffect(() => {
     if (activa !== null && activa.id !== activaId) {
@@ -60,10 +97,53 @@ export function PanelDeVecinos({
     }
   }, [activa, activaId, onCambiarActiva])
 
+  useEffect(() => {
+    setVistaDeudas(false)
+    setFechasMarcadas(new Set())
+  }, [activa?.id])
+
+  useEffect(() => {
+    if (senalAlta > 0) setVistaDeudas(false)
+  }, [senalAlta])
+
+  useEffect(() => {
+    if (activa === null) return
+    void asegurarCorteDeDia(activa.id).then((resultado) => {
+      if (resultado.ok && resultado.archivo) {
+        void queryClient.invalidateQueries({
+          queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+        })
+      }
+    })
+  }, [activa?.id, queryClient])
+
+  useEffect(() => {
+    function alVisibilidad(): void {
+      if (document.visibilityState !== 'visible' || activa === null) return
+      void asegurarCorteDeDia(activa.id).then((resultado) => {
+        if (resultado.ok && resultado.archivo) {
+          void queryClient.invalidateQueries({
+            queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+          })
+          void queryClient.invalidateQueries({
+            queryKey: CLAVES_DE_CONSULTA.deudasVecino(activa.id),
+          })
+        }
+      })
+    }
+    document.addEventListener('visibilitychange', alVisibilidad)
+    return () => document.removeEventListener('visibilitychange', alVisibilidad)
+  }, [activa, queryClient])
+
   async function refrescar(): Promise<void> {
     await queryClient.invalidateQueries({
       queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
     })
+    if (activa !== null) {
+      await queryClient.invalidateQueries({
+        queryKey: CLAVES_DE_CONSULTA.deudasVecino(activa.id),
+      })
+    }
   }
 
   async function cambiarCantidad(
@@ -71,54 +151,136 @@ export function PanelDeVecinos({
     cantidad: number,
   ): Promise<void> {
     if (activa === null) return
-    const lineas = activa.lineas.map((linea, i) =>
-      i === indice ? { ...linea, cantidad } : linea,
-    )
-    const resultado = await persistirLineasDeVecino({
+    const resultado = await mutarLineasDeVecino({
       cotizacionId: activa.id,
-      lineas,
+      mutar: (lineas) =>
+        lineas.map((linea, i) =>
+          i === indice ? { ...linea, cantidad } : linea,
+        ),
     })
     if (resultado.ok) await refrescar()
   }
 
   async function cambiarPrecio(indice: number, precio: number): Promise<void> {
     if (activa === null) return
-    const lineas = activa.lineas.map((linea, i) =>
-      i === indice ? { ...linea, precio } : linea,
-    )
-    const resultado = await persistirLineasDeVecino({
+    const resultado = await mutarLineasDeVecino({
       cotizacionId: activa.id,
-      lineas,
+      mutar: (lineas) =>
+        lineas.map((linea, i) => (i === indice ? { ...linea, precio } : linea)),
     })
     if (resultado.ok) await refrescar()
   }
 
   async function quitarLinea(indice: number): Promise<void> {
     if (activa === null) return
-    const lineas = activa.lineas.filter((_, i) => i !== indice)
-    const resultado = await persistirLineasDeVecino({
+    const resultado = await mutarLineasDeVecino({
       cotizacionId: activa.id,
-      lineas,
+      mutar: (lineas) => lineas.filter((_, i) => i !== indice),
     })
     if (resultado.ok) await refrescar()
   }
+
+  const listaDeudas = deudas.data ?? []
+  const seleccionadas = listaDeudas.filter((cada) =>
+    fechasMarcadas.has(cada.fecha),
+  )
+  const montoDeudas =
+    vistaDeudas && fechasMarcadas.size > 0
+      ? totalDeGrupos(seleccionadas)
+      : vistaDeudas && listaDeudas.length > 0
+        ? totalDeGrupos(listaDeudas)
+        : (activa?.totalDeudas ?? 0)
 
   async function capturarVecino(cotizacion: Cotizacion): Promise<void> {
     if (capturandoId !== null) return
     setCapturandoId(cotizacion.id)
     try {
-      await capturarListaDeProductos({
-        titulo: cotizacion.aliasVecino ?? `H${cotizacion.numero}`,
-        lineas: cotizacion.lineas,
-        total: calcularTotal(cotizacion.lineas),
-        telefono: cotizacion.telefonoVecino,
-      })
+      const esActiva = activa?.id === cotizacion.id
+      if (esActiva && vistaDeudas) {
+        const gruposFuente =
+          fechasMarcadas.size > 0 ? seleccionadas : listaDeudas
+        const fusionadas = fechasMarcadas.size > 0
+        const lineasFusionadas = fusionadas
+          ? fusionarLineasPorCodigo(gruposFuente)
+          : []
+        await capturarDeudasDeVecino({
+          titulo: cotizacion.aliasVecino ?? `H${cotizacion.numero}`,
+          telefono: cotizacion.telefonoVecino,
+          grupos: gruposFuente.map((cada) => ({
+            etiqueta: formatearDiaDeDeuda(cada.fecha),
+            lineas: cada.lineas,
+          })),
+          total: fusionadas
+            ? calcularTotal(lineasFusionadas)
+            : totalDeGrupos(gruposFuente),
+          fusionadas,
+          lineasFusionadas,
+        })
+      } else {
+        await capturarListaDeProductos({
+          titulo: cotizacion.aliasVecino ?? `H${cotizacion.numero}`,
+          lineas: cotizacion.lineas,
+          total: calcularTotal(cotizacion.lineas),
+          telefono: cotizacion.telefonoVecino,
+        })
+      }
     } finally {
       setCapturandoId(null)
     }
   }
 
-  const total = activa !== null ? calcularTotal(activa.lineas) : 0
+  async function confirmarEliminarDeuda(): Promise<void> {
+    if (activa === null || deudaAEliminar === null) return
+    setEliminandoDeuda(true)
+    try {
+      const resultado = await eliminarDeudaDeDia({
+        cotizacionId: activa.id,
+        fecha: deudaAEliminar.fecha,
+      })
+      if (!resultado.ok) {
+        mostrarNotificacion({
+          tono: 'error',
+          mensaje: resultado.mensaje ?? 'No se pudo eliminar esa deuda.',
+        })
+        return
+      }
+      setFechasMarcadas((prev) => {
+        const siguiente = new Set(prev)
+        siguiente.delete(deudaAEliminar.fecha)
+        return siguiente
+      })
+      setDeudaAEliminar(null)
+      await refrescar()
+    } finally {
+      setEliminandoDeuda(false)
+    }
+  }
+
+  const totalHoy = activa !== null ? calcularTotal(activa.lineas) : 0
+  const convertirDeshabilitado = vistaDeudas
+    ? fechasMarcadas.size === 0
+    : activa === null || activa.lineas.length === 0
+
+  function convertir(): void {
+    if (activa === null) return
+    if (vistaDeudas) {
+      if (seleccionadas.length === 0) return
+      onConvertir({
+        cotizacion: activa,
+        lineas: fusionarLineasPorCodigo(seleccionadas),
+        fechasDeuda: seleccionadas.map((cada) => ({
+          fecha: cada.fecha,
+          generacion: cada.generacion,
+        })),
+      })
+      return
+    }
+    onConvertir({
+      cotizacion: activa,
+      lineas: activa.lineas,
+      fechasDeuda: null,
+    })
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
@@ -220,50 +382,163 @@ export function PanelDeVecinos({
               <span className="font-mono">#{activa.numero}</span>
             </p>
             <p className="font-mono tabular-nums text-entrada font-bold text-tinta">
-              {formatearImporte(total)}
+              {formatearImporte(totalHoy)}
             </p>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain pb-2">
-            {activa.lineas.length === 0 ? (
-              <EstadoVacio titulo="No hay productos en la lista.">
-                Búscalos arriba o dicta con el micrófono.
-              </EstadoVacio>
-            ) : (
-              <>
-                <CabecerasDeColumna numeroDeLineas={activa.lineas.length} />
-                <ul>
-                  {activa.lineas.map((linea, indice) => (
-                    <LineaPedido
-                      key={`${linea.codigo}-${indice}`}
-                      linea={linea}
-                      indice={indice}
-                      precioDeCatalogo={productoPorCodigo(linea.codigo)?.precio}
-                      onCambiarCantidad={(cantidad) => {
-                        void cambiarCantidad(indice, cantidad)
-                      }}
-                      onCambiarPrecio={(precio) => {
-                        void cambiarPrecio(indice, precio)
-                      }}
-                      onQuitar={() => {
-                        void quitarLinea(indice)
-                      }}
-                      onVolverAlBuscador={onVolverAlBuscador}
-                    />
-                  ))}
+          <div className="relative grid min-h-0 flex-1">
+            <div
+              className={[
+                'col-start-1 row-start-1 min-h-0 overflow-y-auto overscroll-contain pb-2 vista-vecino',
+                vistaDeudas ? 'pointer-events-none opacity-0' : 'opacity-100',
+              ].join(' ')}
+              aria-hidden={vistaDeudas}
+            >
+              {activa.lineas.length === 0 ? (
+                <EstadoVacio titulo="No hay productos en la lista.">
+                  Búscalos arriba o dicta con el micrófono.
+                </EstadoVacio>
+              ) : (
+                <>
+                  <CabecerasDeColumna numeroDeLineas={activa.lineas.length} />
+                  <ul>
+                    {activa.lineas.map((linea, indice) => (
+                      <LineaPedido
+                        key={`${linea.codigo}-${indice}`}
+                        linea={linea}
+                        indice={indice}
+                        precioDeCatalogo={productoPorCodigo(linea.codigo)?.precio}
+                        onCambiarCantidad={(cantidad) => {
+                          void cambiarCantidad(indice, cantidad)
+                        }}
+                        onCambiarPrecio={(precio) => {
+                          void cambiarPrecio(indice, precio)
+                        }}
+                        onQuitar={() => {
+                          void quitarLinea(indice)
+                        }}
+                        onVolverAlBuscador={onVolverAlBuscador}
+                      />
+                    ))}
+                  </ul>
+                </>
+              )}
+            </div>
+
+            <div
+              className={[
+                'col-start-1 row-start-1 min-h-0 overflow-y-auto overscroll-contain pb-2 vista-vecino',
+                vistaDeudas ? 'opacity-100' : 'pointer-events-none opacity-0',
+              ].join(' ')}
+              aria-hidden={!vistaDeudas}
+            >
+              {deudas.isLoading ? (
+                <p className="px-4 py-6 text-cuerpo text-desvaida">Cargando…</p>
+              ) : listaDeudas.length === 0 ? (
+                <EstadoVacio titulo="No hay deudas.">
+                  Los pedidos de días anteriores que no se emitieron aparecen
+                  aquí.
+                </EstadoVacio>
+              ) : (
+                <ul className="flex flex-col gap-4 px-2 pt-2 sm:px-3">
+                  {listaDeudas.map((deuda) => {
+                    const marcada = fechasMarcadas.has(deuda.fecha)
+                    return (
+                      <li
+                        key={deuda.fecha}
+                        className="rounded-2xl border border-borde bg-papel"
+                      >
+                        <div className="flex items-center justify-between gap-3 border-b border-borde px-3 py-2">
+                          <div className="flex min-w-0 items-center gap-2">
+                            <Casilla
+                              checked={marcada}
+                              onCheckedChange={(valor) => {
+                                setFechasMarcadas((prev) => {
+                                  const siguiente = new Set(prev)
+                                  if (valor === true) siguiente.add(deuda.fecha)
+                                  else siguiente.delete(deuda.fecha)
+                                  return siguiente
+                                })
+                              }}
+                              aria-label={`Seleccionar deuda del ${formatearDiaDeDeuda(deuda.fecha)}`}
+                            />
+                            <p className="text-cuerpo font-bold text-tinta">
+                              {formatearDiaDeDeuda(deuda.fecha)}
+                            </p>
+                            <button
+                              type="button"
+                              aria-label={`Eliminar deuda del ${formatearDiaDeDeuda(deuda.fecha)}`}
+                              className="flex size-9 items-center justify-center rounded-full text-desvaida hover:bg-aviso/15 hover:text-aviso"
+                              onClick={() => setDeudaAEliminar(deuda)}
+                            >
+                              <Trash2 className="size-4" aria-hidden />
+                            </button>
+                          </div>
+                          <p className="font-mono tabular-nums font-bold text-tinta">
+                            {formatearImporte(deuda.total)}
+                          </p>
+                        </div>
+                        {deuda.lineas.length === 0 ? (
+                          <p className="px-3 py-2 text-cuerpo text-desvaida">
+                            Sin productos.
+                          </p>
+                        ) : (
+                          <ul>
+                            {deuda.lineas.map((linea, indice) => (
+                              <li
+                                key={`${linea.codigo}-${indice}`}
+                                className="flex items-baseline justify-between gap-3 px-3 py-2 text-cuerpo"
+                              >
+                                <span className="min-w-0 truncate font-bold text-tinta">
+                                  {linea.descripcion}
+                                </span>
+                                <span className="shrink-0 font-mono tabular-nums text-desvaida">
+                                  {linea.cantidad} ·{' '}
+                                  {formatearImporte(
+                                    linea.precio * linea.cantidad,
+                                  )}
+                                </span>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </li>
+                    )
+                  })}
                 </ul>
-              </>
-            )}
+              )}
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center justify-between gap-3 border-t border-borde bg-papel px-4 py-3">
-            <p className="font-mono tabular-nums text-cabecera font-bold text-tinta">
-              {formatearImporte(total)}
-            </p>
+            <div className="flex items-center gap-1 rounded-full border border-tinta bg-tinta py-1 pl-2 pr-1 text-papel">
+              <p className="px-3 py-1 text-cuerpo font-bold">
+                Deudas {formatearImporte(montoDeudas)}
+              </p>
+              <button
+                type="button"
+                aria-pressed={vistaDeudas}
+                aria-label={
+                  vistaDeudas
+                    ? 'Ver pedido de hoy'
+                    : 'Ver deudas'
+                }
+                className="flex size-9 items-center justify-center rounded-full border border-papel text-papel hover:bg-papel/15"
+                onClick={() => setVistaDeudas((actual) => !actual)}
+              >
+                <span
+                  className="t-icon-swap"
+                  data-state={vistaDeudas ? 'b' : 'a'}
+                >
+                  <EyeClosed className="t-icon size-4" data-icon="a" aria-hidden />
+                  <Eye className="t-icon size-4" data-icon="b" aria-hidden />
+                </span>
+              </button>
+            </div>
             <Boton
               variante="principal"
-              disabled={activa.lineas.length === 0}
-              onClick={() => onConvertir(activa)}
+              disabled={convertirDeshabilitado}
+              onClick={convertir}
             >
               Convertir en documento
             </Boton>
@@ -290,6 +565,43 @@ export function PanelDeVecinos({
           )
         }}
       />
+
+      <Modal
+        abierta={deudaAEliminar !== null}
+        alCambiar={(abierta) => {
+          if (!abierta && !eliminandoDeuda) setDeudaAEliminar(null)
+        }}
+        titulo="Eliminar deuda"
+        descripcion={
+          deudaAEliminar !== null
+            ? `Se eliminará el pedido del ${formatearDiaDeDeuda(deudaAEliminar.fecha)}. Esta acción no se puede deshacer.`
+            : undefined
+        }
+        pie={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Boton
+              variante="secundario"
+              disabled={eliminandoDeuda}
+              onClick={() => setDeudaAEliminar(null)}
+            >
+              Cancelar
+            </Boton>
+            <Boton
+              variante="peligro"
+              disabled={eliminandoDeuda}
+              onClick={() => void confirmarEliminarDeuda()}
+            >
+              {eliminandoDeuda ? 'Eliminando…' : 'Confirmar'}
+            </Boton>
+          </div>
+        }
+      >
+        <p className="text-cuerpo text-tinta">
+          {deudaAEliminar !== null
+            ? `${deudaAEliminar.lineas.length} productos · ${formatearImporte(deudaAEliminar.total)}`
+            : null}
+        </p>
+      </Modal>
     </div>
   )
 }

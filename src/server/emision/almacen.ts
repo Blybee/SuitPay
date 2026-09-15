@@ -132,6 +132,14 @@ export interface Cotizacion {
   readonly canal?: 'general' | 'vecino'
   /** Contador de generación del pedido vivo. Ausente o 0 en documentos viejos. */
   readonly generacionPedido?: number
+  /** Suma de deudas archivadas. Ausente o 0 en documentos viejos. */
+  readonly totalDeudas?: number
+}
+
+export interface DeudaDeVecino {
+  readonly fecha: string
+  readonly total: number
+  readonly generacion: number
 }
 
 export {
@@ -157,6 +165,10 @@ export interface TransaccionDeEmision {
   leerComprobante: (clave: string) => Promise<Comprobante | undefined>
   leerSerie: (serieId: string) => Promise<Serie | undefined>
   leerCotizacion: (cotizacionId: string) => Promise<Cotizacion | undefined>
+  leerDeudaDeVecino: (
+    cotizacionId: string,
+    fecha: string,
+  ) => Promise<DeudaDeVecino | undefined>
   /**
    * Consume el siguiente correlativo. Registra el consumo **aunque la emisión
    * acabe fallando**, que es lo que FR-030 exige: un hueco en la numeración es
@@ -179,6 +191,8 @@ export interface TransaccionDeEmision {
     cotizacionId: string,
     generacionSiguiente: number,
   ) => void
+  eliminarDeudaDeVecino: (cotizacionId: string, fecha: string) => void
+  actualizarTotalDeudas: (cotizacionId: string, totalDeudas: number) => void
 }
 
 export interface CambiosDelComprobante {

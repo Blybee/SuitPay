@@ -30,14 +30,15 @@ La función más importante del sistema. Es el único camino por el que nace un 
 | `condicionPago` | objeto | Contado, o crédito con fecha de vencimiento. |
 | `medioPago` | objeto | Medio y monto recibido. Referencial. |
 | `cotizacionId` | cadena o nulo | Si la venta proviene de una cotización. |
-| `generacionPedido` | número o nulo | Generación del pedido de vecino capturada al convertir. Nulo en cotización general o venta suelta. |
+| `generacionPedido` | número o nulo | Generación del pedido de vecino capturada al convertir. Nulo en cotización general, venta suelta o conversión desde deudas. |
+| `fechasDeuda` | arreglo o nulo | Días de deuda a consumir (`{ fecha, generacion }`). Si viene con elementos, la emisión MUST NOT vaciar el pedido vivo (FR-035g). |
 | `capturaId` | cadena o nulo | Si el pedido se capturó por dictado o fotografía. |
 
 **Comportamiento**
 
 1. Valida la petición y recalcula los totales con las reglas del dominio. **Si el total recalculado difiere del que envió el cliente, manda el servidor.**
 2. Comprueba el umbral de identificación del comprador: si el importe lo supera y no hay cliente identificado, rechaza sin emitir.
-3. Abre una transacción que: busca el comprobante con esa clave; si existe, termina y devuelve su estado sin emitir; si no existe, consume el correlativo de la serie del vendedor (`ultimoNumero + 1`, cuyo origen al crear la serie es `numeroInicial` — FR-031a), crea el comprobante en estado `reclamado` y, cuando venga de una cotización (`cotizacionId`), **verifica que exista en estado `pendiente`**. Canal `general`: la **elimina en duro** en el mismo acto (FR-019). Canal `vecino`: compara `generacionPedido`, incrementa el contador y vacía líneas (FR-035a). Si la cotización ya no existe o la generación no coincide, aborta con `cotizacion_ya_usada`.
+3. Abre una transacción que: busca el comprobante con esa clave; si existe, termina y devuelve su estado sin emitir; si no existe, consume el correlativo de la serie del vendedor (`ultimoNumero + 1`, cuyo origen al crear la serie es `numeroInicial` — FR-031a), crea el comprobante en estado `reclamado` y, cuando venga de una cotización (`cotizacionId`), **verifica que exista en estado `pendiente`**. Canal `general`: la **elimina en duro** en el mismo acto (FR-019). Canal `vecino` sin `fechasDeuda`: compara `generacionPedido`, incrementa el contador y vacía líneas (FR-035a). Canal `vecino` con `fechasDeuda`: compara la generación de cada día, borra esos documentos y resta `totalDeudas`; MUST NOT tocar el pedido vivo. Si la cotización ya no existe, la generación no coincide o un día de deuda ya no está, aborta con `cotizacion_ya_usada`.
 4. **Solo entonces** invoca al proveedor, a través de su módulo frontera.
 5. Actualiza el estado con el resultado y añade la entrada correspondiente a la traza de intentos.
 

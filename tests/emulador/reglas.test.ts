@@ -732,6 +732,98 @@ describeConEmulador('vecino: alias y teléfono editables', () => {
   })
 })
 
+describeConEmulador('deudas de vecino', () => {
+  it('un vendedor crea y borra un día de deuda', async () => {
+    await assertSucceeds(
+      setDoc(doc(comoVendedor(), 'cotizaciones/vecino-deuda'), {
+        numero: 93,
+        estado: 'pendiente',
+        canal: 'vecino',
+        aliasVecino: 'rosa',
+        cliente: null,
+        lineas: [],
+        total: 0,
+        totalDeudas: 0,
+        diaCivilLineas: '2026-09-14',
+        creadoPor: 'vendedor-1',
+        creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+      }),
+    )
+    await assertSucceeds(
+      setDoc(
+        doc(comoVendedor(), 'cotizaciones/vecino-deuda/deudasPorDia/2026-09-13'),
+        {
+          fecha: '2026-09-13',
+          lineas: [
+            {
+              codigo: 'TUB',
+              descripcion: 'Tubo',
+              unidad: 'UND',
+              cantidad: 1,
+              precio: 100,
+            },
+          ],
+          total: 100,
+          generacion: 0,
+        },
+      ),
+    )
+    await assertSucceeds(
+      updateDoc(doc(comoVendedor(), 'cotizaciones/vecino-deuda'), {
+        totalDeudas: 100,
+      }),
+    )
+    await assertFails(
+      updateDoc(
+        doc(comoVendedor(), 'cotizaciones/vecino-deuda/deudasPorDia/2026-09-13'),
+        { generacion: 1 },
+      ),
+    )
+    await assertSucceeds(
+      deleteDoc(
+        doc(comoVendedor(), 'cotizaciones/vecino-deuda/deudasPorDia/2026-09-13'),
+      ),
+    )
+  })
+
+  it('un jefe lee deudas pero no escribe', async () => {
+    await entorno.withSecurityRulesDisabled(async (contexto) => {
+      await setDoc(doc(contexto.firestore(), 'cotizaciones/vecino-jefe'), {
+        numero: 94,
+        estado: 'pendiente',
+        canal: 'vecino',
+        aliasVecino: 'luis',
+        cliente: null,
+        lineas: [],
+        total: 0,
+        creadoPor: 'vendedor-1',
+        creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+      })
+      await setDoc(
+        doc(contexto.firestore(), 'cotizaciones/vecino-jefe/deudasPorDia/2026-09-13'),
+        {
+          fecha: '2026-09-13',
+          lineas: [],
+          total: 0,
+          generacion: 0,
+        },
+      )
+    })
+    await assertSucceeds(
+      getDoc(
+        doc(comoJefe(), 'cotizaciones/vecino-jefe/deudasPorDia/2026-09-13'),
+      ),
+    )
+    await assertFails(
+      deleteDoc(
+        doc(comoJefe(), 'cotizaciones/vecino-jefe/deudasPorDia/2026-09-13'),
+      ),
+    )
+  })
+})
+
 describeConEmulador('la regla por defecto niega', () => {
   it('una colección no prevista es inaccesible', async () => {
     await assertFails(getDoc(doc(comoVendedor(), 'coleccion-inventada/algo')))

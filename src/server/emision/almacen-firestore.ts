@@ -10,10 +10,12 @@ import type {
   CambiosDelComprobante,
   Comprobante,
   Cotizacion,
+  DeudaDeVecino,
   IntentoDeEmision,
   Serie,
   TransaccionDeEmision,
 } from './almacen.ts'
+import { SUBCOLECCION_DEUDAS_POR_DIA } from '../../domain/vecinos/deudas.ts'
 import type { EstadoDeComprobante } from '../../domain/documentos/tipos.ts'
 
 /**
@@ -214,7 +216,28 @@ export class AlmacenFirestore implements AlmacenDeEmision {
               typeof datos['generacionPedido'] === 'number'
                 ? datos['generacionPedido']
                 : 0,
+            totalDeudas:
+              typeof datos['totalDeudas'] === 'number' ? datos['totalDeudas'] : 0,
           } satisfies Cotizacion
+        },
+
+        leerDeudaDeVecino: async (cotizacionId, fecha) => {
+          const instantanea = await tx.get(
+            this.base
+              .collection(COLECCIONES.cotizaciones)
+              .doc(cotizacionId)
+              .collection(SUBCOLECCION_DEUDAS_POR_DIA)
+              .doc(fecha),
+          )
+          if (!instantanea.exists) return undefined
+          const datos = instantanea.data() ?? {}
+          return {
+            fecha:
+              typeof datos['fecha'] === 'string' ? datos['fecha'] : fecha,
+            total: typeof datos['total'] === 'number' ? datos['total'] : 0,
+            generacion:
+              typeof datos['generacion'] === 'number' ? datos['generacion'] : 0,
+          } satisfies DeudaDeVecino
         },
 
         consumirCorrelativo: (serieId, ultimoNumero) => {
@@ -250,6 +273,26 @@ export class AlmacenFirestore implements AlmacenDeEmision {
               generacionPedido: generacionSiguiente,
               lineas: [],
               total: 0,
+              actualizadoEn: FieldValue.serverTimestamp(),
+            },
+          )
+        },
+
+        eliminarDeudaDeVecino: (cotizacionId, fecha) => {
+          tx.delete(
+            this.base
+              .collection(COLECCIONES.cotizaciones)
+              .doc(cotizacionId)
+              .collection(SUBCOLECCION_DEUDAS_POR_DIA)
+              .doc(fecha),
+          )
+        },
+
+        actualizarTotalDeudas: (cotizacionId, totalDeudas) => {
+          tx.update(
+            this.base.collection(COLECCIONES.cotizaciones).doc(cotizacionId),
+            {
+              totalDeudas,
               actualizadoEn: FieldValue.serverTimestamp(),
             },
           )
