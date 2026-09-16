@@ -8,8 +8,10 @@ import {
   lineasNoEmitibles,
   pedidoEsEmitible,
   pedidoTieneCodigo,
-  pedidoTienePrecioBajoCatalogo,
+  pedidoTienePrecioBajoPiso,
+  pisoDesdeMayorista,
   precioEsMenorQueCatalogo,
+  precioEstaBajoElPiso,
 } from '#/domain/totales/calculo.ts'
 import type { LineaDePedido } from '#/domain/totales/calculo.ts'
 
@@ -115,29 +117,43 @@ describe('producto ya en el pedido', () => {
 })
 
 describe('piso de precio mayorista (FR-012)', () => {
-  it('marca precio por debajo del catálogo', () => {
+  it('el piso es el 70 % del mayorista, al céntimo', () => {
+    expect(pisoDesdeMayorista(1_250)).toBe(875)
+    expect(pisoDesdeMayorista(3_500)).toBe(2_450)
+    expect(pisoDesdeMayorista(1_251)).toBe(876)
+  })
+
+  it('detecta precio menor al mayorista (aviso, no piso)', () => {
     expect(precioEsMenorQueCatalogo(1_100, 1_250)).toBe(true)
-  })
-
-  it('acepta precio igual o mayor al catálogo', () => {
     expect(precioEsMenorQueCatalogo(1_250, 1_250)).toBe(false)
-    expect(precioEsMenorQueCatalogo(1_300, 1_250)).toBe(false)
-  })
-
-  it('sin precio de catálogo no aplica el piso', () => {
     expect(precioEsMenorQueCatalogo(1, undefined)).toBe(false)
   })
 
-  it('detecta el pedido con alguna línea bajo el mayorista', () => {
-    const lineas = [linea({ codigo: 'A', precio: 1_000 }), linea({ codigo: 'B' })]
+  it('marca precio más de 30 % bajo el mayorista', () => {
+    expect(precioEstaBajoElPiso(874, 1_250)).toBe(true)
+  })
+
+  it('acepta el piso exacto y un descuento dentro del 30 %', () => {
+    expect(precioEstaBajoElPiso(875, 1_250)).toBe(false)
+    expect(precioEstaBajoElPiso(1_100, 1_250)).toBe(false)
+    expect(precioEstaBajoElPiso(1_250, 1_250)).toBe(false)
+    expect(precioEstaBajoElPiso(1_300, 1_250)).toBe(false)
+  })
+
+  it('sin precio de catálogo no aplica el piso', () => {
+    expect(precioEstaBajoElPiso(1, undefined)).toBe(false)
+  })
+
+  it('detecta el pedido con alguna línea bajo el piso', () => {
+    const lineas = [linea({ codigo: 'A', precio: 800 }), linea({ codigo: 'B' })]
     expect(
-      pedidoTienePrecioBajoCatalogo(lineas, (codigo) =>
+      pedidoTienePrecioBajoPiso(lineas, (codigo) =>
         codigo === 'A' ? 1_250 : 1_230,
       ),
     ).toBe(true)
     expect(
-      pedidoTienePrecioBajoCatalogo(lineas, (codigo) =>
-        codigo === 'A' ? 900 : 1_230,
+      pedidoTienePrecioBajoPiso(lineas, (codigo) =>
+        codigo === 'A' ? 1_100 : 1_230,
       ),
     ).toBe(false)
   })

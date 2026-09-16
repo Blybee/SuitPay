@@ -586,7 +586,7 @@ El criterio de aceptación del dueño es cualitativo: que sus vendedores digan q
 - [x] T183 [US10] «Reutilizar pedido» en detalle de comprobante → `cargarDesdeComprobante` + navegación al mostrador (FR-056). Archivos: `src/features/pedido/almacen.ts`, `src/routes/comprobantes/$comprobanteId.tsx`
 - [x] T184 [P] Pruebas de unidad del piso de precio y de rechazo en emisión; actualizar e2e de venta escrita (negociar al alza). Archivos: `tests/unit/domain/totales.test.ts`, `tests/unit/server/emitir-precio-piso.test.ts`, `tests/e2e/venta-escrita.spec.ts`
 
-**Checkpoint C9**: no se emite ni guarda bajo el mayorista; se puede clonar el pedido de un comprobante emitido sin tocarlo.
+**Checkpoint C9**: no se emite ni guarda bajo el piso (70 % del mayorista); se puede clonar el pedido de un comprobante emitido sin tocarlo.
 
 ---
 

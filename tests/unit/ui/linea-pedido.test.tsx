@@ -108,4 +108,49 @@ describe('LineaPedido', () => {
     ).toBeInTheDocument()
     expect(screen.getByLabelText('Cantidad de Codo liviano')).toBeEnabled()
   })
+
+  it('marca como aviso un descuento dentro del 30 % sin invalidar el campo', () => {
+    render(
+      <ul>
+        <LineaPedido
+          linea={{ ...linea, precio: 200 }}
+          indice={0}
+          precioDeCatalogo={250}
+          onCambiarCantidad={() => undefined}
+          onCambiarPrecio={() => undefined}
+          onQuitar={() => undefined}
+        />
+      </ul>,
+    )
+
+    expect(screen.getByText(/por debajo del mayorista/i)).toBeInTheDocument()
+    expect(screen.getByRole('listitem')).toHaveClass('bg-aviso/5')
+    expect(screen.getByLabelText('Precio de Codo liviano')).not.toHaveAttribute(
+      'aria-invalid',
+    )
+  })
+
+  it('invalida el campo si el descuento supera el 30 %', () => {
+    render(
+      <ul>
+        <LineaPedido
+          linea={{ ...linea, precio: 150 }}
+          indice={0}
+          precioDeCatalogo={250}
+          onCambiarCantidad={() => undefined}
+          onCambiarPrecio={() => undefined}
+          onQuitar={() => undefined}
+        />
+      </ul>,
+    )
+
+    expect(screen.getByText(/por debajo del mayorista/i)).toBeInTheDocument()
+    expect(
+      screen.queryByText(/más de 30 % bajo el mayorista/i),
+    ).not.toBeInTheDocument()
+    expect(screen.getByLabelText('Precio de Codo liviano')).toHaveAttribute(
+      'aria-invalid',
+      'true',
+    )
+  })
 })

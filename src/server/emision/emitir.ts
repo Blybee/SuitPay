@@ -2,7 +2,8 @@ import {
   calcularLineas,
   calcularTotal,
   pedidoEsEmitible,
-  precioEsMenorQueCatalogo,
+  pisoDesdeMayorista,
+  precioEstaBajoElPiso,
 } from '../../domain/totales/calculo.ts'
 import type { Centimos } from '../../domain/totales/calculo.ts'
 import { evaluarIdentificacionDelComprador } from '../../domain/documentos/umbral.ts'
@@ -140,7 +141,8 @@ export interface ContextoDeEmision {
   readonly formatoImpresion: 'a4' | 'rollo'
   /**
    * Precios mayoristas vigentes (código → céntimos). Si viene, ninguna línea
-   * puede negociarse por debajo. Ausente = sin piso (pruebas / catálogo vacío).
+   * puede negociarse por debajo del 70 % de ese valor (tope 30 %). Ausente =
+   * sin piso (pruebas / catálogo vacío).
    */
   readonly precioCatalogoPorCodigo?: ReadonlyMap<string, Centimos>
   readonly inventario?: AlmacenDeInventario
@@ -170,12 +172,15 @@ export async function emitirComprobante(
   const catalogo = contexto.precioCatalogoPorCodigo
   if (catalogo !== undefined) {
     for (const linea of peticion.lineas) {
-      const piso = catalogo.get(linea.codigo)
-      if (piso !== undefined && precioEsMenorQueCatalogo(linea.precio, piso)) {
+      const mayorista = catalogo.get(linea.codigo)
+      if (
+        mayorista !== undefined &&
+        precioEstaBajoElPiso(linea.precio, mayorista)
+      ) {
         fallar('precio_bajo_catalogo', {
           codigo: linea.codigo,
           precio: linea.precio,
-          piso,
+          piso: pisoDesdeMayorista(mayorista),
         })
       }
     }

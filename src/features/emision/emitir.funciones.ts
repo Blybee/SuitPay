@@ -136,7 +136,7 @@ async function leerParametros(): Promise<ParametrosDelSistema> {
   }
 }
 
-/** Precios mayoristas activos para el piso de negociación en emisión. */
+/** Precios mayoristas activos para el piso de negociación en emisión (70 %). */
 async function leerPreciosDeCatalogo(): Promise<ReadonlyMap<string, number>> {
   try {
     const publicado = await new AlmacenDeCatalogoFirestore().leerPublicado()

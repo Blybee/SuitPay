@@ -4,7 +4,7 @@
 
 **Created**: 2026-07-28
 
-**Updated**: 2026-08-18 (enmienda: US2 marca persistida + categoría de un nivel en importación; nota de venta interna confirmada; stock en `003`)
+**Updated**: 2026-09-16 (enmienda FR-012: piso de negociación = 70 % del mayorista, tope 30 %; casos reales en mostrador)
 
 **Status**: Draft
 
@@ -28,7 +28,8 @@ Un vendedor abre el navegador en su puesto o en su teléfono y ya está dentro, 
 2. **Given** un catálogo que contiene "CODO FG 1/2", **When** el vendedor escribe "1/2 codo fierro", **Then** el producto aparece entre los resultados.
 3. **Given** un pedido con tres productos, **When** el vendedor cambia el tipo de documento de boleta a factura, **Then** el pedido se conserva íntegro sin volver a capturarse.
 4. **Given** un producto con precio mayorista de referencia, **When** el vendedor escribe un precio igual o mayor, **Then** el sistema lo acepta y el total se recalcula.
-5. **Given** un producto con precio mayorista de referencia, **When** el vendedor escribe un precio menor, **Then** la línea se marca, el total se recalcula, y emitir o guardar quedan bloqueados hasta corregirlo.
+5. **Given** un producto con precio mayorista de referencia, **When** el vendedor escribe un precio menor que no baja más del 30 % respecto al mayorista, **Then** la línea se marca como aviso («por debajo del mayorista»), el total se recalcula y emitir o guardar siguen disponibles.
+5a. **Given** un producto con precio mayorista de referencia, **When** el vendedor escribe un precio más de 30 % por debajo del mayorista, **Then** la línea se marca como aviso («por debajo del mayorista»), el total se recalcula, y emitir o guardar quedan bloqueados hasta subir el precio al piso (70 % del mayorista) o más.
 5. **Given** un pedido listo y un cliente eventual por defecto, **When** el vendedor confirma la emisión, **Then** el comprobante se emite, queda atribuido a ese vendedor y el diálogo de éxito ofrece imprimir, guardar/descargar o compartir el PDF del proveedor cuando exista (sin reemitir).
 6. **Given** un pedido en curso, **When** el vendedor pierde la conexión y la recupera en el mismo dispositivo, **Then** el pedido sigue ahí sin pérdida de líneas.
 7. **Given** una emisión en curso, **When** el vendedor pulsa confirmar dos veces seguidas, **Then** se emite un único comprobante.
@@ -235,7 +236,7 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **Cambio de dispositivo con un pedido en curso.** Se acepta que el pedido en curso no viaje: el vendedor lo rehace. Las cotizaciones guardadas sí viajan.
 - **Producto que no existe en el catálogo.** La búsqueda no debe devolver un resultado aproximado como si fuera exacto; debe quedar claro que no hay coincidencia.
 - **Precio editado a cero o negativo.** Un importe no positivo no puede convertirse en comprobante (FR-013).
-- **Precio por debajo del mayorista.** La línea se marca y emitir/guardar quedan bloqueados hasta subir el precio al de catálogo o más (FR-012).
+- **Precio por debajo del mayorista.** La línea se marca como aviso («por debajo del mayorista») y se muestra el catálogo tachado. Si el descuento no supera el 30 %, emitir/guardar siguen disponibles. Si baja más del 30 % (bajo el piso del 70 %), emitir/guardar quedan bloqueados hasta subir al piso o más (FR-012).
 - **Boleta que supera el importe que obliga a identificar al comprador.** El sistema debe exigir los datos del cliente antes de permitir la emisión.
 - **Serie del vendedor no configurada.** El sistema debe impedir la venta con un mensaje que diga qué falta, en lugar de fallar al emitir.
 - **Sesión revocada o vendedor desactivado.** La aplicación no debe permitir emitir con una sesión que ya no es válida.
@@ -273,7 +274,7 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **FR-009d**: El administrador MUST poder crear y asignar **categorías de un solo nivel** en la administración del catálogo (lista maestra publicada e importación pendiente de publicar). El documento `catalogo/actual` MUST incluir el arreglo `categorias: { id, nombre }[]`. Cada producto MAY tener `categoriaId` opcional. La misma categoría MUST servir para filtrar/agrupar en todo el catálogo y dentro de una marca (filtros combinables). MUST NOT exigirse jerarquía familia/grupo. MUST NOT bloquear la publicación si un producto no tiene categoría. Los filtros facetados MUST estar en la grilla de importación y en la administración del catálogo, sobre el catálogo ya cargado. MUST NOT aparecer en la búsqueda del mostrador: el vendedor busca con el combobox local (FR-006, FR-007).
 - **FR-010**: El sistema MUST señalar los conflictos de una carga —códigos repetidos, precios ausentes, unidades desconocidas— sin resolverlos por su cuenta.
 - **FR-011**: Ante una recarga del catálogo, el sistema MUST mostrar qué productos son nuevos, cuáles cambian y cuáles desaparecen, antes de aplicar los cambios.
-- **FR-012**: El sistema MUST mostrar el precio mayorista como referencia y MUST permitir sustituirlo en el momento de la venta solo si el nuevo valor es **mayor o igual** al de catálogo. Un precio menor MUST marcarse y MUST impedir emitir y guardar cotización (piso acordado con gerencia).
+- **FR-012**: El sistema MUST mostrar el precio mayorista como referencia y MUST permitir sustituirlo en el momento de la venta si el nuevo valor es **mayor o igual al piso**: el 70 % del mayorista vigente (tope de descuento 30 %, redondeado al céntimo). Un precio menor al mayorista MUST marcarse como aviso no bloqueante («por debajo del mayorista»). Un precio por debajo del piso MUST impedir emitir y guardar cotización. Un precio entre el piso y el mayorista MUST aceptarse. (Piso acordado con gerencia, 2026-09-16.)
 - **FR-013**: El sistema MUST impedir convertir en comprobante una línea cuyo importe no sea positivo.
 
 **Pedido**
@@ -429,6 +430,7 @@ Tras emitir una boleta o factura, el cliente —al recoger— indica que es de p
 - **Cada vendedor opera con series propias**, creadas de antemano para cada tipo de documento que vaya a emitir, cada una con un **número inicial** configurado (alineado con el panel del proveedor).
 - **La dirección visual es Modern Soft-Pill** (`DESIGN.md` enmendado 2026-07-29): cápsulas, radios amplios, lienzo gris/blanco; no papel cálido ni radio cero.
 - **Los precios del catálogo incluyen el impuesto** y el desglose lo realiza el proveedor de emisión.
+- **El piso de negociación es el 70 % del mayorista** (tope de descuento 30 %), redondeado al céntimo. Tras casos reales en mostrador (2026-09-16) se admite cobrar por debajo del mayorista, pero no más de ese tope.
 - **El catálogo puede ir de cientos a ~3000 productos** (lista PDF del proveedor) con nombres estructurados por material, medida y marca; sigue cabiendo en un solo documento `catalogo/actual` bajo 1 MiB (decisión 2 / 13). La búsqueda tolerante y el emparejamiento de capturas siguen aplicando.
 - **La empresa dispone de conexión estable** y, ante caída del router, los vendedores pueden usar la red de sus teléfonos.
 - **El alcance de esta entrega no incluye** contabilidad, cobranzas como módulo (incluido registro de cobro / ventas a crédito como UX), sugerencias de compra, notas de crédito como flujo completo, migración masiva de clientes, aplicación nativa, impresión desde el móvil, login por alias/usuario (se mantiene correo + contraseña), ni la implementación completa de todos los parsers de consulta del catálogo (las pistas y la lista seleccionable sí). **La guía de remisión electrónica** se especifica en `002-guias-remision`. **Inventario y alertas de stock** en `003-inventario-almacen`. **Ranking / estadísticas de productos** en `004-ranking-productos`. Las únicas escrituras por comando implementadas aquí siguen el principio I (propuesta a confirmar). Ver `concept.md`.

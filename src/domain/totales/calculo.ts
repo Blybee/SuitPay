@@ -118,8 +118,21 @@ export function pedidoTieneCodigo(
 }
 
 /**
- * Precio por debajo del mayorista de catálogo (piso de negociación).
- * Sin precio de catálogo no se puede aplicar el piso: la línea no se marca.
+ * Tope de descuento sobre el mayorista (FR-012). El piso es el complemento:
+ * 70 % del catálogo, redondeado al céntimo.
+ */
+export const TOPE_DESCUENTO_MAYORISTA_POR_CIENTO = 30
+
+/** Precio mínimo negociable: 70 % del mayorista, al céntimo más cercano. */
+export function pisoDesdeMayorista(precioCatalogo: Centimos): Centimos {
+  return Math.round(
+    (precioCatalogo * (100 - TOPE_DESCUENTO_MAYORISTA_POR_CIENTO)) / 100,
+  )
+}
+
+/**
+ * Precio menor al mayorista de catálogo. Es aviso, no piso: no bloquea
+ * emitir si sigue dentro del tope de descuento.
  */
 export function precioEsMenorQueCatalogo(
   precio: Centimos,
@@ -128,13 +141,26 @@ export function precioEsMenorQueCatalogo(
   return precioCatalogo !== undefined && precio < precioCatalogo
 }
 
-/** True si alguna línea negoció por debajo del precio mayorista vigente. */
-export function pedidoTienePrecioBajoCatalogo(
+/**
+ * Precio por debajo del piso de negociación (70 % del mayorista).
+ * Sin precio de catálogo no se puede aplicar el piso: no bloquea.
+ */
+export function precioEstaBajoElPiso(
+  precio: Centimos,
+  precioCatalogo: Centimos | undefined,
+): boolean {
+  return (
+    precioCatalogo !== undefined && precio < pisoDesdeMayorista(precioCatalogo)
+  )
+}
+
+/** True si alguna línea negoció por debajo del piso (70 % del mayorista). */
+export function pedidoTienePrecioBajoPiso(
   lineas: readonly LineaDePedido[],
   precioDeCatalogo: (codigo: string) => Centimos | undefined,
 ): boolean {
   return lineas.some((linea) =>
-    precioEsMenorQueCatalogo(linea.precio, precioDeCatalogo(linea.codigo)),
+    precioEstaBajoElPiso(linea.precio, precioDeCatalogo(linea.codigo)),
   )
 }
 

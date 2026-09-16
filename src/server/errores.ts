@@ -84,7 +84,7 @@ const MENSAJES: Record<CodigoDeError, string> = {
   importe_no_positivo:
     'Hay una línea con cantidad o precio en cero. Corrígela para poder emitir.',
   precio_bajo_catalogo:
-    'Hay un precio por debajo del mayorista. Súbelo al precio de catálogo o más para poder emitir.',
+    'Hay un precio más de 30 % por debajo del mayorista. Súbelo al mínimo (70 % del catálogo) o más para poder emitir.',
   cotizacion_ya_usada:
     'Esta cotización ya no existe: se convirtió o se quitó. No se puede emitir otra vez con ella.',
   cotizacion_no_pendiente:

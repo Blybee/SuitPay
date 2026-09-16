@@ -6,7 +6,7 @@ import type {
   ResultadoDeBusqueda,
 } from '../domain/busqueda/productos.ts'
 import { buscarCotizacionesPorNombre } from '../domain/busqueda/cotizaciones.ts'
-import { pedidoTienePrecioBajoCatalogo } from '../domain/totales/calculo.ts'
+import { pedidoTienePrecioBajoPiso } from '../domain/totales/calculo.ts'
 import { usarBusqueda } from '../features/busqueda/almacen.ts'
 import { usarCatalogo, umbralVigente } from '../features/catalogo/almacen.ts'
 import { PanelDictado } from '../features/captura/audio.tsx'
@@ -338,12 +338,12 @@ function Mostrador() {
       ? 'El dictado y la lectura de fotos no están disponibles. Puedes escribir el pedido con normalidad.'
       : null
 
-  const hayPrecioBajoCatalogo = pedidoTienePrecioBajoCatalogo(
+  const hayPrecioBajoPiso = pedidoTienePrecioBajoPiso(
     pedido.lineas,
     (codigo) => catalogo.productoPorCodigo(codigo)?.precio,
   )
-  const motivoPrecioBajo = hayPrecioBajoCatalogo
-    ? 'Hay un precio por debajo del mayorista. Súbelo al de catálogo o más para poder emitir o guardar.'
+  const motivoPrecioBajo = hayPrecioBajoPiso
+    ? 'Hay un precio más de 30 % por debajo del mayorista. Súbelo al mínimo (70 % del catálogo) o más para poder emitir o guardar.'
     : null
 
   const motivoCaptura = motivoBloqueoPorCaptura()
@@ -1329,7 +1329,7 @@ function Mostrador() {
             onGuardarCotizacion={() => void lanzarGuardadoDeCotizacion()}
             guardandoCotizacion={guardandoCotizacion}
             puedeGuardarCotizacion={
-              pedido.lineas.length > 0 && !hayPrecioBajoCatalogo
+              pedido.lineas.length > 0 && !hayPrecioBajoPiso
             }
             proveedorCaido={proveedorCaido}
             sinRed={sinRed}

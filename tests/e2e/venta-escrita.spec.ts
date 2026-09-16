@@ -16,9 +16,10 @@ import { sembrarSesionDeVendedor } from './ayudas-sesion.ts'
  * en que está escrito, y una búsqueda que exige el orden obliga a mirar la pantalla
  * mientras se escribe, que es exactamente lo que este sistema existe para evitar.
  *
- * **El precio se ajusta en el sitio.** FR-012. Se negocia al alza (o igual al
- * mayorista); si ajustarlo costara abrir un diálogo, el vendedor haría la cuenta a
- * mano y teclearía el total, que es como se pierde el detalle de la venta.
+ * **El precio se ajusta en el sitio.** FR-012. Se negocia alrededor del
+ * mayorista (igual, al alza, o hasta 30 % menos); si ajustarlo costara abrir un
+ * diálogo, el vendedor haría la cuenta a mano y teclearía el total, que es como
+ * se pierde el detalle de la venta.
  *
  * **Cambiar de tipo no destruye el pedido.** FR-014. El cliente dice «mejor con
  * factura» cuando el pedido ya tiene diez líneas. Perderlas es inaceptable, y es un
@@ -168,7 +169,7 @@ async function armarPedido(pagina: Page): Promise<void> {
   // 12,50 + 1,80 + 8,50 son 22,80.
   await expect(pagina.getByLabel('Total del pedido')).toHaveText('22.80')
 
-  // Negociación al alza: el piso es el mayorista (12,50); 13,00 es válido.
+  // Negociación: 13,00 está por encima del mayorista (12,50) y es válido.
   const precio = pagina.getByLabel('Precio de TUBO PVC 1/2 PULGADA X 3M')
   await precio.fill('13.00')
   await precio.blur()
@@ -188,7 +189,8 @@ test('el pedido se toma escribiendo y sobrevive al cambio de tipo', async ({
   const lineas = page.getByRole('listitem')
   const total = page.getByLabel('Total del pedido')
 
-  // Negociación al alza: el aviso de catálogo tachado solo sale bajo el piso.
+  // Negociación: 13,00 está por encima del mayorista (12,50); el aviso
+  // «por debajo del mayorista» y el catálogo tachado no salen.
   await expect(lineas.first().getByText(/catálogo/i)).toHaveCount(0)
 
   // --- Cambiar de boleta a factura conserva el pedido (FR-014) --------------

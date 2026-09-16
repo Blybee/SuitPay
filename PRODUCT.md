@@ -38,7 +38,7 @@ Lo que un producto vecino no puede copiar es la combinación de esa captura asis
 
 **El papel sigue existiendo.** Las guías manuscritas tienen dos usos: el almacenero, que no usa computadora, toma pedidos en papel; y los comerciantes vecinos, que se llevan mercadería y pagan al cierre del día o días después. A estos últimos se les factura cuando pagan, lo que produce un desfase entre la entrega y el documento.
 
-**Los precios se negocian al alza.** El catálogo muestra el precio mayorista como piso: se puede cobrar igual o más, nunca menos. Un precio por debajo del mayorista se marca y bloquea emitir o guardar.
+**Los precios se negocian alrededor del mayorista.** El catálogo muestra el precio mayorista como referencia. Se puede cobrar igual, más, o hasta un 30 % menos (piso = 70 % del mayorista, al céntimo). Un precio por debajo del mayorista se marca como aviso; por debajo del piso se bloquea emitir o guardar.
 
 **Los documentos son irreversibles.** Un comprobante emitido no se borra: dentro de plazo se anula, fuera de plazo se corrige con nota de crédito. La ventana de anulación que la empresa aplica es el mismo día.
 

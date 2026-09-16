@@ -81,6 +81,8 @@ export type AlineacionDeCampo = 'izquierda' | 'centro' | 'derecha'
 
 export interface PropsDeCampo extends ComponentPropsWithoutRef<'input'> {
   readonly invalido?: boolean
+  /** Marca visual de aviso; no pone aria-invalid ni impide enviar. */
+  readonly aviso?: boolean
   readonly numerico?: boolean
   readonly variante?: VarianteDeCampo
   readonly alineacion?: AlineacionDeCampo
@@ -97,6 +99,7 @@ export interface PropsDeCampoArea
 function clasesDeCampo({
   className,
   invalido,
+  aviso = false,
   numerico,
   variante,
   alineacion,
@@ -104,12 +107,14 @@ function clasesDeCampo({
 }: {
   readonly className?: string
   readonly invalido: boolean
+  readonly aviso?: boolean
   readonly numerico: boolean
   readonly variante: VarianteDeCampo
   readonly alineacion?: AlineacionDeCampo
   readonly superficie: 'mesa' | 'papel'
 }): string {
   const alineacionResuelta = alineacion ?? (numerico ? 'derecha' : 'izquierda')
+  const marcado = invalido || aviso
   return unir(
     'min-h-11 w-full border text-tinta',
     'transition-[color,background-color,border-color,box-shadow] duration-rapida ease-salida',
@@ -121,12 +126,12 @@ function clasesDeCampo({
       ? 'rounded-xl px-2 md:px-3'
       : 'rounded-full px-4 shadow-sm',
     variante === 'en-linea'
-      ? invalido
+      ? marcado
         ? 'border-aviso bg-aviso/5 text-aviso focus-visible:border-aviso focus-visible:ring-aviso/10'
         : superficie === 'papel'
           ? 'border-transparent bg-papel shadow-sm hover:border-borde focus-visible:border-tinta focus-visible:shadow-md'
           : 'border-transparent bg-mesa hover:border-borde hover:bg-papel focus-visible:border-tinta focus-visible:bg-papel focus-visible:shadow-sm'
-      : invalido
+      : marcado
         ? 'border-aviso bg-papel focus-visible:border-aviso focus-visible:ring-aviso/10'
         : 'border-borde bg-papel hover:border-tinta/40 focus-visible:border-tinta',
     numerico && 'font-mono tabular-nums',
@@ -139,6 +144,7 @@ function clasesDeCampo({
 export function Campo({
   className,
   invalido = false,
+  aviso = false,
   numerico = false,
   variante = 'formulario',
   alineacion,
@@ -151,6 +157,7 @@ export function Campo({
       className={clasesDeCampo({
         className,
         invalido,
+        aviso,
         numerico,
         variante,
         alineacion,

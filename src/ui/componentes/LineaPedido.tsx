@@ -5,6 +5,7 @@ import {
   formatearImporte,
   lineaEsEmitible,
   precioEsMenorQueCatalogo,
+  precioEstaBajoElPiso,
 } from '../../domain/totales/calculo.ts'
 import type { Centimos, LineaDePedido } from '../../domain/totales/calculo.ts'
 import { Campo } from './primitivas.tsx'
@@ -12,11 +13,12 @@ import { Campo } from './primitivas.tsx'
 /**
  * Un renglón del pedido.
  *
- * ## El precio se edita en el sitio, con piso en el mayorista
+ * ## El precio se edita en el sitio
  *
- * Se puede negociar al alza o igualar el catálogo. Por debajo del precio
- * mayorista la línea se marca, se muestra el mayorista tachado y se bloquea
- * emitir/guardar. Si el precio es ≥ catálogo, ese aviso no aparece.
+ * Por debajo del mayorista la línea se marca como aviso («por debajo del
+ * mayorista») y se muestra el catálogo tachado; emitir/guardar siguen
+ * disponibles si el precio no baja del piso (70 %). Por debajo del piso el
+ * campo queda inválido y el pie bloquea.
  *
  * ## Por qué el campo guarda texto y no el número
  *
@@ -178,11 +180,13 @@ export function LineaPedido({
   const importe = calcularImporte(linea)
   const emitible = lineaEsEmitible(linea)
   const precioEnEdicion = aCentimos(precioTecleado)
-  const bajoPiso = precioEsMenorQueCatalogo(
-    precioEnEdicion ?? linea.precio,
+  const precioActual = precioEnEdicion ?? linea.precio
+  const bajoMayorista = precioEsMenorQueCatalogo(
+    precioActual,
     precioDeCatalogo,
   )
-  const lineaEnAviso = !emitible || bajoPiso
+  const bajoPiso = precioEstaBajoElPiso(precioActual, precioDeCatalogo)
+  const lineaEnAviso = !emitible || bajoMayorista
 
   function confirmarPrecio(): void {
     editando.current = false
@@ -251,9 +255,9 @@ export function LineaPedido({
             Cantidad o precio en cero: corrígelo para emitir
           </p>
         )}
-        {emitible && bajoPiso && (
+        {emitible && bajoMayorista && (
           <p className="font-mono text-etiqueta font-bold uppercase text-aviso">
-            Bajo el mayorista ({formatearImporte(precioDeCatalogo ?? 0)})
+            Por debajo del mayorista
           </p>
         )}
         <div
@@ -303,6 +307,7 @@ export function LineaPedido({
           variante="en-linea"
           numerico
           superficie="papel"
+          aviso={bajoMayorista}
           invalido={bajoPiso}
           onFocus={() => {
             editando.current = true
@@ -316,7 +321,7 @@ export function LineaPedido({
             if (evento.key === 'Enter') evento.currentTarget.blur()
           }}
         />
-        {bajoPiso && precioDeCatalogo !== undefined && (
+        {bajoMayorista && precioDeCatalogo !== undefined && (
           <p className="hidden px-1 text-right font-mono text-etiqueta text-desvaida md:block">
             <span className="line-through">
               {formatearImporte(precioDeCatalogo)}
