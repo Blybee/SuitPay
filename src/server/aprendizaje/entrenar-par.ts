@@ -29,8 +29,17 @@ import {
   SCHEMA_ENTRENAMIENTO,
   promptDeEntrenamiento,
 } from './prompts-entrenamiento.ts'
+import {
+  MAX_MEDIOS_ENTRENAMIENTO,
+  TECHO_MEDIO_ENTRENAMIENTO_BYTES,
+  TECHO_MEDIOS_ENTRENAMIENTO_BYTES,
+} from '../../domain/aprendizaje/medios.ts'
 
-export const TECHO_MEDIO_ENTRENAMIENTO_BYTES = 8 * 1024 * 1024
+export {
+  MAX_MEDIOS_ENTRENAMIENTO,
+  TECHO_MEDIO_ENTRENAMIENTO_BYTES,
+  TECHO_MEDIOS_ENTRENAMIENTO_BYTES,
+}
 
 const MIME_PERMITIDOS = new Set([
   'application/pdf',
@@ -45,7 +54,7 @@ export interface MedioDeEntrenamiento {
 }
 
 export interface LadoDeEntrenamiento {
-  readonly medio?: MedioDeEntrenamiento
+  readonly medios?: readonly MedioDeEntrenamiento[]
   readonly texto?: string
 }
 
@@ -60,19 +69,36 @@ function bytesDeBase64(data: string): number {
   return Math.floor((data.length * 3) / 4)
 }
 
-function exigirLado(lado: LadoDeEntrenamiento, etiqueta: string): void {
+export function mediosDeLado(
+  lado: LadoDeEntrenamiento,
+): readonly MedioDeEntrenamiento[] {
+  return lado.medios ?? []
+}
+
+export function exigirLado(lado: LadoDeEntrenamiento, etiqueta: string): void {
   const texto = lado.texto?.trim() ?? ''
-  const medio = lado.medio
-  if (texto === '' && medio === undefined) {
+  const medios = mediosDeLado(lado)
+  if (texto === '' && medios.length === 0) {
     throw new ErrorDeSuitPay('peticion_invalida', { motivo: `sin_${etiqueta}` })
   }
-  if (medio !== undefined) {
+  if (medios.length > MAX_MEDIOS_ENTRENAMIENTO) {
+    throw new ErrorDeSuitPay('peticion_invalida', {
+      motivo: 'demasiados_archivos',
+    })
+  }
+  let total = 0
+  for (const medio of medios) {
     if (!MIME_PERMITIDOS.has(medio.mimeType)) {
       throw new ErrorDeSuitPay('peticion_invalida', { motivo: 'tipo_no_aceptado' })
     }
-    if (bytesDeBase64(medio.dataBase64) > TECHO_MEDIO_ENTRENAMIENTO_BYTES) {
+    const bytes = bytesDeBase64(medio.dataBase64)
+    if (bytes > TECHO_MEDIO_ENTRENAMIENTO_BYTES) {
       throw new ErrorDeSuitPay('peticion_invalida', { motivo: 'archivo_grande' })
     }
+    total += bytes
+  }
+  if (total > TECHO_MEDIOS_ENTRENAMIENTO_BYTES) {
+    throw new ErrorDeSuitPay('peticion_invalida', { motivo: 'archivo_grande' })
   }
 }
 
@@ -222,19 +248,29 @@ export async function proponerEntrenamiento(entrada: {
     )
   } else {
     modelo = process.env.ASISTENCIA_MODELO ?? MODELO_POR_DEFECTO
+    const mediosPedido = mediosDeLado(entrada.pedido)
+    const mediosOro = mediosDeLado(entrada.oro)
     const prompt = promptDeEntrenamiento({
       catalogoJson: textoDeCandidatosParaPrompt(contexto.candidatos),
       memoriaJson: JSON.stringify(memoria),
       prioresJson: contexto.prioresJson,
       textoPedido: textoPedido === '' ? undefined : textoPedido,
       textoOro: textoOro === '' ? undefined : textoOro,
+      archivosPedido: mediosPedido.length,
+      archivosOro: mediosOro.length,
     })
     const partes: ParteGemini[] = [{ text: prompt }]
-    if (entrada.pedido.medio !== undefined) {
-      partes.push(parteDeMedio(entrada.pedido.medio))
+    if (mediosPedido.length > 0) {
+      partes.push({
+        text: `--- PEDIDO (${mediosPedido.length} archivo${mediosPedido.length === 1 ? '' : 's'}) ---`,
+      })
+      for (const medio of mediosPedido) partes.push(parteDeMedio(medio))
     }
-    if (entrada.oro.medio !== undefined) {
-      partes.push(parteDeMedio(entrada.oro.medio))
+    if (mediosOro.length > 0) {
+      partes.push({
+        text: `--- COTIZACIÓN ORO (${mediosOro.length} archivo${mediosOro.length === 1 ? '' : 's'}) ---`,
+      })
+      for (const medio of mediosOro) partes.push(parteDeMedio(medio))
     }
     try {
       const crudo = await invocarModeloConPartes({

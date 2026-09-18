@@ -34,15 +34,19 @@ export function promptDeEntrenamiento(entrada: {
   readonly prioresJson: string
   readonly textoPedido?: string
   readonly textoOro?: string
+  readonly archivosPedido?: number
+  readonly archivosOro?: number
 }): string {
   const bloquePedido =
     entrada.textoPedido !== undefined && entrada.textoPedido.trim() !== ''
-      ? `\nTexto del pedido (además del archivo, si hay):\n${entrada.textoPedido.trim()}\n`
+      ? `\nTexto del pedido (además de los archivos, si hay):\n${entrada.textoPedido.trim()}\n`
       : ''
   const bloqueOro =
     entrada.textoOro !== undefined && entrada.textoOro.trim() !== ''
-      ? `\nTexto de la cotización oro (además del archivo, si hay):\n${entrada.textoOro.trim()}\n`
+      ? `\nTexto de la cotización oro (además de los archivos, si hay):\n${entrada.textoOro.trim()}\n`
       : ''
+  const nPedido = entrada.archivosPedido ?? 0
+  const nOro = entrada.archivosOro ?? 0
 
   return `Alineas un PEDIDO de cliente (jerga, incompleto) con una COTIZACIÓN ORO (SKU + marca) de ferretería/gasfitería en Perú. Devuelve SOLO JSON.
 
@@ -58,6 +62,7 @@ Reglas:
 - etiquetas: economico, liviano, etc. solo si el pedido lo sugiere.
 - Ignora membrete, RUC, DNI, razón social, teléfono, precios y totales. No los copies a ningún campo.
 - textoPedido: tal cual, sin PII.
+- El pedido puede llegar en varias fotos. Son el MISMO requerimiento: junta todos los renglones de todas las imágenes. No trates cada foto como un pedido distinto.
 
 Catálogo compacto (id, n, m, a, e):
 ${entrada.catalogoJson}
@@ -68,5 +73,5 @@ ${entrada.memoriaJson}
 Priores de marca vigentes (familia → marca:peso):
 ${entrada.prioresJson}
 ${bloquePedido}${bloqueOro}
-Recibirás el pedido como primer archivo/imagen (si hay) y la cotización oro como segundo (si hay).`
+Recibirás primero los archivos del PEDIDO (${nPedido}) y después los de la COTIZACIÓN ORO (${nOro}), cada bloque etiquetado.`
 }
