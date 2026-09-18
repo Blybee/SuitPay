@@ -143,3 +143,103 @@ describe('tokens cortos y guion (Aquato- j)', () => {
     expect(resultado.coincidencias).toHaveLength(0)
   })
 })
+
+function valmax(i: number): ProductoBuscable {
+  return {
+    codigo: `VM${String(i).padStart(2, '0')}`,
+    descripcion: `Valmax VALVULA MINI ${i}`,
+    unidad: 'UND',
+    precio: 1000 + i,
+    activo: true,
+    marca: 'VALMAX',
+  }
+}
+
+const CATALOGO_MARCAS: ProductoBuscable[] = [
+  ...Array.from({ length: 15 }, (_, i) => valmax(i + 1)),
+  {
+    codigo: 'PV1',
+    descripcion: 'Pavco VALVULA ESFERA 1/2',
+    unidad: 'UND',
+    precio: 800,
+    activo: true,
+    marca: 'PAVCO',
+  },
+  {
+    codigo: 'PV2',
+    descripcion: 'Pavco VALVULA CHECK 3/4',
+    unidad: 'UND',
+    precio: 900,
+    activo: true,
+    marca: 'PAVCO',
+  },
+  {
+    codigo: 'PT1',
+    descripcion: 'Pavco TEE FG 1/2',
+    unidad: 'UND',
+    precio: 400,
+    activo: true,
+    marca: 'PAVCO',
+  },
+]
+
+const indiceMarcas = crearIndice(CATALOGO_MARCAS)
+const CODIGOS_VALMAX = CATALOGO_MARCAS.filter((p) => p.marca === 'VALMAX').map(
+  (p) => p.codigo,
+)
+
+describe('marca completa y erratas de marca', () => {
+  it('valmax sin limite devuelve todos los SKU de esa marca, no un top-12', () => {
+    const resultado = buscarProductos(indiceMarcas, 'valmax')
+    const codigos = resultado.coincidencias.map((c) => c.elemento.codigo)
+    expect(codigos).toHaveLength(CODIGOS_VALMAX.length)
+    expect(codigos).toEqual(expect.arrayContaining(CODIGOS_VALMAX))
+    expect(buscarProductos(indiceMarcas, 'valmax', 12).coincidencias).toHaveLength(
+      12,
+    )
+  })
+
+  it('valmax- val y valmax val devuelven más de 12 coincidencias utilizables', () => {
+    for (const consulta of ['valmax- val', 'valmax val'] as const) {
+      const resultado = buscarProductos(indiceMarcas, consulta)
+      const deLaMarca = resultado.coincidencias.filter(
+        (c) => c.elemento.marca === 'VALMAX',
+      )
+      expect(deLaMarca.length).toBeGreaterThan(12)
+      expect(deLaMarca.map((c) => c.elemento.codigo)).toEqual(
+        expect.arrayContaining(CODIGOS_VALMAX),
+      )
+    }
+  })
+
+  it('vlamax encuentra el 100 % de los VALMAX', () => {
+    const resultado = buscarProductos(indiceMarcas, 'vlamax')
+    const deLaMarca = resultado.coincidencias
+      .filter((c) => c.elemento.marca === 'VALMAX')
+      .map((c) => c.elemento.codigo)
+    expect(deLaMarca).toHaveLength(CODIGOS_VALMAX.length)
+    expect(deLaMarca).toEqual(expect.arrayContaining(CODIGOS_VALMAX))
+  })
+
+  it('valmx sigue encontrando VALMAX', () => {
+    const resultado = buscarProductos(indiceMarcas, 'valmx')
+    expect(
+      resultado.coincidencias.some((c) => c.elemento.marca === 'VALMAX'),
+    ).toBe(true)
+  })
+
+  it('val no se colapsa al catálogo VALMAX', () => {
+    const resultado = buscarProductos(indiceMarcas, 'val')
+    const marcas = new Set(
+      resultado.coincidencias.map((c) => c.elemento.marca),
+    )
+    expect(marcas.has('PAVCO')).toBe(true)
+    expect(marcas.has('VALMAX')).toBe(true)
+  })
+
+  it('el lote de candidatos sigue acotado', () => {
+    const lote = loteDeCandidatos(indiceMarcas, ['valmax'], 2)
+    expect(lote.length).toBe(2)
+    expect(lote.length).toBeLessThan(CATALOGO_MARCAS.length)
+  })
+})

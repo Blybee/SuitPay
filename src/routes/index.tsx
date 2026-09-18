@@ -1,13 +1,8 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
-import type {
-  ProductoBuscable,
-  ResultadoDeBusqueda,
-} from '../domain/busqueda/productos.ts'
-import { buscarCotizacionesPorNombre } from '../domain/busqueda/cotizaciones.ts'
+import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
 import { pedidoTienePrecioBajoPiso } from '../domain/totales/calculo.ts'
-import { usarBusqueda } from '../features/busqueda/almacen.ts'
 import { usarCatalogo, umbralVigente } from '../features/catalogo/almacen.ts'
 import { PanelDictado } from '../features/captura/audio.tsx'
 import {
@@ -31,7 +26,6 @@ import {
   despacharComando,
   mensajeDeProhibido,
 } from '../features/comandos/ejecutar.ts'
-import { nombreTrasCoti } from '../features/comandos/pistas.ts'
 import { InstruccionIncompleta } from '../features/comandos/incompletas.tsx'
 import { comandoDesdeDictado } from '../features/comandos/por-voz.ts'
 import {
@@ -47,7 +41,7 @@ import { guardarCotizacion } from '../features/cotizaciones/guardar.ts'
 import { PanelDeCotizaciones } from '../features/cotizaciones/panel.tsx'
 import { crearCotizacionVecino } from '../features/vecinos/crear.ts'
 import { persistirDatosDeVecino } from '../features/vecinos/datos.ts'
-import { agregarProductoAVecino } from '../features/vecinos/lineas.ts'
+import { agregarProductosAVecino } from '../features/vecinos/lineas.ts'
 import { capturarListaDeProductos } from '../features/vecinos/captura.ts'
 import { PanelDeVecinos } from '../features/vecinos/panel.tsx'
 import { PanelDeListaRequerimiento } from '../features/lista/panel.tsx'
@@ -107,7 +101,10 @@ import {
   type ModoDeCabecera,
   type SeriesEnCabecera,
 } from '../ui/componentes/CabeceraDocumento.tsx'
-import { Entrada, type MangoDeEntrada } from '../ui/componentes/Entrada.tsx'
+import {
+  CintaDeBusqueda,
+  type MangoDeCinta,
+} from '../features/mostrador/cinta.tsx'
 import {
   CabecerasDeColumna,
   LineaPedido,
@@ -154,11 +151,8 @@ function MostradorConGuarda() {
 function Mostrador() {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
-  const entradaRef = useRef<MangoDeEntrada>(null)
+  const entradaRef = useRef<MangoDeCinta>(null)
   const [pestana, setPestana] = useState<PestanaMostrador>('pedido')
-  const [termino, setTermino] = useState('')
-  const [cotizacionesSugeridas, setCotizacionesSugeridas] =
-    useState<ResultadoDeBusqueda<Cotizacion> | null>(null)
   const [medioPago, setMedioPago] = useState('efectivo')
   const [seriesCabecera, setSeriesCabecera] = useState<SeriesEnCabecera>({
     boleta: null,
@@ -215,7 +209,6 @@ function Mostrador() {
   >(() => new Map())
 
   const catalogo = usarCatalogo()
-  const ultimaBusqueda = usarBusqueda((estado) => estado.ultima)
   const sesion = usarSesion()
   const pedido = usarPedido()
   const fase = usarEmision((estado) => estado.fase)
@@ -321,7 +314,6 @@ function Mostrador() {
   const lineas = lineasCalculadas(pedido)
   const total = totalDelPedido(pedido)
   const umbral = umbralVigente(catalogo)
-  const resultado = catalogo.buscar(termino)
 
   const proveedorCaido = degradaciones.some(
     (cada) => cada.causa === 'proveedor',
@@ -431,31 +423,32 @@ function Mostrador() {
         setAvisoVecino('Ese vecino ya no está disponible.')
         return false
       }
-      for (const linea of lineas) {
-        const producto: ProductoBuscable = {
-          codigo: linea.codigo,
-          descripcion: linea.descripcion,
-          unidad: linea.unidad,
-          precio:
-            usarCatalogo.getState().productoPorCodigo(linea.codigo)?.precio ??
-            0,
-          activo: true,
-        }
-        const resultado = await agregarProductoAVecino({
-          cotizacionId: activa.id,
-          producto,
-          cantidad: linea.cantidad,
-        })
-        if (!resultado.ok) {
-          setAvisoVecino(resultado.mensaje ?? 'No se pudo agregar el producto.')
-          return false
-        }
-      }
       setSenalAltaVecino((n) => n + 1)
       setVecinoActivoId(destinoId)
-      void queryClient.invalidateQueries({
-        queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
+      queryClient.setQueryData(
+        CLAVES_DE_CONSULTA.cotizacionesVecinos,
+        listaVecinos,
+      )
+      const resultado = await agregarProductosAVecino({
+        queryClient,
+        cotizacionId: destinoId,
+        productos: lineas.map((linea) => ({
+          producto: {
+            codigo: linea.codigo,
+            descripcion: linea.descripcion,
+            unidad: linea.unidad,
+            precio:
+              usarCatalogo.getState().productoPorCodigo(linea.codigo)?.precio ??
+              0,
+            activo: true,
+          },
+          cantidad: linea.cantidad,
+        })),
       })
+      if (!resultado.ok) {
+        setAvisoVecino(resultado.mensaje ?? 'No se pudo agregar el producto.')
+        return false
+      }
       usarNotificaciones.getState().mostrar({
         tono: 'exito',
         mensaje: `Agregado a ${activa.aliasVecino ?? `H${activa.numero}`}.`,
@@ -516,18 +509,6 @@ function Mostrador() {
   async function ejecutarComando(texto: string): Promise<void> {
     const recortado = texto.trim()
     const clave = recortado.toLowerCase()
-    const nombreCoti = nombreTrasCoti(recortado)
-    if (nombreCoti !== null) {
-      const pendientes = await queryClient.ensureQueryData({
-        queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
-        queryFn: () => listarCotizacionesPendientes('general'),
-        staleTime: 30_000,
-      })
-      setCotizacionesSugeridas(
-        buscarCotizacionesPorNombre(pendientes, nombreCoti),
-      )
-      return
-    }
     // La propuesta salta con Enter, no en cada tecla: si saltara al completar
     // el documento, el modal interrumpiría antes de poder escribir el
     // teléfono opcional.
@@ -539,7 +520,7 @@ function Mostrador() {
     if (clave === '/guia' || clave.startsWith('/guia ')) {
       setBorradorGuia(null)
       setPapeletaGuiaAbierta(true)
-      setTermino('')
+      entradaRef.current?.vaciar()
       return
     }
     if (
@@ -548,7 +529,7 @@ function Mostrador() {
     ) {
       const ruc = recortado.slice('/crear transportista'.length).trim()
       setAltaTransportistaRuc(ruc)
-      setTermino('')
+      entradaRef.current?.vaciar()
       return
     }
 
@@ -567,12 +548,12 @@ function Mostrador() {
     }
     if (despacho.pestana !== undefined) {
       setPestana(despacho.pestana)
-      setTermino('')
+      entradaRef.current?.vaciar()
       return
     }
     if (despacho.resultado !== undefined) {
       setResultadoComando(despacho.resultado)
-      setTermino('')
+      entradaRef.current?.vaciar()
     }
   }
 
@@ -606,26 +587,18 @@ function Mostrador() {
     }
 
     if (pestana === 'vecinos' && vecinoActivoId !== null) {
+      setSenalAltaVecino((n) => n + 1)
       void (async () => {
-        const lista = await listarCotizacionesPendientes('vecino')
-        const activa = lista.find((cada) => cada.id === vecinoActivoId)
-        if (activa === undefined) {
-          setAvisoVecino('Ese vecino ya no está disponible.')
-          return
-        }
-        const resultado = await agregarProductoAVecino({
-          cotizacionId: activa.id,
-          producto,
+        const resultado = await agregarProductosAVecino({
+          queryClient,
+          cotizacionId: vecinoActivoId,
+          productos: [{ producto }],
         })
         if (!resultado.ok) {
           setAvisoVecino(resultado.mensaje ?? 'No se pudo agregar el producto.')
           return
         }
-        setSenalAltaVecino((n) => n + 1)
         setAvisoVecino(null)
-        void queryClient.invalidateQueries({
-          queryKey: CLAVES_DE_CONSULTA.cotizacionesVecinos,
-        })
       })()
       return
     }
@@ -679,7 +652,19 @@ function Mostrador() {
       return
     }
     if (pestana === 'vecinos' && vecinoActivoId !== null) {
-      for (const producto of productos) agregar(producto)
+      setSenalAltaVecino((n) => n + 1)
+      void (async () => {
+        const resultado = await agregarProductosAVecino({
+          queryClient,
+          cotizacionId: vecinoActivoId,
+          productos: productos.map((producto) => ({ producto })),
+        })
+        if (!resultado.ok) {
+          setAvisoVecino(resultado.mensaje ?? 'No se pudieron agregar los productos.')
+          return
+        }
+        setAvisoVecino(null)
+      })()
       return
     }
 
@@ -748,7 +733,7 @@ function Mostrador() {
       setAvisoVecino(resultado.mensaje ?? 'No se pudo crear el vecino.')
       return
     }
-    setTermino('')
+    entradaRef.current?.vaciar()
     setPropuestaVecino(null)
     setVecinoActivoId(resultado.cotizacionId)
     setPestana('vecinos')
@@ -1108,20 +1093,11 @@ function Mostrador() {
     <div className="flex h-full min-h-0 flex-col overflow-hidden">
       {/* Buscador + tabs: cabecera fija; el scroll vive en la lista del tab. */}
       <div className="z-20 w-full shrink-0 border-b border-borde bg-papel">
-        <Entrada
+        <CintaDeBusqueda
           ref={entradaRef}
-          termino={termino}
-          onTerminoCambia={(siguiente) => {
-            setTermino(siguiente)
-            setCotizacionesSugeridas(null)
-            usarBusqueda.getState().recordar(siguiente)
-          }}
-          ultimaBusqueda={ultimaBusqueda}
-          resultado={resultado}
           onElegirProducto={agregar}
           onElegirProductos={agregarVarios}
           onEjecutarComando={(texto) => void ejecutarComando(texto)}
-          cotizacionesSugeridas={cotizacionesSugeridas}
           onElegirCotizacion={(cotizacion) => {
             usarPedido.getState().fijarModoCotizacion(true)
             pedido.cargarDesdeCotizacion({
@@ -1134,8 +1110,6 @@ function Mostrador() {
               queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
             })
             setPestana('pedido')
-            setTermino('')
-            setCotizacionesSugeridas(null)
           }}
           asistenciaDisponible={asistenciaDisponible}
           motivoAsistenciaInerte={motivoAsistenciaInerte}
@@ -1183,7 +1157,7 @@ function Mostrador() {
       </div>
 
       <PanelDictado
-        termino={termino}
+        termino=""
         abierto={panelDictado}
         onCerrar={() => setPanelDictado(false)}
         contexto={
@@ -1196,7 +1170,7 @@ function Mostrador() {
         vecinoId={pestana === 'vecinos' ? vecinoActivoId : null}
       />
       <PanelFotografia
-        termino={termino}
+        termino=""
         abierto={panelFoto}
         onCerrar={() => setPanelFoto(false)}
       />

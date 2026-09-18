@@ -81,12 +81,21 @@ const DISTANCIA_FUERTE = 0.28
 /** Dos caracteres bastan para que "fg" cuente; uno solo no entra en Fuse. */
 export const LONGITUD_MINIMA_TERMINO = 2
 
+const DISTANCIA_MARCA_APROXIMADA = 0.4
+const LONGITUD_MINIMA_ERRATA_MARCA = 4
+const DIFERENCIA_MAXIMA_LONGITUD_MARCA = 2
+
 const OPCIONES: IFuseOptions<ProductoBuscable> = {
   keys: [
     {
       name: 'descripcion',
       weight: 0.85,
       getFn: (producto) => normalizar(producto.descripcion),
+    },
+    {
+      name: 'marca',
+      weight: 0.5,
+      getFn: (producto) => normalizar(producto.marca ?? ''),
     },
     {
       name: 'codigo',
@@ -99,6 +108,15 @@ const OPCIONES: IFuseOptions<ProductoBuscable> = {
   ignoreLocation: true,
   ignoreDiacritics: true,
   threshold: DISTANCIA_MAXIMA_UTILIZABLE,
+  minMatchCharLength: LONGITUD_MINIMA_TERMINO,
+}
+
+/** Vocabulario corto: transposiciones tipo "vlamax" contra "VALMAX", no contra la descripción. */
+const OPCIONES_MARCA: IFuseOptions<string> = {
+  includeScore: true,
+  ignoreLocation: true,
+  ignoreDiacritics: true,
+  threshold: DISTANCIA_MARCA_APROXIMADA,
   minMatchCharLength: LONGITUD_MINIMA_TERMINO,
 }
 
@@ -130,7 +148,9 @@ export function terminosDeConsulta(terminoLimpio: string): readonly string[] {
 
 export interface IndiceDeProductos {
   readonly fuse: Fuse<ProductoBuscable>
+  readonly fuseMarcas: Fuse<string>
   readonly porDescripcionNormalizada: ReadonlyMap<string, ProductoBuscable>
+  readonly porMarca: ReadonlyMap<string, readonly ProductoBuscable[]>
 }
 
 export function crearIndice(
@@ -138,12 +158,20 @@ export function crearIndice(
 ): IndiceDeProductos {
   const activos = productos.filter((producto) => producto.activo)
   const porDescripcionNormalizada = new Map<string, ProductoBuscable>()
+  const porMarca = new Map<string, ProductoBuscable[]>()
   for (const producto of activos) {
     porDescripcionNormalizada.set(normalizar(producto.descripcion), producto)
+    const marca = normalizar(producto.marca ?? '')
+    if (marca.length === 0) continue
+    const deLaMarca = porMarca.get(marca)
+    if (deLaMarca === undefined) porMarca.set(marca, [producto])
+    else deLaMarca.push(producto)
   }
   return {
     fuse: new Fuse(activos, OPCIONES),
+    fuseMarcas: new Fuse([...porMarca.keys()], OPCIONES_MARCA),
     porDescripcionNormalizada,
+    porMarca,
   }
 }
 
@@ -153,33 +181,67 @@ function gradoDe(distancia: number): GradoDeCoincidencia {
   return 'aproximada'
 }
 
+type Hallazgo = { producto: ProductoBuscable; distancia: number }
+
+function registrarHallazgo(
+  encontrados: Map<string, Hallazgo>,
+  producto: ProductoBuscable,
+  distancia: number,
+): void {
+  const yaEstaba = encontrados.get(producto.codigo)
+  if (yaEstaba === undefined || distancia < yaEstaba.distancia) {
+    encontrados.set(producto.codigo, { producto, distancia })
+  }
+}
+
+function expandirMarca(
+  indice: IndiceDeProductos,
+  termino: string,
+  encontrados: Map<string, Hallazgo>,
+): void {
+  const exactos = indice.porMarca.get(termino)
+  if (exactos !== undefined) {
+    for (const producto of exactos) registrarHallazgo(encontrados, producto, 0)
+  }
+
+  if (termino.length < LONGITUD_MINIMA_ERRATA_MARCA) return
+
+  for (const resultado of indice.fuseMarcas.search(termino)) {
+    const marca = resultado.item
+    const distancia = resultado.score ?? 1
+    if (distancia > DISTANCIA_MARCA_APROXIMADA) continue
+    if (
+      Math.abs(termino.length - marca.length) > DIFERENCIA_MAXIMA_LONGITUD_MARCA
+    ) {
+      continue
+    }
+    const deLaMarca = indice.porMarca.get(marca)
+    if (deLaMarca === undefined) continue
+    for (const producto of deLaMarca) {
+      registrarHallazgo(encontrados, producto, distancia)
+    }
+  }
+}
+
 /** Distancia de cada producto para un único término, por código. */
 function distanciasPorTermino(
   indice: IndiceDeProductos,
   termino: string,
-): Map<string, { producto: ProductoBuscable; distancia: number }> {
-  const encontrados = new Map<
-    string,
-    { producto: ProductoBuscable; distancia: number }
-  >()
+): Map<string, Hallazgo> {
+  const encontrados = new Map<string, Hallazgo>()
   for (const resultado of indice.fuse.search(termino)) {
     const distancia = resultado.score ?? 1
     if (distancia > DISTANCIA_MAXIMA_UTILIZABLE) continue
-    const yaEstaba = encontrados.get(resultado.item.codigo)
-    if (yaEstaba === undefined || distancia < yaEstaba.distancia) {
-      encontrados.set(resultado.item.codigo, {
-        producto: resultado.item,
-        distancia,
-      })
-    }
+    registrarHallazgo(encontrados, resultado.item, distancia)
   }
+  expandirMarca(indice, termino, encontrados)
   return encontrados
 }
 
 export function buscarProductos(
   indice: IndiceDeProductos,
   termino: string,
-  limite = 12,
+  limite?: number,
 ): ResultadoDeBusqueda<ProductoBuscable> {
   const terminoLimpio = normalizar(termino)
 
@@ -242,7 +304,7 @@ export function buscarProductos(
     if (candidatos.size === 0) break
   }
 
-  const coincidencias = [...candidatos.values()]
+  const ordenadas = [...candidatos.values()]
     .map((encontrado) => {
       const distancias = distanciasAcumuladas.get(encontrado.producto.codigo) ?? [
         encontrado.distancia,
@@ -256,7 +318,8 @@ export function buscarProductos(
       }
     })
     .sort((uno, otro) => uno.distancia - otro.distancia)
-    .slice(0, limite)
+  const coincidencias =
+    limite === undefined ? ordenadas : ordenadas.slice(0, limite)
 
   return {
     coincidencias,

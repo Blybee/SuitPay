@@ -7,3 +7,5 @@
 >requiere consetimiento explicito para ejecutar X acción. 
 - *opt-out*
 >por default se ejecuta la acción, salvo denegación explicita. 
+- *overscan insuficiente*
+>huecos blancos al virtualizar

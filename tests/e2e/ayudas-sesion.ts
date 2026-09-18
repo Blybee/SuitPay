@@ -26,8 +26,11 @@ import type { Page } from '@playwright/test'
 
 const AUTH_EMULADOR = '127.0.0.1:9099'
 const PROYECTO = 'demo-suitpay'
-const UID = 'vendedor-de-prueba'
-const CORREO = 'vendedor@ejemplo.pe'
+export const VENDEDOR_E2E = {
+  uid: 'vendedor-de-prueba',
+  correo: 'vendedor@ejemplo.pe',
+  clave: 'prueba-1234',
+} as const
 
 interface SesionInyectable {
   readonly idToken: string
@@ -50,12 +53,19 @@ async function credencialesDeVendedor(apiKey: string): Promise<SesionInyectable>
 
     // Idempotente a propósito: la prueba corre en dos proyectos de Playwright
     // —escritorio y móvil— y en paralelo, así que el usuario puede existir ya.
-    await auth.getUser(UID).catch(() =>
-      auth.createUser({ uid: UID, email: CORREO, password: 'prueba-1234' }),
+    await auth.getUser(VENDEDOR_E2E.uid).catch(() =>
+      auth.createUser({
+        uid: VENDEDOR_E2E.uid,
+        email: VENDEDOR_E2E.correo,
+        password: VENDEDOR_E2E.clave,
+      }),
     )
-    await auth.setCustomUserClaims(UID, { rol: 'vendedor', activo: true })
+    await auth.setCustomUserClaims(VENDEDOR_E2E.uid, {
+      rol: 'vendedor',
+      activo: true,
+    })
 
-    const tokenAMedida = await auth.createCustomToken(UID, {
+    const tokenAMedida = await auth.createCustomToken(VENDEDOR_E2E.uid, {
       rol: 'vendedor',
       activo: true,
     })
@@ -123,6 +133,19 @@ export async function sembrarSesionDeVendedor(pagina: Page): Promise<void> {
         JSON.stringify(usuario),
       )
     },
-    { idToken, refreshToken, apiKey, uid: UID, correo: CORREO },
+    { idToken, refreshToken, apiKey, uid: VENDEDOR_E2E.uid, correo: VENDEDOR_E2E.correo },
   )
+}
+
+/** Crea el vendedor del emulador y entra por la pantalla de acceso. */
+export async function entrarComoVendedorE2E(pagina: Page): Promise<void> {
+  const apiKey = process.env['VITE_FIREBASE_API_KEY'] ?? 'demo-api-key'
+  await credencialesDeVendedor(apiKey)
+  await pagina.goto('/acceso')
+  await pagina.getByLabel('Correo').fill(VENDEDOR_E2E.correo)
+  await pagina.getByLabel('Contraseña').fill(VENDEDOR_E2E.clave)
+  await pagina.getByRole('button', { name: 'Entrar' }).click()
+  await pagina.getByRole('combobox', { name: /Buscar producto/i }).waitFor({
+    timeout: 20_000,
+  })
 }

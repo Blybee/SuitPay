@@ -7,6 +7,9 @@ import { defineConfig, devices } from '@playwright/test'
  * siempre así. Un flujo de venta que solo se prueba en escritorio no está
  * probado.
  */
+const puertoDev = process.env.PUERTO_PRUEBAS ?? '3000'
+const urlPruebas = process.env.URL_PRUEBAS ?? `http://localhost:${puertoDev}`
+
 export default defineConfig({
   testDir: './tests/e2e',
   fullyParallel: true,
@@ -15,7 +18,7 @@ export default defineConfig({
   reporter: process.env.CI ? [['github'], ['html']] : [['list']],
 
   use: {
-    baseURL: process.env.URL_PRUEBAS ?? 'http://localhost:3000',
+    baseURL: urlPruebas,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
     locale: 'es-PE',
@@ -34,8 +37,8 @@ export default defineConfig({
   ],
 
   webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:3000',
+    command: `npm run dev -- --port ${puertoDev}`,
+    url: urlPruebas,
     // false: el e2e de captura exige VITE_USAR_EMULADORES y vars demo; un
     // `npm run dev` previo con .env.local de nube rompería la siembra de sesión.
     reuseExistingServer: false,

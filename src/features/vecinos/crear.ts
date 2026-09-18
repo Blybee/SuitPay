@@ -6,6 +6,7 @@ import {
 } from 'firebase/firestore'
 import { diaEnLima } from '../../domain/anulacion/ventana.ts'
 import { obtenerBaseDeDatos } from '../../infra/firebase/cliente.ts'
+import { esPermisoDenegado } from '../../infra/firebase/errores.ts'
 import { reservarNumeroCotizacionFn } from '../cotizaciones/cotizaciones.funciones.ts'
 import type { ClienteDelPedido } from '../pedido/almacen.ts'
 
@@ -51,7 +52,7 @@ export async function crearCotizacionVecino(datos: {
 
   try {
     const telefono = datos.telefono?.trim() ?? ''
-    await setDoc(referencia, {
+    const payload = {
       numero: reserva.numero,
       estado: 'pendiente',
       canal: 'vecino',
@@ -66,7 +67,28 @@ export async function crearCotizacionVecino(datos: {
       creadoPor: datos.uid,
       creadoEn: serverTimestamp(),
       actualizadoEn: serverTimestamp(),
-    })
+    }
+    try {
+      await setDoc(referencia, payload)
+    } catch (error) {
+      if (!esPermisoDenegado(error)) throw error
+      await setDoc(referencia, {
+        numero: payload.numero,
+        estado: payload.estado,
+        canal: payload.canal,
+        aliasVecino: payload.aliasVecino,
+        ...('telefonoVecino' in payload
+          ? { telefonoVecino: payload.telefonoVecino }
+          : {}),
+        cliente: payload.cliente,
+        lineas: payload.lineas,
+        total: payload.total,
+        generacionPedido: payload.generacionPedido,
+        creadoPor: payload.creadoPor,
+        creadoEn: payload.creadoEn,
+        actualizadoEn: payload.actualizadoEn,
+      })
+    }
   } catch (error) {
     console.error('[SuitPay] crearCotizacionVecino: fallo', error)
     return {

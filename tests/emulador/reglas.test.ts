@@ -730,6 +730,53 @@ describeConEmulador('vecino: alias y teléfono editables', () => {
       }),
     )
   })
+
+  it('un vecino legado admite líneas, diaCivilLineas y totalDeudas', async () => {
+    await entorno.withSecurityRulesDisabled(async (contexto) => {
+      await setDoc(doc(contexto.firestore(), 'cotizaciones/vecino-lineas'), {
+        numero: 95,
+        estado: 'pendiente',
+        canal: 'vecino',
+        aliasVecino: 'hugo',
+        cliente: null,
+        lineas: [],
+        total: 0,
+        creadoPor: 'vendedor-1',
+        creadoEn: serverTimestamp(),
+        actualizadoEn: serverTimestamp(),
+      })
+    })
+    await assertSucceeds(
+      updateDoc(doc(comoVendedor(), 'cotizaciones/vecino-lineas'), {
+        lineas: [
+          {
+            codigo: 'TUB',
+            descripcion: 'Tubo',
+            unidad: 'UND',
+            cantidad: 1,
+            precio: 1250,
+          },
+        ],
+        total: 1250,
+        diaCivilLineas: '2026-09-17',
+        totalDeudas: 0,
+      }),
+    )
+    await assertSucceeds(
+      updateDoc(doc(comoVendedor(), 'cotizaciones/vecino-lineas'), {
+        lineas: [
+          {
+            codigo: 'TUB',
+            descripcion: 'Tubo',
+            unidad: 'UND',
+            cantidad: 2,
+            precio: 1250,
+          },
+        ],
+        total: 2500,
+      }),
+    )
+  })
 })
 
 describeConEmulador('deudas de vecino', () => {

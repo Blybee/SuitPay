@@ -1,5 +1,13 @@
-import { useEffect, useId, useImperativeHandle, useRef, useState } from 'react'
-import type { ButtonHTMLAttributes, Ref } from 'react'
+import {
+  useEffect,
+  useId,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react'
+import type { ButtonHTMLAttributes, CSSProperties, Ref } from 'react'
+import { useVirtualizer } from '@tanstack/react-virtual'
 import { Camera, EllipsisVertical, Eye, Mic, Search } from 'lucide-react'
 import {
   comandosCoincidentes,
@@ -54,6 +62,8 @@ export interface PropsDeEntrada {
    */
   readonly cotizacionesSugeridas?: ResultadoDeBusqueda<Cotizacion> | null
   readonly onElegirCotizacion?: (cotizacion: Cotizacion) => void
+  /** La consulta del listbox aún no alcanzó el término que se ve en el campo. */
+  readonly consultaPendiente?: boolean
   /** Imperative handle (React 19 ref-as-prop) para return focus to search. */
   readonly ref?: Ref<MangoDeEntrada>
 }
@@ -73,6 +83,7 @@ export function Entrada({
   onEjecutarComando,
   cotizacionesSugeridas = null,
   onElegirCotizacion,
+  consultaPendiente = false,
   ref,
 }: PropsDeEntrada) {
   const campo = useRef<HTMLInputElement>(null)
@@ -461,6 +472,7 @@ export function Entrada({
                 resultado={resultado}
                 resaltado={resaltado}
                 seleccionados={seleccionados}
+                consultaPendiente={consultaPendiente}
                 onAlternarSeleccion={alternarSeleccion}
                 onElegir={elegirProducto}
                 onResaltar={setResaltado}
@@ -773,10 +785,91 @@ function SugerenciasDeComando({
   )
 }
 
+const OVERSCAN_LISTBOX = 6
+const ALTO_FILA_SUGERENCIA = 56
+
+function textoDeRecuento(cantidad: number): string {
+  return cantidad === 1 ? '1 coincidencia' : `${cantidad} coincidencias`
+}
+
+function FilaSugerencia({
+  coincidencia,
+  indice,
+  activo,
+  marcado,
+  estilo,
+  onAlternarSeleccion,
+  onElegir,
+  onResaltar,
+}: {
+  readonly coincidencia: ResultadoDeBusqueda<ProductoBuscable>['coincidencias'][number]
+  readonly indice: number
+  readonly activo: boolean
+  readonly marcado: boolean
+  readonly estilo?: CSSProperties
+  readonly onAlternarSeleccion: (codigo: string) => void
+  readonly onElegir: (indice: number) => void
+  readonly onResaltar: (indice: number) => void
+}) {
+  const codigo = coincidencia.elemento.codigo
+  return (
+    <div
+      id={`sugerencia-${indice}`}
+      role="option"
+      aria-selected={marcado || activo}
+      style={estilo}
+      onMouseEnter={() => onResaltar(indice)}
+      className={[
+        'flex h-14 w-full items-center gap-2 overflow-hidden px-2',
+        activo ? 'bg-tinta text-papel' : 'text-tinta hover:bg-mesa',
+      ].join(' ')}
+    >
+      <Casilla
+        checked={marcado}
+        onCheckedChange={() => onAlternarSeleccion(codigo)}
+        onClick={(evento) => evento.stopPropagation()}
+        aria-label={`Seleccionar ${coincidencia.elemento.descripcion}`}
+        className={
+          activo
+            ? 'border-papel/40 bg-papel/10 data-[state=checked]:bg-papel'
+            : undefined
+        }
+      />
+      <button
+        type="button"
+        onClick={() => onElegir(indice)}
+        className={[
+          'flex min-w-0 flex-1 items-baseline justify-between gap-3 px-2 text-left',
+          'focus-visible:outline-none',
+        ].join(' ')}
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-cuerpo uppercase">
+            {coincidencia.elemento.descripcion}
+          </span>
+          <span
+            className={[
+              'block truncate font-mono text-etiqueta uppercase',
+              activo ? 'text-papel/70' : 'text-desvaida',
+            ].join(' ')}
+          >
+            {codigo} · {coincidencia.elemento.unidad}
+            {coincidencia.grado === 'aproximada' && ' · aproximado'}
+          </span>
+        </span>
+        <span className="font-mono tabular-nums text-cuerpo font-bold">
+          {formatearImporte(coincidencia.elemento.precio)}
+        </span>
+      </button>
+    </div>
+  )
+}
+
 function Sugerencias({
   resultado,
   resaltado,
   seleccionados,
+  consultaPendiente,
   onAlternarSeleccion,
   onElegir,
   onResaltar,
@@ -784,10 +877,35 @@ function Sugerencias({
   readonly resultado: ResultadoDeBusqueda<ProductoBuscable>
   readonly resaltado: number
   readonly seleccionados: ReadonlySet<string>
+  readonly consultaPendiente: boolean
   readonly onAlternarSeleccion: (codigo: string) => void
   readonly onElegir: (indice: number) => void
   readonly onResaltar: (indice: number) => void
 }) {
+  const scrollRef = useRef<HTMLDivElement>(null)
+  const coincidencias = resultado.coincidencias
+  const virtualizador = useVirtualizer({
+    count: coincidencias.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => ALTO_FILA_SUGERENCIA,
+    overscan: OVERSCAN_LISTBOX,
+    initialRect: { width: 640, height: 384 },
+    getItemKey: (indice) => coincidencias[indice]?.elemento.codigo ?? indice,
+  })
+
+  useLayoutEffect(() => {
+    if (resultado.sinCoincidencias || coincidencias.length === 0) return
+    virtualizador.scrollToIndex(resaltado, {
+      align: 'auto',
+      behavior: 'auto',
+    })
+  }, [
+    coincidencias.length,
+    resaltado,
+    resultado.sinCoincidencias,
+    virtualizador,
+  ])
+
   if (resultado.sinCoincidencias) {
     return (
       <div className="w-full bg-papel px-4 py-3">
@@ -802,78 +920,56 @@ function Sugerencias({
   }
 
   return (
-    <div className="w-full bg-papel">
+    <div
+      className="sugerencias-consulta w-full bg-papel"
+      data-pendiente={consultaPendiente ? 'true' : undefined}
+    >
+      <p className="border-b border-borde px-4 py-1.5 font-mono text-etiqueta font-bold uppercase text-desvaida">
+        {textoDeRecuento(coincidencias.length)}
+      </p>
       {resultado.soloAproximadas && (
         <p className="border-b border-aviso px-4 py-1.5 font-mono text-etiqueta font-bold uppercase text-aviso">
           Nada coincide con exactitud. Comprueba antes de aceptar.
         </p>
       )}
-      <ul
+      <div
+        ref={scrollRef}
         id="sugerencias-de-producto"
         role="listbox"
+        aria-busy={consultaPendiente || undefined}
         aria-multiselectable="true"
-        className="max-h-80 overflow-y-auto"
+        className="max-h-[min(24rem,50dvh)] overflow-y-auto"
       >
-        {resultado.coincidencias.map((coincidencia, indice) => {
-          const codigo = coincidencia.elemento.codigo
-          const marcado = seleccionados.has(codigo)
-          const activo = indice === resaltado
-          return (
-            <li
-              key={codigo}
-              id={`sugerencia-${indice}`}
-              role="option"
-              aria-selected={marcado || activo}
-            >
-              <div
-                onMouseEnter={() => onResaltar(indice)}
-                className={[
-                  'flex min-h-11 w-full items-center gap-2 px-2 py-2',
-                  activo ? 'bg-tinta text-papel' : 'text-tinta hover:bg-mesa',
-                ].join(' ')}
-              >
-                <Casilla
-                  checked={marcado}
-                  onCheckedChange={() => onAlternarSeleccion(codigo)}
-                  onClick={(evento) => evento.stopPropagation()}
-                  aria-label={`Seleccionar ${coincidencia.elemento.descripcion}`}
-                  className={
-                    activo
-                      ? 'border-papel/40 bg-papel/10 data-[state=checked]:bg-papel'
-                      : undefined
-                  }
-                />
-                <button
-                  type="button"
-                  onClick={() => onElegir(indice)}
-                  className={[
-                    'flex min-w-0 flex-1 items-baseline justify-between gap-3 px-2 text-left',
-                    'focus-visible:outline-none',
-                  ].join(' ')}
-                >
-                  <span className="min-w-0 flex-1">
-                    <span className="block truncate text-cuerpo uppercase">
-                      {coincidencia.elemento.descripcion}
-                    </span>
-                    <span
-                      className={[
-                        'block font-mono text-etiqueta uppercase',
-                        activo ? 'text-papel/70' : 'text-desvaida',
-                      ].join(' ')}
-                    >
-                      {codigo} · {coincidencia.elemento.unidad}
-                      {coincidencia.grado === 'aproximada' && ' · aproximado'}
-                    </span>
-                  </span>
-                  <span className="font-mono tabular-nums text-cuerpo font-bold">
-                    {formatearImporte(coincidencia.elemento.precio)}
-                  </span>
-                </button>
-              </div>
-            </li>
-          )
-        })}
-      </ul>
+        <div
+          className="relative w-full"
+          style={{ height: virtualizador.getTotalSize() }}
+        >
+          {virtualizador.getVirtualItems().map((virtual) => {
+            const coincidencia = coincidencias[virtual.index]
+            if (coincidencia === undefined) return null
+            return (
+              <FilaSugerencia
+                key={virtual.key}
+                coincidencia={coincidencia}
+                indice={virtual.index}
+                activo={virtual.index === resaltado}
+                marcado={seleccionados.has(coincidencia.elemento.codigo)}
+                estilo={{
+                  position: 'absolute',
+                  top: 0,
+                  left: 0,
+                  width: '100%',
+                  height: virtual.size,
+                  transform: `translateY(${virtual.start}px)`,
+                }}
+                onAlternarSeleccion={onAlternarSeleccion}
+                onElegir={onElegir}
+                onResaltar={onResaltar}
+              />
+            )
+          })}
+        </div>
+      </div>
     </div>
   )
 }

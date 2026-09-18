@@ -26,6 +26,10 @@ import type { Cotizacion } from '../cotizaciones/tipos.ts'
 import { usarCatalogo } from '../catalogo/almacen.ts'
 import { mutarLineasDeVecino, asegurarCorteDeDia } from './persistir.ts'
 import {
+  hayAltaPendiente,
+  parcharLineasDeVecinoEnCache,
+} from './lineas.ts'
+import {
   capturarDeudasDeVecino,
   capturarListaDeProductos,
 } from './captura.ts'
@@ -103,7 +107,10 @@ export function PanelDeVecinos({
   }, [activa?.id])
 
   useEffect(() => {
-    if (senalAlta > 0) setVistaDeudas(false)
+    if (senalAlta > 0) {
+      setVistaDeudas(false)
+      setFechasMarcadas(new Set())
+    }
   }, [senalAlta])
 
   useEffect(() => {
@@ -146,6 +153,30 @@ export function PanelDeVecinos({
     }
   }
 
+  async function aplicarResultadoDeMutacion(
+    resultado: Awaited<ReturnType<typeof mutarLineasDeVecino>>,
+  ): Promise<void> {
+    if (!resultado.ok || activa === null) return
+    if (resultado.archivo === true) {
+      await refrescar()
+      return
+    }
+    if (
+      resultado.lineas !== undefined &&
+      resultado.total !== undefined &&
+      !hayAltaPendiente(activa.id)
+    ) {
+      parcharLineasDeVecinoEnCache(
+        queryClient,
+        activa.id,
+        resultado.lineas,
+        resultado.total,
+      )
+      return
+    }
+    if (!hayAltaPendiente(activa.id)) await refrescar()
+  }
+
   async function cambiarCantidad(
     indice: number,
     cantidad: number,
@@ -158,7 +189,7 @@ export function PanelDeVecinos({
           i === indice ? { ...linea, cantidad } : linea,
         ),
     })
-    if (resultado.ok) await refrescar()
+    if (resultado.ok) await aplicarResultadoDeMutacion(resultado)
   }
 
   async function cambiarPrecio(indice: number, precio: number): Promise<void> {
@@ -168,7 +199,7 @@ export function PanelDeVecinos({
       mutar: (lineas) =>
         lineas.map((linea, i) => (i === indice ? { ...linea, precio } : linea)),
     })
-    if (resultado.ok) await refrescar()
+    if (resultado.ok) await aplicarResultadoDeMutacion(resultado)
   }
 
   async function quitarLinea(indice: number): Promise<void> {
@@ -177,7 +208,7 @@ export function PanelDeVecinos({
       cotizacionId: activa.id,
       mutar: (lineas) => lineas.filter((_, i) => i !== indice),
     })
-    if (resultado.ok) await refrescar()
+    if (resultado.ok) await aplicarResultadoDeMutacion(resultado)
   }
 
   const listaDeudas = deudas.data ?? []

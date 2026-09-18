@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi, beforeAll } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Entrada } from '../../../src/ui/componentes/Entrada.tsx'
@@ -6,6 +6,27 @@ import type {
   ProductoBuscable,
   ResultadoDeBusqueda,
 } from '../../../src/domain/busqueda/productos.ts'
+
+beforeAll(() => {
+  class ObservadorFalso {
+    observe(): void {}
+    unobserve(): void {}
+    disconnect(): void {}
+  }
+  globalThis.ResizeObserver = ObservadorFalso as unknown as typeof ResizeObserver
+  Object.defineProperty(HTMLElement.prototype, 'offsetHeight', {
+    configurable: true,
+    get() {
+      return 384
+    },
+  })
+  Object.defineProperty(HTMLElement.prototype, 'offsetWidth', {
+    configurable: true,
+    get() {
+      return 640
+    },
+  })
+})
 
 const producto: ProductoBuscable = {
   codigo: 'P-1',
@@ -80,6 +101,55 @@ describe('Entrada — panel flotante', () => {
     )
     expect(onElegirProducto).toHaveBeenCalledWith(producto)
     expect(onTerminoCambia).toHaveBeenCalledWith('')
+  })
+
+  it('muestra el recuento de todas las coincidencias aunque virtualice el listbox', () => {
+    const quince = Array.from({ length: 15 }, (_, i) => ({
+      ...producto,
+      codigo: `P-${i + 1}`,
+      descripcion: `Valmax VALVULA MINI ${i + 1}`,
+    }))
+
+    render(
+      <Entrada
+        termino="valmax"
+        onTerminoCambia={vi.fn()}
+        resultado={resultadoCon('valmax', quince)}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    expect(screen.getByText('15 coincidencias')).toBeInTheDocument()
+    expect(screen.getByRole('option', { name: /P-1 · UND/ })).toBeInTheDocument()
+    expect(screen.getAllByRole('option').length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('option').length).toBeLessThanOrEqual(15)
+  })
+
+  it('no monta las 90 filas del listbox; el recuento sigue siendo 90', () => {
+    const noventa = Array.from({ length: 90 }, (_, i) => ({
+      ...producto,
+      codigo: `P-${i + 1}`,
+      descripcion: `Valmax VALVULA MINI ${i + 1}`,
+    }))
+
+    render(
+      <Entrada
+        termino="valmax"
+        onTerminoCambia={vi.fn()}
+        resultado={resultadoCon('valmax', noventa)}
+        onElegirProducto={vi.fn()}
+        asistenciaDisponible={false}
+        enfocarAlMontar={false}
+      />,
+    )
+
+    expect(screen.getByText('90 coincidencias')).toBeInTheDocument()
+    expect(screen.getAllByRole('option').length).toBeLessThan(40)
+    expect(
+      screen.queryByRole('button', { name: /Valmax VALVULA MINI 90/i }),
+    ).not.toBeInTheDocument()
   })
 
   it('deja que Space escriba un espacio y no marque la casilla', async () => {

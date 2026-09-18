@@ -133,18 +133,24 @@ export const usarCatalogo = create<AlmacenDelCatalogo>((set, get) => ({
     }
   },
 
-  buscar(termino, limite = 12) {
+  buscar(termino, limite) {
     const indice = get().indice
     if (indice === null) return { ...VACIO, termino }
-    const crudo = buscarProductos(indice, termino, limite * 4)
+    const crudo = buscarProductos(
+      indice,
+      termino,
+      limite === undefined ? undefined : limite * 4,
+    )
     const visibles = filtrarPorFacetas(
       crudo.coincidencias.map((c) => c.elemento),
       get().facetas,
     )
     const permitidos = new Set(visibles.map((p) => p.codigo))
-    const coincidencias = crudo.coincidencias
-      .filter((c) => permitidos.has(c.elemento.codigo))
-      .slice(0, limite)
+    const filtradas = crudo.coincidencias.filter((c) =>
+      permitidos.has(c.elemento.codigo),
+    )
+    const coincidencias =
+      limite === undefined ? filtradas : filtradas.slice(0, limite)
     return {
       coincidencias,
       sinCoincidencias: coincidencias.length === 0,

@@ -173,9 +173,19 @@
   transition: opacity var(--duration-media) var(--ease-salida);
 }
 
+.sugerencias-consulta {
+  opacity: 1;
+  transition: opacity var(--duration-rapida) var(--ease-salida);
+}
+
+.sugerencias-consulta[data-pendiente='true'] {
+  opacity: 0.55;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .t-icon-swap .t-icon,
-  .vista-vecino {
+  .vista-vecino,
+  .sugerencias-consulta {
     transition: none;
     filter: none;
   }
