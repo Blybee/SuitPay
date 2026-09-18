@@ -207,7 +207,7 @@ No uses:
 
 | Componente       | Archivo                                 | Cuándo usarlo                                                                                                                                          |
 | ---------------- | --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `ZonaDeCarga`    | `ZonaDeCarga.tsx`                       | Drop zone de un archivo (JSON / PDF). Título visible + file picker oculto. Slot `nota` para un callout.                                                |
+| `ZonaDeCarga`    | `ZonaDeCarga.tsx`                       | Drop zone de archivo(s) (JSON / PDF / imagen). Título visible + file picker oculto. Slot `nota` para un callout. Con `multiple` acumula hasta `maxArchivos` (entrenamiento: varias fotos del pedido). |
 | `Nota`           | `Nota.tsx`                              | Callout como papeletas de origen (formato + escritorio), pensado para vivir _dentro_ de una drop zone. No es caja de info ni toast.                    |
 | `GrillaRevision` | `features/catalogo/grilla-revision.tsx` | Lista maestra y revisión de lote (`modo`). Facetas, categorías, baja lógica (`activo: false`) y tacho (borrado de la lista; persiste al Guardar). IconButton de cantidad orientativa en maestro; el panel vive fuera de la fila y la página hace `scrollIntoView` al abrirlo. Virtualizada con overscan. |
 | `PanelCantidad`  | `features/inventario/panel-cantidad.tsx` | Popover perezoso (`getDoc` al abrir). Cifra orientativa; jefe lee, admin escribe. Nunca «stock real». |

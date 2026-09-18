@@ -16,6 +16,7 @@ import {
 } from '../../server/aprendizaje/entrenar-par.ts'
 import { procesarLoteAprendizaje } from '../../server/aprendizaje/procesar-lote.ts'
 import { diaEnLima } from '../../domain/anulacion/ventana.ts'
+import { MAX_MEDIOS_ENTRENAMIENTO } from '../../domain/aprendizaje/medios.ts'
 
 const esquemaPar = z.object({
   textoOriginal: z.string().trim().min(1).max(400),
@@ -148,11 +149,12 @@ const esquemaMedio = z.object({
 
 const esquemaLado = z
   .object({
-    medio: esquemaMedio.optional(),
+    medios: z.array(esquemaMedio).max(MAX_MEDIOS_ENTRENAMIENTO).optional(),
     texto: z.string().max(20_000).optional(),
   })
   .refine(
-    (lado) => (lado.texto?.trim() ?? '') !== '' || lado.medio !== undefined,
+    (lado) =>
+      (lado.texto?.trim() ?? '') !== '' || (lado.medios?.length ?? 0) > 0,
     { message: 'sin_medio' },
   )
 

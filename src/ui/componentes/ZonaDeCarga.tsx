@@ -1,8 +1,7 @@
 /**
- * Drop zone Soft-Pill de un solo archivo.
- * Estados: vacío, arrastrando, procesando, listo, error.
- * El file picker nativo queda oculto; Cambiar / Quitar no abren el diálogo
- * salvo el propio Cambiar.
+ * Drop zone Soft-Pill. Un archivo por omisión; `multiple` acumula varios
+ * (pedido de entrenamiento con varias fotos). Estados: vacío, arrastrando,
+ * procesando, listo, error. El file picker nativo queda oculto.
  */
 import { useId, useRef, useState } from 'react'
 import type { ChangeEvent, DragEvent, ReactNode } from 'react'
@@ -19,6 +18,36 @@ export interface ArchivoElegido {
   readonly bytes: number
   readonly clase: ClaseDeArchivo
 }
+
+type ZonaComun = {
+  readonly titulo?: string
+  readonly accionCabecera?: ReactNode
+  readonly etiqueta: string
+  readonly nota?: ReactNode
+  readonly ocultarEstadoSinError?: boolean
+  readonly accept?: string
+  readonly aceptados?: readonly ClaseDeArchivo[]
+  readonly estado: EstadoDeCarga
+  readonly mensaje: string | null
+  readonly deshabilitado?: boolean
+}
+
+export type ZonaDeCargaProps = ZonaComun &
+  (
+    | {
+        readonly multiple?: false
+        readonly archivo: ArchivoElegido | null
+        readonly onArchivo: (archivo: File) => void
+        readonly onQuitar: () => void
+      }
+    | {
+        readonly multiple: true
+        readonly archivos: readonly ArchivoElegido[]
+        readonly maxArchivos?: number
+        readonly onArchivos: (archivos: readonly File[]) => void
+        readonly onQuitar: (indice: number) => void
+      }
+  )
 
 export function clasificarArchivo(archivo: File): ClaseDeArchivo | null {
   const nombre = archivo.name.toLowerCase()
@@ -60,16 +89,25 @@ function unir(...clases: readonly (string | false | undefined)[]): string {
   return clases.filter((cada) => typeof cada === 'string').join(' ')
 }
 
-function primerArchivoValido(
+export function archivosValidos(
   lista: FileList | readonly File[],
   aceptados: readonly ClaseDeArchivo[],
-): File | null {
-  const archivos = Array.from(lista)
-  for (const archivo of archivos) {
+): File[] {
+  const salida: File[] = []
+  for (const archivo of Array.from(lista)) {
     const clase = clasificarArchivo(archivo)
-    if (clase !== null && aceptados.includes(clase)) return archivo
+    if (clase !== null && aceptados.includes(clase)) salida.push(archivo)
   }
-  return null
+  return salida
+}
+
+function yaEstaEnLista(
+  archivo: File,
+  lista: readonly ArchivoElegido[],
+): boolean {
+  return lista.some(
+    (cada) => cada.nombre === archivo.name && cada.bytes === archivo.size,
+  )
 }
 
 function arrastreEsRechazable(
@@ -116,13 +154,18 @@ function textoRechazo(aceptados: readonly ClaseDeArchivo[]): string {
   return 'Solo se aceptan JSON o PDF.'
 }
 
-function textoPozoVacio(aceptados: readonly ClaseDeArchivo[]): string {
+function textoPozoVacio(
+  aceptados: readonly ClaseDeArchivo[],
+  multiple: boolean,
+): string {
   if (aceptados.includes('pdf') && aceptados.includes('imagen') && aceptados.length === 2) {
-    return 'Suelta el PDF o la imagen'
+    return multiple ? 'Suelta el PDF o las imágenes' : 'Suelta el PDF o la imagen'
   }
   if (aceptados.length === 1 && aceptados[0] === 'pdf') return 'Suelta el PDF'
   if (aceptados.length === 1 && aceptados[0] === 'json') return 'Suelta el JSON'
-  if (aceptados.length === 1 && aceptados[0] === 'imagen') return 'Suelta la imagen'
+  if (aceptados.length === 1 && aceptados[0] === 'imagen') {
+    return multiple ? 'Suelta las imágenes' : 'Suelta la imagen'
+  }
   return 'Suelta el JSON o el PDF'
 }
 
@@ -131,35 +174,42 @@ function arrastreTieneArchivos(transfer: DataTransfer | null): boolean {
   return Array.from(transfer.types).includes('Files')
 }
 
-export function ZonaDeCarga({
-  titulo,
-  accionCabecera,
-  etiqueta,
-  nota,
-  ocultarEstadoSinError = false,
-  accept = 'application/json,.json,.js,application/pdf,.pdf',
-  aceptados = ACEPTADOS_DEFECTO,
-  archivo,
-  estado,
-  mensaje,
-  deshabilitado = false,
-  onArchivo,
-  onQuitar,
-}: {
-  readonly titulo?: string
-  readonly accionCabecera?: ReactNode
-  readonly etiqueta: string
-  readonly nota?: ReactNode
-  readonly ocultarEstadoSinError?: boolean
-  readonly accept?: string
-  readonly aceptados?: readonly ClaseDeArchivo[]
-  readonly archivo: ArchivoElegido | null
-  readonly estado: EstadoDeCarga
-  readonly mensaje: string | null
-  readonly deshabilitado?: boolean
-  readonly onArchivo: (archivo: File) => void
-  readonly onQuitar: () => void
-}) {
+function arrastreDeTipo(
+  aceptados: readonly ClaseDeArchivo[],
+): string {
+  if (aceptados.includes('json') && aceptados.includes('pdf')) {
+    return 'un JSON o un PDF'
+  }
+  if (aceptados.includes('pdf') && aceptados.includes('imagen')) {
+    return 'un PDF o una imagen'
+  }
+  if (aceptados.includes('pdf')) return 'un PDF'
+  if (aceptados.includes('imagen')) return 'una imagen'
+  return 'un JSON'
+}
+
+export function ZonaDeCarga(props: ZonaDeCargaProps) {
+  const {
+    titulo,
+    accionCabecera,
+    etiqueta,
+    nota,
+    ocultarEstadoSinError = false,
+    accept = 'application/json,.json,.js,application/pdf,.pdf',
+    aceptados = ACEPTADOS_DEFECTO,
+    estado,
+    mensaje,
+    deshabilitado = false,
+  } = props
+  const multiple = props.multiple === true
+  const lista: readonly ArchivoElegido[] = multiple
+    ? props.archivos
+    : props.archivo === null
+      ? []
+      : [props.archivo]
+  const maxArchivos = multiple ? (props.maxArchivos ?? 8) : 1
+  const lleno = multiple && lista.length >= maxArchivos
+
   const id = useId()
   const ayudaId = `${id}-ayuda`
   const estadoId = `${id}-estado`
@@ -169,37 +219,70 @@ export function ZonaDeCarga({
   const [rechazoLocal, setRechazoLocal] = useState<string | null>(null)
 
   const ocupado = estado === 'procesando' || deshabilitado
-  const vacio = archivo === null && estado === 'vacio'
+  const vacio = lista.length === 0 && estado === 'vacio'
   const errorVisible = rechazoLocal ?? (estado === 'error' ? mensaje : null)
-  const arrastreInvalido = arrastrando && rechazoLocal === 'tipo-arrastre'
+  const arrastreInvalido = arrastrando && (rechazoLocal === 'tipo-arrastre' || rechazoLocal === 'lleno')
 
   function abrirSelector(): void {
-    if (ocupado) return
+    if (ocupado || lleno) return
     inputRef.current?.click()
   }
 
-  function entregar(lista: FileList | readonly File[] | null): void {
-    if (lista === null || ocupado) return
-    const elegido = primerArchivoValido(lista, aceptados)
-    if (elegido === null) {
+  function entregar(archivos: FileList | readonly File[] | null): void {
+    if (archivos === null || ocupado) return
+    const validos = archivosValidos(archivos, aceptados)
+    if (validos.length === 0) {
       setRechazoLocal(textoRechazo(aceptados))
+      return
+    }
+    if (props.multiple === true) {
+      if (lista.length >= maxArchivos) {
+        setRechazoLocal(`Máximo ${maxArchivos} archivos.`)
+        return
+      }
+      const cupo = maxArchivos - lista.length
+      const nuevos = validos.filter((cada) => !yaEstaEnLista(cada, lista))
+      const tomados = nuevos.slice(0, cupo)
+      if (tomados.length === 0) {
+        setRechazoLocal(
+          nuevos.length === 0
+            ? 'Ese archivo ya está en la lista.'
+            : `Máximo ${maxArchivos} archivos.`,
+        )
+        return
+      }
+      setRechazoLocal(
+        validos.length > tomados.length && lista.length + tomados.length >= maxArchivos
+          ? `Máximo ${maxArchivos} archivos. Se añadieron ${tomados.length}.`
+          : null,
+      )
+      if (inputRef.current !== null) inputRef.current.value = ''
+      props.onArchivos(tomados)
       return
     }
     setRechazoLocal(null)
     if (inputRef.current !== null) inputRef.current.value = ''
-    onArchivo(elegido)
+    const primero = validos[0]
+    if (primero !== undefined) props.onArchivo(primero)
   }
 
   function alCambiarInput(evento: ChangeEvent<HTMLInputElement>): void {
     entregar(evento.target.files)
   }
 
+  function marcarArrastre(transfer: DataTransfer | null): boolean {
+    const invalidoTipo = arrastreEsRechazable(transfer, aceptados)
+    const invalidoCupo = multiple && lista.length >= maxArchivos
+    if (invalidoTipo) setRechazoLocal('tipo-arrastre')
+    else if (invalidoCupo) setRechazoLocal('lleno')
+    return invalidoTipo || invalidoCupo
+  }
+
   function alArrastrarEncima(evento: DragEvent<HTMLElement>): void {
     if (!arrastreTieneArchivos(evento.dataTransfer) || ocupado) return
     evento.preventDefault()
-    const invalido = arrastreEsRechazable(evento.dataTransfer, aceptados)
+    const invalido = marcarArrastre(evento.dataTransfer)
     evento.dataTransfer.dropEffect = invalido ? 'none' : 'copy'
-    if (invalido) setRechazoLocal('tipo-arrastre')
   }
 
   function alEntrarArrastre(evento: DragEvent<HTMLElement>): void {
@@ -207,9 +290,7 @@ export function ZonaDeCarga({
     evento.preventDefault()
     entradasDeArrastre.current += 1
     setArrastrando(true)
-    if (arrastreEsRechazable(evento.dataTransfer, aceptados)) {
-      setRechazoLocal('tipo-arrastre')
-    }
+    marcarArrastre(evento.dataTransfer)
   }
 
   function alSalirArrastre(evento: DragEvent<HTMLElement>): void {
@@ -218,7 +299,9 @@ export function ZonaDeCarga({
     entradasDeArrastre.current = Math.max(0, entradasDeArrastre.current - 1)
     if (entradasDeArrastre.current === 0) {
       setArrastrando(false)
-      if (rechazoLocal === 'tipo-arrastre') setRechazoLocal(null)
+      if (rechazoLocal === 'tipo-arrastre' || rechazoLocal === 'lleno') {
+        setRechazoLocal(null)
+      }
     }
   }
 
@@ -232,6 +315,11 @@ export function ZonaDeCarga({
       .map((item) => item.getAsFile())
       .filter((file): file is File => file !== null)
     entregar(files.length > 0 ? files : evento.dataTransfer.files)
+  }
+
+  function quitarEn(indice: number): void {
+    if (props.multiple === true) props.onQuitar(indice)
+    else props.onQuitar()
   }
 
   const clasesPozo = unir(
@@ -272,8 +360,9 @@ export function ZonaDeCarga({
         id={id}
         type="file"
         accept={accept}
+        multiple={multiple || undefined}
         tabIndex={-1}
-        disabled={ocupado}
+        disabled={ocupado || lleno}
         className="sr-only"
         aria-describedby={`${ayudaId} ${estadoId}`}
         aria-invalid={errorVisible !== null || undefined}
@@ -281,7 +370,9 @@ export function ZonaDeCarga({
       />
       <span id={ayudaId} className="sr-only">
         {aceptados.includes('pdf') && aceptados.includes('imagen')
-          ? 'PDF o imagen del requerimiento del cliente'
+          ? multiple
+            ? 'PDF o varias imágenes del requerimiento del cliente'
+            : 'PDF o imagen del requerimiento del cliente'
           : aceptados.length === 1 && aceptados[0] === 'pdf'
           ? 'PDF de requerimiento del cliente'
           : 'JSON de la tienda virtual o PDF de productos (SICO)'}
@@ -314,14 +405,18 @@ export function ZonaDeCarga({
           </span>
           <p className="text-center text-renglon font-bold text-tinta">
             {arrastreInvalido
-              ? 'Ese archivo no sirve'
+              ? rechazoLocal === 'lleno'
+                ? `Máximo ${maxArchivos} archivos`
+                : 'Ese archivo no sirve'
               : arrastrando
                 ? 'Suelta para cargar'
-                : textoPozoVacio(aceptados)}
+                : textoPozoVacio(aceptados, multiple)}
           </p>
           {arrastreInvalido ? (
             <p className="text-center text-cuerpo font-bold text-aviso">
-              Solo JSON de la tienda virtual o PDF de productos (SICO)
+              {rechazoLocal === 'lleno'
+                ? `Quita alguno para añadir otro (máximo ${maxArchivos}).`
+                : textoRechazo(aceptados)}
             </p>
           ) : nota !== undefined ? (
             <div
@@ -341,7 +436,7 @@ export function ZonaDeCarga({
               abrirSelector()
             }}
           >
-            Elegir archivo
+            {multiple ? 'Elegir archivos' : 'Elegir archivo'}
           </Boton>
         </div>
       ) : (
@@ -353,24 +448,54 @@ export function ZonaDeCarga({
           onDrop={alSoltar}
           aria-busy={estado === 'procesando' || undefined}
         >
-          {archivo !== null ? (
-            <FichaDeArchivo
-              archivo={archivo}
-              estado={estado}
-              ocupado={ocupado}
-              arrastrando={arrastrando && !arrastreInvalido}
-              onCambiar={abrirSelector}
-              onQuitar={onQuitar}
-            />
+          <ul className="flex flex-col divide-y divide-borde">
+            {lista.map((archivo, indice) => (
+              <li
+                key={`${archivo.nombre}-${archivo.bytes}-${indice}`}
+                className="fila-entrada"
+              >
+                <FichaDeArchivo
+                  archivo={archivo}
+                  estado={estado}
+                  ocupado={ocupado}
+                  arrastrando={arrastrando && !arrastreInvalido}
+                  mostrarCambiar={!multiple}
+                  onCambiar={abrirSelector}
+                  onQuitar={() => quitarEn(indice)}
+                  etiquetaQuitar={
+                    multiple ? `Quitar ${archivo.nombre}` : 'Quitar archivo'
+                  }
+                />
+              </li>
+            ))}
+          </ul>
+
+          {multiple ? (
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-3">
+              <p className="font-mono text-etiqueta uppercase tracking-widest text-desvaida">
+                {lista.length} de {maxArchivos} archivos
+              </p>
+              <Boton
+                variante="secundario"
+                disabled={ocupado || lleno || arrastrando}
+                onClick={abrirSelector}
+              >
+                Añadir
+              </Boton>
+            </div>
           ) : null}
 
           {estado === 'procesando' ? <BarraIndeterminada /> : null}
 
-          {arrastrando && archivo !== null ? (
+          {arrastrando && lista.length > 0 ? (
             <p className="px-5 pb-4 text-cuerpo text-tinta">
               {arrastreInvalido
-                ? textoRechazo(aceptados)
-                : 'Suelta para reemplazar el archivo.'}
+                ? rechazoLocal === 'lleno'
+                  ? `Máximo ${maxArchivos} archivos.`
+                  : textoRechazo(aceptados)
+                : multiple
+                  ? 'Suelta para añadir.'
+                  : 'Suelta para reemplazar el archivo.'}
             </p>
           ) : null}
         </div>
@@ -391,8 +516,9 @@ export function ZonaDeCarga({
           mensaje,
           rechazoLocal,
           vacio,
-          clase: archivo?.clase,
+          clase: lista[0]?.clase,
           aceptados,
+          maxArchivos,
         })}
       </p>
     </div>
@@ -404,15 +530,19 @@ function FichaDeArchivo({
   estado,
   ocupado,
   arrastrando,
+  mostrarCambiar,
   onCambiar,
   onQuitar,
+  etiquetaQuitar,
 }: {
   readonly archivo: ArchivoElegido
   readonly estado: EstadoDeCarga
   readonly ocupado: boolean
   readonly arrastrando: boolean
+  readonly mostrarCambiar: boolean
   readonly onCambiar: () => void
   readonly onQuitar: () => void
+  readonly etiquetaQuitar: string
 }) {
   const Icono =
     archivo.clase === 'pdf'
@@ -470,17 +600,19 @@ function FichaDeArchivo({
       </div>
 
       <div className="flex shrink-0 flex-wrap gap-2">
-        <Boton
-          variante="secundario"
-          disabled={ocupado || arrastrando}
-          onClick={onCambiar}
-        >
-          Cambiar
-        </Boton>
+        {mostrarCambiar ? (
+          <Boton
+            variante="secundario"
+            disabled={ocupado || arrastrando}
+            onClick={onCambiar}
+          >
+            Cambiar
+          </Boton>
+        ) : null}
         <Boton
           variante="discreto"
           disabled={ocupado || arrastrando}
-          aria-label="Quitar archivo"
+          aria-label={etiquetaQuitar}
           onClick={onQuitar}
         >
           <X className="size-5" strokeWidth={2.25} aria-hidden />
@@ -510,6 +642,7 @@ function textoDeEstado({
   vacio,
   clase,
   aceptados,
+  maxArchivos,
 }: {
   readonly estado: EstadoDeCarga
   readonly mensaje: string | null
@@ -517,9 +650,13 @@ function textoDeEstado({
   readonly vacio: boolean
   readonly clase: ClaseDeArchivo | undefined
   readonly aceptados: readonly ClaseDeArchivo[]
+  readonly maxArchivos: number
 }): string {
   if (rechazoLocal === 'tipo-arrastre') {
-    return `Ese tipo no entra. Arrastra ${aceptados.includes('json') && aceptados.includes('pdf') ? 'un JSON o un PDF' : aceptados.includes('pdf') ? 'un PDF' : 'un JSON'}.`
+    return `Ese tipo no entra. Arrastra ${arrastreDeTipo(aceptados)}.`
+  }
+  if (rechazoLocal === 'lleno') {
+    return `Máximo ${maxArchivos} archivos.`
   }
   if (rechazoLocal !== null) return rechazoLocal
   if (estado === 'error' && mensaje !== null) return mensaje

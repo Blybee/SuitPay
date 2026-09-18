@@ -56,7 +56,8 @@ Al guardar una cotización nacida de Cotizar o captura, el par usa el `textoOrig
 
 ### Edge Cases
 
-- Un solo medio por lado (solo texto o solo archivo) es válido; ningún medio en un lado no.
+- Un lado con solo texto o solo archivo(s) es válido; ningún medio en un lado no.
+- Varias fotos del pedido son un mismo requerimiento, no pedidos distintos.
 - Código emparejado que no está en el catálogo publicado se trata como `no_en_catalogo` y no genera alias.
 - Asistencia simulada sin texto parseable: cobertura vacía, no escribe.
 - Gemini caído: toast de error; el mostrador no se toca (principio V).
@@ -64,7 +65,7 @@ Al guardar una cotización nacida de Cotizar o captura, el par usa el `textoOrig
 
 ## Requirements *(mandatory)*
 
-- **FR-001**: `/administracion/aprendizaje` MUST ofrecer dos zonas de carga (pedido y cotización oro) reutilizando la drop zone de Cotizar, más texto opcional por lado.
+- **FR-001**: `/administracion/aprendizaje` MUST ofrecer dos zonas de carga (pedido y cotización oro) reutilizando la drop zone de Cotizar, más texto opcional por lado. El pedido MAY incluir varias imágenes (mismo requerimiento); un PDF sigue siendo un solo archivo entre los adjuntos.
 - **FR-002**: Procesar par MUST NOT escribir `aprendizaje/memoria`. Confirmar MUST ser el único write de alias, etiquetas y priors.
 - **FR-003**: Solo alineaciones `emparejado` MAY generar alias. `omitido` y `no_en_catalogo` MUST NOT crear alias hacia un SKU próximo.
 - **FR-004**: El compacto de asistencia MUST incluir `m` (marca). MAY inyectarse `prioresDeMarca` por familia. MUST NOT incluir precio, stock ni ficha de cliente.
