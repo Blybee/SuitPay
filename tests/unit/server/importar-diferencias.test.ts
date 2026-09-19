@@ -151,4 +151,42 @@ describe('diferencias de importación', () => {
     expect(await inventario.leer('queda')).not.toBeNull()
     expect(almacen.actual?.productos.map((p) => p.codigo)).toEqual(['queda'])
   })
+
+  it('al publicar puede sacar un SKU cuyo código trae barra', async () => {
+    const almacen = new AlmacenDeCatalogoEnMemoria({
+      version: 1,
+      publicadoEn: new Date('2026-01-01'),
+      publicadoPor: 'admin',
+      totalProductos: 2,
+      productos: [base('TRIB-VACO3/4', 100), base('queda', 50)],
+      categorias: [],
+    })
+    const inventario = new AlmacenDeInventarioMemoria()
+    inventario.sembrar({
+      codigo: 'TRIB-VACO3/4',
+      cantidad: 2,
+      maximo: 10,
+      alerta: false,
+      actualizadoPor: 'admin',
+      actualizadoEn: new Date('2026-01-01'),
+    })
+
+    const resumen = await importarCatalogo(
+      almacen,
+      {
+        contenido: JSON.stringify({
+          productos: [base('queda', 50)],
+          categorias: [],
+        }),
+        formato: 'productos_revisados',
+        modo: 'publicar',
+        administradorId: 'admin-1',
+      },
+      inventario,
+    )
+
+    expect(resumen.publicado).toBe(true)
+    expect(await inventario.leer('TRIB-VACO3/4')).toBeNull()
+    expect(almacen.actual?.productos.map((p) => p.codigo)).toEqual(['queda'])
+  })
 })

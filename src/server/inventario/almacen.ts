@@ -13,8 +13,9 @@ export interface AlmacenDeInventario {
   leer: (codigo: string) => Promise<Existencia | null>
   fijar: (entrada: FijarExistencia) => Promise<Existencia>
   /**
-   * Quita documentos `inventario/{codigo}` de SKUs que ya no están en el
-   * catálogo. Idempotente: borrar un código ausente no falla.
+   * Quita documentos `inventario/{id}` de SKUs que ya no están en el
+   * catálogo. El id escapa `/` del código (ver `id-documento.ts`).
+   * Idempotente: borrar un código ausente no falla.
    */
   borrar: (codigos: readonly string[]) => Promise<void>
   listarAlertas: () => Promise<readonly Existencia[]>

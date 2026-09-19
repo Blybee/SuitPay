@@ -10,8 +10,16 @@ import {
 import { COLECCIONES, bd } from '../firebase/admin.ts'
 import type { Comprobante } from '../emision/almacen.ts'
 import type { AlmacenDeInventario, FijarExistencia } from './almacen.ts'
+import {
+  codigoDesdeIdDeInventario,
+  idDeDocumentoDeInventario,
+} from './id-documento.ts'
 
-function aExistencia(codigo: string, datos: DocumentData): Existencia {
+function aExistencia(id: string, datos: DocumentData): Existencia {
+  const delCampo =
+    typeof datos['codigo'] === 'string' ? datos['codigo'].trim() : ''
+  const codigo =
+    delCampo.length > 0 ? delCampo : codigoDesdeIdDeInventario(id)
   const actualizadoEn = datos['actualizadoEn']
   return {
     codigo,
@@ -33,11 +41,14 @@ function aExistencia(codigo: string, datos: DocumentData): Existencia {
 export class AlmacenDeInventarioFirestore implements AlmacenDeInventario {
   constructor(private readonly base: Firestore = bd()) {}
 
-  async leer(codigo: string): Promise<Existencia | null> {
-    const snap = await this.base
+  private ref(codigo: string) {
+    return this.base
       .collection(COLECCIONES.inventario)
-      .doc(codigo)
-      .get()
+      .doc(idDeDocumentoDeInventario(codigo))
+  }
+
+  async leer(codigo: string): Promise<Existencia | null> {
+    const snap = await this.ref(codigo).get()
     if (!snap.exists) return null
     return aExistencia(codigo, snap.data() ?? {})
   }
@@ -49,14 +60,14 @@ export class AlmacenDeInventarioFirestore implements AlmacenDeInventario {
       const lote = unicos.slice(i, i + TAMANO)
       const batch = this.base.batch()
       for (const codigo of lote) {
-        batch.delete(this.base.collection(COLECCIONES.inventario).doc(codigo))
+        batch.delete(this.ref(codigo))
       }
       await batch.commit()
     }
   }
 
   async fijar(entrada: FijarExistencia): Promise<Existencia> {
-    const ref = this.base.collection(COLECCIONES.inventario).doc(entrada.codigo)
+    const ref = this.ref(entrada.codigo)
     const previa = await this.leer(entrada.codigo)
     const maximo = maximoAlFijar(entrada.cantidad, previa?.maximo)
     const umbral = entrada.umbral ?? previa?.umbral
@@ -125,9 +136,7 @@ export class AlmacenDeInventarioFirestore implements AlmacenDeInventario {
       .collection(COLECCIONES.comprobantes)
       .doc(comprobante.id)
     const deltas = deltasDeVenta(comprobante.lineas)
-    const refs = [...deltas.keys()].map((codigo) =>
-      this.base.collection(COLECCIONES.inventario).doc(codigo),
-    )
+    const refs = [...deltas.keys()].map((codigo) => this.ref(codigo))
 
     await this.base.runTransaction(async (tx) => {
       const compSnap = await tx.get(compRef)
@@ -143,8 +152,8 @@ export class AlmacenDeInventarioFirestore implements AlmacenDeInventario {
       const momento = FieldValue.serverTimestamp()
       for (const snap of snaps) {
         if (!snap.exists) continue
-        const codigo = snap.id
         const bruto = snap.data() ?? {}
+        const codigo = aExistencia(snap.id, bruto).codigo
         const delta = deltas.get(codigo) ?? 0
         const aplicado = sentido === 'venta' ? delta : -delta
         const cantidad =

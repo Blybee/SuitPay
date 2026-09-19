@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   filtrarPorFacetas,
+  filtrarPorTexto,
   marcasDe,
 } from '../../../src/domain/catalogo/filtros.ts'
 
@@ -76,5 +77,67 @@ describe('filtros facetados de catálogo', () => {
 
   it('marcasDe lista valores no vacíos, únicos y ordenados', () => {
     expect(marcasDe(catalogo)).toEqual(['Fipalsa', 'Valmax'])
+  })
+})
+
+const conTexto = [
+  {
+    codigo: 'CFG12',
+    descripcion: 'CODO FG 1/2',
+    marca: 'Valmax',
+  },
+  {
+    codigo: 'CFG34',
+    descripcion: 'CODO FG 3/4',
+    marca: 'Valmax',
+  },
+  {
+    codigo: 'LLPASO12',
+    descripcion: 'LLAVE DE PASO BRONCE 1/2',
+    marca: 'Fipalsa',
+  },
+  {
+    codigo: 'AQ-25009',
+    descripcion: 'Válvula de desagüe',
+    marca: '',
+  },
+] as const
+
+describe('filtro de texto de catálogo', () => {
+  it('consulta vacía deja el catálogo entero', () => {
+    expect(filtrarPorTexto(conTexto, '  ').map((p) => p.codigo)).toEqual([
+      'CFG12',
+      'CFG34',
+      'LLPASO12',
+      'AQ-25009',
+    ])
+  })
+
+  it('encuentra por código', () => {
+    expect(filtrarPorTexto(conTexto, 'llpaso12').map((p) => p.codigo)).toEqual([
+      'LLPASO12',
+    ])
+  })
+
+  it('encuentra por descripción sin importar el orden de los términos', () => {
+    expect(filtrarPorTexto(conTexto, '1/2 fg codo').map((p) => p.codigo)).toEqual(
+      ['CFG12'],
+    )
+  })
+
+  it('encuentra por marca', () => {
+    expect(filtrarPorTexto(conTexto, 'fipalsa').map((p) => p.codigo)).toEqual([
+      'LLPASO12',
+    ])
+  })
+
+  it('ignora tildes', () => {
+    expect(filtrarPorTexto(conTexto, 'valvula').map((p) => p.codigo)).toEqual([
+      'AQ-25009',
+    ])
+  })
+
+  it('sin coincidencias devuelve vacío', () => {
+    expect(filtrarPorTexto(conTexto, 'inexistente')).toEqual([])
   })
 })

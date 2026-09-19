@@ -6,6 +6,7 @@ import {
   Minus,
   PencilLine,
   Plus,
+  Search,
   Trash2,
   TriangleAlert,
 } from 'lucide-react'
@@ -15,7 +16,11 @@ import {
   detectarConflictos,
   textoDeConflictos,
 } from '../../domain/catalogo/conflictos.ts'
-import { filtrarPorFacetas, marcasDe } from '../../domain/catalogo/filtros.ts'
+import {
+  filtrarPorFacetas,
+  filtrarPorTexto,
+  marcasDe,
+} from '../../domain/catalogo/filtros.ts'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type {
   CategoriaDeCatalogo,
@@ -100,6 +105,7 @@ export function GrillaRevision({
   readonly codigoAEnfocar?: string | null
   readonly onCodigoEnfocado?: () => void
 }) {
+  const [consulta, setConsulta] = useState('')
   const [marca, setMarca] = useState('')
   const [categoriaId, setCategoriaId] = useState('')
   const [soloProblemas, setSoloProblemas] = useState(false)
@@ -124,10 +130,13 @@ export function GrillaRevision({
 
   const visibles = useMemo(() => {
     const facetados = new Set(
-      filtrarPorFacetas(productos, {
-        marca: marca.length > 0 ? marca : null,
-        categoriaId: categoriaId.length > 0 ? categoriaId : null,
-      }),
+      filtrarPorTexto(
+        filtrarPorFacetas(productos, {
+          marca: marca.length > 0 ? marca : null,
+          categoriaId: categoriaId.length > 0 ? categoriaId : null,
+        }),
+        consulta,
+      ),
     )
     return productos.flatMap((producto, indice) => {
       if (!facetados.has(producto)) return []
@@ -147,6 +156,7 @@ export function GrillaRevision({
     })
   }, [
     productos,
+    consulta,
     marca,
     categoriaId,
     soloProblemas,
@@ -205,6 +215,7 @@ export function GrillaRevision({
 
   useLayoutEffect(() => {
     if (codigoAEnfocar == null) return
+    setConsulta('')
     setMarca('')
     setCategoriaId('')
     setSoloProblemas(false)
@@ -307,6 +318,36 @@ export function GrillaRevision({
       </header>
 
       <div className="flex flex-col gap-3 rounded-2xl bg-mesa p-3">
+        <div className="flex min-w-0 flex-col gap-1">
+          <Etiqueta htmlFor="revision-buscar">Buscar producto</Etiqueta>
+          <div className="relative">
+            <Search
+              className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-desvaida"
+              aria-hidden
+            />
+            <Campo
+              id="revision-buscar"
+              type="search"
+              superficie="papel"
+              value={consulta}
+              placeholder="Código, descripción o marca"
+              autoComplete="off"
+              autoCorrect="off"
+              spellCheck={false}
+              enterKeyHint="search"
+              aria-controls="grilla-catalogo"
+              className="pl-10"
+              onChange={(e) => setConsulta(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Escape' && consulta.length > 0) {
+                  e.preventDefault()
+                  setConsulta('')
+                }
+              }}
+            />
+          </div>
+        </div>
+
         <div className="flex flex-wrap items-end gap-2">
           <div className="flex min-w-44 flex-1 flex-col gap-1 sm:max-w-48">
             <Etiqueta htmlFor="revision-marca">Filtrar marca</Etiqueta>
@@ -457,6 +498,7 @@ export function GrillaRevision({
       </div>
 
       <div
+        id="grilla-catalogo"
         role="table"
         aria-label={
           modo === 'maestro' ? 'Catálogo publicado' : 'Productos a publicar'
@@ -486,6 +528,14 @@ export function GrillaRevision({
           ref={scrollRef}
           className="max-h-[min(70dvh,40rem)] overflow-y-auto bg-papel"
         >
+          {visibles.length === 0 ? (
+            <p
+              role="status"
+              className="px-4 py-8 text-center text-cuerpo text-desvaida"
+            >
+              Ningún producto coincide.
+            </p>
+          ) : null}
           <div
             className="relative w-full"
             style={{ height: `${virtualizador.getTotalSize()}px` }}
@@ -651,7 +701,10 @@ export function GrillaRevision({
         </div>
         </div>
       </div>
-      <p className="font-mono text-etiqueta text-desvaida">
+      <p
+        aria-live="polite"
+        className="font-mono text-etiqueta text-desvaida"
+      >
         {visibles.length} de {productos.length} productos visibles
       </p>
     </section>

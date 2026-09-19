@@ -173,4 +173,65 @@ describe('GrillaRevision maestro', () => {
     expect(cantidad.className).toContain('p-0')
     expect(screen.getByRole('columnheader', { name: 'Categoría' })).toBeInTheDocument()
   })
+
+  it('el buscador recorta la grilla por descripción y código', async () => {
+    const usuario = userEvent.setup()
+    render(
+      <GrillaMaestra
+        iniciales={[
+          producto({ codigo: 'CFG12', descripcion: 'CODO FG 1/2' }),
+          producto({
+            codigo: 'TFG12',
+            descripcion: 'TEE FG 1/2',
+            marca: 'Fipalsa',
+          }),
+        ]}
+      />,
+    )
+
+    await usuario.type(
+      screen.getByRole('searchbox', { name: 'Buscar producto' }),
+      'codo',
+    )
+
+    expect(screen.getByLabelText('Código CFG12')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Código TFG12')).not.toBeInTheDocument()
+    expect(screen.getByText('1 de 2 productos visibles')).toBeInTheDocument()
+  })
+
+  it('el buscador se combina con el filtro de marca', async () => {
+    const usuario = userEvent.setup()
+    render(
+      <GrillaMaestra
+        iniciales={[
+          producto({ codigo: 'A', descripcion: 'CODO FG', marca: 'Valmax' }),
+          producto({ codigo: 'B', descripcion: 'CODO PVC', marca: 'Fipalsa' }),
+        ]}
+      />,
+    )
+
+    await usuario.type(
+      screen.getByRole('searchbox', { name: 'Buscar producto' }),
+      'codo',
+    )
+    await usuario.click(screen.getByRole('combobox', { name: 'Filtrar marca' }))
+    await usuario.click(screen.getByRole('option', { name: 'Valmax' }))
+
+    expect(screen.getByLabelText('Código A')).toBeInTheDocument()
+    expect(screen.queryByLabelText('Código B')).not.toBeInTheDocument()
+  })
+
+  it('sin coincidencias lo dice y se vacía al borrar el campo', async () => {
+    const usuario = userEvent.setup()
+    render(
+      <GrillaMaestra iniciales={[producto({ codigo: 'A' })]} />,
+    )
+
+    const buscador = screen.getByRole('searchbox', { name: 'Buscar producto' })
+    await usuario.type(buscador, 'zzz')
+
+    expect(screen.getByText('Ningún producto coincide.')).toBeInTheDocument()
+    await usuario.clear(buscador)
+    expect(screen.getByLabelText('Código A')).toBeInTheDocument()
+  })
 })
