@@ -122,6 +122,12 @@ interface AccionesDelPedido {
   reclamarClaveDeIdempotencia: () => string
   soltarClaveDeIdempotencia: () => void
   vaciar: () => void
+  /**
+   * Vacía el slot activo (líneas, cliente, origen ligado) sin cerrar el
+   * segundo workspace. Soltar una cotización o un vecino cargado no es
+   * `vaciar()`: esa acción colapsa el slot 2.
+   */
+  reiniciarSlotActivo: () => void
   restaurar: () => Promise<void>
   fijarModoCotizacion: (valor: boolean) => void
   abrirSegundo: () => void
@@ -341,6 +347,10 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
     soltarClaveDeIdempotencia() {
       set({ claveIdempotencia: null })
       persistir()
+    },
+
+    reiniciarSlotActivo() {
+      cambiarContenido({ ...VACIO_CONTENIDO })
     },
 
     vaciar() {

@@ -44,7 +44,7 @@ export function PanelDeCotizaciones({
   onRecuperada,
 }: {
   readonly numeroInicial?: number | null
-  readonly onRecuperada?: () => void
+  readonly onRecuperada?: (origen?: { readonly numero: number }) => void
 }) {
   const queryClient = useQueryClient()
   const catalogo = usarCatalogo()
@@ -179,7 +179,7 @@ export function PanelDeCotizaciones({
     void queryClient.invalidateQueries({
       queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
     })
-    onRecuperada?.()
+    onRecuperada?.({ numero: cotizacion.numero })
   }
 
   async function confirmarEliminacion(): Promise<void> {

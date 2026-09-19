@@ -14,3 +14,5 @@
 - *marching ants*
 
 - *responsive density*
+
+- *slot activo*

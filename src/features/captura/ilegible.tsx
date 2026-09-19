@@ -1,4 +1,5 @@
 import { RefreshCw, X } from 'lucide-react'
+import { Boton } from '../../ui/componentes/primitivas.tsx'
 
 /**
  * Estado de fotografía ilegible con motivo y reintento (T135).
@@ -24,23 +25,18 @@ export function EstadoIlegible({
         pedido.
       </p>
       <div className="mt-3 flex gap-2">
-        <button
-          type="button"
+        <Boton
+          variante="principal"
           data-testid="reintentar-foto"
           onClick={onReintentar}
-          className="flex min-h-12 items-center gap-2 rounded-full bg-tinta px-4 text-papel"
         >
           <RefreshCw className="size-4" aria-hidden />
           Otra foto
-        </button>
-        <button
-          type="button"
-          onClick={onCerrar}
-          className="flex min-h-12 items-center gap-2 rounded-full border border-borde px-4 text-tinta"
-        >
+        </Boton>
+        <Boton variante="secundario" onClick={onCerrar}>
           <X className="size-4" aria-hidden />
           Escribir
-        </button>
+        </Boton>
       </div>
     </div>
   )

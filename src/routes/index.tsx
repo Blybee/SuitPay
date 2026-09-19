@@ -46,7 +46,7 @@ import { capturarListaDeProductos } from '../features/vecinos/captura.ts'
 import { PanelDeVecinos } from '../features/vecinos/panel.tsx'
 import { PanelDeListaRequerimiento } from '../features/lista/panel.tsx'
 import { usarDiaLista } from '../features/lista/dia-activo.ts'
-import { agregarProductosALista } from '../features/lista/persistir.ts'
+import { agregarProductosALista } from '../features/lista/lineas.ts'
 import { urgenciaDesdeTexto } from '../domain/lista/urgencia.ts'
 import { claveDeDiaLima } from '../domain/captura/hora-lima.ts'
 import { aplicarLineasAprobadasAlPedido } from '../features/captura/aprobar.ts'
@@ -174,6 +174,10 @@ function Mostrador() {
   const [guardandoCotizacion, setGuardandoCotizacion] = useState(false)
   const [capturandoPedido, setCapturandoPedido] = useState(false)
   const [avisoCotizacion, setAvisoCotizacion] = useState<string | null>(null)
+  const [origenCargado, setOrigenCargado] = useState<{
+    readonly pestana: 'vecinos' | 'cotizaciones'
+    readonly aviso: string
+  } | null>(null)
   const [cotizacionEmitida, setCotizacionEmitida] = useState<Cotizacion | null>(
     null,
   )
@@ -371,6 +375,7 @@ function Mostrador() {
     if (pestana === 'lista' && sesion.uid !== null) {
       const hoy = claveDeDiaLima(new Date())
       const resultado = await agregarProductosALista({
+        queryClient,
         uid: sesion.uid,
         fecha: hoy,
         productos: lineas.map((linea) => ({
@@ -388,9 +393,6 @@ function Mostrador() {
         return false
       }
       usarDiaLista.getState().fijar(hoy)
-      void queryClient.invalidateQueries({
-        queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid, hoy),
-      })
       usarNotificaciones.getState().mostrar({
         tono: 'exito',
         mensaje:
@@ -562,6 +564,7 @@ function Mostrador() {
       void (async () => {
         const hoy = claveDeDiaLima(new Date())
         const resultado = await agregarProductosALista({
+          queryClient,
           uid: sesion.uid!,
           fecha: hoy,
           productos: [
@@ -579,9 +582,6 @@ function Mostrador() {
           return
         }
         usarDiaLista.getState().fijar(hoy)
-        void queryClient.invalidateQueries({
-          queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid!, hoy),
-        })
       })()
       return
     }
@@ -630,6 +630,7 @@ function Mostrador() {
       void (async () => {
         const hoy = claveDeDiaLima(new Date())
         const resultado = await agregarProductosALista({
+          queryClient,
           uid: sesion.uid!,
           fecha: hoy,
           productos: productos.map((producto) => ({
@@ -645,9 +646,6 @@ function Mostrador() {
           return
         }
         usarDiaLista.getState().fijar(hoy)
-        void queryClient.invalidateQueries({
-          queryKey: CLAVES_DE_CONSULTA.listaRequerimiento(sesion.uid!, hoy),
-        })
       })()
       return
     }
@@ -814,11 +812,14 @@ function Mostrador() {
     })
     pedido.fijarModoCotizacion(false)
     setPestana('pedido')
-    setAvisoCotizacion(
-      origen.fechasDeuda === null
-        ? `Cotización de vecino #${origen.cotizacion.numero} abierta. Elige boleta, factura o nota de venta y emite.`
-        : `Deudas de ${origen.cotizacion.aliasVecino ?? `#${origen.cotizacion.numero}`} abiertas. Elige boleta, factura o nota de venta y emite.`,
-    )
+    setOrigenCargado({
+      pestana: 'vecinos',
+      aviso:
+        origen.fechasDeuda === null
+          ? `Cotización de vecino #${origen.cotizacion.numero} abierta. Elige boleta, factura o nota de venta y emite.`
+          : `Deudas de ${origen.cotizacion.aliasVecino ?? `#${origen.cotizacion.numero}`} abiertas. Elige boleta, factura o nota de venta y emite.`,
+    })
+    setAvisoCotizacion(null)
   }
 
   async function lanzarEmision(): Promise<void> {
@@ -912,6 +913,15 @@ function Mostrador() {
   function limpiarContextoDeCotizacionEnCabecera(): void {
     pedido.fijarModoCotizacion(false)
     setAvisoCotizacion(null)
+    setOrigenCargado(null)
+  }
+
+  function soltarPedidoCargado(): void {
+    if (fase.nombre === 'en_vuelo') return
+    const destino = origenCargado?.pestana ?? 'pedido'
+    pedido.reiniciarSlotActivo()
+    limpiarContextoDeCotizacionEnCabecera()
+    setPestana(destino)
   }
 
   async function lanzarGuardadoDeCotizacion(): Promise<void> {
@@ -1109,6 +1119,11 @@ function Mostrador() {
             void queryClient.invalidateQueries({
               queryKey: CLAVES_DE_CONSULTA.cotizacionesPendientes,
             })
+            setOrigenCargado({
+              pestana: 'cotizaciones',
+              aviso: `Cotización #${cotizacion.numero} abierta.`,
+            })
+            setAvisoCotizacion(null)
             setPestana('pedido')
           }}
           asistenciaDisponible={asistenciaDisponible}
@@ -1139,7 +1154,6 @@ function Mostrador() {
             usarCaptura.getState().cargarDeSlot(usarPedido.getState().slotActivo)
           }}
           onCambiar={(siguiente) => {
-            setAvisoCotizacion(null)
             setPestana(siguiente)
           }}
         />
@@ -1281,13 +1295,30 @@ function Mostrador() {
             </ul>
           </div>
 
-          {avisoCotizacion !== null ? (
-            <p
+          {avisoCotizacion !== null || origenCargado !== null ? (
+            <div
               role="status"
-              className="border-t border-borde px-4 py-2 text-cuerpo font-bold text-tinta"
+              className="flex flex-wrap items-center justify-between gap-2 border-t border-borde px-4 py-2"
             >
-              {avisoCotizacion}
-            </p>
+              <p className="min-w-0 text-cuerpo font-bold text-tinta">
+                {avisoCotizacion ?? origenCargado?.aviso}
+              </p>
+              {origenCargado !== null ? (
+                <Boton
+                  variante="secundario"
+                  data-testid="soltar-origen-pedido"
+                  disabled={fase.nombre === 'en_vuelo'}
+                  aria-label={
+                    origenCargado.pestana === 'vecinos'
+                      ? 'Soltar el pedido cargado y volver a Vecinos'
+                      : 'Soltar la cotización cargada y volver a Cotizaciones'
+                  }
+                  onClick={soltarPedidoCargado}
+                >
+                  Soltar pedido
+                </Boton>
+              ) : null}
+            </div>
           ) : null}
 
           <PieTotal
@@ -1347,8 +1378,15 @@ function Mostrador() {
       {pestana === 'cotizaciones' && (
         <CuerpoPestana id="cotizaciones" modo="pagina">
           <PanelDeCotizaciones
-            onRecuperada={() => {
+            onRecuperada={(origen) => {
               pedido.fijarModoCotizacion(true)
+              if (origen !== undefined) {
+                setOrigenCargado({
+                  pestana: 'cotizaciones',
+                  aviso: `Cotización #${origen.numero} abierta.`,
+                })
+                setAvisoCotizacion(null)
+              }
               setPestana('pedido')
             }}
           />

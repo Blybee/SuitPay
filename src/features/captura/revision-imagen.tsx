@@ -1,13 +1,8 @@
 import { useState } from 'react'
 import { Check, Image, X } from 'lucide-react'
 import { Modal } from '../../ui/componentes/Modal.tsx'
+import { Boton } from '../../ui/componentes/primitivas.tsx'
 import { usarCaptura } from './estado.ts'
-
-const CLASE_ICONO = [
-  'inline-flex size-11 shrink-0 items-center justify-center rounded-full',
-  'transition-[color,background-color,opacity] duration-rapida ease-salida',
-  'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
-].join(' ')
 
 /**
  * Revisión en dos pasos para fotografía (T133):
@@ -45,24 +40,20 @@ export function BarraPasoTextoExtraido({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1">
-          <button
-            type="button"
+          <Boton
+            variante="secundario"
+            tamano="icono"
             data-testid="abrir-foto-captura"
             aria-label="Ver fotografía original"
             title="Ver fotografía original"
             disabled={!hayFoto}
             onClick={() => setFotoAbierta(true)}
-            className={[
-              CLASE_ICONO,
-              hayFoto
-                ? 'border border-borde text-tinta hover:bg-mesa'
-                : 'cursor-not-allowed border border-borde text-desvaida',
-            ].join(' ')}
           >
             <Image className="size-5" aria-hidden />
-          </button>
-          <button
-            type="button"
+          </Boton>
+          <Boton
+            variante="principal"
+            tamano="icono"
             data-testid="continuar-emparejamiento"
             aria-label="Emparejar productos"
             title="Emparejar productos"
@@ -71,27 +62,18 @@ export function BarraPasoTextoExtraido({
               pasar()
               onContinuar()
             }}
-            className={[
-              CLASE_ICONO,
-              hayRenglones
-                ? 'bg-tinta text-papel hover:bg-tinta/90'
-                : 'cursor-not-allowed bg-mesa text-desvaida',
-            ].join(' ')}
           >
             <Check className="size-5" aria-hidden />
-          </button>
-          <button
-            type="button"
+          </Boton>
+          <Boton
+            variante="discreto"
+            tamano="icono"
             aria-label="Descartar captura"
             title="Descartar"
             onClick={onCancelar}
-            className={[
-              CLASE_ICONO,
-              'text-desvaida hover:bg-mesa hover:text-tinta',
-            ].join(' ')}
           >
             <X className="size-5" aria-hidden />
-          </button>
+          </Boton>
         </div>
       </div>
 
@@ -139,19 +121,17 @@ export function ListaPasoTextoExtraido() {
                   className="mt-1 min-h-12 w-full rounded-lg border border-borde bg-mesa px-3 text-cuerpo text-tinta"
                 />
               </label>
-              <button
-                type="button"
+              <Boton
+                variante="discreto"
+                tamano="icono"
                 data-testid={`quitar-renglon-texto-${indice}`}
+                className="self-end hover:border-aviso/40 hover:bg-aviso/10 hover:text-aviso"
                 aria-label={`Quitar renglón ${indice + 1}`}
                 title="Quitar renglón"
                 onClick={() => quitar(indice)}
-                className={[
-                  CLASE_ICONO,
-                  'self-end text-desvaida hover:bg-aviso/15 hover:text-aviso',
-                ].join(' ')}
               >
                 <X className="size-5" aria-hidden />
-              </button>
+              </Boton>
             </li>
           ))}
         </ul>

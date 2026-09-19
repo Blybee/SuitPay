@@ -8,7 +8,6 @@ import {
 import {
   cambiarCantidadDeRequerimiento,
   cambiarUrgenciaDeRequerimiento,
-  fusionarLineaDeRequerimiento,
   quitarLineaDeRequerimiento,
 } from '../../domain/lista/lineas.ts'
 import type {
@@ -26,6 +25,7 @@ import { obtenerBaseDeDatos } from '../../infra/firebase/cliente.ts'
 export interface ResultadoLista {
   readonly ok: boolean
   readonly mensaje?: string
+  readonly lineas?: readonly LineaDeRequerimiento[]
 }
 
 /**
@@ -130,14 +130,16 @@ async function mutarLista(
 ): Promise<ResultadoLista> {
   const ref = referencia(uid, fecha)
   try {
+    let siguientes: readonly LineaDeRequerimiento[] = []
     await runTransaction(obtenerBaseDeDatos(), async (tx) => {
       const instantanea = await tx.get(ref)
       const actuales = instantanea.exists()
         ? lineasDeInstantanea(instantanea.data())
         : []
-      tx.set(ref, payloadDeLista(uid, fecha, mutar(actuales)))
+      siguientes = mutar(actuales)
+      tx.set(ref, payloadDeLista(uid, fecha, siguientes))
     })
-    return { ok: true }
+    return { ok: true, lineas: siguientes }
   } catch (error) {
     console.error('[SuitPay] persistir lista de requerimiento', error)
     return {
@@ -147,29 +149,14 @@ async function mutarLista(
   }
 }
 
-export async function agregarProductosALista(datos: {
-  readonly uid: string
-  readonly fecha: string
-  readonly productos: readonly {
-    readonly codigo: string
-    readonly descripcion: string
-    readonly cantidad?: number
-    readonly urgencia?: UrgenciaDeRequerimiento
-  }[]
-}): Promise<ResultadoLista> {
-  return mutarLista(datos.uid, datos.fecha, (actuales) => {
-    let lineas = actuales
-    for (const producto of datos.productos) {
-      lineas = fusionarLineaDeRequerimiento(lineas, {
-        id: crypto.randomUUID(),
-        codigo: producto.codigo,
-        descripcion: producto.descripcion,
-        cantidad: producto.cantidad,
-        urgencia: producto.urgencia,
-      })
-    }
-    return lineas
-  })
+export async function mutarLineasDeLista(
+  uid: string,
+  fecha: string,
+  mutar: (
+    lineas: readonly LineaDeRequerimiento[],
+  ) => readonly LineaDeRequerimiento[],
+): Promise<ResultadoLista> {
+  return mutarLista(uid, fecha, mutar)
 }
 
 export async function actualizarCantidadDeLista(datos: {

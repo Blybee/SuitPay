@@ -5,7 +5,9 @@ import {
   useState,
 } from 'react'
 import type { ReactNode } from 'react'
+import { X } from 'lucide-react'
 import { CapaDeDialogo } from './capa-dialogo.ts'
+import { Boton } from './primitivas.tsx'
 
 /**
  * Modal Soft-Pill reutilizable sobre `<dialog>` nativo.
@@ -147,7 +149,22 @@ export function Modal({
           <h2 id={idTitulo} className="text-cabecera font-bold text-tinta">
             {titulo}
           </h2>
-          {cabeceraExtra}
+          <div className="flex shrink-0 items-center gap-2">
+            {cabeceraExtra}
+            {noSeCierraSola ? null : (
+              <form method="dialog">
+                <Boton
+                  type="submit"
+                  variante="discreto"
+                  tamano="icono"
+                  aria-label="Cerrar"
+                  onClick={() => dialogo.current?.close()}
+                >
+                  <X className="size-5" aria-hidden />
+                </Boton>
+              </form>
+            )}
+          </div>
         </div>
 
         {descripcion !== undefined ? (

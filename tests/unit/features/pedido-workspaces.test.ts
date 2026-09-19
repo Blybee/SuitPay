@@ -57,6 +57,33 @@ describe('workspaces de pedido', () => {
     expect(usarPedido.getState().lineas).toHaveLength(0)
   })
 
+  it('reinicia el slot activo sin colapsar el workspace 2', () => {
+    usarPedido.getState().agregarLinea(producto)
+    usarPedido.getState().abrirSegundo()
+    usarPedido.getState().agregarLinea({
+      ...producto,
+      codigo: 'T1',
+      descripcion: 'TEE 3/4',
+    })
+    usarPedido.getState().fijarOrigen({
+      cotizacionId: 'cot-vecino',
+      generacionPedido: 0,
+    })
+
+    usarPedido.getState().reiniciarSlotActivo()
+
+    expect(usarPedido.getState().slotActivo).toBe(2)
+    expect(usarPedido.getState().segundoAbierto).toBe(true)
+    expect(usarPedido.getState().lineas).toHaveLength(0)
+    expect(usarPedido.getState().cotizacionId).toBeNull()
+    expect(usarPedido.getState().generacionPedido).toBeNull()
+    expect(usarPedido.getState().modoCotizacion).toBe(false)
+
+    usarPedido.getState().conmutarSlot()
+    expect(usarPedido.getState().slotActivo).toBe(1)
+    expect(usarPedido.getState().lineas[0]?.codigo).toBe('C1')
+  })
+
   it('suelta el origen obsoleto y la clave sin vaciar las líneas', () => {
     usarPedido.getState().agregarLinea(producto)
     usarPedido.getState().fijarOrigen({
