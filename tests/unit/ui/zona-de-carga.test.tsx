@@ -218,4 +218,71 @@ describe('ZonaDeCarga', () => {
       'Falta el campo productos.',
     )
   })
+
+  it('en modo multiple entrega todas las imágenes elegidas', async () => {
+    const usuario = userEvent.setup()
+    const onArchivos = vi.fn()
+    render(
+      <ZonaDeCarga
+        multiple
+        titulo="Pedido del cliente"
+        etiqueta="PDF o imágenes del pedido"
+        accept="image/jpeg,image/png,.jpg,.jpeg,.png"
+        aceptados={['pdf', 'imagen']}
+        archivos={[]}
+        estado="vacio"
+        mensaje={null}
+        onArchivos={onArchivos}
+        onQuitar={() => undefined}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: 'Elegir archivos' })).toBeInTheDocument()
+    expect(screen.getByText('Suelta el PDF o las imágenes')).toBeInTheDocument()
+
+    const input = screen.getByLabelText('PDF o imágenes del pedido')
+    await usuario.upload(input, [
+      new File(['aaa'], 'pedido-1.png', { type: 'image/png' }),
+      new File(['bbb'], 'pedido-2.jpg', { type: 'image/jpeg' }),
+    ])
+
+    expect(onArchivos).toHaveBeenCalledTimes(1)
+    const entregados = onArchivos.mock.calls[0]?.[0] as File[]
+    expect(entregados).toHaveLength(2)
+    expect(entregados.map((f) => f.name)).toEqual([
+      'pedido-1.png',
+      'pedido-2.jpg',
+    ])
+  })
+
+  it('en modo multiple lista fichas y quita por índice', async () => {
+    const usuario = userEvent.setup()
+    const onQuitar = vi.fn()
+    render(
+      <ZonaDeCarga
+        multiple
+        maxArchivos={8}
+        etiqueta="PDF o imágenes del pedido"
+        aceptados={['pdf', 'imagen']}
+        archivos={[
+          { nombre: 'hoja-1.png', bytes: 1200, clase: 'imagen' },
+          { nombre: 'hoja-2.png', bytes: 2400, clase: 'imagen' },
+        ]}
+        estado="listo"
+        mensaje={null}
+        onArchivos={() => undefined}
+        onQuitar={onQuitar}
+      />,
+    )
+
+    expect(screen.getByText('hoja-1.png')).toBeInTheDocument()
+    expect(screen.getByText('hoja-2.png')).toBeInTheDocument()
+    expect(screen.getByText(/2 de 8 archivos/i)).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Añadir' })).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Cambiar' })).not.toBeInTheDocument()
+
+    await usuario.click(screen.getByRole('button', { name: 'Quitar hoja-2.png' }))
+    expect(onQuitar).toHaveBeenCalledTimes(1)
+    expect(onQuitar).toHaveBeenCalledWith(1)
+  })
 })

@@ -2,6 +2,11 @@ import { useState } from 'react'
 import { Loader2 } from 'lucide-react'
 import type { AlineacionDeEntrenamiento } from '../../domain/aprendizaje/memoria.ts'
 import type { DeltaDeMarca } from '../../domain/aprendizaje/priores.ts'
+import {
+  MAX_MEDIOS_ENTRENAMIENTO,
+  TECHO_MEDIO_ENTRENAMIENTO_BYTES,
+  TECHO_MEDIOS_ENTRENAMIENTO_BYTES,
+} from '../../domain/aprendizaje/medios.ts'
 import { usarNotificaciones } from '../notificaciones/almacen.ts'
 import {
   confirmarEntrenamientoFn,
@@ -41,23 +46,67 @@ async function archivoABase64(archivo: File): Promise<string> {
   return coma >= 0 ? dataUrl.slice(coma + 1) : dataUrl
 }
 
+function techoDeArchivos(archivos: readonly File[]): string | null {
+  if (archivos.length > MAX_MEDIOS_ENTRENAMIENTO) {
+    return `Máximo ${MAX_MEDIOS_ENTRENAMIENTO} archivos por lado.`
+  }
+  let total = 0
+  for (const archivo of archivos) {
+    if (archivo.size > TECHO_MEDIO_ENTRENAMIENTO_BYTES) {
+      return `${archivo.name} pesa más de 8 MB. Usa uno más liviano.`
+    }
+    total += archivo.size
+  }
+  if (total > TECHO_MEDIOS_ENTRENAMIENTO_BYTES) {
+    return 'Las fotos juntas pesan demasiado. Quita alguna.'
+  }
+  return null
+}
+
 async function ladoDesde(
-  archivo: File | null,
+  archivos: readonly File[],
   texto: string,
 ): Promise<{
-  medio?: { mimeType: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp'; dataBase64: string }
+  medios?: {
+    mimeType: 'application/pdf' | 'image/jpeg' | 'image/png' | 'image/webp'
+    dataBase64: string
+  }[]
   texto?: string
 } | null> {
   const recorte = texto.trim()
-  if (archivo === null && recorte === '') return null
-  if (archivo === null) return { texto: recorte }
-  const mimeType = mimeDeArchivo(archivo)
-  if (mimeType === null) return null
-  const dataBase64 = await archivoABase64(archivo)
+  if (archivos.length === 0 && recorte === '') return null
+  if (archivos.length === 0) return { texto: recorte }
+  const medios = await Promise.all(
+    archivos.map(async (archivo) => {
+      const mimeType = mimeDeArchivo(archivo)
+      if (mimeType === null) return null
+      return { mimeType, dataBase64: await archivoABase64(archivo) }
+    }),
+  )
+  if (medios.some((medio) => medio === null)) return null
   return {
-    medio: { mimeType, dataBase64 },
+    medios: medios.filter(
+      (medio): medio is NonNullable<typeof medio> => medio !== null,
+    ),
     ...(recorte !== '' ? { texto: recorte } : {}),
   }
+}
+
+function fichaDe(archivo: File): ArchivoElegido {
+  return {
+    nombre: archivo.name,
+    bytes: archivo.size,
+    clase: clasificarArchivo(archivo) ?? 'pdf',
+  }
+}
+
+function agregarArchivos(
+  actuales: readonly File[],
+  nuevos: readonly File[],
+): File[] {
+  const llaves = new Set(actuales.map((a) => `${a.name}:${a.size}`))
+  const extra = nuevos.filter((a) => !llaves.has(`${a.name}:${a.size}`))
+  return [...actuales, ...extra].slice(0, MAX_MEDIOS_ENTRENAMIENTO)
 }
 
 function etiquetaEstado(estado: AlineacionDeEntrenamiento['estado']): string {
@@ -72,8 +121,8 @@ export function EntrenarAprendizaje({
   readonly onConfirmado: () => void
 }) {
   const mostrar = usarNotificaciones((s) => s.mostrar)
-  const [archivoPedido, setArchivoPedido] = useState<File | null>(null)
-  const [archivoOro, setArchivoOro] = useState<File | null>(null)
+  const [archivosPedido, setArchivosPedido] = useState<File[]>([])
+  const [archivosOro, setArchivosOro] = useState<File[]>([])
   const [textoPedido, setTextoPedido] = useState('')
   const [textoOro, setTextoOro] = useState('')
   const [mostrarTextoPedido, setMostrarTextoPedido] = useState(false)
@@ -93,30 +142,27 @@ export function EntrenarAprendizaje({
     omitidos: number
   } | null>(null)
 
-  const ficha = (archivo: File | null): ArchivoElegido | null =>
-    archivo === null
-      ? null
-      : {
-          nombre: archivo.name,
-          bytes: archivo.size,
-          clase: clasificarArchivo(archivo) ?? 'pdf',
-        }
-
   const estadoPedido: EstadoDeCarga =
-    archivoPedido === null ? 'vacio' : procesando ? 'procesando' : 'listo'
+    archivosPedido.length === 0 ? 'vacio' : procesando ? 'procesando' : 'listo'
   const estadoOro: EstadoDeCarga =
-    archivoOro === null ? 'vacio' : procesando ? 'procesando' : 'listo'
+    archivosOro.length === 0 ? 'vacio' : procesando ? 'procesando' : 'listo'
 
   const hayPedido =
-    archivoPedido !== null || textoPedido.trim() !== ''
-  const hayOro = archivoOro !== null || textoOro.trim() !== ''
+    archivosPedido.length > 0 || textoPedido.trim() !== ''
+  const hayOro = archivosOro.length > 0 || textoOro.trim() !== ''
 
   async function procesar(): Promise<void> {
     if (!hayPedido || !hayOro || procesando) return
+    const tope =
+      techoDeArchivos(archivosPedido) ?? techoDeArchivos(archivosOro)
+    if (tope !== null) {
+      mostrar({ tono: 'error', mensaje: tope })
+      return
+    }
     setProcesando(true)
     try {
-      const pedido = await ladoDesde(archivoPedido, textoPedido)
-      const oro = await ladoDesde(archivoOro, textoOro)
+      const pedido = await ladoDesde(archivosPedido, textoPedido)
+      const oro = await ladoDesde(archivosOro, textoOro)
       if (pedido === null || oro === null) {
         mostrar({ tono: 'error', mensaje: 'Revisa los archivos o el texto.' })
         return
@@ -174,8 +220,8 @@ export function EntrenarAprendizaje({
       setAlineaciones(null)
       setMarcas([])
       setCobertura(null)
-      setArchivoPedido(null)
-      setArchivoOro(null)
+      setArchivosPedido([])
+      setArchivosOro([])
       setTextoPedido('')
       setTextoOro('')
       onConfirmado()
@@ -192,29 +238,36 @@ export function EntrenarAprendizaje({
         Entrenar
       </h2>
       <p className="text-cuerpo text-desvaida">
-        Pedido del cliente a un lado, cotización terminada al otro. Nada se
-        escribe hasta que confirmes.
+        Pedido del cliente a un lado (puedes subir varias fotos), cotización
+        terminada al otro. Nada se escribe hasta que confirmes.
       </p>
 
       <div className="grid gap-6 md:grid-cols-2">
         <div className="flex flex-col gap-3">
           <ZonaDeCarga
             titulo="Pedido del cliente"
-            etiqueta="PDF o imagen del pedido"
+            etiqueta="PDF o imágenes del pedido"
             accept={ACCEPT_ENTRENO}
             aceptados={['pdf', 'imagen']}
-            archivo={ficha(archivoPedido)}
+            multiple
+            maxArchivos={MAX_MEDIOS_ENTRENAMIENTO}
+            archivos={archivosPedido.map(fichaDe)}
             estado={estadoPedido}
             mensaje={null}
             deshabilitado={procesando || confirmando}
             ocultarEstadoSinError
             nota={
               <p className="text-center text-cuerpo text-desvaida">
-                Mensaje, foto o PDF del requerimiento.
+                Mensaje, fotos o PDF del requerimiento. Puedes adjuntar varias
+                imágenes.
               </p>
             }
-            onArchivo={setArchivoPedido}
-            onQuitar={() => setArchivoPedido(null)}
+            onArchivos={(nuevos) =>
+              setArchivosPedido((prev) => agregarArchivos(prev, nuevos))
+            }
+            onQuitar={(indice) =>
+              setArchivosPedido((prev) => prev.filter((_, i) => i !== indice))
+            }
           />
           <button
             type="button"
@@ -245,21 +298,27 @@ export function EntrenarAprendizaje({
         <div className="flex flex-col gap-3">
           <ZonaDeCarga
             titulo="Cotización terminada"
-            etiqueta="PDF o imagen de la cotización oro"
+            etiqueta="PDF o imágenes de la cotización oro"
             accept={ACCEPT_ENTRENO}
             aceptados={['pdf', 'imagen']}
-            archivo={ficha(archivoOro)}
+            multiple
+            maxArchivos={MAX_MEDIOS_ENTRENAMIENTO}
+            archivos={archivosOro.map(fichaDe)}
             estado={estadoOro}
             mensaje={null}
             deshabilitado={procesando || confirmando}
             ocultarEstadoSinError
             nota={
               <p className="text-center text-cuerpo text-desvaida">
-                La cotización que sí se despachó.
+                La cotización que sí se despachó. También admite varias fotos.
               </p>
             }
-            onArchivo={setArchivoOro}
-            onQuitar={() => setArchivoOro(null)}
+            onArchivos={(nuevos) =>
+              setArchivosOro((prev) => agregarArchivos(prev, nuevos))
+            }
+            onQuitar={(indice) =>
+              setArchivosOro((prev) => prev.filter((_, i) => i !== indice))
+            }
           />
           <button
             type="button"
