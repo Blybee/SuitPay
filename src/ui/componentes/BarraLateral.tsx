@@ -182,7 +182,7 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
     <>
       <div
         ref={barraMovilRef}
-        className="grid grid-cols-[1fr_auto_1fr] items-center border-b border-borde bg-papel px-3 py-2 md:hidden"
+        className="grid grid-cols-[1fr_auto] items-center border-b border-borde bg-papel px-3 py-1 md:hidden"
       >
         <p className="justify-self-start text-cuerpo font-bold text-tinta">
           SuitPay
@@ -190,7 +190,7 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
         <button
           type="button"
           className={unir(
-            'inline-flex size-11 items-center justify-center justify-self-center rounded-full',
+            'inline-flex size-11 items-center justify-center justify-self-end rounded-full',
             'text-tinta transition-colors hover:bg-mesa',
             'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
           )}
@@ -208,7 +208,6 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
             <Menu className="size-6" aria-hidden />
           )}
         </button>
-        <span className="justify-self-end" aria-hidden />
       </div>
 
       <div
@@ -221,7 +220,7 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
         className="barra-lateral-menu-movil border-b border-borde bg-papel shadow-md"
         style={{ top: topeMenuMovil }}
       >
-        <nav className="flex flex-col gap-1 px-3 py-3" aria-label="Menú">
+        <nav className="flex flex-col gap-1 px-3 py-2" aria-label="Menú">
           {menu.map((item) => {
             const activo = itemActivo(pathname, item)
             const Icono = item.icono

@@ -7,9 +7,13 @@ import { Plus } from 'lucide-react'
 
 export type PestanaMostrador = 'pedido' | 'cotizaciones' | 'vecinos' | 'lista'
 
-const PESTANAS: readonly { id: PestanaMostrador; etiqueta: string }[] = [
+const PESTANAS: readonly {
+  id: PestanaMostrador
+  etiqueta: string
+  etiquetaCorta?: string
+}[] = [
   { id: 'pedido', etiqueta: 'Pedido' },
-  { id: 'cotizaciones', etiqueta: 'Cotizaciones' },
+  { id: 'cotizaciones', etiqueta: 'Cotizaciones', etiquetaCorta: 'Cotis' },
   { id: 'vecinos', etiqueta: 'Vecinos' },
   { id: 'lista', etiqueta: 'Lista' },
 ]
@@ -35,7 +39,7 @@ export function PestanasMostrador({
     <div
       role="tablist"
       aria-label="Secciones del mostrador"
-      className="flex flex-wrap items-center gap-1.5 bg-papel px-4 pt-0.5 pb-1.5"
+      className="flex flex-nowrap items-center gap-1.5 overflow-x-auto overscroll-x-contain bg-papel px-3 pt-0.5 pb-1.5 md:px-4"
     >
       {PESTANAS.map((cada) => {
         const seleccionada = cada.id === activa
@@ -44,7 +48,7 @@ export function PestanasMostrador({
             <div
               key={cada.id}
               className={unir(
-                'flex h-9 items-center gap-1 rounded-full border pl-2 pr-0.5',
+                'flex h-9 shrink-0 items-center gap-1 rounded-full border pl-2 pr-0.5',
                 'transition-colors duration-rapida ease-salida',
                 seleccionada
                   ? 'border-tinta bg-tinta text-papel'
@@ -99,16 +103,24 @@ export function PestanasMostrador({
             aria-selected={seleccionada}
             id={`tab-${cada.id}`}
             aria-controls={`panel-${cada.id}`}
+            aria-label={cada.etiqueta}
             onClick={() => onCambiar(cada.id)}
             className={unir(
-              'min-h-9 rounded-full px-4 text-cuerpo font-bold transition-colors',
+              'min-h-9 shrink-0 rounded-full px-3 text-cuerpo font-bold transition-colors md:px-4',
               'focus-visible:outline-none focus-visible:border-tinta',
               seleccionada
                 ? 'bg-tinta text-papel'
                 : 'bg-mesa text-desvaida hover:text-tinta',
             )}
           >
-            {cada.etiqueta}
+            {cada.etiquetaCorta !== undefined ? (
+              <>
+                <span className="md:hidden">{cada.etiquetaCorta}</span>
+                <span className="hidden md:inline">{cada.etiqueta}</span>
+              </>
+            ) : (
+              cada.etiqueta
+            )}
           </button>
         )
       })}

@@ -39,6 +39,35 @@ describe('resolverEtiquetaClientePdf', () => {
     expect(r.cliente).toBeNull()
   })
 
+  it('el cliente indicado por el vendedor gana aunque el modelo no detecte', () => {
+    const r = resolverEtiquetaClientePdf(null, [], null, {
+      tipoDocumento: 'DNI',
+      numeroDocumento: '00000000',
+      denominacion: 'Ferretería Sol',
+    })
+    expect(r.etiqueta).toBe('Ferretería Sol')
+    expect(r.cliente?.denominacion).toBe('Ferretería Sol')
+    expect(r.cliente?.numeroDocumento).toBe('00000000')
+  })
+
+  it('el cliente registrado indicado gana sobre el detectado en el PDF', () => {
+    const r = resolverEtiquetaClientePdf(
+      {
+        tipoDocumento: 'RUC',
+        numeroDocumento: '20123456789',
+        denominacion: 'Nombre del modelo',
+      },
+      [],
+      null,
+      {
+        tipoDocumento: 'RUC',
+        numeroDocumento: '20123456789',
+        denominacion: 'Cliente Test',
+      },
+    )
+    expect(r.etiqueta).toBe('Cliente Test')
+  })
+
   it('si no está registrado usa la denominación del modelo solo como etiqueta', () => {
     const r = resolverEtiquetaClientePdf(
       {

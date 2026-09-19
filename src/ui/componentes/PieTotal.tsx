@@ -127,7 +127,7 @@ export function PieTotal({
         </div>
 
         <div className="flex min-h-11 shrink-0 items-center gap-1.5 md:ml-auto md:gap-3">
-          <span className="font-mono text-etiqueta uppercase text-desvaida">
+          <span className="hidden font-mono text-etiqueta uppercase text-desvaida md:inline">
             Total
           </span>
           <output

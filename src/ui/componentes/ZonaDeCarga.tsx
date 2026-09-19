@@ -136,6 +136,7 @@ export function ZonaDeCarga({
   accionCabecera,
   etiqueta,
   nota,
+  ocultarEtiqueta = false,
   ocultarEstadoSinError = false,
   accept = 'application/json,.json,.js,application/pdf,.pdf',
   aceptados = ACEPTADOS_DEFECTO,
@@ -150,6 +151,7 @@ export function ZonaDeCarga({
   readonly accionCabecera?: ReactNode
   readonly etiqueta: string
   readonly nota?: ReactNode
+  readonly ocultarEtiqueta?: boolean
   readonly ocultarEstadoSinError?: boolean
   readonly accept?: string
   readonly aceptados?: readonly ClaseDeArchivo[]
@@ -172,6 +174,8 @@ export function ZonaDeCarga({
   const vacio = archivo === null && estado === 'vacio'
   const errorVisible = rechazoLocal ?? (estado === 'error' ? mensaje : null)
   const arrastreInvalido = arrastrando && rechazoLocal === 'tipo-arrastre'
+  const pozoHormigas =
+    vacio && !arrastrando && !arrastreInvalido && rechazoLocal === null
 
   function abrirSelector(): void {
     if (ocupado) return
@@ -246,7 +250,9 @@ export function ZonaDeCarga({
       !arrastreInvalido &&
       (estado === 'error' || rechazoLocal !== null
         ? 'border-aviso'
-        : 'border-borde hover:border-tinta/40'),
+        : pozoHormigas
+          ? 'border-transparent'
+          : 'border-tinta/40'),
     ocupado && 'cursor-not-allowed opacity-70',
     !ocupado && vacio && 'cursor-pointer',
   )
@@ -263,7 +269,9 @@ export function ZonaDeCarga({
       ) : null}
       <Etiqueta
         htmlFor={id}
-        className={titulo !== undefined ? 'sr-only' : undefined}
+        className={
+          titulo !== undefined || ocultarEtiqueta ? 'sr-only' : undefined
+        }
       >
         {etiqueta}
       </Etiqueta>
@@ -291,7 +299,7 @@ export function ZonaDeCarga({
         <div
           className={unir(
             clasesPozo,
-            'min-h-52 items-center justify-center gap-5 px-6 py-8',
+            'zona-carga-pozo min-h-52 items-center justify-center gap-5 px-6 py-8',
           )}
           onClick={ocupado ? undefined : abrirSelector}
           onDragEnter={alEntrarArrastre}
@@ -299,6 +307,7 @@ export function ZonaDeCarga({
           onDragOver={alArrastrarEncima}
           onDrop={alSoltar}
         >
+          {pozoHormigas ? <BordeHormigas /> : null}
           <span
             className={unir(
               'flex size-14 items-center justify-center rounded-full border bg-papel',
@@ -396,6 +405,22 @@ export function ZonaDeCarga({
         })}
       </p>
     </div>
+  )
+}
+
+function BordeHormigas() {
+  return (
+    <svg className="zona-carga-hormigas" aria-hidden>
+      <rect
+        className="zona-carga-hormigas-trazo"
+        x="1"
+        y="1"
+        width="calc(100% - 2px)"
+        height="calc(100% - 2px)"
+        rx="16"
+        ry="16"
+      />
+    </svg>
   )
 }
 

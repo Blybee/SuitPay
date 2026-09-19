@@ -8,10 +8,12 @@ import {
   formatearMotivoAsistencia,
 } from '../degradacion/motivo-asistencia.ts'
 import { usarNotificaciones } from '../notificaciones/almacen.ts'
+import type { ClienteDelPedido } from '../pedido/almacen.ts'
 import { usarSesion } from '../sesion/almacen.ts'
 import { emparejarItemsPdf } from './emparejar-pdf.ts'
 import { interpretarRequerimientoFn } from './pdf.funciones.ts'
 import { usarPropuestasPdf } from './propuestas.ts'
+import type { ClaseMedioDePropuesta } from './propuestas.ts'
 import { resolverEtiquetaClientePdf } from './resolver-cliente-pdf.ts'
 
 /** Alineado con storage.rules (40 MiB). */
@@ -28,9 +30,11 @@ export async function procesarRequerimientoDeCotizar(entrada: {
   readonly archivo?: File | null
   readonly texto?: string
   readonly clienteId?: string
+  readonly clienteIndicado?: ClienteDelPedido | null
 }): Promise<void> {
   const archivo = entrada.archivo ?? null
   const texto = entrada.texto?.trim() ?? ''
+  const clienteIndicado = entrada.clienteIndicado ?? null
   const uid = usarSesion.getState().uid
   const indice = usarCatalogo.getState().indice
   if (uid === null || indice === null) {
@@ -57,9 +61,16 @@ export async function procesarRequerimientoDeCotizar(entrada: {
 
   const id = crypto.randomUUID()
   const nombre = archivo?.name ?? 'texto'
+  const esPdf =
+    archivo !== null &&
+    (archivo.type === 'application/pdf' ||
+      archivo.name.toLowerCase().endsWith('.pdf'))
+  const claseMedio: ClaseMedioDePropuesta =
+    archivo === null ? 'texto' : esPdf ? 'pdf' : 'imagen'
   usarPropuestasPdf.getState().encolar({
     id,
     nombreArchivo: nombre,
+    claseMedio,
     fase: 'procesando',
   })
 
@@ -67,9 +78,6 @@ export async function procesarRequerimientoDeCotizar(entrada: {
     let storagePath: string | undefined
     let tipoMedio: 'pdf' | 'imagen' | undefined
     if (archivo !== null) {
-      const esPdf =
-        archivo.type === 'application/pdf' ||
-        archivo.name.toLowerCase().endsWith('.pdf')
       tipoMedio = esPdf ? 'pdf' : 'imagen'
       const subida = await subirMedioDeCaptura({
         uid,
@@ -136,6 +144,7 @@ export async function procesarRequerimientoDeCotizar(entrada: {
       detectado,
       usarCatalogo.getState().clientes,
       registrado,
+      clienteIndicado,
     )
 
     usarPropuestasPdf.getState().actualizar(id, {

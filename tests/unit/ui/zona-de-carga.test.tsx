@@ -182,6 +182,26 @@ describe('ZonaDeCarga', () => {
     expect(onQuitar).toHaveBeenCalledTimes(1)
   })
 
+  it('oculta la etiqueta visible y sigue anunciando el pozo', () => {
+    render(
+      <ZonaDeCarga
+        etiqueta="PDF o imagen de requerimiento"
+        ocultarEtiqueta
+        archivo={null}
+        estado="vacio"
+        mensaje={null}
+        onArchivo={() => undefined}
+        onQuitar={() => undefined}
+      />,
+    )
+
+    const etiqueta = screen.getByText('PDF o imagen de requerimiento')
+    expect(etiqueta.className).toMatch(/sr-only/)
+    expect(
+      screen.getByLabelText('PDF o imagen de requerimiento'),
+    ).toBeInTheDocument()
+  })
+
   it('anuncia el error de validación junto al archivo', () => {
     render(
       <ZonaDeCarga

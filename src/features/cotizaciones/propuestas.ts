@@ -4,9 +4,20 @@ import type { ClienteDelPedido } from '../pedido/almacen.ts'
 
 export type FaseDePropuestaPdf = 'procesando' | 'lista' | 'error'
 
+export type ClaseMedioDePropuesta = 'pdf' | 'imagen' | 'texto'
+
+export function etiquetaDeClaseMedio(
+  clase: ClaseMedioDePropuesta | undefined,
+): string {
+  if (clase === 'imagen') return 'IMG'
+  if (clase === 'texto') return 'TXT'
+  return 'PDF'
+}
+
 export interface PropuestaPdf {
   readonly id: string
   readonly nombreArchivo: string
+  readonly claseMedio?: ClaseMedioDePropuesta
   readonly fase: FaseDePropuestaPdf
   readonly lineas?: readonly LineaDeCaptura[]
   readonly etiquetaCliente?: string

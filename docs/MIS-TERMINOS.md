@@ -9,3 +9,8 @@
 >por default se ejecuta la acción, salvo denegación explicita. 
 - *overscan insuficiente*
 >huecos blancos al virtualizar
+- *acordeon*
+
+- *marching ants*
+
+- *responsive density*

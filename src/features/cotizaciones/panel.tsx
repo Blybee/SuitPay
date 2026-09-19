@@ -10,17 +10,21 @@ import { EstadoVacio } from '../../ui/componentes/EstadoVacio.tsx'
 import { IndicadorDeCarga } from '../../ui/componentes/IndicadorDeCarga.tsx'
 import { usarCaptura } from '../captura/estado.ts'
 import { usarCatalogo } from '../catalogo/almacen.ts'
+import { DOCUMENTO_CLIENTE_POR_NOMBRE } from '../clientes/documento-marcador.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
 import { usarPedido } from '../pedido/almacen.ts'
+import type { ClienteDelPedido } from '../pedido/almacen.ts'
 import { diferenciasContraCatalogo } from './diferencias.ts'
 import type { DiferenciaDeCotizacion } from './diferencias.ts'
+import { DetalleDeCotizacion } from './detalle.tsx'
 import { eliminarCotizacion } from './eliminar.ts'
+import { formatearFechaCortaCotizacion } from './fecha.ts'
 import {
   buscarCotizacionPorNumero,
   listarCotizacionesPendientes,
 } from './leer.ts'
 import { procesarRequerimientoDeCotizar } from './procesar-pdf.ts'
-import { usarPropuestasPdf } from './propuestas.ts'
+import { etiquetaDeClaseMedio, usarPropuestasPdf } from './propuestas.ts'
 import type { PropuestaPdf } from './propuestas.ts'
 import type { Cotizacion } from './tipos.ts'
 import { filtrarPendientes } from './filtrar.ts'
@@ -52,6 +56,9 @@ export function PanelDeCotizaciones({
       : '',
   )
   const [buscada, setBuscada] = useState<Cotizacion | null>(null)
+  const [detalleRetenido, setDetalleRetenido] = useState<Cotizacion | null>(
+    null,
+  )
   const [yaUsada, setYaUsada] = useState(false)
   const [diferencias, setDiferencias] = useState<
     readonly DiferenciaDeCotizacion[]
@@ -63,7 +70,6 @@ export function PanelDeCotizaciones({
   const [zonaPdf, setZonaPdf] = useState(false)
   const [archivoCotizar, setArchivoCotizar] = useState<File | null>(null)
   const [textoWhatsapp, setTextoWhatsapp] = useState('')
-  const [mostrarTexto, setMostrarTexto] = useState(false)
   const [consultaCliente, setConsultaCliente] = useState('')
   const [clienteElegido, setClienteElegido] = useState<ClienteExistente | null>(
     null,
@@ -128,6 +134,7 @@ export function PanelDeCotizaciones({
         )
         return
       }
+      setDetalleRetenido(hallada)
       setBuscada(hallada)
     } finally {
       setBuscando(false)
@@ -136,6 +143,7 @@ export function PanelDeCotizaciones({
 
   function presentar(cotizacion: Cotizacion): void {
     setYaUsada(false)
+    setDetalleRetenido(cotizacion)
     setBuscada(cotizacion)
   }
 
@@ -224,6 +232,35 @@ export function PanelDeCotizaciones({
     })
   }
 
+  function clienteIndicado(): ClienteDelPedido | null {
+    if (clienteElegido !== null) {
+      return {
+        tipoDocumento: clienteElegido.tipoDocumento,
+        numeroDocumento: clienteElegido.numeroDocumento,
+        denominacion: clienteElegido.denominacion,
+        direccion: clienteElegido.direccion,
+      }
+    }
+    const nombre = consultaCliente.trim()
+    if (nombre === '') return null
+    return {
+      tipoDocumento: 'DNI',
+      numeroDocumento: DOCUMENTO_CLIENTE_POR_NOMBRE,
+      denominacion: nombre,
+    }
+  }
+
+  function intentarAbrirPdf(cotizacion: Cotizacion): void {
+    const resultado = abrirPdfDeCotizacion(cotizacion)
+    if (!resultado.ok) {
+      setAviso(
+        resultado.motivo === 'no_se_pudo_abrir'
+          ? 'No se pudo abrir el PDF. Revisa el bloqueador de ventanas.'
+          : 'No se pudo generar el PDF de la cotización.',
+      )
+    }
+  }
+
   async function lanzarCotizar(): Promise<void> {
     if (enviandoCotizar) return
     setEnviandoCotizar(true)
@@ -232,10 +269,10 @@ export function PanelDeCotizaciones({
         archivo: archivoCotizar,
         texto: textoWhatsapp,
         clienteId: clienteElegido?.numeroDocumento,
+        clienteIndicado: clienteIndicado(),
       })
       setArchivoCotizar(null)
       setTextoWhatsapp('')
-      setMostrarTexto(false)
     } finally {
       setEnviandoCotizar(false)
     }
@@ -322,6 +359,7 @@ export function PanelDeCotizaciones({
           <div className="flex flex-col gap-4 pt-2 pb-1">
             <ZonaDeCarga
               etiqueta="PDF o imagen de requerimiento"
+              ocultarEtiqueta
               accept="application/pdf,.pdf,image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp"
               aceptados={['pdf', 'imagen']}
               archivo={archivoElegido}
@@ -336,32 +374,15 @@ export function PanelDeCotizaciones({
               onArchivo={(archivo) => setArchivoCotizar(archivo)}
               onQuitar={() => setArchivoCotizar(null)}
             />
-            <button
-              type="button"
-              className="self-start rounded-full px-3 py-1.5 text-cuerpo font-bold text-tinta transition-colors duration-rapida ease-salida hover:bg-mesa"
-              onClick={() => setMostrarTexto((v) => !v)}
-              aria-expanded={mostrarTexto}
-            >
-              {mostrarTexto ? 'Ocultar mensaje' : 'Pegar mensaje de WhatsApp'}
-            </button>
-            <div
-              className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
-              style={{ gridTemplateRows: mostrarTexto ? '1fr' : '0fr' }}
-            >
-              <div className="min-h-0 overflow-hidden">
-                <Etiqueta htmlFor="texto-whatsapp-cotizar">
-                  Mensaje del cliente
-                </Etiqueta>
-                <textarea
-                  id="texto-whatsapp-cotizar"
-                  value={textoWhatsapp}
-                  onChange={(evento) => setTextoWhatsapp(evento.target.value)}
-                  rows={4}
-                  className="mt-1 w-full rounded-2xl border border-borde bg-papel px-3 py-2 text-cuerpo text-tinta"
-                  placeholder="Pega aquí el mensaje…"
-                />
-              </div>
-            </div>
+            <textarea
+              id="texto-whatsapp-cotizar"
+              value={textoWhatsapp}
+              onChange={(evento) => setTextoWhatsapp(evento.target.value)}
+              rows={4}
+              className="w-full rounded-2xl border border-borde bg-papel px-3 py-2 text-cuerpo text-tinta"
+              placeholder="Pega aquí el mensaje de WhatsApp"
+              aria-label="Pega aquí el mensaje de WhatsApp"
+            />
             <div>
               <Etiqueta htmlFor="cliente-cotizar">Cliente (opcional)</Etiqueta>
               <input
@@ -498,69 +519,29 @@ export function PanelDeCotizaciones({
         <IndicadorDeCarga mensaje="Cargando cotizaciones…" />
       ) : null}
 
-      {buscada !== null && !buscando ? (
-        <article className="rounded-3xl border border-borde bg-papel p-5 shadow-sm">
-          <header className="mb-3 flex flex-wrap items-center justify-between gap-2">
-            <h3 className="text-entrada font-bold text-tinta">
-              Cotización {buscada.numero}
-            </h3>
-            <div className="flex shrink-0 flex-wrap items-center gap-2">
-              <Boton
-                variante="principal"
-                onClick={() => abrirEnPedido(buscada)}
-              >
-                Abrir en el pedido
-              </Boton>
-              <Boton
-                variante="discreto"
-                tamano="icono"
-                aria-label="Eliminar cotización"
-                className="hover:border-aviso/40 hover:bg-aviso/10 hover:text-aviso"
-                onClick={() => setAEliminar(buscada)}
-              >
-                <Trash2 className="size-5" aria-hidden />
-              </Boton>
-            </div>
-          </header>
-
-          {diferencias.length > 0 ? (
-            <div
-              className="mb-3 rounded-2xl border border-aviso px-3 py-2"
-              role="status"
-            >
-              <p className="text-cuerpo font-bold text-aviso">
-                Hay cambios respecto al catálogo actual
-              </p>
-              <ul className="mt-1 list-disc pl-5 text-cuerpo text-tinta">
-                {diferencias.map((cada) => (
-                  <li key={`${cada.codigo}-${cada.indice}`}>
-                    {cada.clase === 'producto_desaparecido'
-                      ? `${cada.descripcion} (${cada.codigo}) ya no está en el catálogo.`
-                      : `${cada.descripcion}: precio guardado ${formatearImporte(cada.precioGuardado)}, actual ${formatearImporte(cada.precioActual ?? 0)}.`}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
-
-          <ul className="mb-3 space-y-1 text-cuerpo text-tinta">
-            {buscada.lineas.map((linea, indice) => (
-              <li key={`${linea.codigo}-${indice}`}>
-                {linea.cantidad} × {linea.descripcion} —{' '}
-                {formatearImporte(linea.precio)}
-              </li>
-            ))}
-          </ul>
-          <p className="text-right font-mono tabular-nums text-cuerpo font-bold text-tinta">
-            {formatearImporte(buscada.total)}
-          </p>
-        </article>
-      ) : null}
-
       <section>
-        <h3 className="mb-2 font-mono text-etiqueta uppercase text-desvaida">
-          Pendientes recientes
-        </h3>
+        <div
+          className="hidden md:grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+          style={{
+            gridTemplateRows:
+              buscada !== null && !buscando ? '1fr' : '0fr',
+          }}
+        >
+          <div className="min-h-0 overflow-hidden">
+            {detalleRetenido !== null && !buscando ? (
+              <div className="pb-6">
+                <DetalleDeCotizacion
+                  cotizacion={detalleRetenido}
+                  diferencias={diferencias}
+                  onAbrirPedido={() => abrirEnPedido(detalleRetenido)}
+                  onEliminar={() => setAEliminar(detalleRetenido)}
+                  onPdf={() => intentarAbrirPdf(detalleRetenido)}
+                  onCerrar={() => setBuscada(null)}
+                />
+              </div>
+            ) : null}
+          </div>
+        </div>
         {pendientes.isLoading ? (
           <IndicadorDeCarga mensaje="Cargando cotizaciones…" />
         ) : null}
@@ -593,7 +574,9 @@ export function PanelDeCotizaciones({
                 className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border border-borde bg-papel px-4 py-3"
                 aria-busy={cada.fase === 'procesando' || undefined}
               >
-                <span className="font-mono font-bold text-tinta">PDF</span>
+                <span className="font-mono font-bold text-tinta">
+                  {etiquetaDeClaseMedio(cada.claseMedio)}
+                </span>
                 <span
                   className="truncate text-cuerpo text-desvaida"
                   aria-live={cada.fase === 'procesando' ? 'polite' : undefined}
@@ -625,69 +608,97 @@ export function PanelDeCotizaciones({
               </div>
             </li>
           ))}
-          {(pendientesFiltrados).map((cada) => (
-            <li key={cada.id} className="flex items-stretch gap-2">
-              <button
-                type="button"
-                className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl border border-borde bg-papel px-4 py-3 text-left hover:bg-mesa"
-                onClick={() => {
-                  presentar(cada)
-                  setConsulta(String(cada.numero))
-                }}
-              >
-                <span className="flex min-w-0 items-center gap-3">
-                  <span className="shrink-0 font-mono font-bold text-tinta">
-                    #{cada.numero}
-                  </span>
-                  <span className="truncate text-cuerpo text-desvaida">
-                    {cada.cliente?.denominacion ?? 'Sin cliente'} ·{' '}
-                    {cada.lineas.length}{' '}
-                    {cada.lineas.length === 1 ? 'línea' : 'líneas'}
-                  </span>
-                </span>
-                <span className="shrink-0 font-mono tabular-nums font-bold text-tinta">
-                  {formatearImporte(cada.total)}
-                </span>
-              </button>
-              <button
-                type="button"
-                className={[
-                  'inline-flex size-11 shrink-0 items-center justify-center self-center rounded-full',
-                  'text-desvaida transition-colors duration-rapida ease-salida',
-                  'hover:bg-mesa hover:text-tinta',
-                  'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
-                ].join(' ')}
-                aria-label={`Abrir PDF de la cotización ${cada.numero}`}
-                title="Abrir PDF"
-                onClick={() => {
-                  const resultado = abrirPdfDeCotizacion(cada)
-                  if (!resultado.ok) {
-                    setAviso(
-                      resultado.motivo === 'no_se_pudo_abrir'
-                        ? 'No se pudo abrir el PDF. Revisa el bloqueador de ventanas.'
-                        : 'No se pudo generar el PDF de la cotización.',
-                    )
-                  }
-                }}
-              >
-                <FileText className="size-5" aria-hidden />
-              </button>
-              <button
-                type="button"
-                className={[
-                  'inline-flex size-11 shrink-0 items-center justify-center self-center rounded-full',
-                  'text-desvaida transition-colors',
-                  'hover:bg-aviso/15 hover:text-aviso',
-                  'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
-                ].join(' ')}
-                aria-label={`Eliminar cotización ${cada.numero}`}
-                title="Eliminar cotización"
-                onClick={() => setAEliminar(cada)}
-              >
-                <Trash2 className="size-5" aria-hidden />
-              </button>
-            </li>
-          ))}
+          {pendientesFiltrados.map((cada) => {
+            const abierta = buscada?.id === cada.id
+            const fecha = formatearFechaCortaCotizacion(
+              cada.actualizadoEn ?? cada.creadoEn,
+            )
+            return (
+              <li key={cada.id} className="flex flex-col gap-2">
+                <div className="flex items-stretch gap-2">
+                  <button
+                    type="button"
+                    className={[
+                      'flex min-w-0 flex-1 items-start justify-between gap-3 rounded-2xl border bg-papel px-4 py-3 text-left hover:bg-mesa md:items-center',
+                      abierta ? 'border-sello' : 'border-borde',
+                    ].join(' ')}
+                    aria-expanded={abierta}
+                    onClick={() => {
+                      if (abierta) {
+                        setBuscada(null)
+                        return
+                      }
+                      presentar(cada)
+                    }}
+                  >
+                    <span className="flex min-w-0 items-start gap-3 md:items-center">
+                      <span className="shrink-0 font-mono font-bold text-tinta">
+                        #{cada.numero}
+                      </span>
+                      <span className="min-w-0 text-cuerpo text-desvaida">
+                        <span className="block truncate md:inline">
+                          {cada.cliente?.denominacion ?? 'Sin cliente'} ·{' '}
+                          {cada.lineas.length}{' '}
+                          {cada.lineas.length === 1 ? 'línea' : 'líneas'}
+                        </span>
+                        <span className="block md:ml-1 md:inline">{fecha}</span>
+                      </span>
+                    </span>
+                    <span className="shrink-0 font-mono tabular-nums font-bold text-tinta">
+                      {formatearImporte(cada.total)}
+                    </span>
+                  </button>
+                  <button
+                    type="button"
+                    className={[
+                      'hidden size-11 shrink-0 items-center justify-center self-center rounded-full md:inline-flex',
+                      'text-desvaida transition-colors duration-rapida ease-salida',
+                      'hover:bg-mesa hover:text-tinta',
+                      'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
+                    ].join(' ')}
+                    aria-label={`Abrir PDF de la cotización ${cada.numero}`}
+                    title="Abrir PDF"
+                    onClick={() => intentarAbrirPdf(cada)}
+                  >
+                    <FileText className="size-5" aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={[
+                      'hidden size-11 shrink-0 items-center justify-center self-center rounded-full md:inline-flex',
+                      'text-desvaida transition-colors',
+                      'hover:bg-aviso/15 hover:text-aviso',
+                      'focus-visible:outline-none focus-visible:border focus-visible:border-tinta',
+                    ].join(' ')}
+                    aria-label={`Eliminar cotización ${cada.numero}`}
+                    title="Eliminar cotización"
+                    onClick={() => setAEliminar(cada)}
+                  >
+                    <Trash2 className="size-5" aria-hidden />
+                  </button>
+                </div>
+                <div
+                  className="grid md:hidden transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+                  style={{ gridTemplateRows: abierta ? '1fr' : '0fr' }}
+                >
+                  <div className="min-h-0 overflow-hidden">
+                    <div className="pt-0 pb-1">
+                      {detalleRetenido?.id === cada.id ? (
+                        <DetalleDeCotizacion
+                          compacto
+                          cotizacion={cada}
+                          diferencias={diferencias}
+                          onAbrirPedido={() => abrirEnPedido(cada)}
+                          onEliminar={() => setAEliminar(cada)}
+                          onPdf={() => intentarAbrirPdf(cada)}
+                        />
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              </li>
+            )
+          })}
         </ul>
       </section>
 

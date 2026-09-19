@@ -13,8 +13,9 @@ export interface EtiquetaDeClientePdf {
 }
 
 /**
- * El modelo no es la fuente de verdad. Si el documento está en el índice
- * local o en `clientes/{id}`, usamos nuestra denominación.
+ * El vendedor manda sobre el modelo. Si indicó cliente (registrado o nombre
+ * libre), esa denominación se conserva. Si no, el modelo no es la fuente de
+ * verdad: índice local y `clientes/{id}` ganan a lo detectado en el PDF.
  */
 export function resolverEtiquetaClientePdf(
   detectado: ClienteDetectadoEnPdf | null,
@@ -25,7 +26,15 @@ export function resolverEtiquetaClientePdf(
     readonly denominacion: string
     readonly direccion?: string
   } | null,
+  indicado: ClienteDelPedido | null = null,
 ): EtiquetaDeClientePdf {
+  if (indicado !== null && indicado.denominacion.trim() !== '') {
+    return {
+      etiqueta: indicado.denominacion,
+      cliente: indicado,
+    }
+  }
+
   if (detectado === null) {
     return { etiqueta: 'Sin cliente', cliente: null }
   }

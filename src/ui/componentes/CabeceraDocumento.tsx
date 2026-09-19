@@ -260,14 +260,15 @@ export function CabeceraDocumento({
   return (
     <header
       className={[
-        'z-10 border-b bg-papel px-4 py-3',
+        'z-10 border-b bg-papel px-3 py-2 md:px-4 md:py-3',
         exigeCliente ? 'border-aviso' : 'border-borde',
       ].join(' ')}
     >
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex flex-wrap items-center gap-2 md:gap-3">
         <Selector
           etiqueta="Tipo de documento"
           ocultarEtiqueta
+          variante="compacto"
           valor={modo}
           onCambiar={onCambiarModo}
           opciones={opcionesTipo}

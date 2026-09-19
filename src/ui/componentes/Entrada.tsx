@@ -290,7 +290,7 @@ export function Entrada({
   return (
     <div className="w-full bg-papel">
       <div className="relative">
-        <div className="flex w-full items-stretch gap-2 px-4 pt-2 pb-1">
+        <div className="flex w-full items-stretch gap-2 px-3 pt-2 pb-1 md:px-4">
           <div
             className={[
               'relative flex flex-1 items-center rounded-full border border-borde bg-mesa shadow-sm',
@@ -298,7 +298,7 @@ export function Entrada({
             ].join(' ')}
           >
             <Search
-              className="pointer-events-none absolute left-4 z-10 size-5 text-desvaida"
+              className="pointer-events-none absolute left-3 z-10 size-5 text-desvaida md:left-4"
               aria-hidden
             />
             {/* Fantasma de parámetros (modo comando): detrás del input transparente. */}
@@ -310,7 +310,7 @@ export function Entrada({
                 aria-hidden
                 className={[
                   'pointer-events-none absolute inset-0 flex items-center overflow-hidden',
-                  'pl-12',
+                  'pl-11 md:pl-12',
                   mostrarOjo ? 'pr-14' : 'pr-4',
                   'text-entrada',
                 ].join(' ')}
@@ -349,7 +349,7 @@ export function Entrada({
               }
               role="combobox"
               className={[
-                'relative z-[1] min-h-14 w-full rounded-full border-0 bg-transparent pl-12',
+                'relative z-[1] min-h-14 w-full rounded-full border-0 bg-transparent pl-11 md:pl-12',
                 mostrarOjo ? 'pr-14' : 'pr-4',
                 'text-entrada text-tinta placeholder:text-desvaida',
                 'focus-visible:outline-none',
