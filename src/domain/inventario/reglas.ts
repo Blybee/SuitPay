@@ -31,12 +31,17 @@ export function maximoAlFijar(
 
 /**
  * Aviso no bloqueante para el mostrador. Nunca habla de «stock real».
- * `null` si el SKU no está controlado o la cifra no está baja.
+ * `null` si el SKU no está controlado (sin cantidad) o la cifra no está baja.
  */
 export function textoAvisoInventario(
-  existencia: { readonly cantidad: number; readonly alerta: boolean } | null,
+  existencia: {
+    readonly cantidad?: number
+    readonly alerta: boolean
+  } | null,
 ): string | null {
-  if (existencia === null) return null
+  if (existencia === null || typeof existencia.cantidad !== 'number') {
+    return null
+  }
   if (existencia.cantidad <= 0) {
     return 'Cifra orientativa en 0. Se puede emitir.'
   }

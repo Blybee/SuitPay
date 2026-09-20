@@ -39,21 +39,45 @@ export const leerInventarioFn = createServerFn({ method: 'POST' })
 
 export const escribirInventarioFn = createServerFn({ method: 'POST' })
   .validator(
-    z.object({
-      codigo: z.string().trim().min(1).max(40),
-      cantidad: z.number().finite(),
-      umbral: z.number().finite().optional(),
-    }),
+    z
+      .object({
+        codigo: z.string().trim().min(1).max(40),
+        cantidad: z.number().finite().optional(),
+        umbral: z.number().finite().optional(),
+        precioCompraCentimos: z
+          .number()
+          .int()
+          .nonnegative()
+          .nullable()
+          .optional(),
+        precioCompraEn: z
+          .string()
+          .regex(/^\d{4}-\d{2}-\d{2}$/)
+          .nullable()
+          .optional(),
+      })
+      .refine(
+        (data) =>
+          data.cantidad !== undefined ||
+          data.precioCompraCentimos !== undefined,
+        { message: 'sin_cambio' },
+      ),
   )
   .handler(async ({ data }): Promise<RespuestaDeExistencia> => {
     try {
       const identidad = await exigirIdentidad(getRequestHeaders(), [
         'administrador',
       ])
-      const existencia = await new AlmacenDeInventarioFirestore().fijar({
+      const existencia = await new AlmacenDeInventarioFirestore().parchear({
         codigo: data.codigo,
-        cantidad: data.cantidad,
+        ...(data.cantidad !== undefined ? { cantidad: data.cantidad } : {}),
         umbral: data.umbral,
+        ...(data.precioCompraCentimos !== undefined
+          ? { precioCompraCentimos: data.precioCompraCentimos }
+          : {}),
+        ...(data.precioCompraEn !== undefined
+          ? { precioCompraEn: data.precioCompraEn }
+          : {}),
         autorId: identidad.uid,
         momento: new Date(),
       })

@@ -1,12 +1,9 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
-import type { Firestore } from 'firebase-admin/firestore'
-import type { DocumentData } from 'firebase-admin/firestore'
+import type { DocumentData, Firestore } from 'firebase-admin/firestore'
 import type { Existencia } from '../../domain/inventario/tipos.ts'
-import {
-  deltasDeVenta,
-  estaEnAlerta,
-  maximoAlFijar,
-} from '../../domain/inventario/reglas.ts'
+import { aplicarParcheDeInventario } from '../../domain/inventario/parche.ts'
+import type { ParcheDeInventario } from '../../domain/inventario/parche.ts'
+import { deltasDeVenta, estaEnAlerta } from '../../domain/inventario/reglas.ts'
 import { COLECCIONES, bd } from '../firebase/admin.ts'
 import type { Comprobante } from '../emision/almacen.ts'
 import type { AlmacenDeInventario, FijarExistencia } from './almacen.ts'
@@ -21,12 +18,25 @@ function aExistencia(id: string, datos: DocumentData): Existencia {
   const codigo =
     delCampo.length > 0 ? delCampo : codigoDesdeIdDeInventario(id)
   const actualizadoEn = datos['actualizadoEn']
+  const cantidad =
+    typeof datos['cantidad'] === 'number' ? datos['cantidad'] : undefined
+  const precioCompraCentimos =
+    typeof datos['precioCompraCentimos'] === 'number'
+      ? datos['precioCompraCentimos']
+      : undefined
+  const precioCompraEn =
+    typeof datos['precioCompraEn'] === 'string' &&
+    datos['precioCompraEn'].trim() !== ''
+      ? datos['precioCompraEn'].trim()
+      : undefined
   return {
     codigo,
-    cantidad: typeof datos['cantidad'] === 'number' ? datos['cantidad'] : 0,
+    ...(cantidad !== undefined ? { cantidad } : {}),
     maximo: typeof datos['maximo'] === 'number' ? datos['maximo'] : 0,
     ...(typeof datos['umbral'] === 'number' ? { umbral: datos['umbral'] } : {}),
     alerta: datos['alerta'] === true,
+    ...(precioCompraCentimos !== undefined ? { precioCompraCentimos } : {}),
+    ...(precioCompraEn !== undefined ? { precioCompraEn } : {}),
     actualizadoPor:
       typeof datos['actualizadoPor'] === 'string'
         ? datos['actualizadoPor']
@@ -36,6 +46,38 @@ function aExistencia(id: string, datos: DocumentData): Existencia {
         ? actualizadoEn.toDate()
         : new Date(0),
   }
+}
+
+function payloadDeExistencia(
+  previa: Existencia | null,
+  siguiente: Existencia,
+): Record<string, unknown> {
+  const payload: Record<string, unknown> = {
+    codigo: siguiente.codigo,
+    maximo: siguiente.maximo,
+    alerta: siguiente.alerta,
+    actualizadoPor: siguiente.actualizadoPor,
+    actualizadoEn: Timestamp.fromDate(siguiente.actualizadoEn),
+  }
+  if (typeof siguiente.cantidad === 'number') {
+    payload['cantidad'] = siguiente.cantidad
+  } else if (previa !== null && typeof previa.cantidad === 'number') {
+    payload['cantidad'] = FieldValue.delete()
+  }
+  if (siguiente.umbral !== undefined) {
+    payload['umbral'] = siguiente.umbral
+  }
+  if (siguiente.precioCompraCentimos !== undefined) {
+    payload['precioCompraCentimos'] = siguiente.precioCompraCentimos
+  } else if (previa?.precioCompraCentimos !== undefined) {
+    payload['precioCompraCentimos'] = FieldValue.delete()
+  }
+  if (siguiente.precioCompraEn !== undefined) {
+    payload['precioCompraEn'] = siguiente.precioCompraEn
+  } else if (previa?.precioCompraEn !== undefined) {
+    payload['precioCompraEn'] = FieldValue.delete()
+  }
+  return payload
 }
 
 export class AlmacenDeInventarioFirestore implements AlmacenDeInventario {
@@ -67,29 +109,21 @@ export class AlmacenDeInventarioFirestore implements AlmacenDeInventario {
   }
 
   async fijar(entrada: FijarExistencia): Promise<Existencia> {
+    return this.parchear({
+      codigo: entrada.codigo,
+      cantidad: entrada.cantidad,
+      umbral: entrada.umbral,
+      autorId: entrada.autorId,
+      momento: entrada.momento,
+    })
+  }
+
+  async parchear(entrada: ParcheDeInventario): Promise<Existencia> {
     const ref = this.ref(entrada.codigo)
     const previa = await this.leer(entrada.codigo)
-    const maximo = maximoAlFijar(entrada.cantidad, previa?.maximo)
-    const umbral = entrada.umbral ?? previa?.umbral
-    const alerta = estaEnAlerta(entrada.cantidad, maximo, umbral)
-    await ref.set({
-      codigo: entrada.codigo,
-      cantidad: entrada.cantidad,
-      maximo,
-      ...(umbral !== undefined ? { umbral } : {}),
-      alerta,
-      actualizadoPor: entrada.autorId,
-      actualizadoEn: Timestamp.fromDate(entrada.momento),
-    })
-    return {
-      codigo: entrada.codigo,
-      cantidad: entrada.cantidad,
-      maximo,
-      ...(umbral !== undefined ? { umbral } : {}),
-      alerta,
-      actualizadoPor: entrada.autorId,
-      actualizadoEn: entrada.momento,
-    }
+    const siguiente = aplicarParcheDeInventario(previa, entrada)
+    await ref.set(payloadDeExistencia(previa, siguiente), { merge: true })
+    return siguiente
   }
 
   async listarAlertas(): Promise<readonly Existencia[]> {
@@ -153,12 +187,11 @@ export class AlmacenDeInventarioFirestore implements AlmacenDeInventario {
       for (const snap of snaps) {
         if (!snap.exists) continue
         const bruto = snap.data() ?? {}
+        if (typeof bruto['cantidad'] !== 'number') continue
         const codigo = aExistencia(snap.id, bruto).codigo
         const delta = deltas.get(codigo) ?? 0
         const aplicado = sentido === 'venta' ? delta : -delta
-        const cantidad =
-          (typeof bruto['cantidad'] === 'number' ? bruto['cantidad'] : 0) +
-          aplicado
+        const cantidad = bruto['cantidad'] + aplicado
         const maximo =
           typeof bruto['maximo'] === 'number' ? bruto['maximo'] : cantidad
         const umbral =

@@ -1,6 +1,6 @@
 /**
- * Catálogo compacto para asistencia (constitución IV v1.3.0).
- * Sin precio, stock ni ficha de cliente.
+ * Catálogo compacto para asistencia (constitución IV v1.4.0).
+ * Sin precio de venta, stock, costo de compra ni ficha de cliente.
  */
 
 export interface EntradaDeMemoria {

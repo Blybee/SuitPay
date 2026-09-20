@@ -1,6 +1,6 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import { createFileRoute } from '@tanstack/react-router'
-import { Loader2, Plus, TriangleAlert, Upload } from 'lucide-react'
+import { Loader2, Plus, ShoppingBag, TriangleAlert, Upload } from 'lucide-react'
 import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
 import { leerCatalogoPublicadoFn } from '../../features/catalogo/catalogo.funciones.ts'
 import { GrillaRevision } from '../../features/catalogo/grilla-revision.tsx'
@@ -12,6 +12,9 @@ import {
 import type { ResumenDeImportacion } from '../../features/catalogo/importar.funciones.ts'
 import { listarAlertasInventarioFn } from '../../features/inventario/inventario.funciones.ts'
 import { PanelCantidad } from '../../features/inventario/panel-cantidad.tsx'
+import { PanelCompras } from '../../features/compras/panel-compras.tsx'
+import { MenuAccionesCatalogo } from '../../features/catalogo/menu-acciones.tsx'
+import { subirScrollerDePagina } from '../../features/catalogo/scroll-pagina.ts'
 import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import { usarSesion } from '../../features/sesion/almacen.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
@@ -33,8 +36,9 @@ import type {
 } from '../../ui/componentes/ZonaDeCarga.tsx'
 
 /**
- * Catálogo maestro (lista publicada) + importación en disclosure.
- * Cantidad orientativa: popover perezoso por fila, no viaja en catalogo/actual.
+ * Catálogo maestro (lista publicada) + importación y compras en disclosure.
+ * Cantidad y costo orientativos: panel perezoso por fila, no viajan en
+ * catalogo/actual.
  */
 
 export const Route = createFileRoute('/administracion/catalogo')({
@@ -73,10 +77,12 @@ function PantallaDeCatalogo() {
   const rol = usarSesion((s) => s.rol)
   const puedeEscribir = rol === 'administrador'
   const idImportar = useId()
+  const idCompras = useId()
 
   const [cargando, setCargando] = useState(true)
   const [modo, setModo] = useState<ModoDeGrilla>('maestro')
   const [importarAbierto, setImportarAbierto] = useState(false)
+  const [comprasAbierto, setComprasAbierto] = useState(false)
   const [archivo, setArchivo] = useState<ArchivoElegido | null>(null)
   const [estadoCarga, setEstadoCarga] = useState<EstadoDeCarga>('vacio')
   const [mensajeCarga, setMensajeCarga] = useState<string | null>(null)
@@ -175,6 +181,7 @@ function PantallaDeCatalogo() {
 
   function abrirImportar(): void {
     if (!puedeEscribir) return
+    setComprasAbierto(false)
     setImportarAbierto((abierto) => {
       const siguiente = !abierto
       if (siguiente && modo === 'maestro') {
@@ -182,6 +189,12 @@ function PantallaDeCatalogo() {
       }
       return siguiente
     })
+  }
+
+  function abrirCompras(): void {
+    if (!puedeEscribir) return
+    setImportarAbierto(false)
+    setComprasAbierto((abierto) => !abierto)
   }
 
   async function leerArchivo(elegido: File): Promise<void> {
@@ -359,45 +372,71 @@ function PantallaDeCatalogo() {
 
   useEffect(() => {
     if (codigoCantidad === null) return
-    anclaCantidad.current?.scrollIntoView({
-      block: 'start',
-      behavior: comportamientoDeScroll(),
+    const behavior = comportamientoDeScroll()
+    const marco = window.requestAnimationFrame(() => {
+      subirScrollerDePagina(anclaCantidad.current, behavior)
     })
+    return () => window.cancelAnimationFrame(marco)
   }, [codigoCantidad])
+
+  const accionesSecundarias = (
+    <>
+      {modo === 'maestro' ? (
+        <Boton
+          variante={soloAlertas ? 'peligro' : 'secundario'}
+          aria-pressed={soloAlertas}
+          disabled={codigosEnAlerta.size === 0 && !soloAlertas}
+          className="w-full justify-start md:w-auto"
+          onClick={() => setSoloAlertas((actual) => !actual)}
+        >
+          En alerta
+          {codigosEnAlerta.size > 0 ? ` (${codigosEnAlerta.size})` : ''}
+        </Boton>
+      ) : null}
+      {puedeEscribir && modo === 'maestro' ? (
+        <Boton className="w-full justify-start md:w-auto" onClick={agregarNuevo}>
+          <Plus className="size-4" aria-hidden />
+          Nuevo
+        </Boton>
+      ) : null}
+      {puedeEscribir ? (
+        <Boton
+          variante="principal"
+          className="w-full justify-start md:w-auto"
+          aria-expanded={importarAbierto}
+          aria-controls={idImportar}
+          onClick={abrirImportar}
+        >
+          <Upload className="size-4" aria-hidden />
+          Importar
+        </Boton>
+      ) : null}
+      {puedeEscribir && modo === 'maestro' ? (
+        <Boton
+          variante="principal"
+          className="w-full justify-start md:w-auto"
+          aria-expanded={comprasAbierto}
+          aria-controls={idCompras}
+          onClick={abrirCompras}
+        >
+          <ShoppingBag className="size-4" aria-hidden />
+          Compras
+        </Boton>
+      ) : null}
+    </>
+  )
 
   return (
     <div className="flex min-h-full flex-col gap-3 px-6 py-8">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <CabeceraAdmin titulo="Catálogo" />
         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-          {modo === 'maestro' ? (
-            <Boton
-              variante={soloAlertas ? 'peligro' : 'secundario'}
-              aria-pressed={soloAlertas}
-              disabled={codigosEnAlerta.size === 0 && !soloAlertas}
-              onClick={() => setSoloAlertas((actual) => !actual)}
-            >
-              En alerta
-              {codigosEnAlerta.size > 0 ? ` (${codigosEnAlerta.size})` : ''}
-            </Boton>
-          ) : null}
-          {puedeEscribir && modo === 'maestro' ? (
-            <Boton onClick={agregarNuevo}>
-              <Plus className="size-4" aria-hidden />
-              Nuevo
-            </Boton>
-          ) : null}
-          {puedeEscribir ? (
-            <Boton
-              variante="principal"
-              aria-expanded={importarAbierto}
-              aria-controls={idImportar}
-              onClick={abrirImportar}
-            >
-              <Upload className="size-4" aria-hidden />
-              Importar
-            </Boton>
-          ) : null}
+          <div className="hidden flex-wrap items-center justify-end gap-2 md:flex">
+            {accionesSecundarias}
+          </div>
+          <MenuAccionesCatalogo>
+            <div className="flex w-full flex-col gap-1">{accionesSecundarias}</div>
+          </MenuAccionesCatalogo>
           {puedeEscribir && modo === 'maestro' ? (
             <Boton
               variante="principal"
@@ -471,6 +510,22 @@ function PantallaDeCatalogo() {
                 <AvisoPublicacionBloqueada />
               ) : null}
             </section>
+          </div>
+        </div>
+
+        <div
+          id={idCompras}
+          className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
+          style={{ gridTemplateRows: comprasAbierto ? '1fr' : '0fr' }}
+        >
+          <div className="min-h-0 overflow-hidden">
+            <div className="pb-1">
+              <PanelCompras
+                puedeEscribir={puedeEscribir}
+                deshabilitado={ocupado || publicando}
+                productos={productos}
+              />
+            </div>
           </div>
         </div>
 

@@ -35,6 +35,7 @@ describe('inventario orientativo', () => {
     expect(textoAvisoInventario({ cantidad: 3, alerta: true })).toBe(
       'Cifra orientativa bajo umbral. Se puede emitir.',
     )
+    expect(textoAvisoInventario({ alerta: true })).toBeNull()
   })
 
   it('deltas de venta son negativos y agrupan códigos', () => {

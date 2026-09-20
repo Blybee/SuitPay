@@ -346,10 +346,11 @@
 }
 
 /*
- * Menú kebab de captura (móvil). Disclosure anclado al disparador.
- * Entrada/salida: @starting-style + allow-discrete.
+ * Overflow menu anclado al disparador (captura en mostrador, acciones
+ * de Catálogo en móvil). Entrada/salida: @starting-style + allow-discrete.
  */
-.menu-captura-entrada {
+.menu-captura-entrada,
+.menu-desborde {
   display: none;
   opacity: 0;
   transform: scale(0.97);
@@ -360,7 +361,8 @@
   transition-behavior: allow-discrete;
 }
 
-.menu-captura-entrada[data-open] {
+.menu-captura-entrada[data-open],
+.menu-desborde[data-open] {
   display: flex;
   opacity: 1;
   transform: scale(1);
@@ -373,12 +375,14 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .menu-captura-entrada {
+  .menu-captura-entrada,
+  .menu-desborde {
     transform: none;
     transition: none;
   }
 
-  .menu-captura-entrada[data-open] {
+  .menu-captura-entrada[data-open],
+  .menu-desborde[data-open] {
     @starting-style {
       transform: none;
     }

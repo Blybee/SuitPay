@@ -16,3 +16,11 @@
 - *responsive density*
 
 - *slot activo*
+
+- *human-in-the-loop*
+>revisión y confirmación
+
+- *menu desplegable*
+
+-*disclosure*
+>panel que baja 

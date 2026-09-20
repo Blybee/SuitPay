@@ -1,6 +1,27 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.3.0 → 1.4.0
+Bump rationale: MINOR. Se amplía el principio IV: el PDF o imagen de una
+factura de proveedor en Catálogo → Compras MAY enviarse al modelo. MUST NOT
+persistirse el medio. MUST NOT enviarse `clientes` ni el precio de venta del
+catálogo. El write a `inventario/{codigo}.precioCompraCentimos` solo ocurre
+tras confirmación de un administrador. Aprobado al pedir precio de compra
+orientativo (spec 007).
+
+Principios modificados:
+  IV.  Excepción de medios de factura de proveedor (sin persistir, sin PII
+       de clientes, compacto `{ id, n, m }` sin precio de venta).
+
+Secciones añadidas: ninguna.
+Plantillas: sin cambio estructural. Spec `007`.
+
+TODO diferidos: ninguno.
+-->
+
+<!--
+SYNC IMPACT REPORT (histórico)
+==================
 Version change: 1.2.0 → 1.3.0
 Bump rationale: MINOR. Se amplía el principio IV: el catálogo compacto MAY
 incluir marca (`m`) y un bloque de priores de marca por familia; los medios
@@ -145,9 +166,10 @@ manual.
 imagen o texto pegado— MAY enviarse al modelo (el membrete puede viajar en el archivo). Audio y
 fotografía del pedido siguen siendo contenido que produce el vendedor.
 
-**Catálogo compacto (v1.2.0, ampliado v1.3.0).** En cotizar, fotografía, dictado y
-entrenamiento MAY enviarse un catálogo minimizado `{ id, n, m, a[], e[] }` (código, nombre,
-marca, alias y etiquetas de asistencia) y un bloque opaco de priores de marca por familia.
+**Catálogo compacto (v1.2.0, ampliado v1.3.0).** En cotizar, fotografía, dictado,
+entrenamiento y Compras de Catálogo MAY enviarse un catálogo minimizado `{ id, n, m, a[], e[] }`
+(código, nombre, marca, alias y etiquetas de asistencia) y un bloque opaco de priores de marca
+por familia. En Compras el compacto MAY omitir alias, etiquetas y priores (`{ id, n, m }`).
 MUST NOT enviarse precio, stock, ni la colección `clientes`. La búsqueda escrita del
 mostrador MUST seguir siendo local (principio V).
 
@@ -165,6 +187,14 @@ texto— MAY enviarse al modelo. MUST NOT persistirse esos medios. MUST NOT escr
 `clientes/{id}`. La salida MUST limitarse a alias, etiquetas, estados de alineación y
 priores de marca. Confirmar en admin es el único write inmediato a `aprendizaje/memoria`.
 
+**Compras en Catálogo (v1.4.0).** El PDF o imagen de una factura de **proveedor** que el
+administrador aporta en Catálogo → Compras MAY enviarse al modelo, junto con un catálogo
+compacto `{ id, n, m }` (sin precio de venta, sin stock, sin `clientes`). MUST NOT
+persistirse el medio. La extracción es una propuesta; el único write es
+`inventario/{codigo}.precioCompraCentimos` (y fecha opcional) tras confirmación explícita.
+MUST NOT publicarse el costo en `catalogo/actual` ni enviarse al compacto de asistencia
+del mostrador.
+
 El modelo MAY devolver un número de documento y una denominación; la etiqueta que ve el
 vendedor MUST resolverse dentro del sistema. El modelo no es la fuente de verdad del cliente.
 No se escribe `clientes/{id}` a partir de la respuesta del modelo.
@@ -179,6 +209,8 @@ No se escribe `clientes/{id}` a partir de la respuesta del modelo.
 imagen/texto, catálogo compacto y aprendizaje (v1.2.0) las pidió el mismo dueño: sin visión
 del requerimiento y sin matching semántico, la cotización no entra al mostrador. El
 entrenamiento admin (v1.3.0) cierra el mismo hueco con pares históricos, sin PII persistida.
+El costo de compra en Catálogo (v1.4.0) es la misma familia: el medio viaja, no se archiva,
+y un humano confirma antes de escribir.
 
 ### V. El mostrador no se detiene
 
@@ -286,4 +318,4 @@ consideró y se descartó. La plantilla de plan reserva una tabla para ello.
 **Guía en tiempo de ejecución.** `.cursor/rules/specify-rules.mdc` es el archivo de contexto del
 agente de codificación y se mantiene mediante la extensión `agent-context`.
 
-**Version**: 1.3.0 | **Ratified**: 2026-07-28 | **Last Amended**: 2026-09-10
+**Version**: 1.4.0 | **Ratified**: 2026-07-28 | **Last Amended**: 2026-09-19

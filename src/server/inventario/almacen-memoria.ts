@@ -1,30 +1,9 @@
 import type { Existencia } from '../../domain/inventario/tipos.ts'
-import {
-  deltasDeVenta,
-  estaEnAlerta,
-  maximoAlFijar,
-} from '../../domain/inventario/reglas.ts'
+import { aplicarParcheDeInventario } from '../../domain/inventario/parche.ts'
+import type { ParcheDeInventario } from '../../domain/inventario/parche.ts'
+import { deltasDeVenta } from '../../domain/inventario/reglas.ts'
 import type { AlmacenDeEmision, Comprobante } from '../emision/almacen.ts'
 import type { AlmacenDeInventario, FijarExistencia } from './almacen.ts'
-
-function conAlerta(
-  codigo: string,
-  cantidad: number,
-  maximo: number,
-  umbral: number | undefined,
-  autorId: string,
-  momento: Date,
-): Existencia {
-  return {
-    codigo,
-    cantidad,
-    maximo,
-    ...(umbral !== undefined ? { umbral } : {}),
-    alerta: estaEnAlerta(cantidad, maximo, umbral),
-    actualizadoPor: autorId,
-    actualizadoEn: momento,
-  }
-}
 
 export class AlmacenDeInventarioMemoria implements AlmacenDeInventario {
   private readonly existencias = new Map<string, Existencia>()
@@ -44,17 +23,18 @@ export class AlmacenDeInventarioMemoria implements AlmacenDeInventario {
   }
 
   async fijar(entrada: FijarExistencia): Promise<Existencia> {
-    const previa = this.existencias.get(entrada.codigo)
-    const maximo = maximoAlFijar(entrada.cantidad, previa?.maximo)
-    const umbral = entrada.umbral ?? previa?.umbral
-    const siguiente = conAlerta(
-      entrada.codigo,
-      entrada.cantidad,
-      maximo,
-      umbral,
-      entrada.autorId,
-      entrada.momento,
-    )
+    return this.parchear({
+      codigo: entrada.codigo,
+      cantidad: entrada.cantidad,
+      umbral: entrada.umbral,
+      autorId: entrada.autorId,
+      momento: entrada.momento,
+    })
+  }
+
+  async parchear(entrada: ParcheDeInventario): Promise<Existencia> {
+    const previa = this.existencias.get(entrada.codigo) ?? null
+    const siguiente = aplicarParcheDeInventario(previa, entrada)
     this.existencias.set(entrada.codigo, siguiente)
     return siguiente
   }
@@ -104,19 +84,14 @@ export class AlmacenDeInventarioMemoria implements AlmacenDeInventario {
     const momento = new Date()
     for (const [codigo, delta] of deltas) {
       const actual = this.existencias.get(codigo)
-      if (actual === undefined) continue
-      const cantidad = actual.cantidad + delta
-      this.existencias.set(
+      if (actual === undefined || typeof actual.cantidad !== 'number') continue
+      const siguiente = aplicarParcheDeInventario(actual, {
         codigo,
-        conAlerta(
-          codigo,
-          cantidad,
-          actual.maximo,
-          actual.umbral,
-          autorId,
-          momento,
-        ),
-      )
+        cantidad: actual.cantidad + delta,
+        autorId,
+        momento,
+      })
+      this.existencias.set(codigo, siguiente)
     }
   }
 
