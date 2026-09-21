@@ -1,16 +1,9 @@
 import { useEffect, useState } from 'react'
-import {
-  ChevronDown,
-  ChevronUp,
-  Loader2,
-  UserPlus,
-  UserRoundPen,
-} from 'lucide-react'
+import { Loader2, UserPlus, UserRoundPen } from 'lucide-react'
 import { REGLAS } from '../../domain/documentos/tipos.ts'
 import type { TipoElegible } from '../../domain/documentos/tipos.ts'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type { Centimos } from '../../domain/totales/calculo.ts'
-import { modosCampoClientePermitidos } from '../../features/clientes/compatibilidad-documento.ts'
 import type { ModoCampoCliente } from '../../features/clientes/compatibilidad-documento.ts'
 import { esClientePorNombre } from '../../features/clientes/documento-marcador.ts'
 import { Boton, Campo } from './primitivas.tsx'
@@ -19,9 +12,9 @@ import { Selector } from './Selector.tsx'
 /**
  * Cabecera del documento: tipo (con serie en la etiqueta) y cliente.
  *
- * Campo inline RUC/DNI/Nombre con chevrons. La búsqueda/validación del documento
- * es manual con Enter; el «+» abre el modal Buscar o Agregar (no confirma el
- * campo). En modo Nombre, «Usar» aplica la denominación.
+ * Un campo infiere DNI/RUC/nombre según el tipo fiscal y lo tecleado (sin
+ * conmutador). Enter confirma; el «+» abre Buscar o Agregar. Con nombre, «Usar»
+ * aplica la denominación.
  */
 
 export type ModoDeCabecera =
@@ -52,24 +45,53 @@ export function modoEncadenaGuia(modo: ModoDeCabecera): boolean {
   return modo === 'boleta_guia' || modo === 'factura_guia'
 }
 
-const ETIQUETA_CAMPO: Record<ModoDeCampoCliente, string> = {
-  ruc: 'RUC',
-  dni: 'DNI',
-  nombre: 'Nombre',
+function esIntentoDeDocumento(texto: string): boolean {
+  return texto.length === 0 || /^[\d\s]*$/.test(texto)
 }
 
-function modoCampoPorDefecto(modo: ModoDeCabecera): ModoDeCampoCliente | null {
-  const fiscal = tipoFiscalDeModo(modo)
-  const permitidos = modosCampoClientePermitidos(
-    fiscal === 'cotizacion' ? 'cotizacion' : fiscal,
-  )
-  return permitidos[0] ?? null
-}
-
-function longitudEsperada(modoCampo: ModoDeCampoCliente): number | null {
-  if (modoCampo === 'ruc') return 11
-  if (modoCampo === 'dni') return 8
+/** DNI/RUC/nombre a partir del tipo fiscal y de lo tecleado. */
+export function clasificarEntradaCliente(
+  fiscal: TipoElegible | 'cotizacion',
+  texto: string,
+): ModoCampoCliente | null {
+  if (fiscal === 'nota_venta') return null
+  if (fiscal === 'factura') return 'ruc'
+  if (esIntentoDeDocumento(texto)) {
+    if (fiscal === 'boleta') return 'dni'
+    const digitos = texto.replace(/\D/g, '')
+    if (digitos.length > 8) return 'ruc'
+    if (digitos.length > 0) return 'dni'
+    return 'nombre'
+  }
+  if (fiscal === 'boleta' || fiscal === 'cotizacion') return 'nombre'
   return null
+}
+
+export function sanitizarCampoCliente(
+  fiscal: TipoElegible | 'cotizacion',
+  valor: string,
+): string {
+  if (fiscal === 'nota_venta') return ''
+  if (fiscal === 'factura') return valor.replace(/\D/g, '').slice(0, 11)
+  if (esIntentoDeDocumento(valor)) {
+    const max = fiscal === 'boleta' ? 8 : 11
+    return valor.replace(/\D/g, '').slice(0, max)
+  }
+  return valor.slice(0, 120)
+}
+
+function placeholderCampoCliente(
+  fiscal: TipoElegible | 'cotizacion',
+): string {
+  if (fiscal === 'factura') return 'RUC'
+  if (fiscal === 'boleta') return 'DNI o Nombre'
+  return 'DNI, RUC o Nombre'
+}
+
+function ariaLabelCampoCliente(fiscal: TipoElegible | 'cotizacion'): string {
+  if (fiscal === 'factura') return 'RUC del cliente'
+  if (fiscal === 'boleta') return 'DNI o nombre del cliente'
+  return 'DNI, RUC o nombre del cliente'
 }
 
 export function mensajeValidacionCampo(
@@ -112,6 +134,16 @@ function etiquetaDeOpcionTipo(
   return 'Cotización'
 }
 
+/** Trigger en móvil: abreviatura, sin serie. */
+export function etiquetaCortaDeModo(modo: ModoDeCabecera): string {
+  if (modo === 'boleta') return 'Bol'
+  if (modo === 'boleta_guia') return 'Bol + GR'
+  if (modo === 'factura') return 'Fact'
+  if (modo === 'factura_guia') return 'Fact + GR'
+  if (modo === 'nota_venta') return 'Nota'
+  return 'Coti'
+}
+
 export interface PropsDeCabecera {
   readonly modo: ModoDeCabecera
   readonly onCambiarModo: (modo: ModoDeCabecera) => void
@@ -149,12 +181,6 @@ export function CabeceraDocumento({
   const tipoFiscal = tipoFiscalDeModo(modo)
   const esCotizacion = tipoFiscal === 'cotizacion'
   const reglas = esCotizacion ? null : REGLAS[tipoFiscal]
-  const permitidos = modosCampoClientePermitidos(
-    esCotizacion ? 'cotizacion' : tipoFiscal,
-  )
-  const [modoCampo, setModoCampo] = useState<ModoDeCampoCliente | null>(
-    modoCampoPorDefecto(modo),
-  )
   const [textoCampo, setTextoCampo] = useState('')
   /** Solo borde rojo; sin mensaje de texto (pedido de polish). */
   const [campoMarcadoInvalido, setCampoMarcadoInvalido] = useState(false)
@@ -162,33 +188,44 @@ export function CabeceraDocumento({
   useEffect(() => {
     setTextoCampo('')
     setCampoMarcadoInvalido(false)
-    setModoCampo(modoCampoPorDefecto(modo))
   }, [modo, cliente])
 
-  const opcionesTipo: readonly { valor: ModoDeCabecera; etiqueta: string }[] = [
+  const modoCampo = clasificarEntradaCliente(tipoFiscal, textoCampo)
+
+  const opcionesTipo: readonly {
+    valor: ModoDeCabecera
+    etiqueta: string
+    etiquetaCorta: string
+  }[] = [
     {
       valor: 'boleta',
       etiqueta: etiquetaDeOpcionTipo('boleta', series),
+      etiquetaCorta: etiquetaCortaDeModo('boleta'),
     },
     {
       valor: 'boleta_guia',
       etiqueta: etiquetaDeOpcionTipo('boleta_guia', series),
+      etiquetaCorta: etiquetaCortaDeModo('boleta_guia'),
     },
     {
       valor: 'factura',
       etiqueta: etiquetaDeOpcionTipo('factura', series),
+      etiquetaCorta: etiquetaCortaDeModo('factura'),
     },
     {
       valor: 'factura_guia',
       etiqueta: etiquetaDeOpcionTipo('factura_guia', series),
+      etiquetaCorta: etiquetaCortaDeModo('factura_guia'),
     },
     {
       valor: 'nota_venta',
       etiqueta: etiquetaDeOpcionTipo('nota_venta', series),
+      etiquetaCorta: etiquetaCortaDeModo('nota_venta'),
     },
     {
       valor: 'cotizacion',
       etiqueta: etiquetaDeOpcionTipo('cotizacion', series),
+      etiquetaCorta: etiquetaCortaDeModo('cotizacion'),
     },
   ]
 
@@ -206,27 +243,9 @@ export function CabeceraDocumento({
     nombreTrim.length >= 2 &&
     onNombreListo !== undefined
 
-  function ciclarModoCampo(delta: 1 | -1): void {
-    if (permitidos.length < 2 || modoCampo === null) return
-    const idx = permitidos.indexOf(modoCampo)
-    const siguiente =
-      permitidos[(idx + delta + permitidos.length) % permitidos.length]!
-    setModoCampo(siguiente)
-    setTextoCampo('')
-    setCampoMarcadoInvalido(false)
-  }
-
   function alCambiarTexto(valor: string): void {
-    if (modoCampo === null) return
     setCampoMarcadoInvalido(false)
-
-    if (modoCampo === 'nombre') {
-      setTextoCampo(valor.slice(0, 120))
-      return
-    }
-
-    const max = longitudEsperada(modoCampo) ?? 11
-    setTextoCampo(valor.replace(/\D/g, '').slice(0, max))
+    setTextoCampo(sanitizarCampoCliente(tipoFiscal, valor))
   }
 
   function confirmarCampo(): void {
@@ -256,6 +275,7 @@ export function CabeceraDocumento({
   }
 
   const mostrarCampo = cliente === null && modoCampo !== null
+  const esDocumento = modoCampo === 'ruc' || modoCampo === 'dni'
 
   return (
     <header
@@ -276,85 +296,43 @@ export function CabeceraDocumento({
 
         {mostrarCampo ? (
           <div className="flex min-w-[12rem] flex-1 flex-col gap-1 sm:max-w-xs">
-            <div className="flex items-center gap-2">
-              <div className="flex shrink-0 flex-col items-center">
-                {permitidos.length > 1 ? (
-                  <button
-                    type="button"
-                    aria-label="Modo de campo anterior"
-                    className="flex size-5 items-center justify-center text-desvaida hover:text-tinta"
-                    onClick={() => ciclarModoCampo(-1)}
-                  >
-                    <ChevronUp className="size-3.5" aria-hidden />
-                  </button>
-                ) : (
-                  <span className="size-5" aria-hidden />
-                )}
-                <label
-                  htmlFor="documento-cliente-inline"
-                  className="font-mono text-etiqueta uppercase text-desvaida"
-                >
-                  {ETIQUETA_CAMPO[modoCampo]}
-                </label>
-                {permitidos.length > 1 ? (
-                  <button
-                    type="button"
-                    aria-label="Modo de campo siguiente"
-                    className="flex size-5 items-center justify-center text-desvaida hover:text-tinta"
-                    onClick={() => ciclarModoCampo(1)}
-                  >
-                    <ChevronDown className="size-3.5" aria-hidden />
-                  </button>
-                ) : (
-                  <span className="size-5" aria-hidden />
-                )}
-              </div>
-              <div className="relative min-w-0 flex-1">
-                <Campo
-                  id="documento-cliente-inline"
-                  inputMode={modoCampo === 'nombre' ? 'text' : 'numeric'}
-                  autoComplete="off"
-                  placeholder={
-                    modoCampo === 'ruc'
-                      ? '20123456789'
-                      : modoCampo === 'dni'
-                        ? '12345678'
-                        : 'Nombre del cliente'
-                  }
-                  maxLength={
-                    modoCampo === 'nombre' ? 120 : modoCampo === 'ruc' ? 11 : 8
-                  }
-                  value={textoCampo}
-                  onChange={(evento) => alCambiarTexto(evento.target.value)}
-                  onKeyDown={alTeclaCampo}
-                  disabled={consultandoPadron}
-                  aria-busy={consultandoPadron || undefined}
-                  aria-label={`${ETIQUETA_CAMPO[modoCampo]} del cliente`}
-                  aria-invalid={
-                    campoMarcadoInvalido ||
-                    (exigeCliente && textoCampo.length === 0)
-                  }
-                  invalido={
-                    campoMarcadoInvalido ||
-                    (exigeCliente && textoCampo.length === 0)
-                  }
-                  className={[
-                    modoCampo === 'nombre'
-                      ? 'tracking-normal'
-                      : 'font-mono tabular-nums tracking-wide',
-                    consultandoPadron ? 'pr-11' : '',
-                  ].join(' ')}
+            <div className="relative min-w-0">
+              <Campo
+                id="documento-cliente-inline"
+                inputMode={tipoFiscal === 'factura' ? 'numeric' : 'text'}
+                autoComplete="off"
+                placeholder={placeholderCampoCliente(tipoFiscal)}
+                maxLength={tipoFiscal === 'factura' ? 11 : 120}
+                value={textoCampo}
+                onChange={(evento) => alCambiarTexto(evento.target.value)}
+                onKeyDown={alTeclaCampo}
+                disabled={consultandoPadron}
+                aria-busy={consultandoPadron || undefined}
+                aria-label={ariaLabelCampoCliente(tipoFiscal)}
+                aria-invalid={
+                  campoMarcadoInvalido ||
+                  (exigeCliente && textoCampo.length === 0)
+                }
+                invalido={
+                  campoMarcadoInvalido ||
+                  (exigeCliente && textoCampo.length === 0)
+                }
+                className={[
+                  esDocumento
+                    ? 'font-mono tabular-nums tracking-wide'
+                    : 'tracking-normal',
+                  consultandoPadron ? 'pr-11' : '',
+                ].join(' ')}
+              />
+              {consultandoPadron ? (
+                <Loader2
+                  className="pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2 animate-spin text-desvaida"
+                  aria-hidden
                 />
-                {consultandoPadron ? (
-                  <Loader2
-                    className="pointer-events-none absolute top-1/2 right-3 size-5 -translate-y-1/2 animate-spin text-desvaida"
-                    aria-hidden
-                  />
-                ) : null}
-              </div>
+              ) : null}
             </div>
             {consultandoPadron ? (
-              <p className="pl-12 font-mono text-etiqueta text-desvaida">
+              <p className="font-mono text-etiqueta text-desvaida">
                 Consultando padrón…
               </p>
             ) : null}

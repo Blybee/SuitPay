@@ -153,4 +153,28 @@ describe('LineaPedido', () => {
       'true',
     )
   })
+
+  it('muestra el nombre completo sin truncar', () => {
+    const largo =
+      'AQUATO- DIAFRAGMA BLANCO AQ-22030 PARA TANQUE DE AGUA DE USO DOMESTICO'
+
+    render(
+      <ul>
+        <LineaPedido
+          linea={{ ...linea, descripcion: largo }}
+          indice={0}
+          precioDeCatalogo={250}
+          onCambiarCantidad={() => undefined}
+          onCambiarPrecio={() => undefined}
+          onQuitar={() => undefined}
+        />
+      </ul>,
+    )
+
+    const nombre = screen.getByText(largo)
+    expect(nombre).toBeInTheDocument()
+    expect(nombre).not.toHaveClass('truncate')
+    expect(nombre).toHaveClass('break-words')
+    expect(screen.getByRole('listitem')).toHaveClass('items-center')
+  })
 })

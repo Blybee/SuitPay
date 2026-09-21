@@ -12,6 +12,8 @@ import { usarCapaDeDialogo } from './capa-dialogo.ts'
 export interface OpcionDeSelector<T extends string = string> {
   readonly valor: T
   readonly etiqueta: string
+  /** En el trigger, por debajo de `md`. El listbox sigue usando `etiqueta`. */
+  readonly etiquetaCorta?: string
   readonly deshabilitada?: boolean
 }
 
@@ -73,6 +75,8 @@ export function Selector<T extends string>({
   const valorRadix = valor.length === 0 ? VALOR_VACIO : valor
   const capaDeDialogo = usarCapaDeDialogo()
   const dentroDeDialogo = capaDeDialogo !== null
+  const opcionSeleccionada = opciones.find((opcion) => opcion.valor === valor)
+  const etiquetaCorta = opcionSeleccionada?.etiquetaCorta
 
   return (
     <div
@@ -117,7 +121,16 @@ export function Selector<T extends string>({
             className,
           )}
         >
-          <RadixSelect.Value />
+          <RadixSelect.Value>
+            {etiquetaCorta !== undefined && opcionSeleccionada !== undefined ? (
+              <>
+                <span className="md:hidden">{etiquetaCorta}</span>
+                <span className="hidden md:inline">
+                  {opcionSeleccionada.etiqueta}
+                </span>
+              </>
+            ) : undefined}
+          </RadixSelect.Value>
           <RadixSelect.Icon asChild>
             <ChevronDown
               className="size-4 shrink-0 text-desvaida transition-transform duration-rapida ease-salida group-data-[state=open]:rotate-180 motion-reduce:transition-none"

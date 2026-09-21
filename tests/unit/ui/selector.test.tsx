@@ -41,4 +41,34 @@ describe('Selector', () => {
     expect(trigger).toHaveTextContent('ACME')
     expect(screen.queryByRole('listbox')).not.toBeInTheDocument()
   })
+
+  it('el trigger usa etiquetaCorta debajo de md y la etiqueta larga en el listbox', async () => {
+    const usuario = userEvent.setup()
+    function ConCorta() {
+      const [valor, setValor] = useState('factura')
+      return (
+        <Selector
+          etiqueta="Tipo"
+          ocultarEtiqueta
+          valor={valor}
+          onCambiar={setValor}
+          opciones={[
+            {
+              valor: 'factura',
+              etiqueta: 'Factura · F001',
+              etiquetaCorta: 'Fact',
+            },
+          ]}
+        />
+      )
+    }
+    render(<ConCorta />)
+
+    const trigger = screen.getByRole('combobox', { name: 'Tipo' })
+    expect(screen.getByText('Fact')).toHaveClass('md:hidden')
+    expect(screen.getByText('Factura · F001')).toHaveClass('hidden', 'md:inline')
+
+    await usuario.click(trigger)
+    expect(screen.getByRole('option', { name: 'Factura · F001' })).toBeVisible()
+  })
 })

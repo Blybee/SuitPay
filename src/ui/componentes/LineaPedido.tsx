@@ -213,7 +213,7 @@ export function LineaPedido({
       ref={fila}
       className={[
         REJILLA_LINEA,
-        'linea-pedido items-baseline border-b border-borde py-1.5',
+        'linea-pedido items-center border-b border-borde py-1.5 md:items-baseline',
         // El estado no se distingue solo por color: el campo se marca y abajo
         // se escribe el motivo.
         lineaEnAviso && 'bg-aviso/5',
@@ -222,9 +222,9 @@ export function LineaPedido({
         .filter(Boolean)
         .join(' ')}
     >
-      <div className="min-w-0 overflow-hidden">
+      <div className="min-w-0">
         <p
-          className="truncate text-cuerpo uppercase text-tinta"
+          className="text-pretty break-words text-etiqueta tracking-normal uppercase text-tinta md:text-cuerpo"
           title={`${linea.descripcion} · ${linea.codigo} · ${linea.unidad}`}
         >
           {resaltar ? (
@@ -286,6 +286,7 @@ export function LineaPedido({
         variante="en-linea"
         numerico
         superficie="papel"
+        className="text-etiqueta tracking-normal md:text-cuerpo"
         onFocus={() => {
           editando.current = true
         }}
@@ -307,6 +308,7 @@ export function LineaPedido({
           variante="en-linea"
           numerico
           superficie="papel"
+          className="text-etiqueta tracking-normal md:text-cuerpo"
           aviso={bajoMayorista}
           invalido={bajoPiso}
           onFocus={() => {
@@ -331,7 +333,7 @@ export function LineaPedido({
         )}
       </div>
 
-      <p className="min-w-0 truncate font-mono tabular-nums text-right text-cuerpo font-bold text-tinta">
+      <p className="min-w-0 truncate font-mono tabular-nums text-right text-etiqueta font-bold tracking-normal text-tinta md:text-cuerpo">
         {formatearImporte(importe)}
       </p>
 

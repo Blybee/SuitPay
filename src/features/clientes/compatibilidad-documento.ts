@@ -1,6 +1,6 @@
 /**
  * Qué tipo de documento de identidad admite cada modo del mostrador.
- * Alineado con el campo ciclable de cabecera (FR-022).
+ * Alineado con el campo de cabecera (FR-022).
  */
 
 export type ModoDeClienteEnDocumento =
@@ -13,7 +13,7 @@ export type TipoDocumentoCliente = 'DNI' | 'RUC'
 
 export type ModoCampoCliente = 'ruc' | 'dni' | 'nombre'
 
-/** Modos del campo inline en cabecera (chevrons). */
+/** Qué admite el campo inline de cabecera, inferido de lo tecleado. */
 export function modosCampoClientePermitidos(
   modo: ModoDeClienteEnDocumento,
 ): readonly ModoCampoCliente[] {
