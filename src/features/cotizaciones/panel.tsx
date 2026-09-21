@@ -14,8 +14,6 @@ import { DOCUMENTO_CLIENTE_POR_NOMBRE } from '../clientes/documento-marcador.ts'
 import { usarDegradacion } from '../degradacion/estado.ts'
 import { usarPedido } from '../pedido/almacen.ts'
 import type { ClienteDelPedido } from '../pedido/almacen.ts'
-import { diferenciasContraCatalogo } from './diferencias.ts'
-import type { DiferenciaDeCotizacion } from './diferencias.ts'
 import { DetalleDeCotizacion } from './detalle.tsx'
 import { eliminarCotizacion } from './eliminar.ts'
 import { formatearFechaCortaCotizacion } from './fecha.ts'
@@ -60,9 +58,6 @@ export function PanelDeCotizaciones({
     null,
   )
   const [yaUsada, setYaUsada] = useState(false)
-  const [diferencias, setDiferencias] = useState<
-    readonly DiferenciaDeCotizacion[]
-  >([])
   const [aviso, setAviso] = useState<string | null>(null)
   const [buscando, setBuscando] = useState(false)
   const [aEliminar, setAEliminar] = useState<Cotizacion | null>(null)
@@ -106,21 +101,11 @@ export function PanelDeCotizaciones({
     void recuperarPorNumero(numeroInicial)
   }, [numeroInicial])
 
-  useEffect(() => {
-    if (buscada === null) return
-    setDiferencias(
-      diferenciasContraCatalogo(buscada.lineas, (codigo) =>
-        catalogo.productoPorCodigo(codigo),
-      ),
-    )
-  }, [buscada, catalogo.listo, catalogo.version])
-
   async function recuperarPorNumero(numero: number): Promise<void> {
     setBuscando(true)
     setAviso(null)
     setBuscada(null)
     setYaUsada(false)
-    setDiferencias([])
     try {
       const hallada = await buscarCotizacionPorNumero(numero)
       if (hallada === null) {
@@ -532,7 +517,6 @@ export function PanelDeCotizaciones({
               <div className="pb-6">
                 <DetalleDeCotizacion
                   cotizacion={detalleRetenido}
-                  diferencias={diferencias}
                   onAbrirPedido={() => abrirEnPedido(detalleRetenido)}
                   onEliminar={() => setAEliminar(detalleRetenido)}
                   onPdf={() => intentarAbrirPdf(detalleRetenido)}
@@ -687,7 +671,6 @@ export function PanelDeCotizaciones({
                         <DetalleDeCotizacion
                           compacto
                           cotizacion={cada}
-                          diferencias={diferencias}
                           onAbrirPedido={() => abrirEnPedido(cada)}
                           onEliminar={() => setAEliminar(cada)}
                           onPdf={() => intentarAbrirPdf(cada)}

@@ -24,6 +24,7 @@ describe('semana laboral de la lista de requerimiento', () => {
       'Vie',
       'Sáb',
     ])
+    expect(semana.map((d) => d.inicial)).toEqual(['L', 'M', 'M', 'J', 'V', 'S'])
     expect(semana[0]?.corta).toBe('24/08')
   })
 

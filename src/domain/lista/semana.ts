@@ -10,11 +10,14 @@ export interface DiaDeSemanaLaboral {
   readonly fecha: string
   /** Abreviatura del día (escritorio): Lun … Sáb. */
   readonly etiqueta: string
-  /** Fecha corta `dd/mm` (teléfono). */
+  /** Inicial del día (teléfono): L, M, M, J, V, S. */
+  readonly inicial: string
+  /** Fecha corta `dd/mm` (tooltip en teléfono). */
   readonly corta: string
 }
 
 const ETIQUETAS = ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'] as const
+const INICIALES = ['L', 'M', 'M', 'J', 'V', 'S'] as const
 const DIA_MS = 24 * 60 * 60 * 1000
 
 function fechaCivil(utcMs: number): string {
@@ -43,6 +46,7 @@ export function semanaLaboralEnLima(
     return {
       fecha,
       etiqueta,
+      inicial: INICIALES[indice] ?? etiqueta.slice(0, 1),
       corta: `${diaCorto}/${mesCorto}`,
     }
   })

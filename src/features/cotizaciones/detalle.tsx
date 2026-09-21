@@ -1,12 +1,10 @@
 import { FileText, Trash2, X } from 'lucide-react'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
-import type { DiferenciaDeCotizacion } from './diferencias.ts'
 import type { Cotizacion } from './tipos.ts'
 
 export function DetalleDeCotizacion({
   cotizacion,
-  diferencias,
   onAbrirPedido,
   onEliminar,
   onPdf,
@@ -14,7 +12,6 @@ export function DetalleDeCotizacion({
   compacto = false,
 }: {
   readonly cotizacion: Cotizacion
-  readonly diferencias: readonly DiferenciaDeCotizacion[]
   readonly onAbrirPedido: () => void
   readonly onEliminar: () => void
   readonly onPdf: () => void
@@ -72,26 +69,6 @@ export function DetalleDeCotizacion({
           ) : null}
         </div>
       </header>
-
-      {diferencias.length > 0 ? (
-        <div
-          className="mb-3 rounded-2xl border border-aviso px-3 py-2"
-          role="status"
-        >
-          <p className="text-cuerpo font-bold text-aviso">
-            Hay cambios respecto al catálogo actual
-          </p>
-          <ul className="mt-1 list-disc pl-5 text-cuerpo text-tinta">
-            {diferencias.map((cada) => (
-              <li key={`${cada.codigo}-${cada.indice}`}>
-                {cada.clase === 'producto_desaparecido'
-                  ? `${cada.descripcion} (${cada.codigo}) ya no está en el catálogo.`
-                  : `${cada.descripcion}: precio guardado ${formatearImporte(cada.precioGuardado)}, actual ${formatearImporte(cada.precioActual ?? 0)}.`}
-              </li>
-            ))}
-          </ul>
-        </div>
-      ) : null}
 
       <ul className="mb-3">
         {cotizacion.lineas.map((linea, indice) => (

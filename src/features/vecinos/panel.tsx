@@ -570,8 +570,10 @@ export function PanelDeVecinos({
               variante="principal"
               disabled={convertirDeshabilitado}
               onClick={convertir}
+              aria-label="Convertir en documento"
             >
-              Convertir en documento
+              <span className="md:hidden">Convertir →</span>
+              <span className="hidden md:inline">Convertir en documento</span>
             </Boton>
           </div>
         </>

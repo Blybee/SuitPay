@@ -113,36 +113,68 @@ export function PanelDeListaRequerimiento() {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-borde px-4 py-3">
+      <div className="flex flex-nowrap items-center justify-between gap-2 border-b border-borde px-4 py-3">
         <div
           role="tablist"
           aria-label="Día de la lista de requerimiento"
-          className="flex flex-wrap gap-1.5"
+          className="flex min-w-0 flex-nowrap gap-1.5"
         >
           {semana.map((dia) => {
             const seleccionado = dia.fecha === fechaActiva
+            const idTooltip = `lista-dia-${dia.fecha}`
             return (
-              <button
-                key={dia.fecha}
-                type="button"
-                role="tab"
-                aria-selected={seleccionado}
-                aria-label={`${dia.etiqueta} ${dia.corta}`}
-                onClick={() => fijarDia(dia.fecha)}
-                className={[
-                  'min-h-9 rounded-full border px-3 font-mono text-etiqueta font-bold uppercase transition-colors',
-                  seleccionado
-                    ? 'border-tinta bg-tinta text-papel'
-                    : 'border-borde bg-papel text-desvaida hover:text-tinta',
-                ].join(' ')}
-              >
-                <span className="sm:hidden">{dia.corta}</span>
-                <span className="hidden sm:inline">{dia.etiqueta}</span>
-              </button>
+              <span key={dia.fecha} className="t-tt-wrap">
+                <button
+                  type="button"
+                  role="tab"
+                  aria-selected={seleccionado}
+                  aria-label={`${dia.etiqueta} ${dia.corta}`}
+                  aria-describedby={idTooltip}
+                  onClick={() => fijarDia(dia.fecha)}
+                  className={[
+                    't-tt-trigger min-h-9 min-w-9 rounded-full border px-2 font-mono text-etiqueta font-bold uppercase transition-colors duration-rapida ease-salida motion-reduce:transition-none sm:px-3',
+                    seleccionado
+                      ? 'border-tinta bg-tinta text-papel'
+                      : 'border-borde bg-papel text-desvaida hover:text-tinta',
+                  ].join(' ')}
+                >
+                  <span className="sm:hidden">{dia.inicial}</span>
+                  <span className="hidden sm:inline">{dia.etiqueta}</span>
+                </button>
+                <span
+                  id={idTooltip}
+                  role="tooltip"
+                  className="t-tt sm:hidden"
+                >
+                  {dia.corta}
+                </span>
+              </span>
             )
           })}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="flex shrink-0 items-center gap-1.5 md:hidden">
+          <Boton
+            variante="secundario"
+            tamano="icono"
+            aria-label="Exportar PDF"
+            title="Exportar PDF"
+            disabled={lineas.length === 0}
+            onClick={() => void descargarPdf(lineas)}
+          >
+            <FileDown className="size-5" aria-hidden />
+          </Boton>
+          <Boton
+            variante="principal"
+            tamano="icono"
+            aria-label="Compartir por WhatsApp"
+            title="WhatsApp"
+            disabled={lineas.length === 0}
+            onClick={() => void compartirPdfPorWhatsApp(lineas)}
+          >
+            <Share2 className="size-5" aria-hidden />
+          </Boton>
+        </div>
+        <div className="hidden shrink-0 items-center gap-2 md:flex">
           <Boton
             variante="secundario"
             disabled={lineas.length === 0}
