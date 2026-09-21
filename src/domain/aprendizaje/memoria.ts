@@ -12,6 +12,8 @@ export interface AlineacionDeEntrenamiento {
   readonly estado: EstadoDeAlineacion
   readonly aliases: readonly string[]
   readonly etiquetas: readonly string[]
+  /** Nombre del compacto. Solo para revisar el par; no se persiste. */
+  readonly nombreCatalogo?: string
 }
 
 export interface CoberturaDeEntrenamiento {

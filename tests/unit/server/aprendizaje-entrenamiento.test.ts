@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { textoDeCandidatosParaPrompt } from '../../../src/server/asistencia/payload.ts'
 import { promptDeAsistencia, REGLAS_EMPAREJADO } from '../../../src/server/asistencia/prompts.ts'
 import { promptDeListaPdf } from '../../../src/server/asistencia/prompts-pdf.ts'
-import { parsearAlineaciones, exigirLado } from '../../../src/server/aprendizaje/entrenar-par.ts'
+import { parsearAlineaciones, exigirLado, conNombreDeCatalogo } from '../../../src/server/aprendizaje/entrenar-par.ts'
 import { promptDeEntrenamiento } from '../../../src/server/aprendizaje/prompts-entrenamiento.ts'
 import { MAX_MEDIOS_ENTRENAMIENTO } from '../../../src/domain/aprendizaje/medios.ts'
 import { paresDesdePedido } from '../../../src/features/aprendizaje/registrar.ts'
@@ -58,6 +58,34 @@ describe('parsearAlineaciones', () => {
     expect(filas[0]?.estado).toBe('no_en_catalogo')
     expect(filas[0]?.codigo).toBe('')
     expect(filas[0]?.aliases).toEqual([])
+  })
+})
+
+describe('conNombreDeCatalogo', () => {
+  it('rellena el nombre del compacto cuando el código existe', () => {
+    const filas = conNombreDeCatalogo(
+      [
+        {
+          textoPedido: '- Brida corta coflex',
+          codigo: 'PB-200',
+          marca: '',
+          estado: 'emparejado',
+          aliases: [],
+          etiquetas: [],
+        },
+        {
+          textoPedido: 'cosa rara',
+          codigo: '',
+          marca: '',
+          estado: 'omitido',
+          aliases: [],
+          etiquetas: [],
+        },
+      ],
+      new Map([['PB-200', 'BRIDA CORTA COFLEX 4']]),
+    )
+    expect(filas[0]?.nombreCatalogo).toBe('BRIDA CORTA COFLEX 4')
+    expect(filas[1]?.nombreCatalogo).toBe('')
   })
 })
 

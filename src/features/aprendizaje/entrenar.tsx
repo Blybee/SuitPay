@@ -115,6 +115,11 @@ function etiquetaEstado(estado: AlineacionDeEntrenamiento['estado']): string {
   return 'omitido'
 }
 
+/** Quita el viñeta o guion inicial del renglón extraído. */
+export function textoPedidoVisible(texto: string): string {
+  return texto.replace(/^\s*[-–—•*]+\s*/, '')
+}
+
 export function EntrenarAprendizaje({
   onConfirmado,
 }: {
@@ -411,8 +416,18 @@ export function EntrenarAprendizaje({
                             </span>
                           ) : null}
                         </span>
+                        {fila.nombreCatalogo !== undefined &&
+                        fila.nombreCatalogo !== '' ? (
+                          <span className="mt-1 block text-cuerpo text-tinta">
+                            <span className="text-desvaida">catálogo:</span>{' '}
+                            <mark className="rounded-md bg-papel px-1.5 py-0.5 font-bold text-tinta">
+                              {fila.nombreCatalogo}
+                            </mark>
+                          </span>
+                        ) : null}
                         <span className="mt-1 block text-cuerpo text-tinta">
-                          {fila.textoPedido}
+                          <span className="text-desvaida">pedido:</span>{' '}
+                          {textoPedidoVisible(fila.textoPedido)}
                         </span>
                         {fila.aliases.length > 0 ? (
                           <span className="mt-1 block font-mono text-etiqueta text-desvaida">

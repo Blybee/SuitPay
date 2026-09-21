@@ -166,6 +166,17 @@ export function parsearAlineaciones(
   return salida
 }
 
+export function conNombreDeCatalogo(
+  alineaciones: readonly AlineacionDeEntrenamiento[],
+  nombresPorCodigo: ReadonlyMap<string, string>,
+): AlineacionDeEntrenamiento[] {
+  return alineaciones.map((fila) => ({
+    ...fila,
+    nombreCatalogo:
+      fila.codigo !== '' ? (nombresPorCodigo.get(fila.codigo) ?? '') : '',
+  }))
+}
+
 function deltasDesdeAlineaciones(
   alineaciones: readonly AlineacionDeEntrenamiento[],
   porCodigo: Readonly<
@@ -286,8 +297,12 @@ export async function proponerEntrenamiento(entrada: {
     }
   }
 
+  const nombresPorCodigo = new Map(
+    contexto.candidatos.map((c) => [c.codigo, c.descripcion]),
+  )
+
   return {
-    alineaciones,
+    alineaciones: conNombreDeCatalogo(alineaciones, nombresPorCodigo),
     cobertura: coberturaDeAlineaciones(alineaciones),
     marcas: deltasDesdeAlineaciones(alineaciones, contexto.porCodigo),
     modelo,
