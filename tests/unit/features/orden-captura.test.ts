@@ -6,10 +6,6 @@ import { usarPedido } from '../../../src/features/pedido/almacen.ts'
 import { aplicarProductosALineas } from '../../../src/features/vecinos/lineas.ts'
 import type { ProductoBuscable } from '../../../src/domain/busqueda/productos.ts'
 
-/**
- * Orden de la foto (arriba → abajo). No es alfabético: MEDIDOR queda
- * después de REGISTRO, y los dos SUMIDERO no van juntos.
- */
 const ORDEN_DE_LA_FOTO = [
   'CAJAS AZUL 1/16',
   'REGISTRO 2 GEMELLO',
