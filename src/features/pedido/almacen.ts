@@ -75,6 +75,12 @@ interface AccionesDelPedido {
    * @returns `false` si el producto ya estaba (no modifica el pedido).
    */
   agregarLinea: (linea: LineaDePedido) => boolean
+  /**
+   * Antepone un bloque y conserva su orden. Omite códigos que ya están.
+   */
+  anteponerLineas: (
+    entrantes: readonly LineaDePedido[],
+  ) => { agregadas: number; omitidas: number }
   cambiarCantidad: (indice: number, cantidad: number) => void
   cambiarPrecio: (indice: number, precio: Centimos) => void
   quitarLinea: (indice: number) => void
@@ -247,6 +253,28 @@ export const usarPedido = create<AlmacenDelPedido>((set, get) => {
       ]
       cambiarContenido({ lineas })
       return true
+    },
+
+    anteponerLineas(entrantes) {
+      const actuales = get().lineas
+      const codigos = new Set(actuales.map((linea) => linea.codigo))
+      const nuevas: LineaDePedido[] = []
+      let omitidas = 0
+      for (const linea of entrantes) {
+        if (codigos.has(linea.codigo)) {
+          omitidas += 1
+          continue
+        }
+        codigos.add(linea.codigo)
+        nuevas.push({
+          ...linea,
+          cantidad: normalizarCantidad(linea.cantidad),
+        })
+      }
+      if (nuevas.length > 0) {
+        cambiarContenido({ lineas: [...nuevas, ...actuales] })
+      }
+      return { agregadas: nuevas.length, omitidas }
     },
 
     cambiarCantidad(indice, cantidad) {
