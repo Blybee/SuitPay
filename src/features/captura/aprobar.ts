@@ -69,32 +69,16 @@ export function aprobarPropuestaDeCaptura():
   const extraidas = extraerLineasAprobadasDeCaptura()
   if (!extraidas.ok) return extraidas
 
-  const pedido = usarPedido.getState()
-  const catalogo = usarCatalogo.getState()
   const captura = usarCaptura.getState()
-  let agregadas = 0
-  let omitidas = 0
-
-  for (const linea of extraidas.lineas) {
-    const producto = catalogo.productoPorCodigo(linea.codigo)
-    const agregada = pedido.agregarLinea({
-      codigo: linea.codigo,
-      descripcion: linea.descripcion,
-      unidad: linea.unidad,
-      cantidad: linea.cantidad,
-      precio: producto?.precio ?? 0,
-      textoOriginal: linea.textoOriginal,
-    })
-    if (agregada) agregadas += 1
-    else omitidas += 1
-  }
-
-  pedido.fijarOrigen({ capturaId: captura.capturaId })
+  const aplicadas = aplicarLineasAprobadasAlPedido(
+    extraidas.lineas,
+    captura.capturaId,
+  )
   captura.cancelar()
   return {
     ok: true,
-    lineasAgregadas: agregadas,
-    lineasOmitidas: omitidas,
+    lineasAgregadas: aplicadas.agregadas,
+    lineasOmitidas: aplicadas.omitidas,
     textosOriginales: extraidas.textosOriginales,
   }
 }
@@ -105,25 +89,23 @@ export function aplicarLineasAprobadasAlPedido(
 ): { agregadas: number; omitidas: number } {
   const pedido = usarPedido.getState()
   const catalogo = usarCatalogo.getState()
-  let agregadas = 0
-  let omitidas = 0
-  for (const linea of lineas) {
-    const producto = catalogo.productoPorCodigo(linea.codigo)
-    const agregada = pedido.agregarLinea({
-      codigo: linea.codigo,
-      descripcion: linea.descripcion,
-      unidad: linea.unidad,
-      cantidad: linea.cantidad,
-      precio: producto?.precio ?? 0,
-      textoOriginal: linea.textoOriginal,
-    })
-    if (agregada) agregadas += 1
-    else omitidas += 1
-  }
+  const aplicadas = pedido.anteponerLineas(
+    lineas.map((linea) => {
+      const producto = catalogo.productoPorCodigo(linea.codigo)
+      return {
+        codigo: linea.codigo,
+        descripcion: linea.descripcion,
+        unidad: linea.unidad,
+        cantidad: linea.cantidad,
+        precio: producto?.precio ?? 0,
+        textoOriginal: linea.textoOriginal,
+      }
+    }),
+  )
   if (capturaId !== null) {
     pedido.fijarOrigen({ capturaId })
   }
-  return { agregadas, omitidas }
+  return aplicadas
 }
 
 export function lineasResueltas(
