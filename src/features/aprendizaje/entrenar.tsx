@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Loader2 } from 'lucide-react'
+import { ChevronDown, Loader2 } from 'lucide-react'
 import type { AlineacionDeEntrenamiento } from '../../domain/aprendizaje/memoria.ts'
 import type { DeltaDeMarca } from '../../domain/aprendizaje/priores.ts'
 import {
@@ -276,11 +276,18 @@ export function EntrenarAprendizaje({
           />
           <button
             type="button"
-            className="self-start rounded-full px-3 py-1.5 text-cuerpo font-bold text-tinta transition-colors duration-rapida ease-salida hover:bg-mesa"
+            className="inline-flex items-center gap-1.5 self-start rounded-full px-3 py-1.5 text-cuerpo font-bold text-tinta transition-colors duration-rapida ease-salida hover:bg-mesa"
             onClick={() => setMostrarTextoPedido((v) => !v)}
             aria-expanded={mostrarTextoPedido}
           >
             {mostrarTextoPedido ? 'Ocultar mensaje' : 'Pegar mensaje'}
+            <ChevronDown
+              className={[
+                'size-4 transition-transform duration-rapida ease-salida motion-reduce:transition-none',
+                mostrarTextoPedido ? 'rotate-180' : '',
+              ].join(' ')}
+              aria-hidden
+            />
           </button>
           <div
             className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"
@@ -327,11 +334,18 @@ export function EntrenarAprendizaje({
           />
           <button
             type="button"
-            className="self-start rounded-full px-3 py-1.5 text-cuerpo font-bold text-tinta transition-colors duration-rapida ease-salida hover:bg-mesa"
+            className="inline-flex items-center gap-1.5 self-start rounded-full px-3 py-1.5 text-cuerpo font-bold text-tinta transition-colors duration-rapida ease-salida hover:bg-mesa"
             onClick={() => setMostrarTextoOro((v) => !v)}
             aria-expanded={mostrarTextoOro}
           >
             {mostrarTextoOro ? 'Ocultar texto' : 'Pegar texto de la cotización'}
+            <ChevronDown
+              className={[
+                'size-4 transition-transform duration-rapida ease-salida motion-reduce:transition-none',
+                mostrarTextoOro ? 'rotate-180' : '',
+              ].join(' ')}
+              aria-hidden
+            />
           </button>
           <div
             className="grid transition-[grid-template-rows] duration-media ease-salida motion-reduce:transition-none"

@@ -1,13 +1,18 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import type { EntradaDeMemoria } from '../../domain/aprendizaje/compacto.ts'
 import type { DiffDeProducto, MapaDeMemoria } from '../../domain/aprendizaje/memoria.ts'
-import { aplicarDiffDeMemoria, VIDA_LOTE_MS } from '../../domain/aprendizaje/memoria.ts'
+import {
+  aplicarDiffDeMemoria,
+  medirMemoria,
+  VIDA_LOTE_MS,
+} from '../../domain/aprendizaje/memoria.ts'
 import {
   aplicarDeltasDeMarca,
   marcasDesdeDocumento,
 } from '../../domain/aprendizaje/priores.ts'
 import type { DeltaDeMarca, MapaDeMarcas } from '../../domain/aprendizaje/priores.ts'
 import { COLECCIONES, DOCUMENTOS, bd } from '../firebase/admin.ts'
+import { ErrorDeSuitPay } from '../errores.ts'
 
 export interface ParDeRevision {
   readonly textoOriginal: string
@@ -61,6 +66,14 @@ export async function escribirMemoriaDeAprendizaje(
   mapa: MapaDeMemoria,
   marcas?: MapaDeMarcas,
 ): Promise<void> {
+  const actual = await leerMemoriaDeAprendizaje()
+  const marcasActuales = await leerMarcasDeAprendizaje()
+  const medidaActual = medirMemoria(actual, marcasActuales)
+  const medidaSiguiente = medirMemoria(mapa, marcas ?? marcasActuales)
+  const crece = medidaSiguiente.bytesDocumento >= medidaActual.bytesDocumento
+  if (medidaSiguiente.documentoLleno && crece) {
+    throw new ErrorDeSuitPay('memoria_llena')
+  }
   const [coleccion, id] = DOCUMENTOS.aprendizajeMemoria.split('/')
   await bd()
     .collection(coleccion ?? 'aprendizaje')

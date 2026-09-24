@@ -17,6 +17,16 @@ import {
 import { procesarLoteAprendizaje } from '../../server/aprendizaje/procesar-lote.ts'
 import { diaEnLima } from '../../domain/anulacion/ventana.ts'
 import { MAX_MEDIOS_ENTRENAMIENTO } from '../../domain/aprendizaje/medios.ts'
+import {
+  medirMemoria,
+  paginarMemoria,
+  TAMANO_PAGINA_MEMORIA,
+} from '../../domain/aprendizaje/memoria.ts'
+import type { CambioDeRevision } from '../../domain/aprendizaje/memoria.ts'
+import {
+  autorizarRevisionDeMemoria,
+  proponerRevisionDeMemoria,
+} from '../../server/aprendizaje/revisar-memoria.ts'
 
 const esquemaPar = z.object({
   textoOriginal: z.string().trim().min(1).max(400),
@@ -79,14 +89,37 @@ export const procesarLoteAprendizajeFn = createServerFn({ method: 'POST' })
   })
 
 export const leerMemoriaAprendizajeFn = createServerFn({ method: 'GET' })
-  .handler(async () => {
+  .validator(
+    z.object({
+      cursor: z.string().max(80).optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
     try {
       await exigirIdentidad(getRequestHeaders(), ['administrador', 'jefe'])
       const [productos, marcas] = await Promise.all([
         leerMemoriaDeAprendizaje(),
         leerMarcasDeAprendizaje(),
       ])
-      return { ok: true as const, productos, marcas }
+      const pagina = paginarMemoria(productos, {
+        limite: TAMANO_PAGINA_MEMORIA,
+        cursor: data.cursor,
+      })
+      const medida = medirMemoria(productos, marcas)
+      return {
+        ok: true as const,
+        entradas: pagina.entradas.map(([codigo, entrada]) => ({
+          codigo,
+          aliases: entrada.aliases,
+          etiquetas: entrada.etiquetas,
+        })),
+        hayMas: pagina.hayMas,
+        cursorSiguiente: pagina.cursorSiguiente,
+        marcas,
+        tokens: medida.tokens,
+        superaPresupuesto: medida.superaPresupuesto,
+        documentoLleno: medida.documentoLleno,
+      }
     } catch (error) {
       if (esErrorDeSuitPay(error)) {
         return { ok: false as const, error: error.aRespuesta() }
@@ -219,6 +252,50 @@ export const confirmarEntrenamientoFn = createServerFn({ method: 'POST' })
         marcasPermitidas: data.marcasPermitidas,
       })
       return { ok: true as const, ...resultado }
+    } catch (error) {
+      if (esErrorDeSuitPay(error)) {
+        return { ok: false as const, error: error.aRespuesta() }
+      }
+      return {
+        ok: false as const,
+        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
+      }
+    }
+  })
+
+const esquemaCambio = z.object({
+  codigo: z.string().trim().min(1).max(80),
+  aliases: z.array(z.string().max(400)).max(200),
+  etiquetas: z.array(z.string().max(80)).max(40),
+  quitados: z.array(z.string().max(400)).min(1).max(200),
+  motivo: z.string().max(300),
+})
+
+export const proponerRevisionMemoriaFn = createServerFn({ method: 'POST' })
+  .handler(async () => {
+    try {
+      await exigirIdentidad(getRequestHeaders(), ['administrador', 'jefe'])
+      const propuesta = await proponerRevisionDeMemoria()
+      return { ok: true as const, cambios: propuesta.cambios, mensaje: propuesta.mensaje }
+    } catch (error) {
+      if (esErrorDeSuitPay(error)) {
+        return { ok: false as const, error: error.aRespuesta() }
+      }
+      return {
+        ok: false as const,
+        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
+      }
+    }
+  })
+
+export const autorizarRevisionMemoriaFn = createServerFn({ method: 'POST' })
+  .validator(z.object({ cambios: z.array(esquemaCambio).min(1).max(500) }))
+  .handler(async ({ data }) => {
+    try {
+      await exigirIdentidad(getRequestHeaders(), ['administrador', 'jefe'])
+      const cambios: CambioDeRevision[] = data.cambios
+      await autorizarRevisionDeMemoria(cambios)
+      return { ok: true as const }
     } catch (error) {
       if (esErrorDeSuitPay(error)) {
         return { ok: false as const, error: error.aRespuesta() }

@@ -1,6 +1,6 @@
 import { diaEnLima } from '../../domain/anulacion/ventana.ts'
 import type { DiffDeProducto } from '../../domain/aprendizaje/memoria.ts'
-import { diffsDesdePares } from '../../domain/aprendizaje/memoria.ts'
+import { diffsDesdePares, memoriaParaPrompt } from '../../domain/aprendizaje/memoria.ts'
 import { deltasDeMarcaDesdeCodigos } from '../../domain/aprendizaje/priores.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
 import {
@@ -88,7 +88,7 @@ export async function procesarLoteAprendizaje(
   }
 
   const pares = pendientes.flatMap((r) => r.pares)
-  const memoria = await leerMemoriaDeAprendizaje()
+  const memoria = memoriaParaPrompt(await leerMemoriaDeAprendizaje())
   let diffs: DiffDeProducto[]
   let modelo = 'simulado'
 

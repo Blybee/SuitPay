@@ -8,6 +8,7 @@ import type { MapaDeMarcas } from '../../domain/aprendizaje/priores.ts'
 import type { CandidatoDeAsistencia } from '../asistencia/tipos.ts'
 import { AlmacenDeCatalogoFirestore } from '../catalogo/almacen-firestore.ts'
 import type { ProductoDeCatalogo } from '../catalogo/tipos.ts'
+import { memoriaParaPrompt } from '../../domain/aprendizaje/memoria.ts'
 import {
   leerMarcasDeAprendizaje,
   leerMemoriaDeAprendizaje,
@@ -82,7 +83,7 @@ export async function leerContextoDeAsistencia(): Promise<{
     publicado.productos,
     publicado.categorias,
   )
-  const compacto = compactarCatalogo(preparados, memoria)
+  const compacto = compactarCatalogo(preparados, memoriaParaPrompt(memoria))
   const porCodigo: Record<string, { marca: string; familia: string }> = {}
   for (const p of preparados) {
     porCodigo[p.codigo] = { marca: p.marca ?? '', familia: p.familia }

@@ -24,3 +24,5 @@
 
 -*disclosure*
 >panel que baja 
+
+*heuristica* 

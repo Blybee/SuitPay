@@ -7,6 +7,7 @@ import type {
 import {
   coberturaDeAlineaciones,
   diffsDesdeAlineaciones,
+  memoriaParaPrompt,
 } from '../../domain/aprendizaje/memoria.ts'
 import type { DeltaDeMarca } from '../../domain/aprendizaje/priores.ts'
 import { deltasDeMarcaDesdeCodigos } from '../../domain/aprendizaje/priores.ts'
@@ -263,7 +264,7 @@ export async function proponerEntrenamiento(entrada: {
     const mediosOro = mediosDeLado(entrada.oro)
     const prompt = promptDeEntrenamiento({
       catalogoJson: textoDeCandidatosParaPrompt(contexto.candidatos),
-      memoriaJson: JSON.stringify(memoria),
+      memoriaJson: JSON.stringify(memoriaParaPrompt(memoria)),
       prioresJson: contexto.prioresJson,
       textoPedido: textoPedido === '' ? undefined : textoPedido,
       textoOro: textoOro === '' ? undefined : textoOro,

@@ -56,6 +56,8 @@ export const CODIGOS_DE_ERROR = {
   archivo_no_interpretable: 'archivo_no_interpretable',
   codigos_duplicados: 'codigos_duplicados',
 
+  memoria_llena: 'memoria_llena',
+
   // --- Otros ---------------------------------------------------------------
   fallo_inesperado: 'fallo_inesperado',
 } as const
@@ -114,6 +116,8 @@ const MENSAJES: Record<CodigoDeError, string> = {
     'No se pudo leer la captura. Vuelve a tomarla con mejor luz, o escribe el pedido.',
   asistencia_no_disponible:
     'La asistencia por voz, foto y PDF no está disponible. Puedes escribir el pedido con normalidad.',
+  memoria_llena:
+    'La memoria de aprendizaje llegó al límite de guardado. Revisa y autoriza una limpieza antes de sumar alias.',
 
   archivo_no_interpretable:
     'No se pudo interpretar el archivo. Revisa su formato.',
@@ -160,6 +164,7 @@ const REINTENTABLE: Record<CodigoDeError, boolean> = {
 
   medio_ilegible: false,
   asistencia_no_disponible: true,
+  memoria_llena: false,
 
   archivo_no_interpretable: false,
   codigos_duplicados: false,
