@@ -193,7 +193,7 @@ export function PapeletaDeGuia({
             description:
               mensajeDeErrorDeGuia(respuesta.error ?? {}) ||
               'La guía fue rechazada. Puedes volver a generar sin reescribir el traslado.',
-            duration: null,
+            duration: 15_000,
             button: {
               title: 'Volver a Generar',
               onClick: () => {

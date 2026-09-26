@@ -11,6 +11,7 @@ import {
   leerIndiceDeTransportistasFn,
 } from '../../../src/features/guia/guia.funciones.ts'
 import { reimprimir } from '../../../src/features/emision/reimprimir.ts'
+import { sileo } from 'sileo'
 
 vi.mock('sileo', () => ({
   sileo: { action: vi.fn() },
@@ -238,6 +239,43 @@ describe('PapeletaDeGuia', () => {
     expect(
       screen.getByRole('dialog', { name: 'Guía de remisión' }),
     ).toBeInTheDocument()
+  })
+
+  it('cierra solo el toast de guía rechazada y conserva Volver a Generar', async () => {
+    vi.mocked(sileo.action).mockClear()
+    vi.mocked(emitirGuiaFn).mockResolvedValue({
+      ok: false,
+      error: { codigo: 'emision_rechazada', mensaje: 'rechazo' },
+    })
+    const usuario = userEvent.setup()
+    renderPapeleta()
+
+    const ubigeos = screen.getAllByPlaceholderText('150101')
+    await usuario.type(ubigeos[0]!, '150101')
+    await usuario.type(ubigeos[1]!, '150101')
+    const direcciones = screen.getAllByPlaceholderText(
+      'Av. Central 122 LIMA - LIMA - LIMA',
+    )
+    await usuario.type(direcciones[0]!, 'Av. Central 1')
+    await usuario.type(direcciones[1]!, 'Av. Central 2')
+
+    const combo = await screen.findByRole('combobox', { name: 'Transportista' })
+    await usuario.type(combo, 'Expreso')
+    await usuario.click(
+      await screen.findByRole('option', { name: /Empresa Expreso Trujillo/ }),
+    )
+
+    await usuario.click(screen.getByRole('button', { name: /^Emitir$/i }))
+
+    expect(await screen.findByRole('alert')).toHaveTextContent(/serie T/)
+    expect(sileo.action).toHaveBeenCalledTimes(1)
+    expect(sileo.action).toHaveBeenCalledWith(
+      expect.objectContaining({
+        title: 'Guía rechazada',
+        duration: 15_000,
+        button: expect.objectContaining({ title: 'Volver a Generar' }),
+      }),
+    )
   })
 
   it('abre el alta de transportista con el icon button y no cierra la papeleta', async () => {
