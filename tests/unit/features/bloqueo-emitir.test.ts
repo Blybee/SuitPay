@@ -12,13 +12,75 @@ const base = {
 
 describe('calcularMotivoDeBloqueo', () => {
   it('bloquea un pedido sin líneas', () => {
-    expect(calcularMotivoDeBloqueo({ ...base, lineas: 0, emitible: false })).toBe(
-      'Agrega al menos un producto para emitir.',
-    )
+    expect(
+      calcularMotivoDeBloqueo({ ...base, lineas: 0, emitible: false }),
+    ).toBe('Agrega al menos un producto para emitir.')
   })
 
   it('deja emitir cuando hay líneas válidas', () => {
     expect(calcularMotivoDeBloqueo({ ...base, lineas: 1 })).toBeNull()
+  })
+
+  it('bloquea factura con cliente DNI', () => {
+    expect(
+      calcularMotivoDeBloqueo({
+        ...base,
+        lineas: 1,
+        tipo: 'factura',
+        cliente: {
+          tipoDocumento: 'DNI',
+          numeroDocumento: '12345678',
+          denominacion: 'Cliente DNI',
+        },
+      }),
+    ).toBe('La factura requiere un cliente con RUC')
+  })
+
+  it('bloquea Fact+Guía con cliente DNI aunque falte la serie T', () => {
+    expect(
+      calcularMotivoDeBloqueo({
+        ...base,
+        lineas: 1,
+        tipo: 'factura',
+        encadenarGuia: true,
+        serieGuia: null,
+        cliente: {
+          tipoDocumento: 'DNI',
+          numeroDocumento: '12345678',
+          denominacion: 'Cliente DNI',
+        },
+      }),
+    ).toBe('La factura requiere un cliente con RUC')
+  })
+
+  it('habilita la factura con RUC válido', () => {
+    expect(
+      calcularMotivoDeBloqueo({
+        ...base,
+        lineas: 1,
+        tipo: 'factura',
+        cliente: {
+          tipoDocumento: 'RUC',
+          numeroDocumento: '20123456789',
+          denominacion: 'Cliente RUC',
+        },
+      }),
+    ).toBeNull()
+  })
+
+  it('vuelve a habilitar la boleta con el mismo DNI', () => {
+    expect(
+      calcularMotivoDeBloqueo({
+        ...base,
+        lineas: 1,
+        tipo: 'boleta',
+        cliente: {
+          tipoDocumento: 'DNI',
+          numeroDocumento: '12345678',
+          denominacion: 'Cliente DNI',
+        },
+      }),
+    ).toBeNull()
   })
 
   it('bloquea Bol+Guía sin serie T', () => {
