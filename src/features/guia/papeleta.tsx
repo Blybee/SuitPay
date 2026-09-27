@@ -271,7 +271,6 @@ export function PapeletaDeGuia({
       descripcion="Completa el traslado y confirma Emitir. El comando no emite por sí solo."
       noSeCierraSola={enviando}
       cerrarConFondo={false}
-      className="overflow-visible"
       pie={
         <>
           <Boton disabled={enviando} onClick={onCerrar}>
@@ -287,7 +286,7 @@ export function PapeletaDeGuia({
         </>
       }
     >
-      <div className="flex max-h-[70vh] flex-col gap-3 overflow-y-auto overflow-x-visible">
+      <div className="flex flex-col gap-3">
         <p className="text-etiqueta text-desvaida">
           {cliente
             ? `Destinatario: ${cliente.denominacion}`
