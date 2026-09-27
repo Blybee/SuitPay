@@ -123,8 +123,6 @@ export function Modal({
     }
   }, [alCambiar, noSeCierraSola, cerrarConFondo])
 
-  const desbordaVisible = className?.includes('overflow-visible') === true
-
   return (
     <dialog
       ref={(nodo) => {
@@ -137,15 +135,14 @@ export function Modal({
       {...{ closedby: closedbyDe({ noSeCierraSola, cerrarConFondo }) }}
       className={unir(
         'modal-suitpay',
-        'w-[min(34rem,calc(100vw-2rem))] max-h-[min(90vh,40rem)]',
-        desbordaVisible ? 'overflow-visible' : 'overflow-y-auto',
+        'flex w-[min(34rem,calc(100vw-2rem))] max-h-[90dvh] flex-col overflow-visible',
         'rounded-3xl border border-borde bg-papel p-6 shadow-papeleta',
         'text-tinta focus-visible:outline-none focus-visible:border-tinta',
         className,
       )}
     >
       <CapaDeDialogo.Provider value={capa}>
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex shrink-0 items-start justify-between gap-3">
           <h2 id={idTitulo} className="text-cabecera font-bold text-tinta">
             {titulo}
           </h2>
@@ -168,15 +165,25 @@ export function Modal({
         </div>
 
         {descripcion !== undefined ? (
-          <p id={idDescripcion} className="mt-1 text-cuerpo text-desvaida">
+          <p
+            id={idDescripcion}
+            className="mt-1 shrink-0 text-cuerpo text-desvaida"
+          >
             {descripcion}
           </p>
         ) : null}
 
-        <div className="mt-4">{children}</div>
+        {/*
+         * El dialog queda overflow visible para que el listbox del Selector,
+         * portado en el propio dialog, no lo recorte el radio. El tope de
+         * altura lo absorbe este cuerpo.
+         */}
+        <div className="mt-4 min-h-0 overflow-y-auto">{children}</div>
 
         {pie !== undefined ? (
-          <div className="mt-5 flex flex-wrap justify-end gap-3">{pie}</div>
+          <div className="mt-5 flex shrink-0 flex-wrap justify-end gap-3">
+            {pie}
+          </div>
         ) : null}
       </CapaDeDialogo.Provider>
     </dialog>
