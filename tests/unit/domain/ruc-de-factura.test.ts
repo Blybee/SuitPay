@@ -32,17 +32,19 @@ describe('motivoDeRucParaFactura', () => {
     },
   )
 
-  it.each(
-    TIPOS_DE_DOCUMENTO.filter((tipo) => tipo !== 'factura'),
-  )('%s con DNI no exige RUC', (tipo: TipoDeDocumento) => {
-    expect(motivoDeRucParaFactura({ tipo, cliente: cliente(DNI) })).toBeNull()
-  })
+  it.each(TIPOS_DE_DOCUMENTO.filter((tipo) => tipo !== 'factura'))(
+    '%s con DNI no exige RUC',
+    (tipo: TipoDeDocumento) => {
+      expect(motivoDeRucParaFactura({ tipo, cliente: cliente(DNI) })).toBeNull()
+    },
+  )
 
-  it.each(
-    TIPOS_DE_DOCUMENTO.filter((tipo) => tipo !== 'factura'),
-  )('%s sin cliente no exige RUC', (tipo: TipoDeDocumento) => {
-    expect(motivoDeRucParaFactura({ tipo, cliente: null })).toBeNull()
-  })
+  it.each(TIPOS_DE_DOCUMENTO.filter((tipo) => tipo !== 'factura'))(
+    '%s sin cliente no exige RUC',
+    (tipo: TipoDeDocumento) => {
+      expect(motivoDeRucParaFactura({ tipo, cliente: null })).toBeNull()
+    },
+  )
 
   it('factura con DNI se bloquea', () => {
     expect(

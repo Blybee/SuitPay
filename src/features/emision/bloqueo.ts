@@ -1,3 +1,4 @@
+import { motivoDeRucParaFactura } from '../../domain/documentos/ruc-de-factura.ts'
 import { REGLAS } from '../../domain/documentos/tipos.ts'
 import type { TipoElegible } from '../../domain/documentos/tipos.ts'
 
@@ -26,6 +27,12 @@ export function calcularMotivoDeBloqueo(datos: {
     return 'Hay una línea con cantidad o precio en cero. Corrígela para poder emitir.'
   }
 
+  const motivoRuc = motivoDeRucParaFactura({
+    tipo: datos.tipo,
+    cliente: clienteParaRuc(datos.cliente),
+  })
+  if (motivoRuc !== null) return motivoRuc
+
   if (
     datos.encadenarGuia === true &&
     (datos.serieGuia === null || datos.serieGuia === undefined)
@@ -34,14 +41,26 @@ export function calcularMotivoDeBloqueo(datos: {
   }
 
   const reglas = REGLAS[datos.tipo]
-  if (datos.cliente === null) {
-    if (reglas.exigeClienteIdentificado) {
-      return 'Una factura necesita el RUC del cliente. Identifícalo para poder emitir.'
-    }
-    if (reglas.sujetoAUmbralDeIdentificacion && datos.total > datos.umbral) {
-      return 'Este importe obliga a identificar al cliente. Ingresa su documento para continuar.'
-    }
+  if (
+    datos.cliente === null &&
+    reglas.sujetoAUmbralDeIdentificacion &&
+    datos.total > datos.umbral
+  ) {
+    return 'Este importe obliga a identificar al cliente. Ingresa su documento para continuar.'
   }
 
   return null
+}
+
+function clienteParaRuc(
+  cliente: unknown,
+): { readonly numeroDocumento: string } | null {
+  if (cliente === null || typeof cliente !== 'object') return null
+  if (
+    'numeroDocumento' in cliente &&
+    typeof cliente.numeroDocumento === 'string'
+  ) {
+    return { numeroDocumento: cliente.numeroDocumento }
+  }
+  return { numeroDocumento: '' }
 }

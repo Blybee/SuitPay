@@ -6,6 +6,7 @@ import {
   precioEstaBajoElPiso,
 } from '../../domain/totales/calculo.ts'
 import type { Centimos } from '../../domain/totales/calculo.ts'
+import { motivoDeRucParaFactura } from '../../domain/documentos/ruc-de-factura.ts'
 import { evaluarIdentificacionDelComprador } from '../../domain/documentos/umbral.ts'
 import { REGLAS  } from '../../domain/documentos/tipos.ts'
 import type {TipoDeDocumento} from '../../domain/documentos/tipos.ts';
@@ -205,6 +206,14 @@ export async function emitirComprobante(
       umbral: umbral.umbral,
       total: umbral.total,
     })
+  }
+
+  const motivoRuc = motivoDeRucParaFactura({
+    tipo: peticion.tipoDocumento,
+    cliente: peticion.cliente,
+  })
+  if (motivoRuc !== null) {
+    fallar('cliente_requerido', { motivo: 'sin_ruc' })
   }
 
   // --- Paso 3: la transacción ---------------------------------------------
