@@ -21,6 +21,36 @@ describe('calcularMotivoDeBloqueo', () => {
     expect(calcularMotivoDeBloqueo({ ...base, lineas: 1 })).toBeNull()
   })
 
+  it('bloquea factura con cliente DNI', () => {
+    expect(
+      calcularMotivoDeBloqueo({
+        ...base,
+        lineas: 1,
+        tipo: 'factura',
+        cliente: {
+          tipoDocumento: 'DNI',
+          numeroDocumento: '12345678',
+          denominacion: 'Cliente DNI',
+        },
+      }),
+    ).toBe('La factura requiere un cliente con RUC')
+  })
+
+  it('vuelve a habilitar la boleta con el mismo DNI', () => {
+    expect(
+      calcularMotivoDeBloqueo({
+        ...base,
+        lineas: 1,
+        tipo: 'boleta',
+        cliente: {
+          tipoDocumento: 'DNI',
+          numeroDocumento: '12345678',
+          denominacion: 'Cliente DNI',
+        },
+      }),
+    ).toBeNull()
+  })
+
   it('bloquea Bol+Guía sin serie T', () => {
     expect(
       calcularMotivoDeBloqueo({
