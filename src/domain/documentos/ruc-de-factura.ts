@@ -3,7 +3,6 @@ import type { TipoDeDocumento } from './tipos.ts'
 export const MENSAJE_FACTURA_REQUIERE_RUC =
   'La factura requiere un cliente con RUC'
 
-/** RUC peruano: 11 dígitos, prefijo 10 o 20. */
 export function rucEsValido(numero: string): boolean {
   return /^(10|20)\d{9}$/.test(numero.trim())
 }
