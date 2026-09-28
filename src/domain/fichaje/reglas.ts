@@ -42,7 +42,7 @@ const DIA_SEMANA = new Intl.DateTimeFormat('en-US', {
   weekday: 'short',
 })
 
-const NOMBRE = /^[\p{L}][\p{L}'.-]*(?:\s+[\p{L}][\p{L}'.-]*)+$/u
+const NOMBRE = /^[\p{L}][\p{L}'.-]*(?:\s+[\p{L}][\p{L}'.-]*)*$/u
 
 export function minutosDelDiaEnLima(instante: Date): number {
   const partes = HORA.formatToParts(instante)
@@ -79,7 +79,7 @@ export function claveDeNombre(nombre: string): string {
   return nombre.trim().replace(/\s+/g, ' ').toLocaleLowerCase('es-PE')
 }
 
-/** Nombre completo: al menos dos palabras, sin dígitos, entre 3 y 80 caracteres. */
+/** Nombre: una o más palabras, sin dígitos, entre 3 y 80 caracteres. */
 export function nombreParaMostrar(crudo: string): string | null {
   const limpio = crudo.trim().replace(/\s+/g, ' ')
   if (limpio.length < 3 || limpio.length > 80) return null
