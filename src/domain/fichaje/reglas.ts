@@ -79,7 +79,6 @@ export function claveDeNombre(nombre: string): string {
   return nombre.trim().replace(/\s+/g, ' ').toLocaleLowerCase('es-PE')
 }
 
-/** Nombre: una o más palabras, sin dígitos, entre 3 y 80 caracteres. */
 export function nombreParaMostrar(crudo: string): string | null {
   const limpio = crudo.trim().replace(/\s+/g, ' ')
   if (limpio.length < 3 || limpio.length > 80) return null
