@@ -437,6 +437,23 @@
   }
 }
 
+/*
+ * Un <dialog> cerrado lo oculta el navegador con display:none, pero esa
+ * regla es del agente de usuario. Cualquier display de autor —la utilidad
+ * `flex` del propio modal— la pisa, y el diálogo sigue pintado aunque ya
+ * no tenga [open]. Por eso Cancelar no parecía cerrar nada y se veían
+ * varias papeletas a la vez: estaban cerradas en el estado y visibles
+ * en la página. Esta regla no va en una @layer para ganar a las utilidades.
+ */
+dialog.modal-suitpay:not([open]) {
+  display: none;
+}
+
+dialog.modal-suitpay[open] {
+  display: flex;
+  flex-direction: column;
+}
+
 /* Anillo de resalte: outline interior, no empuja layout ni queda bajo los campos. */
 .linea-pedido {
   outline: 2px solid transparent;

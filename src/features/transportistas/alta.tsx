@@ -1,5 +1,4 @@
 import { useEffect, useState } from 'react'
-import { createPortal } from 'react-dom'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
 import {
@@ -25,11 +24,6 @@ export function AltaTransportista({
   const [denominacion, setDenominacion] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [enDocumento, setEnDocumento] = useState(false)
-
-  useEffect(() => {
-    setEnDocumento(true)
-  }, [])
 
   useEffect(() => {
     if (!abierta) return
@@ -69,7 +63,7 @@ export function AltaTransportista({
     }
   }
 
-  const dialogo = (
+  return (
     <Modal
       abierta={abierta}
       alCambiar={(ahora) => {
@@ -119,7 +113,4 @@ export function AltaTransportista({
       </div>
     </Modal>
   )
-
-  if (!enDocumento) return null
-  return createPortal(dialogo, document.body)
 }

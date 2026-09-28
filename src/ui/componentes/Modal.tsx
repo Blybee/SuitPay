@@ -1,4 +1,5 @@
 import {
+  useCallback,
   useEffect,
   useId,
   useRef,
@@ -70,9 +71,24 @@ export function Modal({
   /** Evita eco: close() programático no debe notificar al padre otra vez. */
   const cerrandoDesdeProps = useRef(false)
 
+  // Callback estable: uno inline cambia en cada render y React 19 lo llama
+  // con null y luego con el nodo otra vez. Ese ciclo deja diálogos abiertos
+  // en la top layer aunque el estado ya diga que están cerrados.
+  const asignarDialogo = useCallback((nodo: HTMLDialogElement | null) => {
+    dialogo.current = nodo
+    setCapa(nodo)
+  }, [])
+
   useEffect(() => {
     const nodo = dialogo.current
     if (nodo === null) return
+
+    const cerrarSinAvisar = () => {
+      if (!nodo.open) return
+      cerrandoDesdeProps.current = true
+      nodo.close()
+      cerrandoDesdeProps.current = false
+    }
 
     if (abierta) {
       if (!nodo.open) {
@@ -80,14 +96,11 @@ export function Modal({
         nodo.showModal()
         cerrandoDesdeProps.current = false
       }
-      return
+    } else {
+      cerrarSinAvisar()
     }
 
-    if (nodo.open) {
-      cerrandoDesdeProps.current = true
-      nodo.close()
-      cerrandoDesdeProps.current = false
-    }
+    return cerrarSinAvisar
   }, [abierta])
 
   useEffect(() => {
@@ -125,23 +138,21 @@ export function Modal({
 
   return (
     <dialog
-      ref={(nodo) => {
-        dialogo.current = nodo
-        setCapa((prev) => (prev === nodo ? prev : nodo))
-      }}
+      ref={asignarDialogo}
       aria-labelledby={idTitulo}
       aria-describedby={descripcion === undefined ? undefined : idDescripcion}
       // Atributo HTML nativo (Baseline Newly Available). React 19 lo reenvía.
       {...{ closedby: closedbyDe({ noSeCierraSola, cerrarConFondo }) }}
       className={unir(
         'modal-suitpay',
-        'flex w-[min(34rem,calc(100vw-2rem))] max-h-[90dvh] flex-col overflow-visible',
+        'w-[min(34rem,calc(100vw-2rem))] max-h-[90dvh]',
         'rounded-3xl border border-borde bg-papel p-6 shadow-papeleta',
         'text-tinta focus-visible:outline-none focus-visible:border-tinta',
         className,
       )}
     >
       <CapaDeDialogo.Provider value={capa}>
+        <div className="flex max-h-[inherit] min-h-0 flex-col overflow-visible">
         <div className="flex shrink-0 items-start justify-between gap-3">
           <h2 id={idTitulo} className="text-cabecera font-bold text-tinta">
             {titulo}
@@ -185,6 +196,7 @@ export function Modal({
             {pie}
           </div>
         ) : null}
+        </div>
       </CapaDeDialogo.Provider>
     </dialog>
   )
