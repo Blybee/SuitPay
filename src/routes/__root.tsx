@@ -72,10 +72,17 @@ function Mostrador() {
   const restaurarPedido = usarPedido((estado) => estado.restaurar)
   const clienteDeConsultas = Route.useRouteContext().clienteDeConsultas
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const enAcceso = pathname === '/acceso'
+  const publica = pathname === '/acceso' || pathname === '/fichar'
   const cargandoSesion = usarSesion((s) => s.cargando)
   const uid = usarSesion((s) => s.uid)
+  const rol = usarSesion((s) => s.rol)
   const sinSesion = !cargandoSesion && uid === null
+  const jefeEnMostrador =
+    !cargandoSesion &&
+    rol === 'jefe' &&
+    !publica &&
+    pathname !== '/fichaje' &&
+    !pathname.startsWith('/administracion')
 
   useEffect(() => usarSesion.getState().vigilar(), [])
   useEffect(() => vigilarConectividad(), [])
@@ -88,7 +95,7 @@ function Mostrador() {
     <QueryClientProvider client={clienteDeConsultas}>
       <div
         className={
-          enAcceso || sinSesion || cargandoSesion
+          publica || sinSesion || cargandoSesion
             ? 'flex min-h-svh flex-col bg-mesa'
             : 'flex h-svh flex-col overflow-hidden bg-mesa'
         }
@@ -117,12 +124,14 @@ function Mostrador() {
           />
         </CapaDeToasts>
 
-        {enAcceso ? (
+        {publica ? (
           <Outlet />
         ) : cargandoSesion ? (
           <ComprobandoSesion className="min-h-0 flex-1" />
         ) : sinSesion ? (
           <Navigate to="/acceso" />
+        ) : jefeEnMostrador ? (
+          <Navigate to="/fichaje" />
         ) : (
           <div className="flex min-h-0 flex-1 flex-col md:flex-row">
             <BarraLateral />

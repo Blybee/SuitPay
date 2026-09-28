@@ -365,6 +365,20 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // --- Fichaje de entrada ----------------------------------------------
+    //
+    // El jefe lee la cola y el mes. Nadie escribe desde el cliente: la
+    // solicitud pública y la aprobación pasan por funciones de servidor.
+
+    match /fichajes/{fichajeId} {
+      allow read: if esJefe();
+      allow write: if false;
+    }
+
+    match /fichajeReservas/{reservaId} {
+      allow read, write: if false;
+    }
+
     // --- Regla por defecto: negar ----------------------------------------
 
     match /{documento=**} {

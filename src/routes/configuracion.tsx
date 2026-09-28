@@ -14,7 +14,11 @@ export const Route = createFileRoute('/configuracion')({
 function Configuracion() {
   const rol = usarSesion((s) => s.rol)
 
-  if (rol === 'administrador' || rol === 'jefe') {
+  if (rol === 'jefe') {
+    return <Navigate to="/fichaje" />
+  }
+
+  if (rol === 'administrador') {
     return <Navigate to="/administracion" />
   }
 

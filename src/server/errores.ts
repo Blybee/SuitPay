@@ -58,6 +58,10 @@ export const CODIGOS_DE_ERROR = {
 
   memoria_llena: 'memoria_llena',
 
+  // --- Fichaje -------------------------------------------------------------
+  entrada_ya_registrada: 'entrada_ya_registrada',
+  solicitud_ya_resuelta: 'solicitud_ya_resuelta',
+
   // --- Otros ---------------------------------------------------------------
   fallo_inesperado: 'fallo_inesperado',
 } as const
@@ -124,6 +128,9 @@ const MENSAJES: Record<CodigoDeError, string> = {
   codigos_duplicados:
     'El archivo tiene códigos de producto repetidos. Hay que resolverlos antes de publicar.',
 
+  entrada_ya_registrada: 'Ese trabajador ya tiene una entrada ese día.',
+  solicitud_ya_resuelta: 'Esa solicitud ya no está pendiente.',
+
   fallo_inesperado:
     'Ocurrió un fallo inesperado. Si vuelve a pasar, avisa al administrador.',
 }
@@ -169,6 +176,9 @@ const REINTENTABLE: Record<CodigoDeError, boolean> = {
   archivo_no_interpretable: false,
   codigos_duplicados: false,
 
+  entrada_ya_registrada: false,
+  solicitud_ya_resuelta: false,
+
   fallo_inesperado: true,
 }
 
@@ -208,10 +218,7 @@ export class ErrorDeSuitPay extends Error {
   }
 }
 
-export function fallar(
-  codigo: CodigoDeError,
-  detalle?: DetalleDeError,
-): never {
+export function fallar(codigo: CodigoDeError, detalle?: DetalleDeError): never {
   throw new ErrorDeSuitPay(codigo, detalle)
 }
 

@@ -1,5 +1,6 @@
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router'
 import {
+  Clock,
   FileText,
   LayoutDashboard,
   LogOut,
@@ -34,6 +35,7 @@ export interface ItemDeBarraLateral {
     | '/administracion/series'
     | '/administracion/usuarios'
     | '/administracion/parametros'
+    | '/fichaje'
     | '/acceso'
   readonly etiqueta: string
   readonly icono: LucideIcon
@@ -56,6 +58,10 @@ const ITEMS_VENDEDOR: readonly ItemDeBarraLateral[] = [
   },
 ]
 
+const ITEMS_JEFE: readonly ItemDeBarraLateral[] = [
+  { to: '/fichaje', etiqueta: 'Fichaje', icono: Clock, exacto: false },
+]
+
 const ITEMS_ADMIN: readonly ItemDeBarraLateral[] = [
   {
     to: '/administracion',
@@ -73,7 +79,8 @@ const ITEMS_ADMIN: readonly ItemDeBarraLateral[] = [
 ]
 
 export function itemsParaRol(rol: Rol | null): readonly ItemDeBarraLateral[] {
-  if (rol === 'administrador' || rol === 'jefe') return ITEMS_ADMIN
+  if (rol === 'jefe') return ITEMS_JEFE
+  if (rol === 'administrador') return ITEMS_ADMIN
   return ITEMS_VENDEDOR
 }
 
@@ -120,7 +127,9 @@ export function BarraLateral({ items }: PropsDeBarraLateral) {
   }
 
   const enAdmin = pathname.startsWith('/administracion')
-  const menu = items ?? (enAdmin ? ITEMS_ADMIN : itemsParaRol(rol))
+  const menu =
+    items ??
+    (rol === 'jefe' ? ITEMS_JEFE : enAdmin ? ITEMS_ADMIN : itemsParaRol(rol))
 
   useEffect(() => {
     setColapsada(leerColapsada())

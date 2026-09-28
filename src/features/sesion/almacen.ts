@@ -174,7 +174,10 @@ export const usarSesion = create<AlmacenDeSesion>((set) => ({
 
   async entrar(correo, contrasena) {
     const auth = obtenerAutenticacion()
-    await signInWithEmailAndPassword(auth, correo, contrasena)
+    const credencial = await signInWithEmailAndPassword(auth, correo, contrasena)
+    // El rol vive en el token. Si navegamos antes de leerlo, un jefe cae en
+    // el mostrador (`/`) porque el estado aún dice que no hay rol.
+    set(await leerDeUsuario(credencial.user))
   },
 
   async salir() {

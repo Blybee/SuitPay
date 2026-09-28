@@ -26,3 +26,10 @@
 >panel que baja 
 
 *heuristica* 
+
+- *harness* 
+>el prompt dice qué pieza montar, qué datos simular, qué no debe tocar (proveedor real, producción) y qué medición prueba que está bien.
+
+- *fixture*
+
+- *control segmentado*

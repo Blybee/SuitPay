@@ -13,6 +13,8 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccesoRouteImport } from './routes/acceso'
 import { Route as AdministracionRouteRouteImport } from './routes/administracion/route'
 import { Route as ConfiguracionRouteImport } from './routes/configuracion'
+import { Route as FichajeRouteImport } from './routes/fichaje'
+import { Route as FicharRouteImport } from './routes/fichar'
 import { Route as AdministracionIndexRouteImport } from './routes/administracion/index'
 import { Route as AdministracionAprendizajeRouteImport } from './routes/administracion/aprendizaje'
 import { Route as AdministracionCatalogoRouteImport } from './routes/administracion/catalogo'
@@ -41,6 +43,16 @@ const AdministracionRouteRoute = AdministracionRouteRouteImport.update({
 const ConfiguracionRoute = ConfiguracionRouteImport.update({
   id: '/configuracion',
   path: '/configuracion',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FichajeRoute = FichajeRouteImport.update({
+  id: '/fichaje',
+  path: '/fichaje',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FicharRoute = FicharRouteImport.update({
+  id: '/fichar',
+  path: '/fichar',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AdministracionIndexRoute = AdministracionIndexRouteImport.update({
@@ -97,6 +109,8 @@ export interface FileRoutesByFullPath {
   '/administracion': typeof AdministracionRouteRouteWithChildren
   '/acceso': typeof AccesoRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/fichaje': typeof FichajeRoute
+  '/fichar': typeof FicharRoute
   '/administracion/aprendizaje': typeof AdministracionAprendizajeRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
   '/administracion/parametros': typeof AdministracionParametrosRoute
@@ -111,6 +125,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/acceso': typeof AccesoRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/fichaje': typeof FichajeRoute
+  '/fichar': typeof FicharRoute
   '/administracion/aprendizaje': typeof AdministracionAprendizajeRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
   '/administracion/parametros': typeof AdministracionParametrosRoute
@@ -127,6 +143,8 @@ export interface FileRoutesById {
   '/administracion': typeof AdministracionRouteRouteWithChildren
   '/acceso': typeof AccesoRoute
   '/configuracion': typeof ConfiguracionRoute
+  '/fichaje': typeof FichajeRoute
+  '/fichar': typeof FicharRoute
   '/administracion/aprendizaje': typeof AdministracionAprendizajeRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
   '/administracion/parametros': typeof AdministracionParametrosRoute
@@ -144,6 +162,8 @@ export interface FileRouteTypes {
     | '/administracion'
     | '/acceso'
     | '/configuracion'
+    | '/fichaje'
+    | '/fichar'
     | '/administracion/aprendizaje'
     | '/administracion/catalogo'
     | '/administracion/parametros'
@@ -158,6 +178,8 @@ export interface FileRouteTypes {
     | '/'
     | '/acceso'
     | '/configuracion'
+    | '/fichaje'
+    | '/fichar'
     | '/administracion/aprendizaje'
     | '/administracion/catalogo'
     | '/administracion/parametros'
@@ -173,6 +195,8 @@ export interface FileRouteTypes {
     | '/administracion'
     | '/acceso'
     | '/configuracion'
+    | '/fichaje'
+    | '/fichar'
     | '/administracion/aprendizaje'
     | '/administracion/catalogo'
     | '/administracion/parametros'
@@ -189,6 +213,8 @@ export interface RootRouteChildren {
   AdministracionRouteRoute: typeof AdministracionRouteRouteWithChildren
   AccesoRoute: typeof AccesoRoute
   ConfiguracionRoute: typeof ConfiguracionRoute
+  FichajeRoute: typeof FichajeRoute
+  FicharRoute: typeof FicharRoute
   ComprobantesComprobanteIdRoute: typeof ComprobantesComprobanteIdRoute
   ComprobantesIndexRoute: typeof ComprobantesIndexRoute
   CotizacionesIndexRoute: typeof CotizacionesIndexRoute
@@ -222,6 +248,20 @@ declare module '@tanstack/react-router' {
       path: '/configuracion'
       fullPath: '/configuracion'
       preLoaderRoute: typeof ConfiguracionRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fichaje': {
+      id: '/fichaje'
+      path: '/fichaje'
+      fullPath: '/fichaje'
+      preLoaderRoute: typeof FichajeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/fichar': {
+      id: '/fichar'
+      path: '/fichar'
+      fullPath: '/fichar'
+      preLoaderRoute: typeof FicharRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/administracion/': {
@@ -316,6 +356,8 @@ const rootRouteChildren: RootRouteChildren = {
   AdministracionRouteRoute: AdministracionRouteRouteWithChildren,
   AccesoRoute: AccesoRoute,
   ConfiguracionRoute: ConfiguracionRoute,
+  FichajeRoute: FichajeRoute,
+  FicharRoute: FicharRoute,
   ComprobantesComprobanteIdRoute: ComprobantesComprobanteIdRoute,
   ComprobantesIndexRoute: ComprobantesIndexRoute,
   CotizacionesIndexRoute: CotizacionesIndexRoute,

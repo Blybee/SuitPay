@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { Modal } from '../../ui/componentes/Modal.tsx'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
 import {
@@ -24,6 +25,11 @@ export function AltaTransportista({
   const [denominacion, setDenominacion] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [enDocumento, setEnDocumento] = useState(false)
+
+  useEffect(() => {
+    setEnDocumento(true)
+  }, [])
 
   useEffect(() => {
     if (!abierta) return
@@ -33,7 +39,7 @@ export function AltaTransportista({
     if (/^\d{11}$/.test(rucInicial)) {
       void consultarTransportistaFn({ data: { numeroDocumento: rucInicial } }).then(
         (r) => {
-          if (r.ok && r.datos?.denominacion) {
+          if (r.ok && r.datos.denominacion.length > 0) {
             setDenominacion(r.datos.denominacion)
           }
         },
@@ -53,7 +59,7 @@ export function AltaTransportista({
         data: { numeroDocumento: ruc, denominacion: denominacion.trim() },
       })
       if (!respuesta.ok) {
-        setError(respuesta.error?.mensaje ?? 'No se pudo crear.')
+        setError(respuesta.error.mensaje)
         return
       }
       onCreado(respuesta.transportista.denominacion, respuesta.transportista.numeroDocumento)
@@ -63,7 +69,7 @@ export function AltaTransportista({
     }
   }
 
-  return (
+  const dialogo = (
     <Modal
       abierta={abierta}
       alCambiar={(ahora) => {
@@ -113,4 +119,7 @@ export function AltaTransportista({
       </div>
     </Modal>
   )
+
+  if (!enDocumento) return null
+  return createPortal(dialogo, document.body)
 }

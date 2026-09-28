@@ -2,10 +2,9 @@ import { readFileSync } from 'node:fs'
 import {
   assertFails,
   assertSucceeds,
-  initializeTestEnvironment
-  
+  initializeTestEnvironment,
 } from '@firebase/rules-unit-testing'
-import type {RulesTestEnvironment} from '@firebase/rules-unit-testing';
+import type { RulesTestEnvironment } from '@firebase/rules-unit-testing'
 import {
   doc,
   getDoc,
@@ -121,7 +120,10 @@ beforeEach(async () => {
       ventanaAnulacion: 'mismo_dia',
       formatoImpresionPorDefecto: 'a4',
     })
-    await setDoc(doc(bd, 'comprobantes/clave-existente'), comprobanteDeEjemplo())
+    await setDoc(
+      doc(bd, 'comprobantes/clave-existente'),
+      comprobanteDeEjemplo(),
+    )
     await setDoc(doc(bd, 'series/serie-1'), {
       serie: 'B001',
       tipoDocumento: 'boleta',
@@ -174,90 +176,108 @@ function comoDesactivado() {
 
 // ---------------------------------------------------------------------------
 
-describeConEmulador('comprobantes: la restricción más importante del sistema', () => {
-  it('un vendedor NO puede crear un comprobante', async () => {
-    await assertFails(
-      setDoc(doc(comoVendedor(), 'comprobantes/inventado'), comprobanteDeEjemplo()),
-    )
-  })
+describeConEmulador(
+  'comprobantes: la restricción más importante del sistema',
+  () => {
+    it('un vendedor NO puede crear un comprobante', async () => {
+      await assertFails(
+        setDoc(
+          doc(comoVendedor(), 'comprobantes/inventado'),
+          comprobanteDeEjemplo(),
+        ),
+      )
+    })
 
-  it('un vendedor NO puede declarar aceptado un comprobante', async () => {
-    await assertFails(
-      updateDoc(doc(comoVendedor(), 'comprobantes/clave-existente'), {
-        estado: 'aceptado',
-      }),
-    )
-  })
+    it('un vendedor NO puede declarar aceptado un comprobante', async () => {
+      await assertFails(
+        updateDoc(doc(comoVendedor(), 'comprobantes/clave-existente'), {
+          estado: 'aceptado',
+        }),
+      )
+    })
 
-  it('un vendedor NO puede borrar un comprobante', async () => {
-    await assertFails(
-      deleteDoc(doc(comoVendedor(), 'comprobantes/clave-existente')),
-    )
-  })
+    it('un vendedor NO puede borrar un comprobante', async () => {
+      await assertFails(
+        deleteDoc(doc(comoVendedor(), 'comprobantes/clave-existente')),
+      )
+    })
 
-  it('EL ADMINISTRADOR TAMPOCO puede crear un comprobante', async () => {
-    // Es el caso que hace falta comprobar explícitamente. Lo natural al escribir
-    // reglas es conceder al administrador todo lo que se niega al vendedor, y
-    // aquí eso sería un agujero: el correlativo y la clave de idempotencia no
-    // admiten un actor privilegiado en el cliente, solo el backend en transacción.
-    await assertFails(
-      setDoc(
-        doc(comoAdministrador(), 'comprobantes/inventado-por-admin'),
-        comprobanteDeEjemplo(),
-      ),
-    )
-  })
+    it('EL ADMINISTRADOR TAMPOCO puede crear un comprobante', async () => {
+      // Es el caso que hace falta comprobar explícitamente. Lo natural al escribir
+      // reglas es conceder al administrador todo lo que se niega al vendedor, y
+      // aquí eso sería un agujero: el correlativo y la clave de idempotencia no
+      // admiten un actor privilegiado en el cliente, solo el backend en transacción.
+      await assertFails(
+        setDoc(
+          doc(comoAdministrador(), 'comprobantes/inventado-por-admin'),
+          comprobanteDeEjemplo(),
+        ),
+      )
+    })
 
-  it('EL ADMINISTRADOR TAMPOCO puede modificar un comprobante', async () => {
-    await assertFails(
-      updateDoc(doc(comoAdministrador(), 'comprobantes/clave-existente'), {
-        total: 1,
-      }),
-    )
-  })
+    it('EL ADMINISTRADOR TAMPOCO puede modificar un comprobante', async () => {
+      await assertFails(
+        updateDoc(doc(comoAdministrador(), 'comprobantes/clave-existente'), {
+          total: 1,
+        }),
+      )
+    })
 
-  it('el jefe tampoco', async () => {
-    await assertFails(
-      setDoc(doc(comoJefe(), 'comprobantes/inventado-por-jefe'), comprobanteDeEjemplo()),
-    )
-  })
+    it('el jefe tampoco', async () => {
+      await assertFails(
+        setDoc(
+          doc(comoJefe(), 'comprobantes/inventado-por-jefe'),
+          comprobanteDeEjemplo(),
+        ),
+      )
+    })
 
-  it('cualquiera del personal puede leerlos', async () => {
-    await assertSucceeds(
-      getDoc(doc(comoVendedor(), 'comprobantes/clave-existente')),
-    )
-    await assertSucceeds(getDoc(doc(comoJefe(), 'comprobantes/clave-existente')))
-  })
-})
+    it('cualquiera del personal puede leerlos', async () => {
+      await assertSucceeds(
+        getDoc(doc(comoVendedor(), 'comprobantes/clave-existente')),
+      )
+      await assertSucceeds(
+        getDoc(doc(comoJefe(), 'comprobantes/clave-existente')),
+      )
+    })
+  },
+)
 
-describeConEmulador('series: el contador no lo toca nadie desde el cliente', () => {
-  it('un vendedor NO puede incrementar el contador de su serie', async () => {
-    await assertFails(
-      updateDoc(doc(comoVendedor(), 'series/serie-1'), { ultimoNumero: 8 }),
-    )
-  })
+describeConEmulador(
+  'series: el contador no lo toca nadie desde el cliente',
+  () => {
+    it('un vendedor NO puede incrementar el contador de su serie', async () => {
+      await assertFails(
+        updateDoc(doc(comoVendedor(), 'series/serie-1'), { ultimoNumero: 8 }),
+      )
+    })
 
-  it('EL ADMINISTRADOR TAMPOCO puede tocar el contador', async () => {
-    // Escribirlo permitiría reservar o repetir numeración.
-    await assertFails(
-      updateDoc(doc(comoAdministrador(), 'series/serie-1'), { ultimoNumero: 99 }),
-    )
-  })
+    it('EL ADMINISTRADOR TAMPOCO puede tocar el contador', async () => {
+      // Escribirlo permitiría reservar o repetir numeración.
+      await assertFails(
+        updateDoc(doc(comoAdministrador(), 'series/serie-1'), {
+          ultimoNumero: 99,
+        }),
+      )
+    })
 
-  it('el administrador sí puede desactivar una serie', async () => {
-    await assertSucceeds(
-      updateDoc(doc(comoAdministrador(), 'series/serie-1'), { activa: false }),
-    )
-  })
+    it('el administrador sí puede desactivar una serie', async () => {
+      await assertSucceeds(
+        updateDoc(doc(comoAdministrador(), 'series/serie-1'), {
+          activa: false,
+        }),
+      )
+    })
 
-  it('un vendedor lee su propia serie', async () => {
-    await assertSucceeds(getDoc(doc(comoVendedor(), 'series/serie-1')))
-  })
+    it('un vendedor lee su propia serie', async () => {
+      await assertSucceeds(getDoc(doc(comoVendedor(), 'series/serie-1')))
+    })
 
-  it('un vendedor NO lee la serie de otro', async () => {
-    await assertFails(getDoc(doc(comoOtroVendedor(), 'series/serie-1')))
-  })
-})
+    it('un vendedor NO lee la serie de otro', async () => {
+      await assertFails(getDoc(doc(comoOtroVendedor(), 'series/serie-1')))
+    })
+  },
+)
 
 describeConEmulador('cotizaciones', () => {
   it('un vendedor NO puede marcar una cotización como convertida', async () => {
@@ -357,7 +377,9 @@ describeConEmulador('usuarios', () => {
 
   it('un vendedor NO puede reactivarse', async () => {
     await assertFails(
-      updateDoc(doc(comoDesactivado(), 'usuarios/vendedor-3'), { activo: true }),
+      updateDoc(doc(comoDesactivado(), 'usuarios/vendedor-3'), {
+        activo: true,
+      }),
     )
   })
 
@@ -370,34 +392,37 @@ describeConEmulador('usuarios', () => {
   })
 })
 
-describeConEmulador('un vendedor desactivado no puede escribir nada (FR-003)', () => {
-  it('ni crear un cliente', async () => {
-    await assertFails(
-      setDoc(doc(comoDesactivado(), 'clientes/20123456789'), {
-        tipoDocumento: 'RUC',
-        numeroDocumento: '20123456789',
-        denominacion: 'Ferretería Ejemplo',
-        creadoPor: 'vendedor-3',
-        creadoEn: serverTimestamp(),
-      }),
-    )
-  })
+describeConEmulador(
+  'un vendedor desactivado no puede escribir nada (FR-003)',
+  () => {
+    it('ni crear un cliente', async () => {
+      await assertFails(
+        setDoc(doc(comoDesactivado(), 'clientes/20123456789'), {
+          tipoDocumento: 'RUC',
+          numeroDocumento: '20123456789',
+          denominacion: 'Ferretería Ejemplo',
+          creadoPor: 'vendedor-3',
+          creadoEn: serverTimestamp(),
+        }),
+      )
+    })
 
-  it('ni crear una cotización', async () => {
-    await assertFails(
-      setDoc(doc(comoDesactivado(), 'cotizaciones/de-desactivado'), {
-        numero: 50,
-        estado: 'pendiente',
-        canal: 'general',
-        cliente: null,
-        lineas: [],
-        total: 100,
-        creadoPor: 'vendedor-3',
-        creadoEn: serverTimestamp(),
-      }),
-    )
-  })
-})
+    it('ni crear una cotización', async () => {
+      await assertFails(
+        setDoc(doc(comoDesactivado(), 'cotizaciones/de-desactivado'), {
+          numero: 50,
+          estado: 'pendiente',
+          canal: 'general',
+          cliente: null,
+          lineas: [],
+          total: 100,
+          creadoPor: 'vendedor-3',
+          creadoEn: serverTimestamp(),
+        }),
+      )
+    })
+  },
+)
 
 describeConEmulador('clientes', () => {
   it('un vendedor crea un cliente con forma válida', async () => {
@@ -456,7 +481,9 @@ describeConEmulador('clientes', () => {
   })
 
   it('nadie puede borrar un cliente', async () => {
-    await assertFails(deleteDoc(doc(comoAdministrador(), 'clientes/20999999999')))
+    await assertFails(
+      deleteDoc(doc(comoAdministrador(), 'clientes/20999999999')),
+    )
   })
 })
 
@@ -492,7 +519,9 @@ describeConEmulador('transportistas', () => {
         creadoEn: serverTimestamp(),
       })
     })
-    await assertSucceeds(getDoc(doc(comoVendedor(), 'transportistas/20999999999')))
+    await assertSucceeds(
+      getDoc(doc(comoVendedor(), 'transportistas/20999999999')),
+    )
     await assertSucceeds(getDoc(doc(comoVendedor(), 'indices/transportistas')))
   })
 })
@@ -549,7 +578,10 @@ describeConEmulador('lista de requerimiento', () => {
   it('un vendedor escribe y lee la de su día', async () => {
     await assertSucceeds(
       setDoc(
-        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/diasLista/2026-08-27'),
+        doc(
+          comoVendedor(),
+          'listasRequerimiento/vendedor-1/diasLista/2026-08-27',
+        ),
         {
           vendedorId: 'vendedor-1',
           fecha: '2026-08-27',
@@ -569,7 +601,10 @@ describeConEmulador('lista de requerimiento', () => {
     )
     await assertSucceeds(
       getDoc(
-        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/diasLista/2026-08-27'),
+        doc(
+          comoVendedor(),
+          'listasRequerimiento/vendedor-1/diasLista/2026-08-27',
+        ),
       ),
     )
   })
@@ -577,7 +612,10 @@ describeConEmulador('lista de requerimiento', () => {
   it('el id del día debe ser una fecha', async () => {
     await assertFails(
       setDoc(
-        doc(comoVendedor(), 'listasRequerimiento/vendedor-1/diasLista/no-fecha'),
+        doc(
+          comoVendedor(),
+          'listasRequerimiento/vendedor-1/diasLista/no-fecha',
+        ),
         {
           vendedorId: 'vendedor-1',
           lineas: [],
@@ -606,7 +644,10 @@ describeConEmulador('lista de requerimiento', () => {
     })
     await assertFails(
       getDoc(
-        doc(comoVendedor(), 'listasRequerimiento/vendedor-2/diasLista/2026-08-27'),
+        doc(
+          comoVendedor(),
+          'listasRequerimiento/vendedor-2/diasLista/2026-08-27',
+        ),
       ),
     )
   })
@@ -614,7 +655,10 @@ describeConEmulador('lista de requerimiento', () => {
   it('un vendedor NO escribe la lista de otro', async () => {
     await assertFails(
       setDoc(
-        doc(comoVendedor(), 'listasRequerimiento/vendedor-2/diasLista/2026-08-27'),
+        doc(
+          comoVendedor(),
+          'listasRequerimiento/vendedor-2/diasLista/2026-08-27',
+        ),
         {
           vendedorId: 'vendedor-1',
           fecha: '2026-08-27',
@@ -799,7 +843,10 @@ describeConEmulador('deudas de vecino', () => {
     )
     await assertSucceeds(
       setDoc(
-        doc(comoVendedor(), 'cotizaciones/vecino-deuda/deudasPorDia/2026-09-13'),
+        doc(
+          comoVendedor(),
+          'cotizaciones/vecino-deuda/deudasPorDia/2026-09-13',
+        ),
         {
           fecha: '2026-09-13',
           lineas: [
@@ -823,13 +870,19 @@ describeConEmulador('deudas de vecino', () => {
     )
     await assertFails(
       updateDoc(
-        doc(comoVendedor(), 'cotizaciones/vecino-deuda/deudasPorDia/2026-09-13'),
+        doc(
+          comoVendedor(),
+          'cotizaciones/vecino-deuda/deudasPorDia/2026-09-13',
+        ),
         { generacion: 1 },
       ),
     )
     await assertSucceeds(
       deleteDoc(
-        doc(comoVendedor(), 'cotizaciones/vecino-deuda/deudasPorDia/2026-09-13'),
+        doc(
+          comoVendedor(),
+          'cotizaciones/vecino-deuda/deudasPorDia/2026-09-13',
+        ),
       ),
     )
   })
@@ -849,7 +902,10 @@ describeConEmulador('deudas de vecino', () => {
         actualizadoEn: serverTimestamp(),
       })
       await setDoc(
-        doc(contexto.firestore(), 'cotizaciones/vecino-jefe/deudasPorDia/2026-09-13'),
+        doc(
+          contexto.firestore(),
+          'cotizaciones/vecino-jefe/deudasPorDia/2026-09-13',
+        ),
         {
           fecha: '2026-09-13',
           lineas: [],
@@ -867,6 +923,27 @@ describeConEmulador('deudas de vecino', () => {
       deleteDoc(
         doc(comoJefe(), 'cotizaciones/vecino-jefe/deudasPorDia/2026-09-13'),
       ),
+    )
+  })
+})
+
+describeConEmulador('fichajes: solo el jefe lee y nadie escribe', () => {
+  it('el jefe lee un fichaje; un vendedor no, y el cliente no escribe', async () => {
+    await entorno.withSecurityRulesDisabled(async (contexto) => {
+      await setDoc(doc(contexto.firestore(), 'fichajes/entrada-1'), {
+        nombre: 'Ana López',
+        estadoSolicitud: 'pendiente',
+      })
+    })
+    await assertSucceeds(getDoc(doc(comoJefe(), 'fichajes/entrada-1')))
+    await assertFails(getDoc(doc(comoVendedor(), 'fichajes/entrada-1')))
+    await assertFails(
+      setDoc(doc(comoJefe(), 'fichajes/inventado'), { nombre: 'Nadie' }),
+    )
+    await assertFails(
+      setDoc(doc(comoVendedor(), 'fichajeReservas/candado'), {
+        fichajeId: 'x',
+      }),
     )
   })
 })

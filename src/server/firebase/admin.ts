@@ -129,6 +129,8 @@ export const COLECCIONES = {
   lotesAprendizaje: 'lotesAprendizaje',
   revisionesAprendizaje: 'revisionesAprendizaje',
   sesionesEntrenamiento: 'sesionesEntrenamiento',
+  fichajes: 'fichajes',
+  fichajeReservas: 'fichajeReservas',
 } as const
 
 export const DOCUMENTOS = {
@@ -137,5 +139,8 @@ export const DOCUMENTOS = {
   indiceDeTransportistas: 'indices/transportistas',
   parametros: 'config/parametros',
   contadorCotizaciones: 'config/contadorCotizaciones',
+  contadorFichajes: 'config/contadorFichajes',
+  rosterFichaje: 'config/rosterFichaje',
+  ultimoFichaje: 'config/ultimoFichaje',
   aprendizajeMemoria: 'aprendizaje/memoria',
 } as const

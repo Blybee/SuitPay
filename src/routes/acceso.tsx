@@ -16,6 +16,12 @@ export const Route = createFileRoute('/acceso')({
   component: PantallaDeAcceso,
 })
 
+function destinoDe(rol: string | null): '/fichaje' | '/administracion' | '/' {
+  if (rol === 'jefe') return '/fichaje'
+  if (rol === 'administrador') return '/administracion'
+  return '/'
+}
+
 function PantallaDeAcceso() {
   const navigate = useNavigate()
   const cargando = usarSesion((s) => s.cargando)
@@ -29,9 +35,7 @@ function PantallaDeAcceso() {
   const [ocupado, setOcupado] = useState(false)
 
   if (!cargando && uid !== null) {
-    const destino =
-      rol === 'administrador' || rol === 'jefe' ? '/administracion' : '/'
-    return <Navigate to={destino} />
+    return <Navigate to={destinoDe(rol)} />
   }
 
   async function enviar(evento: FormEvent): Promise<void> {
@@ -41,11 +45,7 @@ function PantallaDeAcceso() {
     try {
       await entrar(correo.trim(), contrasena)
       const estado = usarSesion.getState()
-      const destino =
-        estado.rol === 'administrador' || estado.rol === 'jefe'
-          ? '/administracion'
-          : '/'
-      await navigate({ to: destino })
+      await navigate({ to: destinoDe(estado.rol) })
     } catch {
       setError('Correo o contraseña incorrectos. Inténtalo de nuevo.')
     } finally {
