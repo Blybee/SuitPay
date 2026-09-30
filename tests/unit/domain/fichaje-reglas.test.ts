@@ -88,10 +88,17 @@ describe('conversión de tardanzas', () => {
   })
 })
 
-describe('nombre completo', () => {
-  it('acepta nombre y apellido y rechaza una sola palabra o dígitos', () => {
+describe('nombre de la solicitud', () => {
+  it('acepta un solo nombre y también nombre y apellido', () => {
+    expect(nombreParaMostrar('Luis')).toBe('Luis')
+    expect(nombreParaMostrar('Ana')).toBe('Ana')
     expect(nombreParaMostrar('  maría   lópez ')).toBe('maría lópez')
-    expect(nombreParaMostrar('Ana')).toBeNull()
+  })
+
+  it('rechaza vacío, solo espacios, menos de 3 caracteres y dígitos', () => {
+    expect(nombreParaMostrar('')).toBeNull()
+    expect(nombreParaMostrar('   ')).toBeNull()
+    expect(nombreParaMostrar('Al')).toBeNull()
     expect(nombreParaMostrar('Juan 2 Pérez')).toBeNull()
   })
 })
