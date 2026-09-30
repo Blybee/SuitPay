@@ -96,7 +96,7 @@ export function RevisionCaptura({
             </p>
           </div>
         </div>
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
           <Boton
             variante="principal"
             data-testid="aprobar-captura"
