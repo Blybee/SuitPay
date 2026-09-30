@@ -1,7 +1,12 @@
 import { useEffect, useState } from 'react'
 import { collection, doc, onSnapshot, query, where } from 'firebase/firestore'
 import type { Timestamp } from 'firebase/firestore'
-import { cantidadDeDias, isoDeDia } from '../../domain/fichaje/reglas.ts'
+import {
+  cantidadDeDias,
+  horariosDesde,
+  isoDeDia,
+} from '../../domain/fichaje/reglas.ts'
+import type { HorarioSemanal } from '../../domain/fichaje/reglas.ts'
 import type { EstadoDeMarca } from '../../domain/fichaje/reglas.ts'
 import { obtenerBaseDeDatos } from '../../infra/firebase/cliente.ts'
 
@@ -153,14 +158,21 @@ export function usarMesFichaje(
   return { marcas, listo }
 }
 
-export function usarRosterFichaje(): readonly PersonaDeRoster[] {
+export function usarRosterFichaje(): {
+  readonly personas: readonly PersonaDeRoster[]
+  readonly horarios: Readonly<Record<string, HorarioSemanal>>
+} {
   const [personas, setPersonas] = useState<readonly PersonaDeRoster[]>([])
+  const [horarios, setHorarios] = useState<
+    Readonly<Record<string, HorarioSemanal>>
+  >({})
 
   useEffect(() => {
     return onSnapshot(
       doc(obtenerBaseDeDatos(), 'config', 'rosterFichaje'),
       (instantanea) => {
         const lista = instantanea.get('nombres')
+        setHorarios(horariosDesde(instantanea.get('horarios')))
         if (!Array.isArray(lista)) {
           setPersonas([])
           return
@@ -182,7 +194,7 @@ export function usarRosterFichaje(): readonly PersonaDeRoster[] {
     )
   }, [])
 
-  return personas
+  return { personas, horarios }
 }
 
 export function usarUltimoFichaje(): UltimoRegistro | null {

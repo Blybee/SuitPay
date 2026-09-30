@@ -1182,6 +1182,19 @@
     monospace;
 }
 
+.fichaje button.celda {
+  padding: 0;
+  border: 0;
+  color: inherit;
+  cursor: pointer;
+  appearance: none;
+}
+
+.fichaje button.celda:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
 .fichaje .celda.hueco {
   visibility: hidden;
 }
@@ -1225,6 +1238,13 @@
   margin-top: 0.75rem;
 }
 
+.fichaje .ficha-acciones {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+}
+
 .fichaje .ficha-totales {
   display: flex;
   flex-wrap: wrap;
@@ -1237,7 +1257,6 @@
 }
 
 .fichaje .tacho {
-  margin-left: auto;
   border: 0;
   background: transparent;
   color: var(--bad);
@@ -1250,6 +1269,20 @@
   flex: none;
 }
 
+.fichaje .reloj {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  width: 2em;
+  height: 2em;
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  flex: none;
+}
+
+.fichaje .reloj:focus-visible,
 .fichaje .tacho:focus-visible {
   outline: none;
   transform: translate(-2px, -2px);
@@ -1560,6 +1593,19 @@
   height: 12px;
   margin-right: 3.5px;
   vertical-align: middle;
+}
+
+.fichaje button.d {
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  appearance: none;
+}
+
+.fichaje .name-linea {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.15rem;
 }
 
 .fichaje .d:hover {
@@ -1873,6 +1919,222 @@
 
   .fichaje .row2 {
     grid-template-columns: 1fr;
+  }
+}
+
+/*
+ * Popover anclado al día. El invocador (popovertarget) es el ancla implícita.
+ * Sin anchor positioning, el navegador lo centra.
+ */
+.fichaje .dia-popover {
+  width: max-content;
+  max-width: min(16rem, calc(100vw - 1.5rem));
+  border: 2px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  padding: 0.4rem 0.45rem 0.4rem 0.7rem;
+  box-shadow: 4px 4px 0 var(--ink);
+  font:
+    600 12px 'IBM Plex Mono',
+    monospace;
+}
+
+.fichaje .dia-popover p {
+  display: flex;
+  align-items: baseline;
+  gap: 0.55rem;
+  margin: 0;
+}
+
+.fichaje .dia-popover .alerta {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.fichaje .dia-popover:is(:popover-open, .\:popover-open) {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  flex-wrap: wrap;
+}
+
+@supports (anchor-name: --x) {
+  .fichaje .dia-popover {
+    inset: unset;
+    margin: 6px;
+    position-area: block-start;
+    position-try-fallbacks: flip-block;
+  }
+}
+
+.fichaje .horario-dialogo {
+  width: min(28rem, calc(100vw - 2rem));
+  margin: auto;
+  border: 2px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  padding: 1.15rem 1.15rem 1rem;
+  box-shadow: 6px 6px 0 var(--ink);
+}
+
+.fichaje .horario-dialogo::backdrop {
+  background: rgb(0 0 0 / 0.4);
+}
+
+.fichaje .horario-dialogo h2 {
+  margin: 0;
+  font-size: 1.2rem;
+  line-height: 1.2;
+}
+
+.fichaje .horario-dialogo .field {
+  margin-top: 0.9rem;
+}
+
+.fichaje .horario-dialogo .form-acts {
+  margin-top: 1rem;
+}
+
+.fichaje .horario-grupo {
+  display: grid;
+  grid-template-columns: minmax(7.5rem, 9.5rem) auto auto;
+  align-items: end;
+  column-gap: 0.55rem;
+  row-gap: 0.35rem;
+  margin-top: 0.9rem;
+}
+
+.fichaje .horario-grupo .field {
+  margin: 0;
+}
+
+.fichaje .horario-dias {
+  display: flex;
+  gap: 4px;
+}
+
+.fichaje .horario-dias button {
+  width: 2rem;
+  height: 2rem;
+  border: 2px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  padding: 0;
+  cursor: pointer;
+  font:
+    700 12px 'IBM Plex Mono',
+    monospace;
+  transition:
+    background-color var(--duration-rapida) var(--ease-salida),
+    color var(--duration-rapida) var(--ease-salida);
+}
+
+.fichaje .horario-dias button[aria-pressed='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.fichaje .horario-dias button:focus-visible,
+.fichaje .horario-quitar:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.fichaje .horario-quitar {
+  border: 0;
+  background: transparent;
+  color: var(--bad);
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  cursor: pointer;
+  font:
+    700 18px 'IBM Plex Mono',
+    monospace;
+}
+
+.fichaje .horario-tolerancia {
+  grid-column: 1 / -1;
+  margin: 0;
+}
+
+.fichaje .horario-otra {
+  margin-top: 0.85rem;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fichaje .horario-grupo {
+    animation: horario-grupo-entrar var(--duration-rapida) var(--ease-salida);
+  }
+}
+
+@keyframes horario-grupo-entrar {
+  from {
+    opacity: 0;
+    transform: translateY(0.25rem);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .fichaje .dia-popover {
+    transform-origin: bottom center;
+    opacity: 0;
+    transform: translateY(0.25rem) scale(0.98);
+    transition:
+      opacity var(--duration-rapida) var(--ease-salida),
+      transform var(--duration-rapida) var(--ease-salida),
+      overlay var(--duration-rapida) var(--ease-salida) allow-discrete,
+      display var(--duration-rapida) var(--ease-salida) allow-discrete;
+  }
+
+  .fichaje .dia-popover:is(:popover-open, .\:popover-open) {
+    opacity: 1;
+    transform: none;
+  }
+
+  @starting-style {
+    .fichaje .dia-popover:is(:popover-open, .\:popover-open) {
+      opacity: 0;
+      transform: translateY(0.25rem) scale(0.98);
+    }
+  }
+
+  .fichaje .horario-dialogo {
+    opacity: 0;
+    transform: scale(0.96);
+    transition:
+      opacity var(--duration-media) var(--ease-salida),
+      transform var(--duration-media) var(--ease-salida),
+      overlay var(--duration-media) var(--ease-salida) allow-discrete,
+      display var(--duration-media) var(--ease-salida) allow-discrete;
+  }
+
+  .fichaje .horario-dialogo[open] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .fichaje .horario-dialogo::backdrop {
+    opacity: 0;
+    transition:
+      opacity var(--duration-media) var(--ease-salida),
+      overlay var(--duration-media) var(--ease-salida) allow-discrete,
+      display var(--duration-media) var(--ease-salida) allow-discrete;
+  }
+
+  .fichaje .horario-dialogo[open]::backdrop {
+    opacity: 1;
+  }
+
+  @starting-style {
+    .fichaje .horario-dialogo[open] {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+
+    .fichaje .horario-dialogo[open]::backdrop {
+      opacity: 0;
+    }
   }
 }
 

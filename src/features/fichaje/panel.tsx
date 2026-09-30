@@ -4,19 +4,26 @@ import { diaEnLima, ZONA_HORARIA } from '../../domain/anulacion/ventana.ts'
 import {
   armarMes,
   cantidadDeDias,
+  DIAS_LABORALES,
   esDomingoEnLima,
+  gruposDesdeHorario,
+  HORA_DE_ENTRADA_TEXTO,
   inicialesDe,
   isoDeDia,
+  minutosDeHora,
   minutosDelDiaEnLima,
   sumarTotales,
+  textoDeMinutos,
+  TOLERANCIA_DE_ENTRADA,
   totalesDeCeldas,
 } from '../../domain/fichaje/reglas.ts'
-import type { EstadoDeMarca } from '../../domain/fichaje/reglas.ts'
+import type { EstadoDeMarca, HorarioSemanal } from '../../domain/fichaje/reglas.ts'
 import {
   aprobarFichajesFn,
   editarMarcaFn,
   eliminarHistorialFn,
   eliminarMarcaFn,
+  fijarHorarioEntradaFn,
   quitarDelEquipoFn,
   rechazarFichajeFn,
   registrarManualFn,
@@ -107,15 +114,32 @@ function partirHoy(iso: string): { anio: number; mes: number; dia: number } {
   return { anio: anio ?? 2026, mes: mes ?? 1, dia: dia ?? 1 }
 }
 
+interface RegistroDeDia {
+  readonly id: string
+  readonly hora: string | null
+}
+
+interface FilaDelMes {
+  readonly nombre: string
+  readonly nombreClave: string
+  readonly celdas: readonly { dia: number; clase: string }[]
+  readonly registros: Readonly<Record<number, RegistroDeDia>>
+  readonly totales: ReturnType<typeof totalesDeCeldas>
+}
+
 function filasDelMes(
   marcas: readonly MarcaAprobada[],
   anio: number,
   mes: number,
   hoy: string,
-) {
+): FilaDelMes[] {
   const porClave = new Map<
     string,
-    { nombre: string; marcas: Record<number, EstadoDeMarca> }
+    {
+      nombre: string
+      marcas: Record<number, EstadoDeMarca>
+      registros: Record<number, RegistroDeDia>
+    }
   >()
   const ordenadas = [...marcas].sort(
     (una, otra) =>
@@ -126,9 +150,14 @@ function filasDelMes(
     const actual = porClave.get(marca.nombreClave) ?? {
       nombre: marca.nombre,
       marcas: {},
+      registros: {},
     }
     actual.nombre = marca.nombre
     actual.marcas[dia] = marca.estadoDia
+    actual.registros[dia] = {
+      id: marca.id,
+      hora: marca.horaEntrada === null ? null : horaCorta(marca.horaEntrada),
+    }
     porClave.set(marca.nombreClave, actual)
   }
   return [...porClave.entries()]
@@ -138,6 +167,7 @@ function filasDelMes(
         nombre: persona.nombre,
         nombreClave,
         celdas,
+        registros: persona.registros,
         totales: totalesDeCeldas(celdas),
       }
     })
@@ -290,7 +320,7 @@ export function PanelFichaje() {
   const cola = usarColaFichaje()
   const delMes = usarMesFichaje(mesVista.anio, mesVista.mes)
   const deHoy = usarMesFichaje(partesHoy.anio, partesHoy.mes)
-  const roster = usarRosterFichaje()
+  const { personas: roster, horarios } = usarRosterFichaje()
   const ultimo = usarUltimoFichaje()
   const tablaRef = useRef<HTMLDivElement>(null)
   const idTabs = useId()
@@ -697,38 +727,11 @@ export function PanelFichaje() {
                     </thead>
                     <tbody>
                       {filas.map((fila) => (
-                        <tr key={fila.nombre}>
-                          <td className="name">
-                            {fila.nombre}
-                            {fila.totales.tardanzas === 0 &&
-                            fila.totales.faltas === 0 &&
-                            fila.totales.presentes + fila.totales.justificados >
-                              0 ? (
-                              <span className="perf">◆ Perfecto</span>
-                            ) : null}
-                          </td>
-                          <td className="days">
-                            {fila.celdas.map((celda) => (
-                              <span
-                                key={celda.dia}
-                                className={`d ${claseVisual(celda.clase)}`}
-                                title={`${celda.dia} · ${celda.clase}`}
-                              />
-                            ))}
-                          </td>
-                          <td className="cnt">{fila.totales.presentes}</td>
-                          <td className="cnt t">{fila.totales.tardanzas}</td>
-                          <td className="cnt f">{fila.totales.faltas}</td>
-                          <td className="cnt j">{fila.totales.justificados}</td>
-                          <td className="pct">
-                            <b>{fila.totales.porcentaje}%</b>
-                            <div className="bar">
-                              <i
-                                style={{ width: `${fila.totales.porcentaje}%` }}
-                              />
-                            </div>
-                          </td>
-                        </tr>
+                        <FilaAncha
+                          key={fila.nombreClave}
+                          fila={fila}
+                          horario={horarios[fila.nombreClave]}
+                        />
                       ))}
                     </tbody>
                   </table>
@@ -762,6 +765,7 @@ export function PanelFichaje() {
                   filas={filas}
                   anio={mesVista.anio}
                   mes={mesVista.mes}
+                  horarios={horarios}
                   diasLaborales={diasLaboralesPasados(
                     mesVista.anio,
                     mesVista.mes,
@@ -1071,23 +1075,14 @@ function HistoricoEstrecho({
   filas,
   anio,
   mes,
+  horarios,
   diasLaborales,
   onExportar,
 }: {
-  readonly filas: readonly {
-    nombre: string
-    nombreClave: string
-    celdas: readonly { dia: number; clase: string }[]
-    totales: {
-      presentes: number
-      tardanzas: number
-      faltas: number
-      justificados: number
-      porcentaje: number
-    }
-  }[]
+  readonly filas: readonly FilaDelMes[]
   readonly anio: number
   readonly mes: number
+  readonly horarios: Readonly<Record<string, HorarioSemanal>>
   readonly diasLaborales: number
   readonly onExportar: () => void
 }) {
@@ -1099,7 +1094,12 @@ function HistoricoEstrecho({
         <p className="vacio">Sin fichajes en este mes</p>
       ) : (
         filas.map((fila) => (
-          <FichaDeMes key={fila.nombreClave} fila={fila} huecos={huecos} />
+          <FichaDeMes
+            key={fila.nombreClave}
+            fila={fila}
+            huecos={huecos}
+            horario={horarios[fila.nombreClave]}
+          />
         ))
       )}
       <div className="panel tfoot">
@@ -1118,24 +1118,19 @@ function HistoricoEstrecho({
 function FichaDeMes({
   fila,
   huecos,
+  horario,
 }: {
-  readonly fila: {
-    nombre: string
-    nombreClave: string
-    celdas: readonly { dia: number; clase: string }[]
-    totales: {
-      presentes: number
-      tardanzas: number
-      faltas: number
-      justificados: number
-      porcentaje: number
-    }
-  }
+  readonly fila: FilaDelMes
   readonly huecos: number
+  readonly horario: HorarioSemanal | undefined
 }) {
+  const idPopover = useId()
+  const [diaActivo, setDiaActivo] = useState<number | null>(null)
   const [confirmar, setConfirmar] = useState(false)
   const [ocupado, setOcupado] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const registro =
+    diaActivo === null ? null : (fila.registros[diaActivo] ?? null)
 
   async function borrar(): Promise<void> {
     setOcupado(true)
@@ -1170,15 +1165,21 @@ function FichaDeMes({
           <span key={`hueco-${indiceHueco}`} className="celda hueco" />
         ))}
         {fila.celdas.map((celda) => (
-          <span
+          <BotonDeDia
             key={celda.dia}
-            className={`celda ${claseVisual(celda.clase)}`}
-            title={`${celda.dia} · ${celda.clase}`}
-          >
-            {celda.dia}
-          </span>
+            dia={celda.dia}
+            clase={celda.clase}
+            idPopover={idPopover}
+            variante="tarjeta"
+            onElegir={setDiaActivo}
+          />
         ))}
       </div>
+      <PopoverDeDia
+        id={idPopover}
+        dia={diaActivo}
+        registro={registro}
+      />
       <div className="ficha-pie">
         <p className="ficha-totales">
           <span>P {fila.totales.presentes}</span>
@@ -1186,19 +1187,26 @@ function FichaDeMes({
           <span>F {fila.totales.faltas}</span>
           <span>J {fila.totales.justificados}</span>
         </p>
-        <button
-          type="button"
-          className="tacho"
-          aria-label={`Eliminar historial de ${fila.nombre}`}
-          aria-expanded={confirmar}
-          disabled={ocupado}
-          onClick={() => {
-            setError(null)
-            setConfirmar((esta) => !esta)
-          }}
-        >
-          <IconoQuitar />
-        </button>
+        <div className="ficha-acciones">
+          <BotonHorario
+            nombre={fila.nombre}
+            clave={fila.nombreClave}
+            horario={horario}
+          />
+          <button
+            type="button"
+            className="tacho"
+            aria-label={`Eliminar historial de ${fila.nombre}`}
+            aria-expanded={confirmar}
+            disabled={ocupado}
+            onClick={() => {
+              setError(null)
+              setConfirmar((esta) => !esta)
+            }}
+          >
+            <IconoQuitar />
+          </button>
+        </div>
       </div>
       <div className={confirmar ? 'roster-panel abierto' : 'roster-panel'}>
         <div>
@@ -1236,6 +1244,463 @@ function FichaDeMes({
         </div>
       </div>
     </article>
+  )
+}
+
+const ETIQUETA_DE_CELDA: Record<string, string> = {
+  presente: 'presente',
+  tardanza: 'tardanza',
+  falta: 'falta',
+  justificado: 'justificado',
+  domingo: 'domingo',
+  proximo: 'todavía no cierra',
+}
+
+function textoDeTolerancia(hora: string): string {
+  const minutos = minutosDeHora(hora)
+  if (minutos === null) return '—'
+  const tope = Math.min(minutos + TOLERANCIA_DE_ENTRADA, 23 * 60 + 59)
+  return textoDeMinutos(tope)
+}
+
+function FilaAncha({
+  fila,
+  horario,
+}: {
+  readonly fila: FilaDelMes
+  readonly horario: HorarioSemanal | undefined
+}) {
+  const idPopover = useId()
+  const [diaActivo, setDiaActivo] = useState<number | null>(null)
+  const registro =
+    diaActivo === null ? null : (fila.registros[diaActivo] ?? null)
+
+  return (
+    <tr>
+      <td className="name">
+        <span className="name-linea">
+          {fila.nombre}
+          <BotonHorario
+            nombre={fila.nombre}
+            clave={fila.nombreClave}
+            horario={horario}
+          />
+        </span>
+        {fila.totales.tardanzas === 0 &&
+        fila.totales.faltas === 0 &&
+        fila.totales.presentes + fila.totales.justificados > 0 ? (
+          <span className="perf">◆ Perfecto</span>
+        ) : null}
+      </td>
+      <td className="days">
+        {fila.celdas.map((celda) => (
+          <BotonDeDia
+            key={celda.dia}
+            dia={celda.dia}
+            clase={celda.clase}
+            idPopover={idPopover}
+            variante="tabla"
+            onElegir={setDiaActivo}
+          />
+        ))}
+        <PopoverDeDia id={idPopover} dia={diaActivo} registro={registro} />
+      </td>
+      <td className="cnt">{fila.totales.presentes}</td>
+      <td className="cnt t">{fila.totales.tardanzas}</td>
+      <td className="cnt f">{fila.totales.faltas}</td>
+      <td className="cnt j">{fila.totales.justificados}</td>
+      <td className="pct">
+        <b>{fila.totales.porcentaje}%</b>
+        <div className="bar">
+          <i style={{ width: `${fila.totales.porcentaje}%` }} />
+        </div>
+      </td>
+    </tr>
+  )
+}
+
+function BotonDeDia({
+  dia,
+  clase,
+  idPopover,
+  variante,
+  onElegir,
+}: {
+  readonly dia: number
+  readonly clase: string
+  readonly idPopover: string
+  readonly variante: 'tarjeta' | 'tabla'
+  readonly onElegir: (dia: number) => void
+}) {
+  const etiqueta = ETIQUETA_DE_CELDA[clase] ?? clase
+  return (
+    <button
+      type="button"
+      className={
+        variante === 'tabla'
+          ? `d ${claseVisual(clase)}`
+          : `celda ${claseVisual(clase)}`
+      }
+      popoverTarget={idPopover}
+      popoverTargetAction="toggle"
+      aria-label={`${dia}, ${etiqueta}`}
+      onClick={() => onElegir(dia)}
+    >
+      {variante === 'tarjeta' ? dia : null}
+    </button>
+  )
+}
+
+function PopoverDeDia({
+  id,
+  dia,
+  registro,
+}: {
+  readonly id: string
+  readonly dia: number | null
+  readonly registro: RegistroDeDia | null
+}) {
+  const nodo = useRef<HTMLDivElement>(null)
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    setError(null)
+    setOcupado(false)
+  }, [dia, registro?.id])
+
+  async function quitar(): Promise<void> {
+    if (registro === null) return
+    setOcupado(true)
+    setError(null)
+    try {
+      const respuesta = await eliminarMarcaFn({ data: { id: registro.id } })
+      if (!respuesta.ok) {
+        setError(mensajeDe(respuesta))
+        return
+      }
+      nodo.current?.hidePopover()
+    } catch {
+      setError('No se pudo quitar el registro.')
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  return (
+    <div
+      ref={nodo}
+      id={id}
+      popover="auto"
+      className="dia-popover"
+    >
+      <p>
+        <b>{dia ?? '—'}</b>
+        <span>{registro === null ? 'Sin registro' : (registro.hora ?? 'Sin hora')}</span>
+      </p>
+      {registro !== null ? (
+        <button
+          type="button"
+          className="tacho"
+          aria-label={`Eliminar el registro del día ${dia ?? ''}`}
+          aria-busy={ocupado}
+          disabled={ocupado}
+          onClick={() => void quitar()}
+        >
+          <IconoQuitar />
+        </button>
+      ) : null}
+      {error !== null ? (
+        <p className="alerta" role="alert">
+          {error}
+        </p>
+      ) : null}
+    </div>
+  )
+}
+
+interface GrupoEditable {
+  readonly id: string
+  readonly hora: string
+  readonly dias: readonly number[]
+}
+
+function gruposEditables(horario: HorarioSemanal | undefined): GrupoEditable[] {
+  return gruposDesdeHorario(horario).map((grupo, indice) => ({
+    id: `g${indice}`,
+    hora: grupo.hora,
+    dias: grupo.dias,
+  }))
+}
+
+function BotonHorario({
+  nombre,
+  clave,
+  horario,
+}: {
+  readonly nombre: string
+  readonly clave: string
+  readonly horario: HorarioSemanal | undefined
+}) {
+  const dialogo = useRef<HTMLDialogElement>(null)
+  const tituloId = useId()
+  const siguienteId = useRef(0)
+  const [grupos, setGrupos] = useState<readonly GrupoEditable[]>(() =>
+    gruposEditables(horario),
+  )
+  const [ocupado, setOcupado] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const diasSinHora = DIAS_LABORALES.filter(
+    (dia) => !grupos.some((grupo) => grupo.dias.includes(dia.indice)),
+  )
+
+  function abrir(): void {
+    siguienteId.current = 0
+    setGrupos(gruposEditables(horario))
+    setError(null)
+    dialogo.current?.showModal()
+  }
+
+  function asignar(id: string, dia: number): void {
+    setGrupos((previos) =>
+      previos.map((grupo) => {
+        const yaEsta = grupo.dias.includes(dia)
+        if (grupo.id !== id) {
+          return yaEsta
+            ? { ...grupo, dias: grupo.dias.filter((cada) => cada !== dia) }
+            : grupo
+        }
+        if (yaEsta) {
+          const hayOtro = previos.length > 1
+          return hayOtro
+            ? { ...grupo, dias: grupo.dias.filter((cada) => cada !== dia) }
+            : grupo
+        }
+        return {
+          ...grupo,
+          dias: [...grupo.dias, dia].sort((uno, otro) => uno - otro),
+        }
+      }),
+    )
+  }
+
+  function cambiarHora(id: string, hora: string): void {
+    setGrupos((previos) =>
+      previos.map((grupo) => (grupo.id === id ? { ...grupo, hora } : grupo)),
+    )
+  }
+
+  function agregarHora(): void {
+    siguienteId.current += 1
+    setGrupos((previos) => [
+      ...previos,
+      {
+        id: `n${siguienteId.current}`,
+        hora: HORA_DE_ENTRADA_TEXTO,
+        dias: [],
+      },
+    ])
+  }
+
+  function quitarHora(id: string): void {
+    setGrupos((previos) => {
+      const quitado = previos.find((grupo) => grupo.id === id)
+      const resto = previos.filter((grupo) => grupo.id !== id)
+      const primero = resto[0]
+      if (quitado === undefined || primero === undefined) return previos
+      return resto.map((grupo, indice) =>
+        indice === 0
+          ? {
+              ...grupo,
+              dias: [...grupo.dias, ...quitado.dias].sort(
+                (uno, otro) => uno - otro,
+              ),
+            }
+          : grupo,
+      )
+    })
+  }
+
+  async function guardar(evento: FormEvent): Promise<void> {
+    evento.preventDefault()
+    const dias: Record<string, string> = {}
+    for (const grupo of grupos) {
+      if (grupo.dias.length === 0) continue
+      const minutos = minutosDeHora(grupo.hora)
+      if (minutos === null) {
+        setError('Elige una hora válida.')
+        return
+      }
+      const texto = textoDeMinutos(minutos)
+      for (const dia of grupo.dias) dias[String(dia)] = texto
+    }
+    if (DIAS_LABORALES.some((dia) => dias[String(dia.indice)] === undefined)) {
+      setError('Asigna todos los días laborales a una hora.')
+      return
+    }
+    setOcupado(true)
+    setError(null)
+    try {
+      const respuesta = await fijarHorarioEntradaFn({
+        data: { clave, dias },
+      })
+      if (!respuesta.ok) {
+        setError(mensajeDe(respuesta))
+        return
+      }
+      dialogo.current?.close()
+    } finally {
+      setOcupado(false)
+    }
+  }
+
+  return (
+    <>
+      <button
+        type="button"
+        className="reloj"
+        aria-haspopup="dialog"
+        aria-label={`Horario de entrada de ${nombre}`}
+        onClick={abrir}
+      >
+        <IconoReloj />
+      </button>
+      <dialog
+        ref={dialogo}
+        className="horario-dialogo"
+        aria-labelledby={tituloId}
+        {...{ closedby: 'any' }}
+        onClick={(evento) => {
+          if (evento.target === dialogo.current) dialogo.current?.close()
+        }}
+        onCancel={(evento) => {
+          if (ocupado) evento.preventDefault()
+        }}
+      >
+        <form
+          onSubmit={(evento) => {
+            void guardar(evento)
+          }}
+        >
+          <h2 id={tituloId}>Horario de {nombre}</h2>
+          <p className="sub">
+            Marca qué días comparten cada hora. Hasta 15 minutos después sigue
+            siendo presente. El domingo no cuenta.
+          </p>
+          {grupos.map((grupo, indice) => (
+            <div className="horario-grupo" key={grupo.id}>
+              <div className="field">
+                <label htmlFor={`${tituloId}-hora-${grupo.id}`}>
+                  Hora {indice + 1}
+                </label>
+                <input
+                  id={`${tituloId}-hora-${grupo.id}`}
+                  type="time"
+                  value={grupo.hora}
+                  required={grupo.dias.length > 0}
+                  disabled={ocupado}
+                  onChange={(evento) =>
+                    cambiarHora(grupo.id, evento.target.value)
+                  }
+                />
+              </div>
+              <div
+                className="horario-dias"
+                role="group"
+                aria-label={`Días con la hora ${indice + 1}`}
+              >
+                {DIAS_LABORALES.map((dia) => {
+                  const activo = grupo.dias.includes(dia.indice)
+                  return (
+                    <button
+                      key={dia.indice}
+                      type="button"
+                      aria-pressed={activo}
+                      aria-label={`${dia.nombre}, hora ${indice + 1}`}
+                      disabled={ocupado}
+                      onClick={() => asignar(grupo.id, dia.indice)}
+                    >
+                      {dia.letra}
+                    </button>
+                  )
+                })}
+              </div>
+              {grupos.length > 1 ? (
+                <button
+                  type="button"
+                  className="horario-quitar"
+                  aria-label={`Quitar la hora ${indice + 1}`}
+                  disabled={ocupado}
+                  onClick={() => quitarHora(grupo.id)}
+                >
+                  ×
+                </button>
+              ) : null}
+              <p className="sub horario-tolerancia">
+                Presente hasta las {textoDeTolerancia(grupo.hora)}.
+              </p>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="btn ghost horario-otra"
+            disabled={ocupado}
+            onClick={agregarHora}
+          >
+            Otra hora
+          </button>
+          {diasSinHora.length > 0 ? (
+            <p className="sub horario-otra">
+              Sin hora: {diasSinHora.map((dia) => dia.nombre).join(', ')}.
+            </p>
+          ) : null}
+          {error !== null ? (
+            <p className="alerta" role="alert">
+              {error}
+            </p>
+          ) : null}
+          <div className="form-acts">
+            <button
+              type="submit"
+              className="btn primary"
+              aria-busy={ocupado}
+              disabled={ocupado}
+            >
+              Guardar
+            </button>
+            <button
+              type="button"
+              className="btn ghost"
+              disabled={ocupado}
+              onClick={() => dialogo.current?.close()}
+            >
+              Cancelar
+            </button>
+          </div>
+        </form>
+      </dialog>
+    </>
+  )
+}
+
+function IconoReloj() {
+  return (
+    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
+      <circle
+        cx="12"
+        cy="12"
+        r="8"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+      />
+      <path
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2"
+        d="M12 8v4l3 2"
+      />
+    </svg>
   )
 }
 

@@ -8,7 +8,10 @@ import { diaEnLima, ZONA_HORARIA } from '../anulacion/ventana.ts'
  */
 
 export const HORA_DE_ENTRADA = 10 * 60
-export const MINUTO_DE_TOLERANCIA = 10 * 60 + 15
+export const HORA_DE_ENTRADA_TEXTO = '10:00'
+/** Minutos de gracia después de la hora de entrada configurada. */
+export const TOLERANCIA_DE_ENTRADA = 15
+export const MINUTO_DE_TOLERANCIA = HORA_DE_ENTRADA + TOLERANCIA_DE_ENTRADA
 
 export type EstadoDeMarca = 'presente' | 'tardanza' | 'falta' | 'justificado'
 export type ClaseDeCelda = 'domingo' | 'proximo' | EstadoDeMarca
@@ -52,11 +55,156 @@ export function minutosDelDiaEnLima(instante: Date): number {
   return horaNormal * 60 + minuto
 }
 
-/** Hasta las 10:15 inclusive es presente. Después, tardanza. */
+/** `HH:MM` en 24 h, o null si no es una hora del día. */
+export function minutosDeHora(hora: string): number | null {
+  if (!/^\d{2}:\d{2}$/.test(hora)) return null
+  const [horas, minutos] = hora.split(':').map(Number)
+  if (
+    horas === undefined ||
+    minutos === undefined ||
+    horas > 23 ||
+    minutos > 59
+  ) {
+    return null
+  }
+  return horas * 60 + minutos
+}
+
+export function textoDeMinutos(minutos: number): string {
+  const horas = Math.floor(minutos / 60)
+  const resto = minutos % 60
+  return `${String(horas).padStart(2, '0')}:${String(resto).padStart(2, '0')}`
+}
+
+/** Lunes = 0 … sábado = 5. El domingo no tiene hora de entrada. */
+export const DIAS_LABORALES = [
+  { indice: 0, letra: 'L', nombre: 'lunes' },
+  { indice: 1, letra: 'M', nombre: 'martes' },
+  { indice: 2, letra: 'X', nombre: 'miércoles' },
+  { indice: 3, letra: 'J', nombre: 'jueves' },
+  { indice: 4, letra: 'V', nombre: 'viernes' },
+  { indice: 5, letra: 'S', nombre: 'sábado' },
+] as const
+
+/** Claves `"0"`–`"5"`. Una hora `HH:MM` por día laboral. */
+export type HorarioSemanal = Readonly<Record<string, string>>
+
+const ORDEN_SEMANA: Record<string, number> = {
+  Mon: 0,
+  Tue: 1,
+  Wed: 2,
+  Thu: 3,
+  Fri: 4,
+  Sat: 5,
+  Sun: 6,
+}
+
+/** 0 = lunes … 6 = domingo, en Lima. */
+export function indiceDeSemanaEnLima(instante: Date): number {
+  return ORDEN_SEMANA[DIA_SEMANA.format(instante)] ?? 0
+}
+
+function semanaDesdeTexto(hora: string): HorarioSemanal | null {
+  if (minutosDeHora(hora) === null) return null
+  const semana: Record<string, string> = {}
+  for (const dia of DIAS_LABORALES) semana[String(dia.indice)] = hora
+  return semana
+}
+
+function semanaDesdeMapa(valor: object): HorarioSemanal | null {
+  const crudo = valor as Record<string, unknown>
+  const semana: Record<string, string> = {}
+  for (const dia of DIAS_LABORALES) {
+    const hora = crudo[String(dia.indice)]
+    if (typeof hora !== 'string' || minutosDeHora(hora) === null) continue
+    semana[String(dia.indice)] = hora
+  }
+  return Object.keys(semana).length > 0 ? semana : null
+}
+
+/**
+ * Horarios por trabajador. Un string legado (`"10:00"`) aplica a lunes–sábado.
+ * Un mapa usa la clave del día (`"0"` lunes … `"5"` sábado).
+ */
+export function horariosDesde(
+  valor: unknown,
+): Record<string, HorarioSemanal> {
+  if (typeof valor !== 'object' || valor === null || Array.isArray(valor)) {
+    return {}
+  }
+  const salida: Record<string, HorarioSemanal> = {}
+  for (const [clave, cada] of Object.entries(valor)) {
+    const semana =
+      typeof cada === 'string'
+        ? semanaDesdeTexto(cada)
+        : typeof cada === 'object' && cada !== null && !Array.isArray(cada)
+          ? semanaDesdeMapa(cada)
+          : null
+    if (semana !== null) salida[clave] = semana
+  }
+  return salida
+}
+
+/** Los seis días laborales, o null si falta uno o la hora no es válida. */
+export function semanaCompleta(
+  dias: Readonly<Record<string, string>>,
+): Record<string, string> | null {
+  const semana: Record<string, string> = {}
+  for (const dia of DIAS_LABORALES) {
+    const hora = dias[String(dia.indice)]
+    if (hora === undefined) return null
+    const minutos = minutosDeHora(hora)
+    if (minutos === null) return null
+    semana[String(dia.indice)] = textoDeMinutos(minutos)
+  }
+  return semana
+}
+
+/**
+ * Agrupa los días que comparten hora, en orden de semana.
+ * Sin horario guardado, lunes a sábado quedan en 10:00.
+ */
+export function gruposDesdeHorario(
+  semana: HorarioSemanal | undefined,
+): { hora: string; dias: number[] }[] {
+  const porHora = new Map<string, number[]>()
+  const orden: string[] = []
+  for (const dia of DIAS_LABORALES) {
+    const hora = semana?.[String(dia.indice)] ?? HORA_DE_ENTRADA_TEXTO
+    const lista = porHora.get(hora)
+    if (lista === undefined) {
+      porHora.set(hora, [dia.indice])
+      orden.push(hora)
+    } else {
+      lista.push(dia.indice)
+    }
+  }
+  return orden.map((hora) => ({ hora, dias: porHora.get(hora) ?? [] }))
+}
+
+/**
+ * Hora de entrada de un trabajador en un día (0 = lunes … 5 = sábado).
+ * Sin valor para ese día, vuelve a las 10:00.
+ */
+export function horaDeEntradaDe(
+  horarios: Readonly<Record<string, HorarioSemanal>> | undefined,
+  clave: string,
+  indiceDia: number,
+): number {
+  const texto = horarios?.[clave]?.[String(indiceDia)]
+  if (texto === undefined) return HORA_DE_ENTRADA
+  return minutosDeHora(texto) ?? HORA_DE_ENTRADA
+}
+
+/**
+ * Presente hasta la hora de entrada más 15 minutos, inclusive.
+ * Sin segundo argumento, la hora es las 10:00 (presente hasta las 10:15).
+ */
 export function estadoPorHoraDeEntrada(
   instante: Date,
+  horaEntrada = HORA_DE_ENTRADA,
 ): 'presente' | 'tardanza' {
-  return minutosDelDiaEnLima(instante) <= MINUTO_DE_TOLERANCIA
+  return minutosDelDiaEnLima(instante) <= horaEntrada + TOLERANCIA_DE_ENTRADA
     ? 'presente'
     : 'tardanza'
 }

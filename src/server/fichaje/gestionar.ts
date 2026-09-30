@@ -4,9 +4,13 @@ import { diaEnLima } from '../../domain/anulacion/ventana.ts'
 import {
   claveDeNombre,
   estadoPorHoraDeEntrada,
+  horaDeEntradaDe,
+  horariosDesde,
+  indiceDeSemanaEnLima,
   instanteDesdeFechaHoraLima,
   minutosDelDiaEnLima,
   nombreParaMostrar,
+  semanaCompleta,
 } from '../../domain/fichaje/reglas.ts'
 import type { EstadoDeMarca } from '../../domain/fichaje/reglas.ts'
 import { fallar } from '../errores.ts'
@@ -144,7 +148,6 @@ export async function aprobarSolicitudes(
 
   const ahora = new Date()
   const dia = diaEnLima(ahora)
-  const estado = estadoPorHoraDeEntrada(ahora)
   const marca = Timestamp.fromDate(ahora)
 
   return bd().runTransaction(async (tx) => {
@@ -195,11 +198,20 @@ export async function aprobarSolicitudes(
 
     let folio = ultimoNumero(contador.data())
     const roster = leerRoster(rosterSnap.data())
+    const horarios = horariosDesde(rosterSnap.get('horarios'))
     let ultimoNombre = ''
-    let ultimoEstado: EstadoDeMarca = estado
+    let ultimoEstado: EstadoDeMarca = 'presente'
 
     for (const cada of libres) {
       folio += 1
+      const estado = estadoPorHoraDeEntrada(
+        ahora,
+        horaDeEntradaDe(
+          horarios,
+          cada.clave,
+          indiceDeSemanaEnLima(ahora),
+        ),
+      )
       tx.update(cada.ficha.ref, {
         estadoSolicitud: 'aprobada',
         horaEntrada: marca,
@@ -227,7 +239,7 @@ export async function aprobarSolicitudes(
       ultimoNumero: folio,
       actualizadoEn: FieldValue.serverTimestamp(),
     })
-    tx.set(rosterRef, { nombres: roster })
+    tx.set(rosterRef, { nombres: roster }, { merge: true })
     tx.set(ultimoRef, {
       nombre: ultimoNombre,
       folio,
@@ -322,7 +334,7 @@ export async function registrarManual(
       ultimoNumero: folio,
       actualizadoEn: FieldValue.serverTimestamp(),
     })
-    tx.set(rosterRef, { nombres: roster })
+    tx.set(rosterRef, { nombres: roster }, { merge: true })
     tx.set(ultimoRef, {
       nombre,
       folio,
@@ -447,9 +459,18 @@ export async function eliminarHistorial(clave: string): Promise<void> {
 
   const rosterRef = referenciaDeRuta(DOCUMENTOS.rosterFichaje)
   const rosterSnap = await rosterRef.get()
-  lote.set(rosterRef, {
-    nombres: leerRoster(rosterSnap.data()).filter((fila) => fila.clave !== limpia),
-  })
+  const horarios = horariosDesde(rosterSnap.get('horarios'))
+  delete horarios[limpia]
+  lote.set(
+    rosterRef,
+    {
+      nombres: leerRoster(rosterSnap.data()).filter(
+        (fila) => fila.clave !== limpia,
+      ),
+      horarios,
+    },
+    { merge: true },
+  )
 
   const ultimoRef = referenciaDeRuta(DOCUMENTOS.ultimoFichaje)
   const ultimo = await ultimoRef.get()
@@ -474,6 +495,26 @@ export async function quitarDelEquipo(clave: string): Promise<void> {
     const roster = leerRoster(rosterSnap.data()).filter(
       (fila) => fila.clave !== limpia,
     )
-    tx.set(rosterRef, { nombres: roster })
+    tx.set(rosterRef, { nombres: roster }, { merge: true })
+  })
+}
+
+/** Horas de entrada de lunes a sábado. Cada día laboral trae la suya. */
+export async function fijarHorarioEntrada(
+  clave: string,
+  dias: Readonly<Record<string, string>>,
+): Promise<void> {
+  const limpia = clave.trim()
+  const semana = semanaCompleta(dias)
+  if (limpia.length === 0 || semana === null) {
+    fallar('peticion_invalida', { campo: semana === null ? 'hora' : 'clave' })
+  }
+
+  const rosterRef = referenciaDeRuta(DOCUMENTOS.rosterFichaje)
+  await bd().runTransaction(async (tx) => {
+    const snap = await tx.get(rosterRef)
+    const horarios = horariosDesde(snap.get('horarios'))
+    horarios[limpia] = semana
+    tx.set(rosterRef, { horarios }, { merge: true })
   })
 }

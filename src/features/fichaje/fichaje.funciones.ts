@@ -8,6 +8,7 @@ import {
   editarMarca,
   eliminarHistorial,
   eliminarMarca,
+  fijarHorarioEntrada,
   quitarDelEquipo,
   rechazarSolicitud,
   registrarManual,
@@ -129,6 +130,21 @@ export const eliminarHistorialFn = createServerFn({ method: 'POST' })
     envolver(async () => {
       await exigirIdentidad(getRequestHeaders(), ['jefe'])
       await eliminarHistorial(data.clave)
+      return { ok: true }
+    }),
+  )
+
+export const fijarHorarioEntradaFn = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      clave: z.string().min(1).max(80),
+      dias: z.record(z.string(), z.string()),
+    }),
+  )
+  .handler(async ({ data }): Promise<RespuestaDeFichaje> =>
+    envolver(async () => {
+      await exigirIdentidad(getRequestHeaders(), ['jefe'])
+      await fijarHorarioEntrada(data.clave, data.dias)
       return { ok: true }
     }),
   )
