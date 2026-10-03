@@ -1,6 +1,7 @@
 import { FieldValue, Timestamp } from 'firebase-admin/firestore'
 import type { DocumentData, DocumentSnapshot } from 'firebase-admin/firestore'
 import { diaEnLima } from '../../domain/anulacion/ventana.ts'
+import { planificarLoteManual } from '../../domain/fichaje/lote-manual.ts'
 import {
   claveDeNombre,
   estadoPorHoraDeEntrada,
@@ -34,6 +35,20 @@ export interface AltaManual {
   readonly hora: string
   readonly estado: EstadoDeMarca
   readonly observacion: string
+}
+
+export interface AltaManualVariosDias {
+  readonly nombre: string
+  readonly fechas: readonly string[]
+  readonly hora: string
+  readonly estado: EstadoDeMarca
+  readonly observacion: string
+}
+
+export interface ResultadoDeLoteManual {
+  readonly folio: number
+  readonly cantidad: number
+  readonly mensaje: string
 }
 
 export interface ResultadoDeSolicitud {
@@ -206,11 +221,7 @@ export async function aprobarSolicitudes(
       folio += 1
       const estado = estadoPorHoraDeEntrada(
         ahora,
-        horaDeEntradaDe(
-          horarios,
-          cada.clave,
-          indiceDeSemanaEnLima(ahora),
-        ),
+        horaDeEntradaDe(horarios, cada.clave, indiceDeSemanaEnLima(ahora)),
       )
       tx.update(cada.ficha.ref, {
         estadoSolicitud: 'aprobada',
@@ -345,6 +356,111 @@ export async function registrarManual(
       hora: alta.hora,
     })
     return folio
+  })
+}
+
+export async function registrarManualVariosDias(
+  alta: AltaManualVariosDias,
+  uid: string,
+): Promise<ResultadoDeLoteManual> {
+  const nombre = nombreParaMostrar(alta.nombre)
+  if (nombre === null) fallar('peticion_invalida', { campo: 'nombre' })
+  if (!esEstado(alta.estado)) fallar('peticion_invalida', { campo: 'estado' })
+
+  const ahora = new Date()
+  const previo = planificarLoteManual({
+    ahora,
+    fechas: alta.fechas,
+    ocupadas: new Set(),
+  })
+  if (previo.tipo === 'rechazar') {
+    fallar(previo.codigo, { mensaje: previo.mensaje })
+  }
+  for (const fecha of previo.fechas) {
+    if (instanteDesdeFechaHoraLima(fecha, alta.hora) === null) {
+      fallar('peticion_invalida', { campo: 'hora' })
+    }
+  }
+
+  const observacion = alta.observacion.trim().slice(0, 400)
+  const clave = claveDeNombre(nombre)
+
+  return bd().runTransaction(async (tx) => {
+    const ocupadas = new Set<string>()
+    for (const fecha of previo.fechas) {
+      const reserva = await tx.get(reservaDeDia(clave, fecha))
+      if (reserva.exists) ocupadas.add(fecha)
+    }
+
+    const contadorRef = referenciaDeRuta(DOCUMENTOS.contadorFichajes)
+    const rosterRef = referenciaDeRuta(DOCUMENTOS.rosterFichaje)
+    const ultimoRef = referenciaDeRuta(DOCUMENTOS.ultimoFichaje)
+    const contador = await tx.get(contadorRef)
+    const rosterSnap = await tx.get(rosterRef)
+
+    const plan = planificarLoteManual({
+      ahora,
+      fechas: alta.fechas,
+      ocupadas,
+    })
+    if (plan.tipo === 'rechazar') {
+      fallar(plan.codigo, { mensaje: plan.mensaje })
+    }
+
+    const roster = leerRoster(rosterSnap.data())
+    if (!roster.some((fila) => fila.clave === clave)) {
+      roster.push({ clave, nombre })
+    }
+
+    let folio = ultimoNumero(contador.data())
+    let ultima: { folio: number; dia: string; marca: Timestamp } | null = null
+    for (const fecha of plan.fechas) {
+      const instante = instanteDesdeFechaHoraLima(fecha, alta.hora)
+      if (instante === null) fallar('peticion_invalida', { campo: 'hora' })
+      folio += 1
+      const marca = Timestamp.fromDate(instante)
+      const ref = bd().collection(COLECCIONES.fichajes).doc()
+      tx.set(ref, {
+        nombre,
+        nombreClave: clave,
+        origen: 'manual',
+        estadoSolicitud: 'aprobada',
+        solicitadaEn: marca,
+        horaEntrada: marca,
+        diaLima: fecha,
+        estadoDia: alta.estado,
+        resueltaPor: uid,
+        resueltaEn: FieldValue.serverTimestamp(),
+        observacion: observacion.length > 0 ? observacion : null,
+        folio,
+      })
+      tx.set(reservaDeDia(clave, fecha), { fichajeId: ref.id, diaLima: fecha })
+      ultima = { folio, dia: fecha, marca }
+    }
+
+    if (ultima === null) {
+      fallar('entrada_ya_registrada', { mensaje: plan.mensaje })
+    }
+
+    tx.set(contadorRef, {
+      ultimoNumero: ultima.folio,
+      actualizadoEn: FieldValue.serverTimestamp(),
+    })
+    tx.set(rosterRef, { nombres: roster }, { merge: true })
+    tx.set(ultimoRef, {
+      nombre,
+      folio: ultima.folio,
+      diaLima: ultima.dia,
+      horaEntrada: ultima.marca,
+      estadoDia: alta.estado,
+      origen: 'manual',
+      hora: alta.hora,
+    })
+    return {
+      folio: ultima.folio,
+      cantidad: plan.fechas.length,
+      mensaje: plan.mensaje,
+    }
   })
 }
 

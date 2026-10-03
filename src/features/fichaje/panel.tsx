@@ -1,6 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react'
 import type { CSSProperties, FormEvent } from 'react'
 import { diaEnLima, ZONA_HORARIA } from '../../domain/anulacion/ventana.ts'
+import { semanaLaboralEnLima } from '../../domain/lista/semana.ts'
 import {
   armarMes,
   cantidadDeDias,
@@ -17,7 +18,10 @@ import {
   TOLERANCIA_DE_ENTRADA,
   totalesDeCeldas,
 } from '../../domain/fichaje/reglas.ts'
-import type { EstadoDeMarca, HorarioSemanal } from '../../domain/fichaje/reglas.ts'
+import type {
+  EstadoDeMarca,
+  HorarioSemanal,
+} from '../../domain/fichaje/reglas.ts'
 import {
   aprobarFichajesFn,
   editarMarcaFn,
@@ -106,6 +110,8 @@ function folioDe(numero: number): string {
 }
 
 function mensajeDe(respuesta: RespuestaDeFichaje): string {
+  const nombrado = respuesta.error?.detalle?.['mensaje']
+  if (typeof nombrado === 'string' && nombrado.length > 0) return nombrado
   return respuesta.error?.mensaje ?? 'No se pudo completar. Inténtalo de nuevo.'
 }
 
@@ -219,7 +225,10 @@ function SelectorDeVista({
   useEffect(() => {
     if (!abierto) return
     const cerrar = (evento: PointerEvent) => {
-      if (raiz.current === null || raiz.current.contains(evento.target as Node)) {
+      if (
+        raiz.current === null ||
+        raiz.current.contains(evento.target as Node)
+      ) {
         return
       }
       setAbierto(false)
@@ -242,7 +251,12 @@ function SelectorDeVista({
         aria-expanded={abierto}
         aria-controls={listaId}
         onClick={() => {
-          setActivo(Math.max(0, VISTAS.findIndex((cada) => cada.id === vista)))
+          setActivo(
+            Math.max(
+              0,
+              VISTAS.findIndex((cada) => cada.id === vista),
+            ),
+          )
           setAbierto((esta) => !esta)
         }}
         onKeyDown={(evento) => {
@@ -515,51 +529,51 @@ export function PanelFichaje() {
                         ocupado === `no-${solicitud.id}` ||
                         ocupado === 'todas'
                       return (
-                      <li
-                        className={filaOcupada ? 'req bloqueada' : 'req'}
-                        key={solicitud.id}
-                        aria-busy={filaOcupada}
-                      >
-                        <span className="idx">
-                          {String(indiceFila + 1).padStart(2, '0')}
-                        </span>
-                        <span className="ava">
-                          {inicialesDe(solicitud.nombre)}
-                        </span>
-                        <div className="who">
-                          <h3>{solicitud.nombre}</h3>
-                          <p className="sub">Solicitud de entrada</p>
-                        </div>
-                        <div className="when">
-                          <span className="time">
-                            {solicitud.solicitadaEn === null
-                              ? '—'
-                              : horaCorta(solicitud.solicitadaEn)}
+                        <li
+                          className={filaOcupada ? 'req bloqueada' : 'req'}
+                          key={solicitud.id}
+                          aria-busy={filaOcupada}
+                        >
+                          <span className="idx">
+                            {String(indiceFila + 1).padStart(2, '0')}
                           </span>
-                        </div>
-                        <div className="acts">
-                          <button
-                            type="button"
-                            className="btn ok"
-                            aria-busy={ocupado === solicitud.id}
-                            disabled={ocupado !== null}
-                            onClick={() =>
-                              void aprobar([solicitud.id], solicitud.id)
-                            }
-                          >
-                            ✓ Aprobar
-                          </button>
-                          <button
-                            type="button"
-                            className="btn no"
-                            aria-busy={ocupado === `no-${solicitud.id}`}
-                            disabled={ocupado !== null}
-                            onClick={() => void rechazar(solicitud.id)}
-                          >
-                            ✕ Rechazar
-                          </button>
-                        </div>
-                      </li>
+                          <span className="ava">
+                            {inicialesDe(solicitud.nombre)}
+                          </span>
+                          <div className="who">
+                            <h3>{solicitud.nombre}</h3>
+                            <p className="sub">Solicitud de entrada</p>
+                          </div>
+                          <div className="when">
+                            <span className="time">
+                              {solicitud.solicitadaEn === null
+                                ? '—'
+                                : horaCorta(solicitud.solicitadaEn)}
+                            </span>
+                          </div>
+                          <div className="acts">
+                            <button
+                              type="button"
+                              className="btn ok"
+                              aria-busy={ocupado === solicitud.id}
+                              disabled={ocupado !== null}
+                              onClick={() =>
+                                void aprobar([solicitud.id], solicitud.id)
+                              }
+                            >
+                              ✓ Aprobar
+                            </button>
+                            <button
+                              type="button"
+                              className="btn no"
+                              aria-busy={ocupado === `no-${solicitud.id}`}
+                              disabled={ocupado !== null}
+                              onClick={() => void rechazar(solicitud.id)}
+                            >
+                              ✕ Rechazar
+                            </button>
+                          </div>
+                        </li>
                       )
                     })}
                   </ol>
@@ -823,6 +837,9 @@ function FormularioManual({
   const [hora, setHora] = useState(horaCorta(ahora))
   const [estado, setEstado] = useState<EstadoDeMarca>('presente')
   const [observacion, setObservacion] = useState('')
+  const [modo, setModo] = useState<'dia' | 'semana'>('dia')
+  const [quitadas, setQuitadas] = useState<ReadonlySet<string>>(() => new Set())
+  const [nota, setNota] = useState<string | null>(null)
   const [abierto, setAbierto] = useState(false)
   const [activo, setActivo] = useState(0)
   const listaId = useId()
@@ -831,19 +848,41 @@ function FormularioManual({
       .toLocaleLowerCase('es-PE')
       .includes(nombre.trim().toLocaleLowerCase('es-PE')),
   )
+  const semana = semanaLaboralEnLima(ahora)
+  const elegidas = semana
+    .filter((dia) => !quitadas.has(dia.fecha))
+    .map((dia) => dia.fecha)
+
+  function alternarDia(fechaDia: string): void {
+    setQuitadas((actual) => {
+      const siguiente = new Set(actual)
+      if (siguiente.has(fechaDia)) siguiente.delete(fechaDia)
+      else siguiente.add(fechaDia)
+      return siguiente
+    })
+  }
 
   async function enviar(evento: FormEvent): Promise<void> {
     evento.preventDefault()
     onError(null)
+    setNota(null)
+    if (modo === 'semana' && elegidas.length === 0) {
+      onError('Elige al menos un día.')
+      return
+    }
     onOcupado(true)
     try {
       const respuesta = await registrarManualFn({
-        data: { nombre, fecha, hora, estado, observacion },
+        data:
+          modo === 'dia'
+            ? { modo, nombre, fecha, hora, estado, observacion }
+            : { modo, nombre, fechas: elegidas, hora, estado, observacion },
       })
       if (!respuesta.ok) {
         onError(mensajeDe(respuesta))
         return
       }
+      setNota(respuesta.mensaje ?? null)
       setNombre('')
       setObservacion('')
       setEstado('presente')
@@ -941,17 +980,90 @@ function FormularioManual({
                 </ul>
               ) : null}
             </div>
-            <div className="row2">
-              <div className="field">
-                <label htmlFor="f-fecha">Fecha</label>
-                <input
-                  id="f-fecha"
-                  type="date"
-                  required
-                  value={fecha}
-                  disabled={ocupado}
-                  onChange={(evento) => setFecha(evento.target.value)}
-                />
+            <div className="field">
+              <span className="lbl" id="modo-manual">
+                Registro
+              </span>
+              <div
+                className="pills"
+                role="radiogroup"
+                aria-labelledby="modo-manual"
+              >
+                <span>
+                  <input
+                    type="radio"
+                    name="modo-manual"
+                    id="modo-dia"
+                    checked={modo === 'dia'}
+                    disabled={ocupado}
+                    onChange={() => setModo('dia')}
+                  />
+                  <label htmlFor="modo-dia">Un día</label>
+                </span>
+                <span>
+                  <input
+                    type="radio"
+                    name="modo-manual"
+                    id="modo-semana"
+                    checked={modo === 'semana'}
+                    disabled={ocupado}
+                    onChange={() => setModo('semana')}
+                  />
+                  <label htmlFor="modo-semana">Varios días</label>
+                </span>
+              </div>
+            </div>
+            <div className={modo === 'semana' ? 'row2 manual-semana' : 'row2'}>
+              <div>
+                <div
+                  className={modo === 'dia' ? 'modo-fila abierto' : 'modo-fila'}
+                >
+                  <div>
+                    <div className="field">
+                      <label htmlFor="f-fecha">Fecha</label>
+                      <input
+                        id="f-fecha"
+                        type="date"
+                        required={modo === 'dia'}
+                        value={fecha}
+                        disabled={ocupado || modo !== 'dia'}
+                        onChange={(evento) => setFecha(evento.target.value)}
+                      />
+                    </div>
+                  </div>
+                </div>
+                <div
+                  className={
+                    modo === 'semana' ? 'modo-fila abierto' : 'modo-fila'
+                  }
+                >
+                  <div>
+                    <div className="field">
+                      <span className="lbl" id="dias-manual">
+                        Semana del {semana[0]?.corta} al {semana.at(-1)?.corta}
+                      </span>
+                      <div
+                        className="manual-dias"
+                        role="group"
+                        aria-labelledby="dias-manual"
+                      >
+                        {semana.map((dia, indice) => (
+                          <button
+                            key={dia.fecha}
+                            type="button"
+                            aria-pressed={!quitadas.has(dia.fecha)}
+                            aria-label={`${DIAS_LABORALES[indice]?.nombre ?? dia.etiqueta} ${dia.corta}`}
+                            disabled={ocupado || modo !== 'semana'}
+                            onClick={() => alternarDia(dia.fecha)}
+                          >
+                            {DIAS_LABORALES[indice]?.letra ?? dia.inicial}
+                            <span className="dia-corta">{dia.corta}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
               <div className="field">
                 <label htmlFor="f-hora">Hora</label>
@@ -1005,6 +1117,11 @@ function FormularioManual({
                 {error}
               </p>
             ) : null}
+            {nota !== null ? (
+              <p className="q-note" role="status">
+                {nota}
+              </p>
+            ) : null}
             <div className="form-acts">
               <button
                 type="submit"
@@ -1021,6 +1138,7 @@ function FormularioManual({
                   setNombre('')
                   setObservacion('')
                   setEstado('presente')
+                  setNota(null)
                   onError(null)
                 }}
               >
@@ -1175,11 +1293,7 @@ function FichaDeMes({
           />
         ))}
       </div>
-      <PopoverDeDia
-        id={idPopover}
-        dia={diaActivo}
-        registro={registro}
-      />
+      <PopoverDeDia id={idPopover} dia={diaActivo} registro={registro} />
       <div className="ficha-pie">
         <p className="ficha-totales">
           <span>P {fila.totales.presentes}</span>
@@ -1388,15 +1502,12 @@ function PopoverDeDia({
   }
 
   return (
-    <div
-      ref={nodo}
-      id={id}
-      popover="auto"
-      className="dia-popover"
-    >
+    <div ref={nodo} id={id} popover="auto" className="dia-popover">
       <p>
         <b>{dia ?? '—'}</b>
-        <span>{registro === null ? 'Sin registro' : (registro.hora ?? 'Sin hora')}</span>
+        <span>
+          {registro === null ? 'Sin registro' : (registro.hora ?? 'Sin hora')}
+        </span>
       </p>
       {registro !== null ? (
         <button
@@ -1694,12 +1805,7 @@ function IconoReloj() {
         stroke="currentColor"
         strokeWidth="2"
       />
-      <path
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2"
-        d="M12 8v4l3 2"
-      />
+      <path fill="none" stroke="currentColor" strokeWidth="2" d="M12 8v4l3 2" />
     </svg>
   )
 }
