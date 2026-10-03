@@ -852,6 +852,10 @@
   gap: 14px;
 }
 
+.fichaje .row2.manual-semana {
+  grid-template-columns: 1fr;
+}
+
 .fichaje .pills {
   display: flex;
   flex-wrap: wrap;
@@ -1851,23 +1855,23 @@
     outline: none;
   }
 
-.fichaje .vista-disparador:focus-visible {
-  outline: none;
-  transform: translate(-2px, -2px);
-  box-shadow: 4px 4px 0 var(--ink);
-}
+  .fichaje .vista-disparador:focus-visible {
+    outline: none;
+    transform: translate(-2px, -2px);
+    box-shadow: 4px 4px 0 var(--ink);
+  }
 
-.fichaje .vista-chevron {
-  display: grid;
-  width: 1em;
-  height: 1em;
-  flex: none;
-  transition: transform var(--duration-rapida) var(--ease-salida);
-}
+  .fichaje .vista-chevron {
+    display: grid;
+    width: 1em;
+    height: 1em;
+    flex: none;
+    transition: transform var(--duration-rapida) var(--ease-salida);
+  }
 
-.fichaje .vista-chevron.abierto {
-  transform: rotate(180deg);
-}
+  .fichaje .vista-chevron.abierto {
+    transform: rotate(180deg);
+  }
 
   .fichaje .vista-movil .combo-lista {
     top: calc(100% + 6px);
@@ -2136,6 +2140,65 @@
       opacity: 0;
     }
   }
+}
+
+.fichaje .modo-fila {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--duration-rapida) var(--ease-salida);
+}
+
+.fichaje .modo-fila.abierto {
+  grid-template-rows: 1fr;
+}
+
+.fichaje .modo-fila > div {
+  overflow: hidden;
+}
+
+.fichaje .manual-dias {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.fichaje .manual-dias button {
+  min-width: 2.75rem;
+  border: 2px solid var(--ink);
+  background: #fff;
+  color: var(--ink);
+  padding: 0.3rem 0.25rem 0.2rem;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  font:
+    700 12px 'IBM Plex Mono',
+    monospace;
+  transition:
+    background-color var(--duration-rapida) var(--ease-salida),
+    color var(--duration-rapida) var(--ease-salida);
+}
+
+.fichaje .manual-dias button[aria-pressed='true'] {
+  background: var(--ink);
+  color: #fff;
+}
+
+.fichaje .manual-dias button:focus-visible {
+  outline: 2px solid var(--ink);
+  outline-offset: 2px;
+}
+
+.fichaje .manual-dias .dia-corta {
+  font-weight: 500;
+  font-size: 9px;
+  letter-spacing: 0;
+}
+
+.fichaje .manual-dias button:disabled {
+  cursor: default;
 }
 
 @media (prefers-reduced-motion: reduce) {

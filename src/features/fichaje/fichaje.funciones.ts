@@ -12,6 +12,7 @@ import {
   quitarDelEquipo,
   rechazarSolicitud,
   registrarManual,
+  registrarManualVariosDias,
   solicitarEntrada,
 } from '../../server/fichaje/gestionar.ts'
 
@@ -23,6 +24,8 @@ export interface RespuestaDeFichaje {
   readonly repetida?: boolean
   readonly cantidad?: number
   readonly folio?: number
+  /** Frase del lote: días registrados y días que ya tenían entrada. */
+  readonly mensaje?: string
   readonly error?: ReturnType<ErrorDeSuitPay['aRespuesta']>
 }
 
@@ -71,21 +74,63 @@ export const rechazarFichajeFn = createServerFn({ method: 'POST' })
     }),
   )
 
+const CAMPOS_DE_ALTA = {
+  nombre: z.string().min(1).max(80),
+  hora: z.string().regex(/^\d{2}:\d{2}$/),
+  estado: ESTADOS,
+  observacion: z.string().max(400),
+}
+
 export const registrarManualFn = createServerFn({ method: 'POST' })
   .validator(
-    z.object({
-      nombre: z.string().min(1).max(80),
-      fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
-      hora: z.string().regex(/^\d{2}:\d{2}$/),
-      estado: ESTADOS,
-      observacion: z.string().max(400),
-    }),
+    z.discriminatedUnion('modo', [
+      z.object({
+        modo: z.literal('dia'),
+        fecha: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        ...CAMPOS_DE_ALTA,
+      }),
+      z.object({
+        modo: z.literal('semana'),
+        fechas: z
+          .array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+          .min(1)
+          .max(6),
+        ...CAMPOS_DE_ALTA,
+      }),
+    ]),
   )
   .handler(async ({ data }): Promise<RespuestaDeFichaje> =>
     envolver(async () => {
       const identidad = await exigirIdentidad(getRequestHeaders(), ['jefe'])
-      const folio = await registrarManual(data, identidad.uid)
-      return { ok: true, folio }
+      if (data.modo === 'dia') {
+        const folio = await registrarManual(
+          {
+            nombre: data.nombre,
+            fecha: data.fecha,
+            hora: data.hora,
+            estado: data.estado,
+            observacion: data.observacion,
+          },
+          identidad.uid,
+        )
+        return { ok: true, folio }
+      }
+      const lote = await registrarManualVariosDias(
+        {
+          nombre: data.nombre,
+          fechas: data.fechas,
+          hora: data.hora,
+          estado: data.estado,
+          observacion: data.observacion,
+        },
+        identidad.uid,
+      )
+      return {
+        ok: true,
+        folio: lote.folio,
+        cantidad: lote.cantidad,
+        mensaje: lote.mensaje,
+      }
     }),
   )
 
