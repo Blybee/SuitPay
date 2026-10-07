@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react'
-import { Plus, Printer, Search } from 'lucide-react'
+import { MapPin, Plus, Printer } from 'lucide-react'
 import { sileo } from 'sileo'
 import type { TrasladoDeGuia } from '../../domain/guia/tipos.ts'
 import { faltantesDelTraslado } from '../../domain/guia/validar.ts'
@@ -36,7 +36,7 @@ function EnlaceBuscarUbigeo() {
         aria-label="Buscar ubigeo en RENIEC"
         title="Buscar ubigeo en RENIEC"
       >
-        <Search className="size-5" aria-hidden />
+        <MapPin className="size-5" aria-hidden />
       </a>
     </Boton>
   )
