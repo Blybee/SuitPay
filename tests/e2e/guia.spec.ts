@@ -41,6 +41,43 @@ test('el comando /guia abre la papeleta sin emitir', async ({ page }) => {
   ).toBeVisible()
 })
 
+const URL_LISTA_UBIGEOS =
+  'https://www.reniec.gob.pe/Adherentes/jsp/ListaUbigeos.jsp'
+
+test('partida y llegada abren la lista de ubigeos en una pestaña nueva', async ({
+  page,
+}) => {
+  test.skip(
+    !hayEmulador,
+    'Requiere la Emulator Suite. Ver npm run prueba:e2e:completa',
+  )
+
+  await sembrarSesionDeVendedor(page)
+  await page.goto('/')
+  const buscador = entradaDeBusqueda(page)
+  await buscador.fill('/guia')
+  await buscador.press('Enter')
+
+  const papeleta = page.getByRole('dialog', { name: 'Guía de remisión' })
+  await expect(papeleta).toBeVisible({ timeout: 10_000 })
+
+  const enlaces = papeleta.getByRole('link', {
+    name: 'Buscar ubigeo en RENIEC',
+  })
+  await expect(enlaces).toHaveCount(2)
+  await expect(enlaces.nth(0)).toHaveAttribute('href', URL_LISTA_UBIGEOS)
+  await expect(enlaces.nth(0)).toHaveAttribute('target', '_blank')
+  await expect(enlaces.nth(0)).toHaveAttribute('rel', 'noopener noreferrer')
+  await expect(enlaces.nth(1)).toHaveAttribute('href', URL_LISTA_UBIGEOS)
+  await expect(enlaces.nth(1)).toHaveAttribute('target', '_blank')
+  await expect(enlaces.nth(1)).toHaveAttribute('rel', 'noopener noreferrer')
+
+  const popup = page.waitForEvent('popup')
+  await enlaces.first().click()
+  const lista = await popup
+  await expect(lista).toHaveURL(URL_LISTA_UBIGEOS)
+})
+
 test('el selector ofrece Bol + Guía R', async ({ page }) => {
   test.skip(
     !hayEmulador,

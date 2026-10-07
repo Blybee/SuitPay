@@ -1,5 +1,5 @@
 import { useEffect, useId, useMemo, useState } from 'react'
-import { Plus, Printer } from 'lucide-react'
+import { MapPin, Plus, Printer } from 'lucide-react'
 import { sileo } from 'sileo'
 import type { TrasladoDeGuia } from '../../domain/guia/tipos.ts'
 import { faltantesDelTraslado } from '../../domain/guia/validar.ts'
@@ -23,6 +23,24 @@ export interface BorradorDeGuia {
 
 const PLACEHOLDER_UBIGEO = '150101'
 const PLACEHOLDER_DIRECCION = 'Av. Central 122 LIMA - LIMA - LIMA'
+const URL_LISTA_UBIGEOS_RENIEC =
+  'https://www.reniec.gob.pe/Adherentes/jsp/ListaUbigeos.jsp'
+
+function EnlaceBuscarUbigeo() {
+  return (
+    <Boton tamano="icono" asChild>
+      <a
+        href={URL_LISTA_UBIGEOS_RENIEC}
+        target="_blank"
+        rel="noopener noreferrer"
+        aria-label="Buscar ubigeo en RENIEC"
+        title="Buscar ubigeo en RENIEC"
+      >
+        <MapPin className="size-5" aria-hidden />
+      </a>
+    </Boton>
+  )
+}
 
 function itemsDesdePedido(
   lineas: readonly LineaDePedido[],
@@ -375,9 +393,12 @@ export function PapeletaDeGuia({
         </div>
 
         <div>
-          <Etiqueta htmlFor="guia-partida">
-            Partida (ubigeo · dirección)
-          </Etiqueta>
+          <div className="flex items-center justify-between gap-2">
+            <Etiqueta htmlFor="guia-partida" className="min-w-0 flex-1">
+              Partida (ubigeo · dirección)
+            </Etiqueta>
+            <EnlaceBuscarUbigeo />
+          </div>
           <div className="mt-1 grid gap-2 sm:grid-cols-[8rem_1fr]">
             <Campo
               id="guia-partida-ubigeo"
@@ -425,9 +446,12 @@ export function PapeletaDeGuia({
         </div>
 
         <div>
-          <Etiqueta htmlFor="guia-llegada">
-            Llegada (ubigeo · dirección)
-          </Etiqueta>
+          <div className="flex items-center justify-between gap-2">
+            <Etiqueta htmlFor="guia-llegada" className="min-w-0 flex-1">
+              Llegada (ubigeo · dirección)
+            </Etiqueta>
+            <EnlaceBuscarUbigeo />
+          </div>
           <div className="mt-1 grid gap-2 sm:grid-cols-[8rem_1fr]">
             <Campo
               id="guia-llegada-ubigeo"

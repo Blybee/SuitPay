@@ -278,6 +278,30 @@ describe('PapeletaDeGuia', () => {
     )
   })
 
+  it('abre la lista de ubigeos de RENIEC desde partida y llegada', () => {
+    renderPapeleta()
+
+    const enlaces = screen.getAllByRole('link', {
+      name: 'Buscar ubigeo en RENIEC',
+    })
+
+    expect(enlaces).toHaveLength(2)
+    expect(enlaces[0]?.parentElement).toHaveTextContent(
+      'Partida (ubigeo · dirección)',
+    )
+    expect(enlaces[1]?.parentElement).toHaveTextContent(
+      'Llegada (ubigeo · dirección)',
+    )
+    for (const enlace of enlaces) {
+      expect(enlace).toHaveAttribute(
+        'href',
+        'https://www.reniec.gob.pe/Adherentes/jsp/ListaUbigeos.jsp',
+      )
+      expect(enlace).toHaveAttribute('target', '_blank')
+      expect(enlace).toHaveAttribute('rel', 'noopener noreferrer')
+    }
+  })
+
   it('abre el alta de transportista con el icon button y no cierra la papeleta', async () => {
     const usuario = userEvent.setup()
     const { onCerrar } = renderPapeleta()
