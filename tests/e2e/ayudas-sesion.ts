@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto'
 import { deleteApp, initializeApp } from 'firebase-admin/app'
 import { getAuth } from 'firebase-admin/auth'
 import type { Page } from '@playwright/test'
@@ -45,7 +46,7 @@ async function credencialesDeVendedor(apiKey: string): Promise<SesionInyectable>
   // rechaza claves placeholder).
   const aplicacion = initializeApp(
     { projectId: PROYECTO },
-    `e2e-${Date.now()}`,
+    `e2e-${randomUUID()}`,
   )
 
   try {
@@ -53,13 +54,31 @@ async function credencialesDeVendedor(apiKey: string): Promise<SesionInyectable>
 
     // Idempotente a propósito: la prueba corre en dos proyectos de Playwright
     // —escritorio y móvil— y en paralelo, así que el usuario puede existir ya.
-    await auth.getUser(VENDEDOR_E2E.uid).catch(() =>
-      auth.createUser({
-        uid: VENDEDOR_E2E.uid,
-        email: VENDEDOR_E2E.correo,
-        password: VENDEDOR_E2E.clave,
-      }),
-    )
+    try {
+      await auth.getUser(VENDEDOR_E2E.uid)
+    } catch {
+      try {
+        await auth.createUser({
+          uid: VENDEDOR_E2E.uid,
+          email: VENDEDOR_E2E.correo,
+          password: VENDEDOR_E2E.clave,
+        })
+      } catch (creacion: unknown) {
+        const codigo =
+          typeof creacion === 'object' &&
+          creacion !== null &&
+          'code' in creacion &&
+          typeof creacion.code === 'string'
+            ? creacion.code
+            : ''
+        if (
+          codigo !== 'auth/uid-already-exists' &&
+          codigo !== 'auth/email-already-exists'
+        ) {
+          throw creacion
+        }
+      }
+    }
     await auth.setCustomUserClaims(VENDEDOR_E2E.uid, {
       rol: 'vendedor',
       activo: true,
