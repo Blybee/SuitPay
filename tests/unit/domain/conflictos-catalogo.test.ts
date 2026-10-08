@@ -31,4 +31,14 @@ describe('detectarConflictos', () => {
     const porCodigo = agruparConflictosPorCodigo(conflictos)
     expect(porCodigo.get('DUP')?.[0]?.tipo).toBe('codigo_duplicado')
   })
+
+  it('trata como repetido un código que solo difiere por un espacio final', () => {
+    const conflictos = detectarConflictos([
+      { codigo: 'A', descripcion: 'Uno', unidad: 'NIU' },
+      { codigo: 'A ', descripcion: 'Dos', unidad: 'NIU' },
+    ])
+    const porCodigo = agruparConflictosPorCodigo(conflictos)
+    expect(porCodigo.get('A')?.[0]?.tipo).toBe('codigo_duplicado')
+    expect(porCodigo.get('A ')?.[0]).toBeUndefined()
+  })
 })

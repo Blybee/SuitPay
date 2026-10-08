@@ -19,6 +19,7 @@ import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
 import { usarSesion } from '../../features/sesion/almacen.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import { detectarConflictos } from '../../domain/catalogo/conflictos.ts'
+import { mensajeDeFalloAlGuardar } from '../../features/catalogo/mensaje-guardado.ts'
 import type {
   CategoriaDeCatalogo,
   Producto,
@@ -120,8 +121,7 @@ function PantallaDeCatalogo() {
         if (!catalogo?.ok) {
           usarNotificaciones.getState().mostrar({
             tono: 'error',
-            mensaje:
-              catalogo?.error?.mensaje ?? 'No se pudo leer el catálogo.',
+            mensaje: catalogo?.error?.mensaje ?? 'No se pudo leer el catálogo.',
           })
           setImportarAbierto(true)
           return
@@ -238,7 +238,9 @@ function PantallaDeCatalogo() {
       },
     })
     if (!resultado?.ok || resultado.resumen === undefined) {
-      fallarCarga(resultado?.error?.mensaje ?? 'No se pudo validar el catálogo.')
+      fallarCarga(
+        resultado?.error?.mensaje ?? 'No se pudo validar el catálogo.',
+      )
       return
     }
     aplicarValidacion(resultado.resumen)
@@ -322,8 +324,7 @@ function PantallaDeCatalogo() {
       if (!resultado?.ok || resultado.resumen === undefined) {
         usarNotificaciones.getState().mostrar({
           tono: 'error',
-          mensaje:
-            resultado?.error?.mensaje ?? 'No se pudo publicar el catálogo.',
+          mensaje: mensajeDeFalloAlGuardar(resultado?.error),
         })
         return
       }
@@ -353,8 +354,7 @@ function PantallaDeCatalogo() {
 
   const conflictos = useMemo(() => detectarConflictos(productos), [productos])
   const bloqueado = conflictos.length > 0
-  const vacio =
-    !cargando && modo === 'maestro' && productos.length === 0
+  const vacio = !cargando && modo === 'maestro' && productos.length === 0
   const descripcionCantidad =
     productos.find((p) => p.codigo === codigoCantidad)?.descripcion ?? ''
 
@@ -365,8 +365,7 @@ function PantallaDeCatalogo() {
     setCodigoAEnfocar(nuevo.codigo)
     usarNotificaciones.getState().mostrar({
       tono: 'info',
-      mensaje:
-        'Producto al inicio de la lista. Complétalo y pulsa Guardar.',
+      mensaje: 'Producto al inicio de la lista. Complétalo y pulsa Guardar.',
     })
   }
 
@@ -394,7 +393,10 @@ function PantallaDeCatalogo() {
         </Boton>
       ) : null}
       {puedeEscribir && modo === 'maestro' ? (
-        <Boton className="w-full justify-start md:w-auto" onClick={agregarNuevo}>
+        <Boton
+          className="w-full justify-start md:w-auto"
+          onClick={agregarNuevo}
+        >
           <Plus className="size-4" aria-hidden />
           Nuevo
         </Boton>
@@ -435,7 +437,9 @@ function PantallaDeCatalogo() {
             {accionesSecundarias}
           </div>
           <MenuAccionesCatalogo>
-            <div className="flex w-full flex-col gap-1">{accionesSecundarias}</div>
+            <div className="flex w-full flex-col gap-1">
+              {accionesSecundarias}
+            </div>
           </MenuAccionesCatalogo>
           {puedeEscribir && modo === 'maestro' ? (
             <Boton
@@ -550,9 +554,7 @@ function PantallaDeCatalogo() {
         </div>
       </div>
 
-      {cargando ? (
-        <IndicadorDeCarga mensaje="Cargando catálogo…" />
-      ) : null}
+      {cargando ? <IndicadorDeCarga mensaje="Cargando catálogo…" /> : null}
 
       {vacio ? (
         <p className="text-cuerpo text-desvaida">

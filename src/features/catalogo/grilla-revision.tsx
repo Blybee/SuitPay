@@ -21,6 +21,7 @@ import {
   filtrarPorTexto,
   marcasDe,
 } from '../../domain/catalogo/filtros.ts'
+import { centimosDesdeTextoDecimal } from '../../domain/compras/moneda.ts'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import type {
   CategoriaDeCatalogo,
@@ -55,12 +56,11 @@ const COLUMNAS_MAESTRO =
 const ANCHO_MINIMO_REVISION = 'min-w-[52rem]'
 const ANCHO_MINIMO_MAESTRO = 'min-w-[56rem]'
 
-function estimarAltoDeFila(
-  descripcion: string,
-  conProblema: boolean,
-): number {
+function estimarAltoDeFila(descripcion: string, conProblema: boolean): number {
   const lineas = Math.min(8, Math.max(1, Math.ceil(descripcion.length / 42)))
-  return ALTO_FILA + (lineas - 1) * ALTO_LINEA + (conProblema ? ALTO_CALLOUT : 0)
+  return (
+    ALTO_FILA + (lineas - 1) * ALTO_LINEA + (conProblema ? ALTO_CALLOUT : 0)
+  )
 }
 
 export type ModoDeGrilla = 'revision' | 'maestro'
@@ -116,8 +116,7 @@ export function GrillaRevision({
   const [asignarA, setAsignarA] = useState('')
   const scrollRef = useRef<HTMLDivElement>(null)
 
-  const columnas =
-    modo === 'maestro' ? COLUMNAS_MAESTRO : COLUMNAS_REVISION
+  const columnas = modo === 'maestro' ? COLUMNAS_MAESTRO : COLUMNAS_REVISION
   const anchoMinimo =
     modo === 'maestro' ? ANCHO_MINIMO_MAESTRO : ANCHO_MINIMO_REVISION
   const soloLectura = !puedeEscribir
@@ -148,7 +147,7 @@ export function GrillaRevision({
       }
       if (
         soloProblemas &&
-        (porCodigo.get(producto.codigo)?.length ?? 0) === 0
+        (porCodigo.get(producto.codigo.trim())?.length ?? 0) === 0
       ) {
         return []
       }
@@ -170,7 +169,7 @@ export function GrillaRevision({
   const filasConProblema = useMemo(
     () =>
       productos.filter(
-        (producto) => (porCodigo.get(producto.codigo)?.length ?? 0) > 0,
+        (producto) => (porCodigo.get(producto.codigo.trim())?.length ?? 0) > 0,
       ).length,
     [productos, porCodigo],
   )
@@ -198,7 +197,7 @@ export function GrillaRevision({
       if (fila === undefined) return ALTO_FILA
       return estimarAltoDeFila(
         fila.producto.descripcion,
-        (porCodigo.get(fila.producto.codigo)?.length ?? 0) > 0,
+        (porCodigo.get(fila.producto.codigo.trim())?.length ?? 0) > 0,
       )
     },
     measureElement: (el) => {
@@ -208,7 +207,7 @@ export function GrillaRevision({
     getItemKey: (index) => {
       const fila = visibles[index]
       if (fila === undefined) return index
-      return `${fila.indice}:${fila.producto.codigo}`
+      return fila.indice
     },
     overscan: OVERSCAN,
   })
@@ -510,201 +509,216 @@ export function GrillaRevision({
             role="row"
             className={`grid ${columnas} gap-1 border-b border-borde bg-mesa px-2 py-2 font-mono text-etiqueta uppercase text-desvaida`}
           >
-          <span role="columnheader">Sel.</span>
-          <span role="columnheader">Código</span>
-          <span role="columnheader">Descripción</span>
-          <span role="columnheader">Marca</span>
-          <span role="columnheader">U.M.</span>
-          <span role="columnheader">Precio</span>
-          <span role="columnheader">Categoría</span>
-          {modo === 'maestro' ? (
-            <span role="columnheader" className="flex justify-center">
-              <Boxes className="size-4" aria-hidden />
-              <span className="sr-only">Cantidad</span>
-            </span>
-          ) : null}
-        </div>
-        <div
-          ref={scrollRef}
-          className="max-h-[min(70dvh,40rem)] overflow-y-auto bg-papel"
-        >
-          {visibles.length === 0 ? (
-            <p
-              role="status"
-              className="px-4 py-8 text-center text-cuerpo text-desvaida"
-            >
-              Ningún producto coincide.
-            </p>
-          ) : null}
+            <span role="columnheader">Sel.</span>
+            <span role="columnheader">Código</span>
+            <span role="columnheader">Descripción</span>
+            <span role="columnheader">Marca</span>
+            <span role="columnheader">U.M.</span>
+            <span role="columnheader">Precio</span>
+            <span role="columnheader">Categoría</span>
+            {modo === 'maestro' ? (
+              <span role="columnheader" className="flex justify-center">
+                <Boxes className="size-4" aria-hidden />
+                <span className="sr-only">Cantidad</span>
+              </span>
+            ) : null}
+          </div>
           <div
-            className="relative w-full"
-            style={{ height: `${virtualizador.getTotalSize()}px` }}
+            ref={scrollRef}
+            className="max-h-[min(70dvh,40rem)] overflow-y-auto bg-papel"
           >
-            {virtualizador.getVirtualItems().map((virtual) => {
-              const fila = visibles[virtual.index]
-              if (fila === undefined) return null
-              const { producto, indice } = fila
-              const deEsta = porCodigo.get(producto.codigo) ?? []
-              const tieneProblema = deEsta.length > 0
-              const idError = `conflicto-${indice}`
-              const unidadInvalida = deEsta.some(
-                (c) => c.tipo === 'unidad_desconocida',
-              )
-              const descripcionInvalida = deEsta.some(
-                (c) => c.tipo === 'descripcion_ausente',
-              )
-              const codigoInvalido = deEsta.some(
-                (c) => c.tipo === 'codigo_duplicado',
-              )
-              const enAlerta = codigosEnAlerta?.has(producto.codigo) ?? false
+            {visibles.length === 0 ? (
+              <p
+                role="status"
+                className="px-4 py-8 text-center text-cuerpo text-desvaida"
+              >
+                Ningún producto coincide.
+              </p>
+            ) : null}
+            <div
+              className="relative w-full"
+              style={{ height: `${virtualizador.getTotalSize()}px` }}
+            >
+              {virtualizador.getVirtualItems().map((virtual) => {
+                const fila = visibles[virtual.index]
+                if (fila === undefined) return null
+                const { producto, indice } = fila
+                const deEsta = porCodigo.get(producto.codigo.trim()) ?? []
+                const tieneProblema = deEsta.length > 0
+                const idError = `conflicto-${indice}`
+                const unidadInvalida = deEsta.some(
+                  (c) => c.tipo === 'unidad_desconocida',
+                )
+                const descripcionInvalida = deEsta.some(
+                  (c) => c.tipo === 'descripcion_ausente',
+                )
+                const codigoInvalido = deEsta.some(
+                  (c) => c.tipo === 'codigo_duplicado',
+                )
+                const enAlerta = codigosEnAlerta?.has(producto.codigo) ?? false
 
-              return (
-                <div
-                  key={virtual.key}
-                  data-index={virtual.index}
-                  ref={virtualizador.measureElement}
-                  role="row"
-                  className={`absolute top-0 left-0 flex w-full flex-col border-b border-borde ${
-                    tieneProblema ? 'bg-aviso/10' : 'bg-papel'
-                  } ${producto.activo ? '' : 'opacity-60'}`}
-                  style={{
-                    transform: `translateY(${virtual.start}px)`,
-                  }}
-                >
+                return (
                   <div
-                    className={`grid ${columnas} min-h-12 items-start gap-1 px-2 py-1`}
+                    key={virtual.key}
+                    data-index={virtual.index}
+                    ref={virtualizador.measureElement}
+                    role="row"
+                    className={`absolute top-0 left-0 flex w-full flex-col border-b border-borde ${
+                      tieneProblema ? 'bg-aviso/10' : 'bg-papel'
+                    } ${producto.activo ? '' : 'opacity-60'}`}
+                    style={{
+                      transform: `translateY(${virtual.start}px)`,
+                    }}
                   >
-                    <span role="cell">
-                      <Casilla
-                        checked={seleccion.has(indice)}
-                        disabled={soloLectura}
-                        onCheckedChange={() => alternar(indice)}
-                        aria-label={`Seleccionar ${producto.codigo}`}
-                      />
-                    </span>
-                    <span role="cell">
-                      <Campo
-                        variante="en-linea"
-                        className="font-mono text-etiqueta"
-                        value={producto.codigo}
-                        invalido={codigoInvalido}
-                        disabled={soloLectura}
-                        aria-label={`Código ${producto.codigo}`}
-                        aria-errormessage={tieneProblema ? idError : undefined}
-                        maxLength={40}
-                        onChange={(e) =>
-                          parche(indice, { codigo: e.target.value })
-                        }
-                      />
-                    </span>
-                    <span role="cell" className="min-w-0">
-                      <CampoArea
-                        variante="en-linea"
-                        className="uppercase"
-                        value={producto.descripcion}
-                        invalido={descripcionInvalida}
-                        disabled={soloLectura}
-                        aria-label={`Descripción ${producto.codigo}`}
-                        aria-errormessage={tieneProblema ? idError : undefined}
-                        onChange={(e) =>
-                          parche(indice, {
-                            descripcion: e.target.value,
-                          })
-                        }
-                      />
-                    </span>
-                    <span role="cell">
-                      <Campo
-                        variante="en-linea"
-                        value={producto.marca}
-                        disabled={soloLectura}
-                        aria-label={`Marca ${producto.codigo}`}
-                        onChange={(e) =>
-                          parche(indice, { marca: e.target.value })
-                        }
-                      />
-                    </span>
-                    <span role="cell">
-                      <Campo
-                        variante="en-linea"
-                        alineacion="centro"
-                        className="font-mono text-etiqueta uppercase"
-                        value={producto.unidad}
-                        invalido={unidadInvalida}
-                        disabled={soloLectura}
-                        aria-label={`Unidad ${producto.codigo}`}
-                        aria-errormessage={tieneProblema ? idError : undefined}
-                        onChange={(e) =>
-                          parche(indice, {
-                            unidad: e.target.value.toUpperCase(),
-                          })
-                        }
-                      />
-                    </span>
-                    <span role="cell">
-                      <Campo
-                        key={`${indice}-precio`}
-                        variante="en-linea"
-                        numerico
-                        inputMode="decimal"
-                        disabled={soloLectura}
-                        defaultValue={(producto.precio / 100).toFixed(2)}
-                        aria-label={`Precio ${producto.codigo}`}
-                        onBlur={(e) => {
-                          const n = Number.parseFloat(e.target.value)
-                          if (!Number.isFinite(n) || n < 0) {
-                            e.target.value = (producto.precio / 100).toFixed(2)
-                            return
+                    <div
+                      className={`grid ${columnas} min-h-12 items-start gap-1 px-2 py-1`}
+                    >
+                      <span role="cell">
+                        <Casilla
+                          checked={seleccion.has(indice)}
+                          disabled={soloLectura}
+                          onCheckedChange={() => alternar(indice)}
+                          aria-label={`Seleccionar ${producto.codigo}`}
+                        />
+                      </span>
+                      <span role="cell">
+                        <Campo
+                          variante="en-linea"
+                          className="font-mono text-etiqueta"
+                          value={producto.codigo}
+                          invalido={codigoInvalido}
+                          disabled={soloLectura}
+                          aria-label={`Código ${producto.codigo}`}
+                          aria-errormessage={
+                            tieneProblema ? idError : undefined
                           }
-                          parche(indice, { precio: Math.round(n * 100) })
-                        }}
-                      />
-                    </span>
-                    <span role="cell" className="truncate text-cuerpo">
-                      {categorias.find((c) => c.id === producto.categoriaId)
-                        ?.nombre ?? '—'}
-                      <span className="sr-only">
-                        {' '}
-                        {formatearImporte(producto.precio)}
+                          maxLength={40}
+                          onChange={(e) =>
+                            parche(indice, { codigo: e.target.value })
+                          }
+                        />
                       </span>
-                    </span>
-                    {modo === 'maestro' ? (
-                      <span role="cell" className="flex justify-center">
-                        <Boton
-                          variante="discreto"
-                          tamano="icono"
-                          className={enAlerta ? 'text-aviso' : undefined}
-                          aria-label={`Cantidad orientativa de ${producto.codigo}`}
-                          onClick={() => onPedirCantidad?.(producto.codigo)}
-                        >
-                          <Boxes className="size-4" aria-hidden />
-                        </Boton>
+                      <span role="cell" className="min-w-0">
+                        <CampoArea
+                          variante="en-linea"
+                          className="uppercase"
+                          value={producto.descripcion}
+                          invalido={descripcionInvalida}
+                          disabled={soloLectura}
+                          aria-label={`Descripción ${producto.codigo}`}
+                          aria-errormessage={
+                            tieneProblema ? idError : undefined
+                          }
+                          onChange={(e) =>
+                            parche(indice, {
+                              descripcion: e.target.value,
+                            })
+                          }
+                        />
                       </span>
+                      <span role="cell">
+                        <Campo
+                          variante="en-linea"
+                          value={producto.marca}
+                          disabled={soloLectura}
+                          aria-label={`Marca ${producto.codigo}`}
+                          onChange={(e) =>
+                            parche(indice, { marca: e.target.value })
+                          }
+                        />
+                      </span>
+                      <span role="cell">
+                        <Campo
+                          variante="en-linea"
+                          alineacion="centro"
+                          className="font-mono text-etiqueta uppercase"
+                          value={producto.unidad}
+                          invalido={unidadInvalida}
+                          disabled={soloLectura}
+                          aria-label={`Unidad ${producto.codigo}`}
+                          aria-errormessage={
+                            tieneProblema ? idError : undefined
+                          }
+                          onChange={(e) =>
+                            parche(indice, {
+                              unidad: e.target.value.toUpperCase(),
+                            })
+                          }
+                        />
+                      </span>
+                      <span role="cell">
+                        <Campo
+                          key={`${indice}-precio`}
+                          variante="en-linea"
+                          numerico
+                          inputMode="decimal"
+                          disabled={soloLectura}
+                          defaultValue={(producto.precio / 100).toFixed(2)}
+                          aria-label={`Precio ${producto.codigo}`}
+                          onChange={(e) => {
+                            const centimos = centimosDesdeTextoDecimal(
+                              e.target.value,
+                            )
+                            if (centimos === undefined) return
+                            parche(indice, { precio: centimos })
+                          }}
+                          onBlur={(e) => {
+                            const centimos = centimosDesdeTextoDecimal(
+                              e.target.value,
+                            )
+                            if (centimos === undefined) {
+                              e.target.value = (producto.precio / 100).toFixed(
+                                2,
+                              )
+                              return
+                            }
+                            parche(indice, { precio: centimos })
+                            e.target.value = (centimos / 100).toFixed(2)
+                          }}
+                        />
+                      </span>
+                      <span role="cell" className="truncate text-cuerpo">
+                        {categorias.find((c) => c.id === producto.categoriaId)
+                          ?.nombre ?? '—'}
+                        <span className="sr-only">
+                          {' '}
+                          {formatearImporte(producto.precio)}
+                        </span>
+                      </span>
+                      {modo === 'maestro' ? (
+                        <span role="cell" className="flex justify-center">
+                          <Boton
+                            variante="discreto"
+                            tamano="icono"
+                            className={enAlerta ? 'text-aviso' : undefined}
+                            aria-label={`Cantidad orientativa de ${producto.codigo}`}
+                            onClick={() => onPedirCantidad?.(producto.codigo)}
+                          >
+                            <Boxes className="size-4" aria-hidden />
+                          </Boton>
+                        </span>
+                      ) : null}
+                    </div>
+                    {tieneProblema ? (
+                      <p
+                        id={idError}
+                        role="note"
+                        className={`grid ${columnas} gap-1 px-2 pb-1.5`}
+                      >
+                        <span aria-hidden />
+                        <span className="col-span-6 min-w-0 font-mono text-etiqueta leading-tight text-aviso">
+                          {textoDeConflictos(deEsta)}
+                        </span>
+                      </p>
                     ) : null}
                   </div>
-                  {tieneProblema ? (
-                    <p
-                      id={idError}
-                      role="note"
-                      className={`grid ${columnas} gap-1 px-2 pb-1.5`}
-                    >
-                      <span aria-hidden />
-                      <span className="col-span-6 min-w-0 font-mono text-etiqueta leading-tight text-aviso">
-                        {textoDeConflictos(deEsta)}
-                      </span>
-                    </p>
-                  ) : null}
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
           </div>
         </div>
-        </div>
       </div>
-      <p
-        aria-live="polite"
-        className="font-mono text-etiqueta text-desvaida"
-      >
+      <p aria-live="polite" className="font-mono text-etiqueta text-desvaida">
         {visibles.length} de {productos.length} productos visibles
       </p>
     </section>
