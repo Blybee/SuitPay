@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
 import { AlmacenDeInventarioMemoria } from '../../../src/server/inventario/almacen-memoria.ts'
 import { aplicarPreciosCompra } from '../../../src/server/compras/aplicar.ts'
-import { extraerPreciosCompraSimulado, exigirMediosDeCompra } from '../../../src/server/compras/extraer.ts'
+import {
+  extraerPreciosCompraSimulado,
+  exigirMediosDeCompra,
+} from '../../../src/server/compras/extraer.ts'
 import { promptDePreciosCompra } from '../../../src/server/compras/prompts.ts'
 import { ErrorDeSuitPay } from '../../../src/server/errores.ts'
 
@@ -67,6 +70,56 @@ describe('aplicarPreciosCompra', () => {
     const leida = await inventario.leer('TUB-1-2')
     expect(leida?.cantidad).toBe(10)
     expect(leida?.precioCompraCentimos).toBe(900)
+  })
+
+  it('un dólar 1.0550 por 3.450 queda en 364 céntimos de sol', async () => {
+    const inventario = new AlmacenDeInventarioMemoria()
+    await aplicarPreciosCompra({
+      coincidencias: [
+        {
+          codigo: 'JL-27000',
+          moneda: 'USD',
+          precioOriginal: '1.0550',
+          tipoCambio: 3.45,
+          tipoCambioEn: '2026-09-30',
+          precioCompraEn: '2026-09-30',
+          precioCompraCentimos: 106,
+          etiquetaFactura: 'union',
+        },
+      ],
+      autorId: 'admin',
+      momento: new Date('2026-09-30'),
+      inventario,
+    })
+    const leida = await inventario.leer('JL-27000')
+    expect(leida?.precioCompraCentimos).toBe(364)
+    expect(leida?.precioCompraOriginal).toBe('1.0550')
+    expect(leida?.tipoCambio).toBe(3.45)
+    expect(leida?.tipoCambioEn).toBe('2026-09-30')
+    expect(leida?.monedaCompra).toBe('USD')
+  })
+
+  it('rechaza dólares sin tipo de cambio', async () => {
+    const inventario = new AlmacenDeInventarioMemoria()
+    await expect(
+      aplicarPreciosCompra({
+        coincidencias: [
+          {
+            codigo: 'JL-9000',
+            moneda: 'USD',
+            precioOriginal: '1.3200',
+            etiquetaFactura: 'codo',
+          },
+        ],
+        autorId: 'admin',
+        momento: new Date('2026-09-30'),
+        inventario,
+      }),
+    ).rejects.toMatchObject({
+      codigo: 'peticion_invalida',
+      detalle: { motivo: 'tipo_cambio_ausente' },
+    })
+    expect(await inventario.leer('JL-9000')).toBeNull()
   })
 })
 
