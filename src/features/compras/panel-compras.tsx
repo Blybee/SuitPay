@@ -18,7 +18,7 @@ import {
 } from '../../domain/totales/calculo.ts'
 import { usarNotificaciones } from '../notificaciones/almacen.ts'
 import { vaciarCacheInventario } from '../inventario/consultar.ts'
-import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
+import { Boton, Campo } from '../../ui/componentes/primitivas.tsx'
 import {
   clasificarArchivo,
   ZonaDeCarga,
@@ -55,15 +55,8 @@ function mensajeDeError(error: unknown): string {
   return 'No se pudo leer la factura.'
 }
 
-function fechaLatam(iso: string | undefined): string {
-  if (iso === undefined) return ''
-  const [anio, mes, dia] = iso.split('-')
-  if (anio === undefined || mes === undefined || dia === undefined) return iso
-  return `${dia}/${mes}/${anio}`
-}
-
-function claveDeFecha(fecha: string | undefined): string {
-  return fecha ?? ''
+function claveDeGrupo(grupo: number | undefined): string {
+  return String(grupo ?? 0)
 }
 
 function centimosDeFila(
@@ -72,13 +65,35 @@ function centimosDeFila(
 ): number | undefined {
   if (fila.moneda === 'USD') {
     if (fila.precioOriginal === undefined) return undefined
-    const factor = normalizarDecimal(
-      textoTc[claveDeFecha(fila.precioCompraEn)] ?? '',
-    )
+    const factor = normalizarDecimal(textoTc[claveDeGrupo(fila.grupo)] ?? '')
     if (factor === undefined) return undefined
     return centimosDeDecimales(fila.precioOriginal, factor)
   }
   return fila.precioCompraCentimos
+}
+
+function conDecimales(texto: string, escala: number): string {
+  const decimal = normalizarDecimal(texto)
+  if (decimal === undefined) return texto
+  const [entero, fraccion = ''] = decimal.split('.')
+  if (fraccion.length >= escala) return decimal
+  return `${entero ?? '0'}.${fraccion.padEnd(escala, '0')}`
+}
+
+function etiquetaDeOrden(archivos: readonly File[], grupo: number): string {
+  const nombre = archivos[grupo]?.name ?? ''
+  const numeros = nombre.match(/\d+/g)
+  const ultimo = numeros?.at(-1)
+  return ultimo !== undefined ? `OC ${ultimo}` : `OC ${grupo + 1}`
+}
+
+interface GrupoVisible {
+  id: number
+  etiqueta: string
+  fecha?: string
+  enDolares: boolean
+  filas: { fila: CoincidenciaDeCompra; indice: number }[]
+  huerfanas: { linea: LineaSinMatchDeCompra; indice: number }[]
 }
 
 export function PanelCompras({
@@ -112,14 +127,17 @@ export function PanelCompras({
     return mapa
   }, [productos])
 
-  const fechasUsd = useMemo(() => {
-    const fechas = new Set<string>()
+  const pedidosTc = useMemo(() => {
+    const porGrupo = new Map<string, string>()
     for (const fila of [...coincidencias, ...sinMatch]) {
-      if (fila.moneda === 'USD' && fila.precioCompraEn) {
-        fechas.add(fila.precioCompraEn)
-      }
+      if (fila.moneda !== 'USD' || !fila.precioCompraEn) continue
+      const clave = claveDeGrupo(fila.grupo)
+      if (!porGrupo.has(clave)) porGrupo.set(clave, fila.precioCompraEn)
     }
-    return [...fechas].sort().join('|')
+    return [...porGrupo.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([grupo, fecha]) => `${grupo}@${fecha}`)
+      .join('|')
   }, [coincidencias, sinMatch])
 
   const faltaTipoCambio = coincidencias.some(
@@ -128,8 +146,12 @@ export function PanelCompras({
   )
 
   useEffect(() => {
-    if (fechasUsd.length === 0) return
-    const fechas = fechasUsd.split('|')
+    if (pedidosTc.length === 0) return
+    const pedidos = pedidosTc.split('|').map((pedido) => {
+      const [grupo, fecha] = pedido.split('@')
+      return { grupo: grupo ?? '', fecha: fecha ?? '' }
+    })
+    const fechas = [...new Set(pedidos.map((pedido) => pedido.fecha))]
     const ticket = ++consultaTc.current
     void (async () => {
       try {
@@ -144,10 +166,12 @@ export function PanelCompras({
         const tipos = respuesta.tipos
         setTextoTc((actual) => {
           const siguiente = { ...actual }
-          for (const tipo of tipos) {
-            if (tcEditado.current.has(tipo.fecha)) continue
+          for (const pedido of pedidos) {
+            if (tcEditado.current.has(pedido.grupo)) continue
+            const tipo = tipos.find((item) => item.fecha === pedido.fecha)
+            if (tipo === undefined) continue
             const texto = textoDeTipoCambio(tipo.venta)
-            if (texto !== undefined) siguiente[tipo.fecha] = texto
+            if (texto !== undefined) siguiente[pedido.grupo] = texto
           }
           return siguiente
         })
@@ -163,7 +187,7 @@ export function PanelCompras({
         )
       }
     })()
-  }, [fechasUsd])
+  }, [pedidosTc])
 
   function fallar(texto: string): void {
     setEstado('error')
@@ -251,8 +275,7 @@ export function PanelCompras({
     const listas = coincidencias.map((fila) => {
       if (fila.moneda !== 'USD' || fila.precioOriginal === undefined)
         return fila
-      const clave = claveDeFecha(fila.precioCompraEn)
-      const factor = normalizarDecimal(textoTc[clave] ?? '')
+      const factor = normalizarDecimal(textoTc[claveDeGrupo(fila.grupo)] ?? '')
       if (factor === undefined) return fila
       const centimos = centimosDeDecimales(fila.precioOriginal, factor)
       return {
@@ -301,10 +324,66 @@ export function PanelCompras({
     )
   }
 
-  function cambiarTipoCambio(fecha: string, valor: string): void {
-    tcEditado.current.add(fecha)
-    setTextoTc((actual) => ({ ...actual, [fecha]: valor }))
+  function cambiarTipoCambio(grupo: number, valor: string): void {
+    const clave = claveDeGrupo(grupo)
+    tcEditado.current.add(clave)
+    setTextoTc((actual) => ({ ...actual, [clave]: valor }))
   }
+
+  function cambiarFecha(grupo: number, fecha: string | undefined): void {
+    const clave = claveDeGrupo(grupo)
+    tcEditado.current.delete(clave)
+    setTextoTc((actual) => {
+      if (!(clave in actual)) return actual
+      const siguiente = { ...actual }
+      delete siguiente[clave]
+      return siguiente
+    })
+    setCoincidencias((actual) =>
+      actual.map((fila) =>
+        (fila.grupo ?? 0) === grupo ? { ...fila, precioCompraEn: fecha } : fila,
+      ),
+    )
+    setSinMatch((actual) =>
+      actual.map((fila) =>
+        (fila.grupo ?? 0) === grupo ? { ...fila, precioCompraEn: fecha } : fila,
+      ),
+    )
+  }
+
+  const grupos = useMemo(() => {
+    const mapa = new Map<number, GrupoVisible>()
+    function asegurar(id: number): GrupoVisible {
+      const previo = mapa.get(id)
+      if (previo !== undefined) return previo
+      const creado: GrupoVisible = {
+        id,
+        etiqueta: etiquetaDeOrden(brutos, id),
+        enDolares: false,
+        filas: [],
+        huerfanas: [],
+      }
+      mapa.set(id, creado)
+      return creado
+    }
+    coincidencias.forEach((fila, indice) => {
+      const grupo = asegurar(fila.grupo ?? 0)
+      grupo.filas.push({ fila, indice })
+      if (fila.moneda === 'USD') grupo.enDolares = true
+      if (grupo.fecha === undefined && fila.precioCompraEn !== undefined) {
+        grupo.fecha = fila.precioCompraEn
+      }
+    })
+    sinMatch.forEach((linea, indice) => {
+      const grupo = asegurar(linea.grupo ?? 0)
+      grupo.huerfanas.push({ linea, indice })
+      if (linea.moneda === 'USD') grupo.enDolares = true
+      if (grupo.fecha === undefined && linea.precioCompraEn !== undefined) {
+        grupo.fecha = linea.precioCompraEn
+      }
+    })
+    return [...mapa.values()].sort((a, b) => a.id - b.id)
+  }, [brutos, coincidencias, sinMatch])
 
   return (
     <section className="rounded-3xl border border-borde bg-papel p-6 shadow-sm">
@@ -330,132 +409,98 @@ export function PanelCompras({
       />
 
       {coincidencias.length > 0 || sinMatch.length > 0 ? (
-        <div className="mt-4 flex flex-col gap-3">
-          {coincidencias.length > 0 ? (
-            <>
-              <p className="font-mono text-etiqueta uppercase text-desvaida">
-                Boceto de precios de compra
-              </p>
-              <ul className="flex flex-col gap-2">
-                {coincidencias.map((fila, indice) => (
-                  <li
-                    key={`${fila.codigo}-${indice}`}
-                    className="flex flex-col gap-2 rounded-2xl border border-borde bg-mesa p-3"
+        <div className="mt-4">
+          <h3 className="text-cuerpo font-medium text-tinta">
+            Boceto de precios de compra
+          </h3>
+          <div className="mt-2 max-h-[min(32rem,60dvh)] overflow-auto">
+            <table className="w-full min-w-[40rem] border-separate border-spacing-0">
+              <caption className="sr-only">
+                Precios de compra propuestos, agrupados por orden
+              </caption>
+              <colgroup>
+                <col />
+                <col className="w-36" />
+                <col className="w-6" />
+                <col className="w-20" />
+                <col className="w-6" />
+                <col className="w-28" />
+              </colgroup>
+              <thead className="sticky top-0 z-10 bg-papel">
+                <tr>
+                  <th scope="col" className="py-2 text-left">
+                    <span className="sr-only">Producto</span>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-1 py-2 text-right text-cuerpo font-normal text-desvaida"
                   >
-                    <div className="grid gap-2 md:grid-cols-[8rem_1fr_7rem_11rem]">
-                      <p className="font-mono text-etiqueta uppercase text-desvaida">
-                        {fila.codigo}
-                      </p>
-                      <p className="truncate text-cuerpo text-tinta">
-                        {descripcionPorCodigo.get(fila.codigo) ??
-                          fila.etiquetaFactura}
-                      </p>
-                      {fila.moneda === 'USD' ? (
-                        <span />
-                      ) : (
-                        <CostoEnSoles
-                          fila={fila}
-                          indice={indice}
-                          aplicando={aplicando}
-                          onCentimos={(centimos) => {
-                            parcheCoincidencia(indice, {
-                              precioCompraCentimos: centimos,
-                              moneda: 'PEN',
-                            })
-                          }}
-                        />
-                      )}
-                      <div className="flex flex-col gap-1">
-                        <Etiqueta htmlFor={`fecha-${fila.codigo}-${indice}`}>
-                          Fecha
-                        </Etiqueta>
-                        <Campo
-                          id={`fecha-${fila.codigo}-${indice}`}
-                          type="date"
-                          value={fila.precioCompraEn ?? ''}
-                          disabled={aplicando}
-                          onChange={(e) => {
-                            const valor = e.target.value
-                            parcheCoincidencia(indice, {
-                              precioCompraEn: valor === '' ? undefined : valor,
-                            })
-                          }}
-                        />
-                      </div>
-                    </div>
-                    {fila.moneda === 'USD' ? (
-                      <FormulaEnDolares
-                        fila={fila}
-                        indice={indice}
-                        textoTc={
-                          textoTc[claveDeFecha(fila.precioCompraEn)] ?? ''
-                        }
-                        aplicando={aplicando}
-                        onPrecio={(precioOriginal) => {
-                          parcheCoincidencia(indice, { precioOriginal })
-                        }}
-                        onTipoCambio={(valor) => {
-                          cambiarTipoCambio(
-                            claveDeFecha(fila.precioCompraEn),
-                            valor,
-                          )
-                        }}
-                      />
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </>
-          ) : null}
+                    Precio US$
+                  </th>
+                  <th
+                    scope="col"
+                    className="py-2 text-center font-normal text-desvaida"
+                  >
+                    <span aria-hidden>×</span>
+                    <span className="sr-only">por</span>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-1 py-2 text-right text-cuerpo font-normal text-desvaida"
+                  >
+                    TC
+                  </th>
+                  <th
+                    scope="col"
+                    className="py-2 text-center font-normal text-desvaida"
+                  >
+                    <span aria-hidden>=</span>
+                    <span className="sr-only">igual a</span>
+                  </th>
+                  <th
+                    scope="col"
+                    className="px-1 py-2 text-right text-cuerpo font-normal text-desvaida"
+                  >
+                    S/
+                  </th>
+                </tr>
+              </thead>
+              {grupos.map((grupo) => (
+                <tbody key={grupo.id}>
+                  <GrupoDeOrden
+                    grupo={grupo}
+                    textoTc={textoTc[claveDeGrupo(grupo.id)] ?? ''}
+                    aplicando={aplicando}
+                    descripcionPorCodigo={descripcionPorCodigo}
+                    onFecha={(fecha) => cambiarFecha(grupo.id, fecha)}
+                    onTipoCambio={(valor) => cambiarTipoCambio(grupo.id, valor)}
+                    onPrecio={(indice, precioOriginal) => {
+                      parcheCoincidencia(indice, { precioOriginal })
+                    }}
+                    onCentimos={(indice, centimos) => {
+                      parcheCoincidencia(indice, {
+                        precioCompraCentimos: centimos,
+                        moneda: 'PEN',
+                      })
+                    }}
+                  />
+                </tbody>
+              ))}
+            </table>
+          </div>
           {avisoTc !== null ? (
-            <p className="text-cuerpo text-aviso">{avisoTc}</p>
+            <p className="mt-2 text-cuerpo text-aviso">{avisoTc}</p>
           ) : null}
           {faltaTipoCambio ? (
-            <p className="text-cuerpo text-aviso">
+            <p className="mt-2 text-cuerpo text-aviso">
               Escribe el tipo de cambio venta para confirmar una compra en
               dólares.
             </p>
           ) : null}
-          {sinMatch.length > 0 ? (
-            <div>
-              <p className="font-mono text-etiqueta uppercase text-desvaida">
-                Sin match en el catálogo
-              </p>
-              <ul className="mt-1 flex flex-col gap-2">
-                {sinMatch.map((linea, indice) => (
-                  <li
-                    key={`${linea.etiquetaFactura}-${indice}`}
-                    className="text-cuerpo text-desvaida"
-                  >
-                    <p>{linea.etiquetaFactura}</p>
-                    {linea.moneda === 'USD' &&
-                    linea.precioOriginal !== undefined ? (
-                      <FormulaEnDolares
-                        fila={linea}
-                        indice={indice}
-                        textoTc={
-                          textoTc[claveDeFecha(linea.precioCompraEn)] ?? ''
-                        }
-                        aplicando={aplicando}
-                        precioBloqueado
-                        onPrecio={() => undefined}
-                        onTipoCambio={(valor) => {
-                          cambiarTipoCambio(
-                            claveDeFecha(linea.precioCompraEn),
-                            valor,
-                          )
-                        }}
-                      />
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
           {coincidencias.length > 0 ? (
-            <div className="flex flex-wrap gap-2">
+            <div className="sticky bottom-0 z-20 -mx-6 mt-3 flex justify-end gap-2 border-t border-borde bg-papel px-6 py-3">
               <Boton
-                variante="discreto"
+                variante="secundario"
                 disabled={ocupado || aplicando}
                 onClick={descartar}
               >
@@ -472,7 +517,11 @@ export function PanelCompras({
                 {aplicando ? (
                   <Loader2 className="size-5 animate-spin" aria-hidden />
                 ) : null}
-                {aplicando ? 'Guardando…' : 'Confirmar'}
+                {aplicando
+                  ? 'Guardando…'
+                  : `Guardar ${coincidencias.length} ${
+                      coincidencias.length === 1 ? 'precio' : 'precios'
+                    }`}
               </Boton>
             </div>
           ) : null}
@@ -487,111 +536,277 @@ export function PanelCompras({
   )
 }
 
-function CostoEnSoles({
-  fila,
-  indice,
+function GrupoDeOrden({
+  grupo,
+  textoTc,
   aplicando,
+  descripcionPorCodigo,
+  onFecha,
+  onTipoCambio,
+  onPrecio,
   onCentimos,
 }: {
-  readonly fila: CoincidenciaDeCompra
-  readonly indice: number
+  readonly grupo: GrupoVisible
+  readonly textoTc: string
   readonly aplicando: boolean
-  readonly onCentimos: (centimos: number) => void
+  readonly descripcionPorCodigo: ReadonlyMap<string, string>
+  readonly onFecha: (fecha: string | undefined) => void
+  readonly onTipoCambio: (valor: string) => void
+  readonly onPrecio: (indice: number, precio: string) => void
+  readonly onCentimos: (indice: number, centimos: number) => void
 }) {
-  const centimos = fila.precioCompraCentimos ?? 0
+  const factorVisible =
+    normalizarDecimal(textoTc) !== undefined
+      ? conDecimales(textoTc, 3)
+      : textoTc
   return (
-    <div className="flex flex-col gap-1">
-      <Etiqueta htmlFor={`costo-${fila.codigo}-${indice}`}>Costo</Etiqueta>
-      <Campo
-        id={`costo-${fila.codigo}-${indice}`}
-        numerico
-        inputMode="decimal"
-        defaultValue={solesDesdeCentimos(centimos).toFixed(2)}
-        disabled={aplicando}
-        onBlur={(e) => {
-          const n = centimosDesdeTextoDecimal(e.target.value)
-          if (n === undefined) {
-            e.target.value = solesDesdeCentimos(centimos).toFixed(2)
-            return
+    <>
+      <tr>
+        <th
+          scope="rowgroup"
+          colSpan={6}
+          className="border-t border-borde py-2 text-left font-normal"
+        >
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+            <span className="font-medium text-tinta">{grupo.etiqueta}</span>
+            <span className="text-desvaida" aria-hidden>
+              ·
+            </span>
+            <span className="flex items-center gap-2 text-cuerpo text-desvaida">
+              Fecha
+              <Campo
+                id={`fecha-${grupo.id}`}
+                variante="en-linea"
+                superficie="mesa"
+                type="date"
+                className="w-40 max-w-40"
+                aria-label={`Fecha de ${grupo.etiqueta}`}
+                value={grupo.fecha ?? ''}
+                disabled={aplicando}
+                onChange={(e) => {
+                  const valor = e.target.value
+                  onFecha(valor === '' ? undefined : valor)
+                }}
+              />
+            </span>
+            {grupo.enDolares ? (
+              <>
+                <span className="text-desvaida" aria-hidden>
+                  ·
+                </span>
+                <span className="flex items-center gap-2 text-cuerpo text-desvaida">
+                  TC SUNAT
+                  <Campo
+                    id={`tc-${grupo.id}`}
+                    variante="en-linea"
+                    superficie="mesa"
+                    numerico
+                    inputMode="decimal"
+                    className="w-24 max-w-24 !text-desvaida"
+                    aria-label={`Tipo de cambio SUNAT de ${grupo.etiqueta}`}
+                    value={textoTc}
+                    disabled={aplicando}
+                    onChange={(e) => onTipoCambio(e.target.value)}
+                    onBlur={(e) => {
+                      const texto = conDecimales(e.target.value, 3)
+                      if (normalizarDecimal(texto) === undefined) return
+                      onTipoCambio(texto)
+                    }}
+                  />
+                </span>
+              </>
+            ) : null}
+          </div>
+        </th>
+      </tr>
+      {grupo.filas.map(({ fila, indice }) => (
+        <FilaDePrecio
+          key={`${grupo.id}-${indice}`}
+          nombre={fila.codigo}
+          descripcion={
+            descripcionPorCodigo.get(fila.codigo) ?? fila.etiquetaFactura
           }
-          onCentimos(n)
-        }}
-      />
-    </div>
+          codigo={fila.codigo}
+          moneda={fila.moneda}
+          precioOriginal={fila.precioOriginal}
+          centimos={fila.precioCompraCentimos}
+          textoTc={factorVisible}
+          soles={
+            fila.moneda === 'USD'
+              ? textoSoles(
+                  centimosDeFila(fila, { [claveDeGrupo(grupo.id)]: textoTc }),
+                )
+              : undefined
+          }
+          aplicando={aplicando}
+          onPrecio={(precio) => onPrecio(indice, precio)}
+          onCentimos={(centimos) => onCentimos(indice, centimos)}
+        />
+      ))}
+      {grupo.huerfanas.map(({ linea, indice }) => (
+        <FilaDePrecio
+          key={`${grupo.id}-sin-${indice}`}
+          nombre={linea.etiquetaFactura}
+          descripcion={linea.etiquetaFactura}
+          nota="No está en el catálogo"
+          moneda={linea.moneda}
+          precioOriginal={linea.precioOriginal}
+          centimos={linea.precioCompraCentimos}
+          textoTc={factorVisible}
+          soles={
+            linea.moneda === 'USD'
+              ? textoSoles(
+                  centimosDeFila(linea, { [claveDeGrupo(grupo.id)]: textoTc }),
+                )
+              : undefined
+          }
+          aplicando={aplicando}
+          precioBloqueado
+          onPrecio={() => undefined}
+          onCentimos={() => undefined}
+        />
+      ))}
+    </>
   )
 }
 
-function FormulaEnDolares({
-  fila,
-  indice,
+function textoSoles(centimos: number | undefined): string {
+  return centimos !== undefined ? formatearImporte(centimos) : '—'
+}
+
+function FilaDePrecio({
+  nombre,
+  descripcion,
+  codigo,
+  nota,
+  moneda,
+  precioOriginal,
+  centimos,
   textoTc,
+  soles,
   aplicando,
   precioBloqueado = false,
   onPrecio,
-  onTipoCambio,
+  onCentimos,
 }: {
-  readonly fila: {
-    readonly codigo?: string
-    readonly precioOriginal?: string
-    readonly precioCompraEn?: string
-  }
-  readonly indice: number
+  readonly nombre: string
+  readonly descripcion: string
+  readonly codigo?: string
+  readonly nota?: string
+  readonly moneda?: 'PEN' | 'USD'
+  readonly precioOriginal?: string
+  readonly centimos?: number
   readonly textoTc: string
+  readonly soles?: string
   readonly aplicando: boolean
   readonly precioBloqueado?: boolean
   readonly onPrecio: (precio: string) => void
-  readonly onTipoCambio: (valor: string) => void
+  readonly onCentimos: (centimos: number) => void
 }) {
-  const factor = normalizarDecimal(textoTc)
-  const centimos =
-    fila.precioOriginal !== undefined && factor !== undefined
-      ? centimosDeDecimales(fila.precioOriginal, factor)
-      : undefined
-  const soles = centimos !== undefined ? formatearImporte(centimos) : '—'
-  const nombre = fila.codigo ?? fila.precioOriginal ?? String(indice)
-  const fecha = fechaLatam(fila.precioCompraEn)
+  const enDolares = moneda === 'USD'
+  const precioVisible =
+    precioOriginal !== undefined ? conDecimales(precioOriginal, 4) : ''
   return (
-    <div className="flex flex-wrap items-end gap-2 text-cuerpo text-tinta">
-      <span className="sr-only">
-        {`US$ ${fila.precioOriginal ?? '—'} × ${textoTc || '—'} = S/ ${soles}`}
-      </span>
-      <span className="pb-2 font-mono">US$</span>
-      <div className="w-28">
-        <Etiqueta htmlFor={`usd-${nombre}-${indice}`}>Precio USD</Etiqueta>
-        <Campo
-          id={`usd-${nombre}-${indice}`}
-          numerico
-          inputMode="decimal"
-          aria-label={`Precio en dólares de ${nombre}`}
-          defaultValue={fila.precioOriginal ?? ''}
-          disabled={aplicando || precioBloqueado}
-          onChange={(e) => {
-            const decimal = normalizarDecimal(e.target.value)
-            if (decimal === undefined) return
-            onPrecio(decimal)
-          }}
-        />
-      </div>
-      <span className="pb-2 font-mono">×</span>
-      <div className="w-28">
-        <Etiqueta htmlFor={`tc-${nombre}-${indice}`}>
-          {fecha.length > 0 ? `TC ${fecha}` : 'Tipo de cambio'}
-        </Etiqueta>
-        <Campo
-          id={`tc-${nombre}-${indice}`}
-          numerico
-          inputMode="decimal"
-          aria-label={
-            fecha.length > 0 ? `Tipo de cambio ${fecha}` : 'Tipo de cambio'
-          }
-          value={textoTc}
-          disabled={aplicando}
-          onChange={(e) => {
-            onTipoCambio(e.target.value)
-          }}
-        />
-      </div>
-      <span className="pb-2 font-mono">{`= S/ ${soles}`}</span>
-    </div>
+    <tr className="border-b border-borde">
+      <th scope="row" className="py-1 pr-3 text-left font-normal">
+        <p className="truncate font-medium text-cuerpo text-tinta">
+          {descripcion}
+        </p>
+        {codigo !== undefined ? (
+          <p className="font-mono text-[length:var(--text-etiqueta)] leading-4 tracking-normal text-desvaida">
+            {codigo}
+          </p>
+        ) : null}
+        {nota !== undefined ? (
+          <p className="text-[length:var(--text-etiqueta)] leading-4 text-desvaida">
+            {nota}
+          </p>
+        ) : null}
+      </th>
+      <td className="px-1 py-1">
+        {enDolares ? (
+          <span className="relative block">
+            <span className="pointer-events-none absolute top-1/2 left-2 -translate-y-1/2 font-mono text-[length:var(--text-etiqueta)] text-desvaida">
+              US$
+            </span>
+            <Campo
+              variante="en-linea"
+              superficie="mesa"
+              numerico
+              inputMode="decimal"
+              className="pl-9 !text-desvaida"
+              aria-label={`Precio en dólares de ${nombre}`}
+              defaultValue={precioVisible}
+              disabled={aplicando || precioBloqueado}
+              onChange={(e) => {
+                const decimal = normalizarDecimal(e.target.value)
+                if (decimal === undefined) return
+                onPrecio(decimal)
+              }}
+              onBlur={(e) => {
+                const decimal = normalizarDecimal(e.target.value)
+                if (decimal === undefined) {
+                  e.target.value = precioVisible
+                  return
+                }
+                const texto = conDecimales(decimal, 4)
+                e.target.value = texto
+                onPrecio(texto)
+              }}
+            />
+          </span>
+        ) : null}
+      </td>
+      <td className="text-center text-desvaida" aria-hidden>
+        {enDolares ? '×' : null}
+      </td>
+      <td className="px-1 text-right font-mono text-cuerpo tabular-nums text-desvaida">
+        {enDolares ? textoTc : null}
+      </td>
+      <td className="text-center text-desvaida" aria-hidden>
+        {enDolares ? '=' : null}
+      </td>
+      <td className="px-1 py-1 text-right">
+        {enDolares ? (
+          <span className="font-mono text-renglon font-bold text-tinta tabular-nums">
+            <span className="sr-only">
+              {`US$ ${precioVisible || '—'} × ${textoTc || '—'} = S/ ${soles ?? '—'}`}
+            </span>
+            <span aria-hidden>{soles ?? '—'}</span>
+          </span>
+        ) : (
+          <Campo
+            variante="en-linea"
+            superficie="mesa"
+            numerico
+            inputMode="decimal"
+            aria-label={`Costo en soles de ${nombre}`}
+            defaultValue={
+              centimos !== undefined
+                ? solesDesdeCentimos(centimos).toFixed(2)
+                : ''
+            }
+            disabled={aplicando || precioBloqueado}
+            onChange={(e) => {
+              const n = centimosDesdeTextoDecimal(e.target.value)
+              if (n === undefined) return
+              onCentimos(n)
+            }}
+            onBlur={(e) => {
+              const n = centimosDesdeTextoDecimal(e.target.value)
+              if (n === undefined) {
+                e.target.value =
+                  centimos !== undefined
+                    ? solesDesdeCentimos(centimos).toFixed(2)
+                    : ''
+                return
+              }
+              e.target.value = solesDesdeCentimos(n).toFixed(2)
+              onCentimos(n)
+            }}
+          />
+        )}
+      </td>
+    </tr>
   )
 }

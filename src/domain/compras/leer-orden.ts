@@ -17,6 +17,8 @@ export interface OrdenLeida {
   readonly moneda: MonedaDeCompra
   readonly fecha?: string
   readonly lineas: readonly LineaDeOrden[]
+  /** Índice del archivo dentro de la carga. */
+  readonly grupo?: number
 }
 
 const TOLERANCIA_Y = 3
@@ -79,15 +81,17 @@ export function crudoDesdeOrdenes(ordenes: readonly OrdenLeida[]): {
     readonly precioUnitario: string
     readonly moneda: MonedaDeCompra
     readonly precioCompraEn?: string
+    readonly grupo: number
   }[]
 } {
   return {
-    coincidencias: ordenes.flatMap((orden) =>
+    coincidencias: ordenes.flatMap((orden, indice) =>
       orden.lineas.map((linea) => ({
         codigo: linea.codigo,
         etiquetaFactura: linea.descripcion,
         precioUnitario: linea.precioUnitario,
         moneda: orden.moneda,
+        grupo: orden.grupo ?? indice,
         ...(orden.fecha !== undefined ? { precioCompraEn: orden.fecha } : {}),
       })),
     ),

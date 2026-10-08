@@ -10,6 +10,8 @@ export interface CoincidenciaDeCompra {
   readonly tipoCambio?: number
   /** Fecha de la orden con la que se pidió el tipo de cambio venta. */
   readonly tipoCambioEn?: string
+  /** Índice del archivo subido. Solo arma la cabecera; no se persiste. */
+  readonly grupo?: number
 }
 
 export interface LineaSinMatchDeCompra {
@@ -18,6 +20,8 @@ export interface LineaSinMatchDeCompra {
   readonly precioCompraEn?: string
   readonly moneda?: 'PEN' | 'USD'
   readonly precioOriginal?: string
+  /** Índice del archivo subido. Solo arma la cabecera. */
+  readonly grupo?: number
 }
 
 export interface BocetoDeCompras {

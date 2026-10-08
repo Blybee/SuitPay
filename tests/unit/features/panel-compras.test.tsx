@@ -73,22 +73,114 @@ describe('PanelCompras', () => {
         ]}
       />,
     )
-    const archivo = new File(['%PDF'], 'orden.pdf', { type: 'application/pdf' })
+    const archivo = new File(['%PDF'], 'orden-compra_2136.pdf', {
+      type: 'application/pdf',
+    })
     await usuario.upload(
       screen.getByLabelText('Facturas PDF o imagen'),
       archivo,
     )
-    expect(await screen.findByText('= S/ 4.55')).toBeTruthy()
-    expect(screen.getByText('= S/ 3.64')).toBeTruthy()
+    expect(await screen.findByText('OC 2136')).toBeTruthy()
+    expect(await screen.findByText('4.55')).toBeTruthy()
+    expect(screen.getByText('3.64')).toBeTruthy()
+    expect(
+      screen.getByRole('columnheader', { name: 'Precio US$' }),
+    ).toBeTruthy()
     expect(screen.getByLabelText('Precio en dólares de JL-9000')).toHaveValue(
       '1.3200',
     )
+    const tipo = screen.getByLabelText('Tipo de cambio SUNAT de OC 2136')
+    expect(tipo).toHaveValue('3.450')
+    expect(screen.getAllByLabelText(/Tipo de cambio SUNAT/)).toHaveLength(1)
     expect(
-      screen.getAllByLabelText('Tipo de cambio 30/09/2026')[0],
-    ).toHaveValue('3.450')
-    await usuario.clear(
-      screen.getAllByLabelText('Tipo de cambio 30/09/2026')[0]!,
+      screen.queryByLabelText('Precio en dólares de JL-27000'),
+    ).toBeTruthy()
+    await usuario.clear(tipo)
+    expect(
+      screen.getByRole('button', { name: 'Guardar 2 precios' }),
+    ).toBeDisabled()
+  })
+
+  it('una orden en soles solo edita el costo en la columna S/', async () => {
+    const usuario = userEvent.setup()
+    vi.mocked(extraerPreciosCompraFn).mockResolvedValue({
+      ok: true,
+      boceto: {
+        modelo: 'orden-pdf',
+        coincidencias: [
+          {
+            codigo: 'TUB-PVC-12',
+            etiquetaFactura: 'TUBO',
+            precioCompraCentimos: 1250,
+            precioCompraEn: '2026-09-30',
+          },
+        ],
+        sinMatch: [],
+      },
+    })
+    render(<PanelCompras puedeEscribir deshabilitado={false} productos={[]} />)
+    await usuario.upload(
+      screen.getByLabelText('Facturas PDF o imagen'),
+      new File(['%PDF'], 'orden-soles.pdf', { type: 'application/pdf' }),
     )
-    expect(screen.getByRole('button', { name: 'Confirmar' })).toBeDisabled()
+    expect(await screen.findByText('OC 1')).toBeTruthy()
+    expect(screen.getByLabelText('Fecha de OC 1')).toHaveValue('2026-09-30')
+    expect(screen.queryByLabelText(/Tipo de cambio SUNAT/)).toBeNull()
+    expect(screen.queryByLabelText(/Precio en dólares/)).toBeNull()
+    expect(screen.getByLabelText('Costo en soles de TUB-PVC-12')).toHaveValue(
+      '12.50',
+    )
+    expect(
+      screen.getByRole('button', { name: 'Guardar 1 precio' }),
+    ).toBeEnabled()
+  })
+
+  it('cada orden tiene su fecha y su tipo de cambio', async () => {
+    const usuario = userEvent.setup()
+    vi.mocked(extraerPreciosCompraFn).mockResolvedValue({
+      ok: true,
+      boceto: {
+        modelo: 'orden-pdf',
+        coincidencias: [
+          {
+            codigo: 'JL-9000',
+            etiquetaFactura: 'CODO',
+            moneda: 'USD',
+            precioOriginal: '1.3200',
+            precioCompraEn: '2026-09-30',
+            grupo: 0,
+          },
+          {
+            codigo: 'TUB-PVC-12',
+            etiquetaFactura: 'TUBO',
+            precioCompraCentimos: 800,
+            precioCompraEn: '2026-10-01',
+            grupo: 1,
+          },
+        ],
+        sinMatch: [],
+      },
+    })
+    vi.mocked(leerTiposDeCambioFn).mockResolvedValue({
+      ok: true,
+      tipos: [
+        { fecha: '2026-09-30', venta: 3.45, fechaPublicada: '2026-09-30' },
+      ],
+      fallos: [],
+    })
+    render(<PanelCompras puedeEscribir deshabilitado={false} productos={[]} />)
+    await usuario.upload(screen.getByLabelText('Facturas PDF o imagen'), [
+      new File(['%PDF'], 'orden-compra_2136.pdf', { type: 'application/pdf' }),
+      new File(['%PDF'], 'orden-soles_88.pdf', { type: 'application/pdf' }),
+    ])
+    expect(await screen.findByText('OC 2136')).toBeTruthy()
+    expect(screen.getByText('OC 88')).toBeTruthy()
+    expect(screen.getByLabelText('Fecha de OC 2136')).toHaveValue('2026-09-30')
+    expect(screen.getByLabelText('Fecha de OC 88')).toHaveValue('2026-10-01')
+    expect(screen.getAllByLabelText(/Tipo de cambio SUNAT/)).toHaveLength(1)
+    expect(await screen.findByText('4.55')).toBeTruthy()
+    expect(screen.getByLabelText('Costo en soles de TUB-PVC-12')).toHaveValue(
+      '8.00',
+    )
   })
 })

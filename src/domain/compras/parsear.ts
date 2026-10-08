@@ -63,6 +63,14 @@ function texto(fila: Record<string, unknown>, clave: string): string {
   return typeof valor === 'string' ? valor.trim() : ''
 }
 
+function grupoDe(fila: Record<string, unknown>): number | undefined {
+  const valor = fila['grupo']
+  if (typeof valor !== 'number' || !Number.isInteger(valor) || valor < 0) {
+    return undefined
+  }
+  return valor
+}
+
 function fechaDeValor(valor: unknown): string | undefined {
   if (typeof valor !== 'string') return undefined
   const recorte = valor.trim().slice(0, 10)
@@ -135,10 +143,13 @@ export function parsearBocetoDeCompras(
         texto(fila, 'etiquetaFactura') || texto(fila, 'descripcion') || codigo
       const fecha = fechaDeFila(fila) ?? fechaDocumento
       const leida = lecturaDePrecio(fila, monedaDocumento, fecha)
+      const grupo = grupoDe(fila)
+      const conGrupo = grupo !== undefined ? { grupo } : {}
       if (codigo === '' || leida === undefined || !codigosValidos.has(codigo)) {
         sinMatch.push({
           etiquetaFactura: etiqueta || codigo || 'línea sin código',
           ...restoDeLinea(leida),
+          ...conGrupo,
         })
         continue
       }
@@ -146,6 +157,7 @@ export function parsearBocetoDeCompras(
         codigo,
         etiquetaFactura: etiqueta,
         ...leida,
+        ...conGrupo,
       })
     }
   }
@@ -159,9 +171,11 @@ export function parsearBocetoDeCompras(
       if (etiqueta === '') continue
       const fecha = fechaDeFila(fila) ?? fechaDocumento
       const leida = lecturaDePrecio(fila, monedaDocumento, fecha)
+      const grupo = grupoDe(fila)
       sinMatch.push({
         etiquetaFactura: etiqueta,
         ...restoDeLinea(leida),
+        ...(grupo !== undefined ? { grupo } : {}),
       })
     }
   }

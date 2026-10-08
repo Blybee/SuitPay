@@ -12,10 +12,11 @@ export async function ordenesDeMedios(
   medios: readonly { readonly mimeType: string; readonly dataBase64: string }[],
 ): Promise<readonly OrdenLeida[]> {
   const ordenes: OrdenLeida[] = []
-  for (const medio of medios) {
-    if (medio.mimeType !== 'application/pdf') continue
+  for (let indice = 0; indice < medios.length; indice += 1) {
+    const medio = medios[indice]
+    if (medio === undefined || medio.mimeType !== 'application/pdf') continue
     const leida = await ordenDePdf(bytesDeBase64(medio.dataBase64))
-    if (leida !== null) ordenes.push(leida)
+    if (leida !== null) ordenes.push({ ...leida, grupo: indice })
   }
   return ordenes
 }
