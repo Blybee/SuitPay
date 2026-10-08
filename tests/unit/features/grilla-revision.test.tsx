@@ -15,7 +15,8 @@ beforeAll(() => {
     unobserve(): void {}
     disconnect(): void {}
   }
-  globalThis.ResizeObserver = ObservadorFalso as unknown as typeof ResizeObserver
+  globalThis.ResizeObserver =
+    ObservadorFalso as unknown as typeof ResizeObserver
 })
 
 const categorias = [{ id: 'cat-valvulas', nombre: 'Válvulas' }] as const
@@ -117,8 +118,7 @@ describe('GrillaRevision maestro', () => {
   })
 
   it('muestra la descripción completa y no el distintivo de versión', () => {
-    const descripcion =
-      'AQUATO- DESAGUE P/LAVAT C/REBOSE 1 1/4" X 12" T/GRANDE'
+    const descripcion = 'AQUATO- DESAGUE P/LAVAT C/REBOSE 1 1/4" X 12" T/GRANDE'
     render(
       <GrillaMaestra
         iniciales={[producto({ codigo: 'AQ-25009', descripcion })]}
@@ -171,7 +171,9 @@ describe('GrillaRevision maestro', () => {
     expect(tacho.className).toContain('p-0')
     expect(cantidad.className).toContain('size-11')
     expect(cantidad.className).toContain('p-0')
-    expect(screen.getByRole('columnheader', { name: 'Categoría' })).toBeInTheDocument()
+    expect(
+      screen.getByRole('columnheader', { name: 'Categoría' }),
+    ).toBeInTheDocument()
   })
 
   it('el buscador recorta la grilla por descripción y código', async () => {
@@ -223,9 +225,7 @@ describe('GrillaRevision maestro', () => {
 
   it('sin coincidencias lo dice y se vacía al borrar el campo', async () => {
     const usuario = userEvent.setup()
-    render(
-      <GrillaMaestra iniciales={[producto({ codigo: 'A' })]} />,
-    )
+    render(<GrillaMaestra iniciales={[producto({ codigo: 'A' })]} />)
 
     const buscador = screen.getByRole('searchbox', { name: 'Buscar producto' })
     await usuario.type(buscador, 'zzz')
@@ -233,5 +233,62 @@ describe('GrillaRevision maestro', () => {
     expect(screen.getByText('Ningún producto coincide.')).toBeInTheDocument()
     await usuario.clear(buscador)
     expect(screen.getByLabelText('Código A')).toBeInTheDocument()
+  })
+
+  it('guarda 5, 5.00 y 5,50 al escribir, sin esperar a salir del campo', async () => {
+    const usuario = userEvent.setup()
+    const vistos: number[] = []
+    function Harness() {
+      const [productos, setProductos] = useState([
+        producto({ codigo: 'A', precio: 0 }),
+      ])
+      return (
+        <GrillaRevision
+          productos={productos}
+          categorias={categorias}
+          balance={BALANCE}
+          modo="maestro"
+          onProductos={(siguientes) => {
+            setProductos([...siguientes])
+            const precio = siguientes[0]?.precio
+            if (precio !== undefined) vistos.push(precio)
+          }}
+          onCategorias={() => undefined}
+        />
+      )
+    }
+    render(<Harness />)
+    const campo = screen.getByLabelText('Precio A')
+    await usuario.clear(campo)
+    await usuario.type(campo, '5')
+    expect(vistos.at(-1)).toBe(500)
+    await usuario.clear(campo)
+    await usuario.type(campo, '5.00')
+    expect(vistos.at(-1)).toBe(500)
+    await usuario.clear(campo)
+    await usuario.type(campo, '5,50')
+    expect(vistos.at(-1)).toBe(550)
+  })
+
+  it('mantiene el foco al editar el código', async () => {
+    const usuario = userEvent.setup()
+    render(<GrillaMaestra iniciales={[producto({ codigo: 'A' })]} />)
+    const campo = screen.getByLabelText('Código A')
+    await usuario.click(campo)
+    await usuario.type(campo, 'Z')
+    expect(screen.getByLabelText('Código AZ')).toHaveFocus()
+    expect(screen.getByLabelText('Código AZ')).toHaveValue('AZ')
+  })
+
+  it('marca duplicado un código con espacio final', () => {
+    render(
+      <GrillaMaestra
+        iniciales={[
+          producto({ codigo: 'A' }),
+          producto({ codigo: 'A ', descripcion: 'OTRO' }),
+        ]}
+      />,
+    )
+    expect(screen.getAllByText(/aparece 2 veces/i).length).toBeGreaterThan(0)
   })
 })

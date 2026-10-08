@@ -60,5 +60,49 @@ describe('aplicarParcheDeInventario', () => {
     expect(siguiente.cantidad).toBe(10)
     expect(siguiente.precioCompraCentimos).toBeUndefined()
     expect(siguiente.precioCompraEn).toBeUndefined()
+    expect(siguiente.monedaCompra).toBeUndefined()
+  })
+
+  it('una cantidad nueva conserva el costo en dólares', () => {
+    const siguiente = aplicarParcheDeInventario(
+      base({
+        monedaCompra: 'USD',
+        precioCompraOriginal: '1.0550',
+        tipoCambio: 3.45,
+        tipoCambioEn: '2026-09-30',
+        precioCompraCentimos: 364,
+      }),
+      {
+        codigo: 'TUB-1-2',
+        cantidad: 4,
+        autorId: 'admin',
+        momento,
+      },
+    )
+    expect(siguiente.cantidad).toBe(4)
+    expect(siguiente.precioCompraOriginal).toBe('1.0550')
+    expect(siguiente.tipoCambio).toBe(3.45)
+  })
+
+  it('un costo en soles borra el metadato de dólares', () => {
+    const siguiente = aplicarParcheDeInventario(
+      base({
+        monedaCompra: 'USD',
+        precioCompraOriginal: '1.3200',
+        tipoCambio: 3.45,
+        tipoCambioEn: '2026-09-30',
+        precioCompraCentimos: 455,
+      }),
+      {
+        codigo: 'TUB-1-2',
+        precioCompraCentimos: 800,
+        autorId: 'admin',
+        momento,
+      },
+    )
+    expect(siguiente.precioCompraCentimos).toBe(800)
+    expect(siguiente.monedaCompra).toBeUndefined()
+    expect(siguiente.precioCompraOriginal).toBeUndefined()
+    expect(siguiente.tipoCambio).toBeUndefined()
   })
 })

@@ -1,5 +1,11 @@
 import { centimosDesdeSoles } from '../totales/calculo.ts'
 import { fusionarCoincidencias } from './fusionar.ts'
+import {
+  centimosDeDecimales,
+  normalizarDecimal,
+  normalizarMoneda,
+} from './moneda.ts'
+import type { MonedaDeCompra } from './moneda.ts'
 import type {
   BocetoDeCompras,
   CoincidenciaDeCompra,
@@ -29,6 +35,22 @@ function centimosDeFila(fila: Record<string, unknown>): number | undefined {
   return undefined
 }
 
+function precioImpreso(fila: Record<string, unknown>): string | undefined {
+  const crudo = fila['precioUnitario'] ?? fila['precioCompraSoles']
+  if (typeof crudo === 'number' && Number.isFinite(crudo) && crudo >= 0) {
+    return normalizarDecimal(String(crudo))
+  }
+  if (typeof crudo === 'string') return normalizarDecimal(crudo)
+  return undefined
+}
+
+function monedaDe(
+  fila: Record<string, unknown>,
+  documento: MonedaDeCompra | undefined,
+): MonedaDeCompra {
+  return normalizarMoneda(fila['moneda']) ?? documento ?? 'PEN'
+}
+
 function fechaDeFila(fila: Record<string, unknown>): string | undefined {
   const crudo = fila['precioCompraEn'] ?? fila['fecha']
   if (typeof crudo !== 'string') return undefined
@@ -39,6 +61,58 @@ function fechaDeFila(fila: Record<string, unknown>): string | undefined {
 function texto(fila: Record<string, unknown>, clave: string): string {
   const valor = fila[clave]
   return typeof valor === 'string' ? valor.trim() : ''
+}
+
+function grupoDe(fila: Record<string, unknown>): number | undefined {
+  const valor = fila['grupo']
+  if (typeof valor !== 'number' || !Number.isInteger(valor) || valor < 0) {
+    return undefined
+  }
+  return valor
+}
+
+function fechaDeValor(valor: unknown): string | undefined {
+  if (typeof valor !== 'string') return undefined
+  const recorte = valor.trim().slice(0, 10)
+  return FECHA.test(recorte) ? recorte : undefined
+}
+
+function lecturaDePrecio(
+  fila: Record<string, unknown>,
+  documento: MonedaDeCompra | undefined,
+  fecha: string | undefined,
+):
+  | Pick<
+      CoincidenciaDeCompra,
+      'precioCompraCentimos' | 'precioCompraEn' | 'moneda' | 'precioOriginal'
+    >
+  | undefined {
+  const moneda = monedaDe(fila, documento)
+  const impreso = precioImpreso(fila)
+  const conFecha = fecha !== undefined ? { precioCompraEn: fecha } : {}
+  if (moneda === 'USD') {
+    const legado = centimosDeFila(fila)
+    const original =
+      impreso ?? (legado !== undefined ? (legado / 100).toFixed(2) : undefined)
+    if (original === undefined) return undefined
+    return { moneda: 'USD', precioOriginal: original, ...conFecha }
+  }
+  const centimos =
+    impreso !== undefined
+      ? centimosDeDecimales(impreso, '1')
+      : centimosDeFila(fila)
+  if (centimos === undefined) return undefined
+  return { precioCompraCentimos: centimos, ...conFecha }
+}
+
+function restoDeLinea(
+  leida: ReturnType<typeof lecturaDePrecio>,
+): Pick<
+  LineaSinMatchDeCompra,
+  'precioCompraCentimos' | 'precioCompraEn' | 'moneda' | 'precioOriginal'
+> {
+  if (leida === undefined) return {}
+  return leida
 }
 
 export function parsearBocetoDeCompras(
@@ -52,7 +126,11 @@ export function parsearBocetoDeCompras(
   const crudo = valor as {
     coincidencias?: unknown
     sinMatch?: unknown
+    moneda?: unknown
+    fecha?: unknown
   }
+  const monedaDocumento = normalizarMoneda(crudo.moneda)
+  const fechaDocumento = fechaDeValor(crudo.fecha)
   const coincidencias: CoincidenciaDeCompra[] = []
   const sinMatch: LineaSinMatchDeCompra[] = []
 
@@ -61,23 +139,25 @@ export function parsearBocetoDeCompras(
       if (!item || typeof item !== 'object') continue
       const fila = item as Record<string, unknown>
       const codigo = texto(fila, 'codigo')
-      const precio = centimosDeFila(fila)
       const etiqueta =
         texto(fila, 'etiquetaFactura') || texto(fila, 'descripcion') || codigo
-      const fecha = fechaDeFila(fila)
-      if (codigo === '' || precio === undefined || !codigosValidos.has(codigo)) {
+      const fecha = fechaDeFila(fila) ?? fechaDocumento
+      const leida = lecturaDePrecio(fila, monedaDocumento, fecha)
+      const grupo = grupoDe(fila)
+      const conGrupo = grupo !== undefined ? { grupo } : {}
+      if (codigo === '' || leida === undefined || !codigosValidos.has(codigo)) {
         sinMatch.push({
           etiquetaFactura: etiqueta || codigo || 'línea sin código',
-          ...(precio !== undefined ? { precioCompraCentimos: precio } : {}),
-          ...(fecha !== undefined ? { precioCompraEn: fecha } : {}),
+          ...restoDeLinea(leida),
+          ...conGrupo,
         })
         continue
       }
       coincidencias.push({
         codigo,
-        precioCompraCentimos: precio,
         etiquetaFactura: etiqueta,
-        ...(fecha !== undefined ? { precioCompraEn: fecha } : {}),
+        ...leida,
+        ...conGrupo,
       })
     }
   }
@@ -86,14 +166,16 @@ export function parsearBocetoDeCompras(
     for (const item of crudo.sinMatch) {
       if (!item || typeof item !== 'object') continue
       const fila = item as Record<string, unknown>
-      const etiqueta = texto(fila, 'etiquetaFactura') || texto(fila, 'descripcion')
+      const etiqueta =
+        texto(fila, 'etiquetaFactura') || texto(fila, 'descripcion')
       if (etiqueta === '') continue
-      const precio = centimosDeFila(fila)
-      const fecha = fechaDeFila(fila)
+      const fecha = fechaDeFila(fila) ?? fechaDocumento
+      const leida = lecturaDePrecio(fila, monedaDocumento, fecha)
+      const grupo = grupoDe(fila)
       sinMatch.push({
         etiquetaFactura: etiqueta,
-        ...(precio !== undefined ? { precioCompraCentimos: precio } : {}),
-        ...(fecha !== undefined ? { precioCompraEn: fecha } : {}),
+        ...restoDeLinea(leida),
+        ...(grupo !== undefined ? { grupo } : {}),
       })
     }
   }

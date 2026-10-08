@@ -5,10 +5,7 @@ import {
 import { fallar } from '../errores.ts'
 import type { AlmacenDeInventario } from '../inventario/almacen.ts'
 import type { AlmacenDeCatalogo } from './almacen.ts'
-import {
-  detectarConflictos,
-  hayConflictosBloqueantes,
-} from './conflictos.ts'
+import { detectarConflictos, hayConflictosBloqueantes } from './conflictos.ts'
 import { compararContraPublicado } from './diferencias.ts'
 import { interpretarJsonDeTienda } from './lector-json.ts'
 import type {
@@ -27,10 +24,7 @@ import type {
  */
 
 export type FormatoDeImportacion =
-  | 'json_tienda'
-  | 'json'
-  | 'documento'
-  | 'productos_revisados'
+  'json_tienda' | 'json' | 'documento' | 'productos_revisados'
 
 export interface PeticionDeImportar {
   readonly contenido: string
@@ -147,7 +141,10 @@ function interpretarProductosRevisados(contenido: string): {
   for (const entrada of cuerpo.productos) {
     const parseado = esquemaDeProducto.safeParse(entrada)
     if (!parseado.success) {
-      fallar('archivo_no_interpretable', { motivo: 'producto_invalido' })
+      const issue = parseado.error.issues[0]
+      const camino = issue?.path.join('.') || 'producto'
+      const texto = issue?.message ?? 'invalido'
+      fallar('archivo_no_interpretable', { motivo: `${camino}: ${texto}` })
     }
     productos.push(parseado.data)
   }

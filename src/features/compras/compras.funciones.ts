@@ -5,6 +5,11 @@ import { exigirIdentidad } from '../../server/auth/verificar.ts'
 import { ErrorDeSuitPay, esErrorDeSuitPay } from '../../server/errores.ts'
 import { extraerPreciosCompra } from '../../server/compras/extraer.ts'
 import { aplicarPreciosCompra } from '../../server/compras/aplicar.ts'
+import {
+  AlmacenDeTipoCambioFirestore,
+  resolverTiposDeCambio,
+} from '../../server/compras/tipo-cambio.ts'
+import type { ResultadoDeTiposDeCambio } from '../../server/compras/tipo-cambio.ts'
 import { AlmacenDeInventarioFirestore } from '../../server/inventario/almacen-firestore.ts'
 import type { BocetoDeCompras } from '../../domain/compras/tipos.ts'
 import { MAX_MEDIOS_COMPRAS } from '../../domain/compras/tipos.ts'
@@ -51,13 +56,58 @@ export const extraerPreciosCompraFn = createServerFn({ method: 'POST' })
 
 const esquemaCoincidencia = z.object({
   codigo: z.string().trim().min(1).max(40),
-  precioCompraCentimos: z.number().int().nonnegative(),
+  precioCompraCentimos: z.number().int().nonnegative().optional(),
   precioCompraEn: z
     .string()
     .regex(/^\d{4}-\d{2}-\d{2}$/)
     .optional(),
   etiquetaFactura: z.string().trim().max(300),
+  moneda: z.enum(['PEN', 'USD']).optional(),
+  precioOriginal: z
+    .string()
+    .regex(/^\d+(\.\d{1,6})?$/)
+    .optional(),
+  tipoCambio: z.number().positive().max(1000).optional(),
+  tipoCambioEn: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/)
+    .optional(),
 })
+
+export interface RespuestaDeTipoCambio {
+  readonly ok: boolean
+  readonly tipos?: ResultadoDeTiposDeCambio['tipos']
+  readonly fallos?: ResultadoDeTiposDeCambio['fallos']
+  readonly error?: ReturnType<ErrorDeSuitPay['aRespuesta']>
+}
+
+export const leerTiposDeCambioFn = createServerFn({ method: 'POST' })
+  .validator(
+    z.object({
+      fechas: z
+        .array(z.string().regex(/^\d{4}-\d{2}-\d{2}$/))
+        .min(1)
+        .max(31),
+    }),
+  )
+  .handler(async ({ data }): Promise<RespuestaDeTipoCambio> => {
+    try {
+      await exigirIdentidad(getRequestHeaders(), ['administrador'])
+      const resultado = await resolverTiposDeCambio(data.fechas, {
+        almacen: new AlmacenDeTipoCambioFirestore(),
+      })
+      return { ok: true, tipos: resultado.tipos, fallos: resultado.fallos }
+    } catch (error) {
+      if (esErrorDeSuitPay(error)) {
+        return { ok: false, error: error.aRespuesta() }
+      }
+      console.error('[SuitPay] fallo al leer el tipo de cambio', error)
+      return {
+        ok: false,
+        error: new ErrorDeSuitPay('fallo_inesperado').aRespuesta(),
+      }
+    }
+  })
 
 export interface RespuestaDeAplicacion {
   readonly ok: boolean

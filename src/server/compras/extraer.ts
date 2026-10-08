@@ -17,6 +17,7 @@ import { asistenciaSimuladaActiva } from '../asistencia/simulado.ts'
 import { productosParaCompacto } from '../aprendizaje/catalogo-compacto.ts'
 import { AlmacenDeCatalogoFirestore } from '../catalogo/almacen-firestore.ts'
 import { promptDePreciosCompra, SCHEMA_PRECIOS_COMPRA } from './prompts.ts'
+import { crudoDeOrdenes, ordenesDeMedios } from './leer-pdf.ts'
 
 const MIME_PERMITIDOS = new Set([
   'application/pdf',
@@ -34,9 +35,7 @@ function bytesDeBase64(data: string): number {
   return Math.floor((data.length * 3) / 4)
 }
 
-export function exigirMediosDeCompra(
-  medios: readonly MedioDeCompra[],
-): void {
+export function exigirMediosDeCompra(medios: readonly MedioDeCompra[]): void {
   if (medios.length === 0) {
     throw new ErrorDeSuitPay('peticion_invalida', { motivo: 'sin_archivo' })
   }
@@ -54,7 +53,9 @@ export function exigirMediosDeCompra(
     }
     const bytes = bytesDeBase64(medio.dataBase64)
     if (bytes > TECHO_MEDIO_COMPRAS_BYTES) {
-      throw new ErrorDeSuitPay('peticion_invalida', { motivo: 'archivo_grande' })
+      throw new ErrorDeSuitPay('peticion_invalida', {
+        motivo: 'archivo_grande',
+      })
     }
     total += bytes
   }
@@ -113,6 +114,19 @@ export async function extraerPreciosCompra(entrada: {
     {},
   )
   const codigosValidos = new Set(compacto.map((item) => item.id))
+
+  try {
+    const ordenes = await ordenesDeMedios(entrada.medios)
+    if (ordenes.some((orden) => orden.lineas.length > 0)) {
+      return parsearBocetoDeCompras(
+        crudoDeOrdenes(ordenes),
+        codigosValidos,
+        'orden-pdf',
+      )
+    }
+  } catch (error) {
+    console.error('[SuitPay] no se pudo leer la orden como PDF', error)
+  }
 
   if (asistenciaSimuladaActiva()) {
     return extraerPreciosCompraSimulado(codigosValidos)

@@ -10,7 +10,7 @@
 
 **Governance**: constitución de SuitPay v1.4.0. Principios I, II y IV no negociables. El medio de la factura MAY ir al modelo y MUST NOT persistirse. El costo MUST NOT viajar en `catalogo/actual` ni en el compacto de asistencia del mostrador.
 
-## User Scenarios & Testing *(mandatory)*
+## User Scenarios & Testing _(mandatory)_
 
 ### User Story 1 - Cargar factura y confirmar costos (Priority: P1)
 
@@ -69,7 +69,7 @@ En viewport estrecho, En alerta, Nuevo, Importar y Compras viven en un menú keb
 - Jefe puede ver Catálogo y el panel; no ve Compras ni Guardar (solo administrador escribe).
 - Abrir Compras cierra Importar y viceversa.
 
-## Requirements *(mandatory)*
+## Requirements _(mandatory)_
 
 ### Functional Requirements
 
@@ -84,13 +84,17 @@ En viewport estrecho, En alerta, Nuevo, Importar y Compras viven en un menú keb
 - **FR-009**: En viewport &lt; md, En alerta, Nuevo, Importar y Compras MUST agruparse en un overflow menu; Guardar (o Publicar/Cancelar en revisión) permanece visible.
 - **FR-010**: Al pedir cantidad, el scroller de página MUST ir al tope; la tabla virtualizada no es ese scroller.
 - **FR-011**: El compacto de foto, dictado y Cotizar MUST NOT incluir `precioCompraCentimos`.
+- **FR-012**: La extracción MUST conservar la moneda del comprobante (`PEN` o `USD`) y el precio unitario con los decimales impresos. MUST NOT redondear a céntimos antes de aplicar el tipo de cambio.
+- **FR-013**: Si la moneda es `USD`, la fila MUST mostrar `US$ {precio} × {tipoCambio} = S/ {costo}`. El tipo de cambio es el de venta SUNAT de la fecha de la orden, editable. MUST NOT usar el tipo de cambio del día de la carga.
+- **FR-014**: El tipo de cambio se consulta en el servidor y se cachea por fecha en `tiposDeCambio/{fecha}`. El cliente MUST NOT llamar a SUNAT.
+- **FR-015**: Confirmar una fila `USD` sin tipo de cambio MUST estar bloqueado.
 
 ### Key Entities
 
 - **Existencia**: documento `inventario/{codigo}`; cantidad orientativa opcional; costo de compra opcional.
 - **Boceto de compras**: lista transitoria en cliente (coincidencias + sin match) hasta confirmar o descartar.
 
-## Success Criteria *(mandatory)*
+## Success Criteria _(mandatory)_
 
 ### Measurable Outcomes
 
@@ -102,5 +106,8 @@ En viewport estrecho, En alerta, Nuevo, Importar y Compras viven en un menú keb
 
 - El administrador es quien escribe; el jefe consulta.
 - Cada carga es un disparo: no hay archivo histórico que reconsultar.
-- Los precios de factura se interpretan con IGV incluido, en céntimos, como el resto de importes.
+- El precio unitario de la orden ya incluye IGV. SuitPay no lo multiplica por 1.18.
+- Una orden en soles se guarda en céntimos, igual que antes.
+- Una orden en dólares americanos se convierte con el tipo de cambio venta SUNAT de la fecha de la orden. `precioCompraCentimos` sigue siendo soles. La moneda original, el precio impreso, el tipo de cambio y la fecha de ese tipo de cambio se guardan como metadatos opcionales.
+- Si SUNAT no responde, el administrador escribe el tipo de cambio. Sin ese dato no se confirma la fila en dólares.
 - No hay rol `contador` distinto.

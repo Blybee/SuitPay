@@ -5,9 +5,7 @@
  */
 
 export type TipoDeConflicto =
-  | 'codigo_duplicado'
-  | 'descripcion_ausente'
-  | 'unidad_desconocida'
+  'codigo_duplicado' | 'descripcion_ausente' | 'unidad_desconocida'
 
 export interface ConflictoDeImportacion {
   readonly tipo: TipoDeConflicto
@@ -38,13 +36,14 @@ export function detectarConflictos(
   const vistos = new Map<string, number>()
 
   for (const producto of productos) {
-    const previos = vistos.get(producto.codigo) ?? 0
-    vistos.set(producto.codigo, previos + 1)
+    const codigo = producto.codigo.trim()
+    const previos = vistos.get(codigo) ?? 0
+    vistos.set(codigo, previos + 1)
 
     if (producto.descripcion.trim().length === 0) {
       conflictos.push({
         tipo: 'descripcion_ausente',
-        codigo: producto.codigo,
+        codigo,
         detalle: 'La descripción quedó vacía tras interpretar el archivo.',
       })
     }
@@ -52,7 +51,7 @@ export function detectarConflictos(
     if (!UNIDADES_CONOCIDAS.has(producto.unidad)) {
       conflictos.push({
         tipo: 'unidad_desconocida',
-        codigo: producto.codigo,
+        codigo,
         detalle: `Unidad «${producto.unidad}» no reconocida.`,
       })
     }

@@ -67,4 +67,63 @@ describe('conflictos de importación — códigos duplicados', () => {
 
     expect(almacen.actual).toBeNull()
   })
+
+  it('publica precios 500 y 600, que son 5 y 6.00 en soles', async () => {
+    const almacen = new AlmacenDeCatalogoEnMemoria()
+    const resumen = await importarCatalogo(almacen, {
+      contenido: JSON.stringify({
+        productos: [
+          {
+            codigo: 'N1',
+            descripcion: 'Nuevo uno',
+            unidad: 'NIU',
+            precio: 500,
+            activo: true,
+            marca: '',
+          },
+          {
+            codigo: 'N2',
+            descripcion: 'Nuevo dos',
+            unidad: 'NIU',
+            precio: 600,
+            activo: true,
+            marca: '',
+          },
+        ],
+        categorias: [],
+      }),
+      formato: 'productos_revisados',
+      modo: 'publicar',
+      administradorId: 'admin-1',
+    })
+    expect(resumen.publicado).toBe(true)
+    expect(resumen.propuestos.map((p) => p.precio)).toEqual([500, 600])
+  })
+
+  it('un precio no entero nombra el campo en el motivo', async () => {
+    const almacen = new AlmacenDeCatalogoEnMemoria()
+    await expect(
+      importarCatalogo(almacen, {
+        contenido: JSON.stringify({
+          productos: [
+            {
+              codigo: 'N1',
+              descripcion: 'Nuevo',
+              unidad: 'NIU',
+              precio: 5.5,
+              activo: true,
+              marca: '',
+            },
+          ],
+          categorias: [],
+        }),
+        formato: 'productos_revisados',
+        modo: 'publicar',
+        administradorId: 'admin-1',
+      }),
+    ).rejects.toMatchObject({
+      codigo: 'archivo_no_interpretable',
+      detalle: { motivo: expect.stringContaining('precio') },
+    })
+  })
 })

@@ -131,6 +131,7 @@ export const COLECCIONES = {
   sesionesEntrenamiento: 'sesionesEntrenamiento',
   fichajes: 'fichajes',
   fichajeReservas: 'fichajeReservas',
+  tiposDeCambio: 'tiposDeCambio',
 } as const
 
 export const DOCUMENTOS = {

@@ -11,6 +11,11 @@ export interface Existencia {
   readonly alerta: boolean
   readonly precioCompraCentimos?: number
   readonly precioCompraEn?: string
+  /** Metadatos de una compra en dólares. El costo de arriba ya está en soles. */
+  readonly monedaCompra?: 'USD'
+  readonly precioCompraOriginal?: string
+  readonly tipoCambio?: number
+  readonly tipoCambioEn?: string
   readonly actualizadoPor: string
   readonly actualizadoEn: Date
 }
@@ -20,8 +25,6 @@ export interface LineaConCantidad {
   readonly cantidad: number
 }
 
-export function tieneControlDeCantidad(
-  existencia: Existencia | null,
-): boolean {
+export function tieneControlDeCantidad(existencia: Existencia | null): boolean {
   return existencia !== null && typeof existencia.cantidad === 'number'
 }

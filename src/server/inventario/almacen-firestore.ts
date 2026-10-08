@@ -15,8 +15,7 @@ import {
 function aExistencia(id: string, datos: DocumentData): Existencia {
   const delCampo =
     typeof datos['codigo'] === 'string' ? datos['codigo'].trim() : ''
-  const codigo =
-    delCampo.length > 0 ? delCampo : codigoDesdeIdDeInventario(id)
+  const codigo = delCampo.length > 0 ? delCampo : codigoDesdeIdDeInventario(id)
   const actualizadoEn = datos['actualizadoEn']
   const cantidad =
     typeof datos['cantidad'] === 'number' ? datos['cantidad'] : undefined
@@ -29,6 +28,22 @@ function aExistencia(id: string, datos: DocumentData): Existencia {
     datos['precioCompraEn'].trim() !== ''
       ? datos['precioCompraEn'].trim()
       : undefined
+  const precioCompraOriginal =
+    typeof datos['precioCompraOriginal'] === 'string' &&
+    datos['precioCompraOriginal'].trim() !== ''
+      ? datos['precioCompraOriginal'].trim()
+      : undefined
+  const tipoCambio =
+    typeof datos['tipoCambio'] === 'number' && datos['tipoCambio'] > 0
+      ? datos['tipoCambio']
+      : undefined
+  const tipoCambioEn =
+    typeof datos['tipoCambioEn'] === 'string' &&
+    datos['tipoCambioEn'].trim() !== ''
+      ? datos['tipoCambioEn'].trim()
+      : undefined
+  const compraEnDolares =
+    datos['monedaCompra'] === 'USD' && precioCompraOriginal !== undefined
   return {
     codigo,
     ...(cantidad !== undefined ? { cantidad } : {}),
@@ -37,14 +52,20 @@ function aExistencia(id: string, datos: DocumentData): Existencia {
     alerta: datos['alerta'] === true,
     ...(precioCompraCentimos !== undefined ? { precioCompraCentimos } : {}),
     ...(precioCompraEn !== undefined ? { precioCompraEn } : {}),
+    ...(compraEnDolares
+      ? {
+          monedaCompra: 'USD' as const,
+          precioCompraOriginal,
+          ...(tipoCambio !== undefined ? { tipoCambio } : {}),
+          ...(tipoCambioEn !== undefined ? { tipoCambioEn } : {}),
+        }
+      : {}),
     actualizadoPor:
       typeof datos['actualizadoPor'] === 'string'
         ? datos['actualizadoPor']
         : '',
     actualizadoEn:
-      actualizadoEn instanceof Timestamp
-        ? actualizadoEn.toDate()
-        : new Date(0),
+      actualizadoEn instanceof Timestamp ? actualizadoEn.toDate() : new Date(0),
   }
 }
 
@@ -76,6 +97,23 @@ function payloadDeExistencia(
     payload['precioCompraEn'] = siguiente.precioCompraEn
   } else if (previa?.precioCompraEn !== undefined) {
     payload['precioCompraEn'] = FieldValue.delete()
+  }
+  if (siguiente.monedaCompra === 'USD') {
+    payload['monedaCompra'] = 'USD'
+    if (siguiente.precioCompraOriginal !== undefined) {
+      payload['precioCompraOriginal'] = siguiente.precioCompraOriginal
+    }
+    if (siguiente.tipoCambio !== undefined) {
+      payload['tipoCambio'] = siguiente.tipoCambio
+    }
+    if (siguiente.tipoCambioEn !== undefined) {
+      payload['tipoCambioEn'] = siguiente.tipoCambioEn
+    }
+  } else if (previa?.monedaCompra === 'USD') {
+    payload['monedaCompra'] = FieldValue.delete()
+    payload['precioCompraOriginal'] = FieldValue.delete()
+    payload['tipoCambio'] = FieldValue.delete()
+    payload['tipoCambioEn'] = FieldValue.delete()
   }
   return payload
 }
