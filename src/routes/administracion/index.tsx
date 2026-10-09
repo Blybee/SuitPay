@@ -1,9 +1,17 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { Brain, Hash, Package, SlidersHorizontal, Users } from 'lucide-react'
+import {
+  Brain,
+  Hash,
+  Package,
+  SlidersHorizontal,
+  Truck,
+  Users,
+} from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { sileo } from 'sileo'
 import { CabeceraAdmin } from '../../features/administracion/cabecera-admin.tsx'
 import { usarNotificaciones } from '../../features/notificaciones/almacen.ts'
+import { usarSesion } from '../../features/sesion/almacen.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import { Boton } from '../../ui/componentes/primitivas.tsx'
 import { Tarjeta } from '../../ui/componentes/Tarjeta.tsx'
@@ -27,9 +35,11 @@ const ENLACES: readonly {
     | '/administracion/usuarios'
     | '/administracion/parametros'
     | '/administracion/aprendizaje'
+    | '/administracion/clientes-transporte'
   titulo: string
   descripcion: string
   icono: LucideIcon
+  soloAdministrador?: boolean
 }[] = [
   {
     to: '/administracion/catalogo',
@@ -63,16 +73,28 @@ const ENLACES: readonly {
       'Entrena con pares de referencia y revisa alias, etiquetas y priores.',
     icono: Brain,
   },
+  {
+    to: '/administracion/clientes-transporte',
+    titulo: 'Clientes y Empresas de Transporte',
+    descripcion: 'Importa la lista de clientes y la de empresas de transporte.',
+    icono: Truck,
+    soloAdministrador: true,
+  },
 ]
 
 function InicioAdministracion() {
   const mostrar = usarNotificaciones((s) => s.mostrar)
+  const rol = usarSesion((s) => s.rol)
+  const enlaces =
+    rol === 'administrador'
+      ? ENLACES
+      : ENLACES.filter((enlace) => enlace.soloAdministrador !== true)
 
   return (
     <div className="flex min-h-full flex-col px-6 py-8">
       <CabeceraAdmin titulo="Administración" />
       <ul className="grid grid-cols-[repeat(auto-fit,minmax(16rem,1fr))] gap-4">
-        {ENLACES.map((enlace) => (
+        {enlaces.map((enlace) => (
           <li key={enlace.to}>
             <Tarjeta
               to={enlace.to}

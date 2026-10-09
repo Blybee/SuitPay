@@ -20,6 +20,7 @@ import { usarPedido } from '../features/pedido/almacen.ts'
 import { usarSesion } from '../features/sesion/almacen.ts'
 import { ComprobandoSesion } from '../features/sesion/ComprobandoSesion.tsx'
 import { Toaster } from 'sileo'
+import { BandaDeImportacion } from '../features/padron/banda.tsx'
 import { BandaDegradacion } from '../ui/componentes/BandaDegradacion.tsx'
 import { BarraLateral } from '../ui/componentes/BarraLateral.tsx'
 import { CapaDeToasts } from '../ui/componentes/CapaDeToasts.tsx'
@@ -135,9 +136,12 @@ function Mostrador() {
         ) : (
           <div className="flex min-h-0 flex-1 flex-col md:flex-row">
             <BarraLateral />
-            <main className="min-h-0 min-w-0 flex-1 overflow-auto bg-mesa">
-              <Outlet />
-            </main>
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+              <BandaDeImportacion />
+              <main className="min-h-0 min-w-0 flex-1 overflow-auto bg-mesa">
+                <Outlet />
+              </main>
+            </div>
           </div>
         )}
       </div>
