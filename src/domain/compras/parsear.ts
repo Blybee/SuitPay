@@ -1,5 +1,6 @@
 import { centimosDesdeSoles } from '../totales/calculo.ts'
 import { fusionarCoincidencias } from './fusionar.ts'
+import { codigoCanonico } from './leer-orden.ts'
 import {
   centimosDeDecimales,
   normalizarDecimal,
@@ -105,6 +106,31 @@ function lecturaDePrecio(
   return { precioCompraCentimos: centimos, ...conFecha }
 }
 
+function indicePorCanonico(
+  codigos: ReadonlySet<string>,
+): ReadonlyMap<string, readonly string[]> {
+  const porCanonico = new Map<string, string[]>()
+  for (const codigo of codigos) {
+    const clave = codigoCanonico(codigo)
+    const grupo = porCanonico.get(clave)
+    if (grupo === undefined) porCanonico.set(clave, [codigo])
+    else grupo.push(codigo)
+  }
+  return porCanonico
+}
+
+/** El código publicado. El exacto gana; si no, solo un canónico único. */
+function codigoGuardado(
+  leido: string,
+  codigosValidos: ReadonlySet<string>,
+  porCanonico: ReadonlyMap<string, readonly string[]>,
+): string | undefined {
+  if (codigosValidos.has(leido)) return leido
+  const candidatos = porCanonico.get(codigoCanonico(leido))
+  if (candidatos !== undefined && candidatos.length === 1) return candidatos[0]
+  return undefined
+}
+
 function restoDeLinea(
   leida: ReturnType<typeof lecturaDePrecio>,
 ): Pick<
@@ -131,6 +157,7 @@ export function parsearBocetoDeCompras(
   }
   const monedaDocumento = normalizarMoneda(crudo.moneda)
   const fechaDocumento = fechaDeValor(crudo.fecha)
+  const porCanonico = indicePorCanonico(codigosValidos)
   const coincidencias: CoincidenciaDeCompra[] = []
   const sinMatch: LineaSinMatchDeCompra[] = []
 
@@ -145,7 +172,11 @@ export function parsearBocetoDeCompras(
       const leida = lecturaDePrecio(fila, monedaDocumento, fecha)
       const grupo = grupoDe(fila)
       const conGrupo = grupo !== undefined ? { grupo } : {}
-      if (codigo === '' || leida === undefined || !codigosValidos.has(codigo)) {
+      const guardado =
+        codigo === ''
+          ? undefined
+          : codigoGuardado(codigo, codigosValidos, porCanonico)
+      if (guardado === undefined || leida === undefined) {
         sinMatch.push({
           etiquetaFactura: etiqueta || codigo || 'línea sin código',
           ...restoDeLinea(leida),
@@ -154,7 +185,7 @@ export function parsearBocetoDeCompras(
         continue
       }
       coincidencias.push({
-        codigo,
+        codigo: guardado,
         etiquetaFactura: etiqueta,
         ...leida,
         ...conGrupo,

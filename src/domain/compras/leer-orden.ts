@@ -51,7 +51,7 @@ export function leerOrdenDeItems(
     if (precio === undefined) continue
     const codigoItem = [...fila].sort((a, b) => a.x - b.x)[0]
     if (codigoItem === undefined) continue
-    const codigo = codigoDe(codigoItem.str)
+    const codigo = codigoCanonico(codigoItem.str)
     if (codigo.length === 0) continue
     const descripcion = fila
       .filter((item) => item.x > codigoItem.x + 8 && item.x < umX - 4)
@@ -145,8 +145,12 @@ function yDe(items: readonly ItemDeOrden[], texto: string): number | undefined {
   return itemExacto(items, texto)?.y
 }
 
-function codigoDe(texto: string): string {
-  const limpio = texto.trim()
+/**
+ * Forma comparable del SKU: sin espacios sobrantes, en mayúsculas y sin la
+ * letra suelta que la orden imprime al final (`JL-27000 R` y `JL-27000`).
+ */
+export function codigoCanonico(texto: string): string {
+  const limpio = texto.trim().toUpperCase()
   const corte = /^(\S+)\s+[A-Z]$/.exec(limpio)
   return corte?.[1] ?? limpio
 }

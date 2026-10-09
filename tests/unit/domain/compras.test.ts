@@ -155,6 +155,88 @@ describe('parsearBocetoDeCompras', () => {
     expect(boceto.coincidencias[0]?.moneda).toBeUndefined()
     expect(boceto.coincidencias[0]?.precioCompraCentimos).toBe(1250)
   })
+
+  it('resuelve la letra final de la orden al código guardado', () => {
+    const boceto = parsearBocetoDeCompras(
+      {
+        moneda: 'DOLARES AMERICANOS',
+        fecha: '2026-09-30',
+        coincidencias: [
+          {
+            codigo: 'JL-9000',
+            precioUnitario: '1.3200',
+            etiquetaFactura: 'CODO',
+          },
+          {
+            codigo: 'JL-27000',
+            precioUnitario: '1.0550',
+            etiquetaFactura: 'UNION',
+          },
+        ],
+      },
+      new Set(['JL-9000 R', 'JL-27000 R']),
+      'orden-pdf',
+    )
+    expect(boceto.sinMatch).toEqual([])
+    expect(boceto.coincidencias.map((fila) => fila.codigo)).toEqual([
+      'JL-9000 R',
+      'JL-27000 R',
+    ])
+  })
+
+  it('si el código exacto también está publicado, gana sobre el que trae letra', () => {
+    const boceto = parsearBocetoDeCompras(
+      {
+        coincidencias: [
+          {
+            codigo: 'JL-27000',
+            precioCompraCentimos: 364,
+            etiquetaFactura: 'UNION',
+          },
+        ],
+      },
+      new Set(['JL-27000', 'JL-27000 R']),
+      'orden-pdf',
+    )
+    expect(boceto.coincidencias[0]?.codigo).toBe('JL-27000')
+    expect(boceto.sinMatch).toEqual([])
+  })
+
+  it('dos códigos con la misma forma canónica y ninguno exacto quedan sin match', () => {
+    const boceto = parsearBocetoDeCompras(
+      {
+        coincidencias: [
+          {
+            codigo: 'JL-27000',
+            precioCompraCentimos: 364,
+            etiquetaFactura: 'UNION',
+          },
+        ],
+      },
+      new Set(['JL-27000 R', 'JL-27000 A']),
+      'orden-pdf',
+    )
+    expect(boceto.coincidencias).toEqual([])
+    expect(boceto.sinMatch[0]?.etiquetaFactura).toBe('UNION')
+  })
+
+  it('un código sin letra final se conserva tal cual', () => {
+    const boceto = parsearBocetoDeCompras(
+      {
+        coincidencias: [
+          {
+            codigo: 'ACM-CAÑ00982',
+            precioCompraCentimos: 950,
+            etiquetaFactura: 'CAÑO',
+          },
+        ],
+      },
+      new Set(['ACM-CAÑ00982']),
+      'orden-pdf',
+    )
+    expect(boceto.coincidencias[0]?.codigo).toBe('ACM-CAÑ00982')
+    expect(boceto.sinMatch).toEqual([])
+  })
 })
 
 describe('moneda de compra', () => {

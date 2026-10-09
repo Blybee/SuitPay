@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
 import { useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef, useState } from 'react'
 import type { ProductoBuscable } from '../domain/busqueda/productos.ts'
@@ -141,6 +141,13 @@ export const Route = createFileRoute('/')({
 })
 
 function MostradorConGuarda() {
+  const rol = usarSesion((s) => s.rol)
+  // Si el outlet llega a montar esta ruta mientras el jefe sale de `/`,
+  // no se construye el mostrador (catálogo, pedido, series).
+  if (rol === 'jefe') {
+    return <Navigate to="/fichaje" replace />
+  }
+
   return (
     <GuardaSesion>
       <Mostrador />

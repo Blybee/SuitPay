@@ -2,6 +2,7 @@ import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { usarSesion } from '../features/sesion/almacen.ts'
+import { destinoDeRol } from '../features/sesion/destino.ts'
 import { MarcaSuitPay } from '../ui/componentes/MarcaSuitPay.tsx'
 import { Boton, Campo, Etiqueta } from '../ui/componentes/primitivas.tsx'
 
@@ -16,12 +17,6 @@ export const Route = createFileRoute('/acceso')({
   component: PantallaDeAcceso,
 })
 
-function destinoDe(rol: string | null): '/fichaje' | '/administracion' | '/' {
-  if (rol === 'jefe') return '/fichaje'
-  if (rol === 'administrador') return '/administracion'
-  return '/'
-}
-
 function PantallaDeAcceso() {
   const navigate = useNavigate()
   const cargando = usarSesion((s) => s.cargando)
@@ -35,7 +30,7 @@ function PantallaDeAcceso() {
   const [ocupado, setOcupado] = useState(false)
 
   if (!cargando && uid !== null) {
-    return <Navigate to={destinoDe(rol)} />
+    return <Navigate to={destinoDeRol(rol)} replace />
   }
 
   async function enviar(evento: FormEvent): Promise<void> {
@@ -45,7 +40,7 @@ function PantallaDeAcceso() {
     try {
       await entrar(correo.trim(), contrasena)
       const estado = usarSesion.getState()
-      await navigate({ to: destinoDe(estado.rol) })
+      await navigate({ to: destinoDeRol(estado.rol), replace: true })
     } catch {
       setError('Correo o contraseña incorrectos. Inténtalo de nuevo.')
     } finally {

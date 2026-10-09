@@ -16,8 +16,9 @@ import { crearClienteDeConsultas } from './infra/consultas/cliente.ts'
  * En modo SPA, la compilación **prerrenderiza la ruta raíz con este mismo
  * componente de espera** y guarda el resultado como cáscara estática. O sea que
  * `defaultPendingComponent` no es solo lo que se ve entre navegaciones: es
- * literalmente lo primero que ve el vendedor al abrir el sistema por la mañana.
- * De ahí que sea papel con una nota sobria y no un girador genérico.
+ * literalmente lo primero que ve quien abre el sistema. La cáscara es la misma
+ * para todos los roles: no puede nombrar el mostrador, porque el jefe solo
+ * tiene fichaje y vería esa pantalla antes de la suya.
  */
 
 export function getRouter() {
@@ -28,17 +29,17 @@ export function getRouter() {
     context: { clienteDeConsultas },
     scrollRestoration: true,
     defaultPreload: 'intent',
-    defaultPendingComponent: CargandoElMostrador,
+    defaultPendingComponent: AbriendoSuitPay,
   })
 
   return router
 }
 
-function CargandoElMostrador() {
+function AbriendoSuitPay() {
   return (
     <div className="flex min-h-svh items-center justify-center bg-papel">
       <p className="font-mono text-etiqueta uppercase text-desvaida">
-        Abriendo el mostrador…
+        Abriendo SuitPay…
       </p>
     </div>
   )

@@ -25,7 +25,7 @@ function textoVacio(valor: unknown): boolean {
   return typeof valor !== 'string' || valor.trim() === ''
 }
 
-async function esperarTurnoDelIndice(): Promise<void> {
+export async function esperarTurnoDelIndice(): Promise<void> {
   if (ultimoIndiceEn === 0) return
   const espera = ESPERA_INDICE_MS - (Date.now() - ultimoIndiceEn)
   if (espera > 0) {
@@ -103,6 +103,11 @@ async function fundirIndice(
       { merge: true },
     )
   })
+  anotarEscrituraDeIndice()
+}
+
+/** Marca el instante de la última escritura del índice (una por segundo). */
+export function anotarEscrituraDeIndice(): void {
   ultimoIndiceEn = Date.now()
 }
 

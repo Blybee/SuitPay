@@ -18,6 +18,7 @@ import {
 } from '../features/degradacion/estado.ts'
 import { usarPedido } from '../features/pedido/almacen.ts'
 import { usarSesion } from '../features/sesion/almacen.ts'
+import { elJefeDebeAbandonarLaRuta } from '../features/sesion/destino.ts'
 import { ComprobandoSesion } from '../features/sesion/ComprobandoSesion.tsx'
 import { Toaster } from 'sileo'
 import { BandaDeImportacion } from '../features/padron/banda.tsx'
@@ -72,18 +73,20 @@ function Mostrador() {
   const degradacion = usarDegradacion(degradacionPrincipal)
   const restaurarPedido = usarPedido((estado) => estado.restaurar)
   const clienteDeConsultas = Route.useRouteContext().clienteDeConsultas
-  const pathname = useRouterState({ select: (s) => s.location.pathname })
+  // `location` es la ruta en vuelo: al redirigir al jefe pasa a `/fichaje`
+  // antes de que el mostrador se desmonte, y el outlet sigue pintándolo.
+  // `resolvedLocation` es la ruta que de verdad está en pantalla.
+  const pathname = useRouterState({
+    select: (estado) =>
+      estado.resolvedLocation?.pathname ?? estado.location.pathname,
+  })
   const publica = pathname === '/acceso' || pathname === '/fichar'
   const cargandoSesion = usarSesion((s) => s.cargando)
   const uid = usarSesion((s) => s.uid)
   const rol = usarSesion((s) => s.rol)
   const sinSesion = !cargandoSesion && uid === null
-  const jefeEnMostrador =
-    !cargandoSesion &&
-    rol === 'jefe' &&
-    !publica &&
-    pathname !== '/fichaje' &&
-    !pathname.startsWith('/administracion')
+  const jefeFueraDeSuSitio =
+    !cargandoSesion && elJefeDebeAbandonarLaRuta(rol, pathname)
 
   useEffect(() => usarSesion.getState().vigilar(), [])
   useEffect(() => vigilarConectividad(), [])
@@ -96,7 +99,7 @@ function Mostrador() {
     <QueryClientProvider client={clienteDeConsultas}>
       <div
         className={
-          publica || sinSesion || cargandoSesion
+          publica || sinSesion || cargandoSesion || jefeFueraDeSuSitio
             ? 'flex min-h-svh flex-col bg-mesa'
             : 'flex h-svh flex-col overflow-hidden bg-mesa'
         }
@@ -131,8 +134,11 @@ function Mostrador() {
           <ComprobandoSesion className="min-h-0 flex-1" />
         ) : sinSesion ? (
           <Navigate to="/acceso" />
-        ) : jefeEnMostrador ? (
-          <Navigate to="/fichaje" />
+        ) : jefeFueraDeSuSitio ? (
+          <>
+            <ComprobandoSesion className="min-h-0 flex-1" />
+            <Navigate to="/fichaje" replace />
+          </>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col md:flex-row">
             <BarraLateral />
