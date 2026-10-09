@@ -140,7 +140,11 @@ function arrastreEsRechazable(
 }
 
 function textoRechazo(aceptados: readonly ClaseDeArchivo[]): string {
-  if (aceptados.includes('pdf') && aceptados.includes('imagen') && aceptados.length === 2) {
+  if (
+    aceptados.includes('pdf') &&
+    aceptados.includes('imagen') &&
+    aceptados.length === 2
+  ) {
     return 'Solo se aceptan PDF o imagen.'
   }
   if (aceptados.length === 1 && aceptados[0] === 'pdf') {
@@ -159,8 +163,14 @@ function textoPozoVacio(
   aceptados: readonly ClaseDeArchivo[],
   multiple: boolean,
 ): string {
-  if (aceptados.includes('pdf') && aceptados.includes('imagen') && aceptados.length === 2) {
-    return multiple ? 'Suelta el PDF o las imágenes' : 'Suelta el PDF o la imagen'
+  if (
+    aceptados.includes('pdf') &&
+    aceptados.includes('imagen') &&
+    aceptados.length === 2
+  ) {
+    return multiple
+      ? 'Suelta el PDF o las imágenes'
+      : 'Suelta el PDF o la imagen'
   }
   if (aceptados.length === 1 && aceptados[0] === 'pdf') return 'Suelta el PDF'
   if (aceptados.length === 1 && aceptados[0] === 'json') return 'Suelta el JSON'
@@ -175,9 +185,7 @@ function arrastreTieneArchivos(transfer: DataTransfer | null): boolean {
   return Array.from(transfer.types).includes('Files')
 }
 
-function arrastreDeTipo(
-  aceptados: readonly ClaseDeArchivo[],
-): string {
+function arrastreDeTipo(aceptados: readonly ClaseDeArchivo[]): string {
   if (aceptados.includes('json') && aceptados.includes('pdf')) {
     return 'un JSON o un PDF'
   }
@@ -224,7 +232,8 @@ export function ZonaDeCarga(props: ZonaDeCargaProps) {
   const vacio = lista.length === 0 && estado === 'vacio'
   const errorVisible = rechazoLocal ?? (estado === 'error' ? mensaje : null)
   const arrastreInvalido =
-    arrastrando && (rechazoLocal === 'tipo-arrastre' || rechazoLocal === 'lleno')
+    arrastrando &&
+    (rechazoLocal === 'tipo-arrastre' || rechazoLocal === 'lleno')
   const pozoHormigas =
     vacio && !arrastrando && !arrastreInvalido && rechazoLocal === null
 
@@ -257,7 +266,8 @@ export function ZonaDeCarga(props: ZonaDeCargaProps) {
         return
       }
       setRechazoLocal(
-        validos.length > tomados.length && lista.length + tomados.length >= maxArchivos
+        validos.length > tomados.length &&
+          lista.length + tomados.length >= maxArchivos
           ? `Máximo ${maxArchivos} archivos. Se añadieron ${tomados.length}.`
           : null,
       )
@@ -383,8 +393,8 @@ export function ZonaDeCarga(props: ZonaDeCargaProps) {
             ? 'PDF o varias imágenes del requerimiento del cliente'
             : 'PDF o imagen del requerimiento del cliente'
           : aceptados.length === 1 && aceptados[0] === 'pdf'
-          ? 'PDF de requerimiento del cliente'
-          : 'JSON de la tienda virtual o PDF de productos (SICO)'}
+            ? 'PDF de requerimiento del cliente'
+            : 'JSON de la tienda virtual o PDF de productos (SICO)'}
       </span>
 
       {vacio ? (
@@ -687,11 +697,13 @@ function textoDeEstado({
   if (rechazoLocal !== null) return rechazoLocal
   if (estado === 'error' && mensaje !== null) return mensaje
   if (estado === 'procesando') {
+    if (mensaje !== null) return mensaje
     return clase === 'pdf'
       ? 'Interpretando el PDF. Las filas aparecen cuando termina; no se publica todavía.'
       : 'Validando el catálogo. Nada se aplica hasta que confirmes.'
   }
   if (estado === 'listo') {
+    if (mensaje !== null) return mensaje
     return 'Revisa filas y categorías abajo. Publicar es el único paso que escribe.'
   }
   if (vacio) return ''

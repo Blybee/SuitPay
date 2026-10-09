@@ -18,6 +18,7 @@ import { Route as FicharRouteImport } from './routes/fichar'
 import { Route as AdministracionIndexRouteImport } from './routes/administracion/index'
 import { Route as AdministracionAprendizajeRouteImport } from './routes/administracion/aprendizaje'
 import { Route as AdministracionCatalogoRouteImport } from './routes/administracion/catalogo'
+import { Route as AdministracionClientesTransporteRouteImport } from './routes/administracion/clientes-transporte'
 import { Route as AdministracionParametrosRouteImport } from './routes/administracion/parametros'
 import { Route as AdministracionSeriesRouteImport } from './routes/administracion/series'
 import { Route as AdministracionUsuariosRouteImport } from './routes/administracion/usuarios'
@@ -71,6 +72,12 @@ const AdministracionCatalogoRoute = AdministracionCatalogoRouteImport.update({
   path: '/catalogo',
   getParentRoute: () => AdministracionRouteRoute,
 } as any)
+const AdministracionClientesTransporteRoute =
+  AdministracionClientesTransporteRouteImport.update({
+    id: '/clientes-transporte',
+    path: '/clientes-transporte',
+    getParentRoute: () => AdministracionRouteRoute,
+  } as any)
 const AdministracionParametrosRoute =
   AdministracionParametrosRouteImport.update({
     id: '/parametros',
@@ -113,6 +120,7 @@ export interface FileRoutesByFullPath {
   '/fichar': typeof FicharRoute
   '/administracion/aprendizaje': typeof AdministracionAprendizajeRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
+  '/administracion/clientes-transporte': typeof AdministracionClientesTransporteRoute
   '/administracion/parametros': typeof AdministracionParametrosRoute
   '/administracion/series': typeof AdministracionSeriesRoute
   '/administracion/usuarios': typeof AdministracionUsuariosRoute
@@ -129,6 +137,7 @@ export interface FileRoutesByTo {
   '/fichar': typeof FicharRoute
   '/administracion/aprendizaje': typeof AdministracionAprendizajeRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
+  '/administracion/clientes-transporte': typeof AdministracionClientesTransporteRoute
   '/administracion/parametros': typeof AdministracionParametrosRoute
   '/administracion/series': typeof AdministracionSeriesRoute
   '/administracion/usuarios': typeof AdministracionUsuariosRoute
@@ -147,6 +156,7 @@ export interface FileRoutesById {
   '/fichar': typeof FicharRoute
   '/administracion/aprendizaje': typeof AdministracionAprendizajeRoute
   '/administracion/catalogo': typeof AdministracionCatalogoRoute
+  '/administracion/clientes-transporte': typeof AdministracionClientesTransporteRoute
   '/administracion/parametros': typeof AdministracionParametrosRoute
   '/administracion/series': typeof AdministracionSeriesRoute
   '/administracion/usuarios': typeof AdministracionUsuariosRoute
@@ -166,6 +176,7 @@ export interface FileRouteTypes {
     | '/fichar'
     | '/administracion/aprendizaje'
     | '/administracion/catalogo'
+    | '/administracion/clientes-transporte'
     | '/administracion/parametros'
     | '/administracion/series'
     | '/administracion/usuarios'
@@ -182,6 +193,7 @@ export interface FileRouteTypes {
     | '/fichar'
     | '/administracion/aprendizaje'
     | '/administracion/catalogo'
+    | '/administracion/clientes-transporte'
     | '/administracion/parametros'
     | '/administracion/series'
     | '/administracion/usuarios'
@@ -199,6 +211,7 @@ export interface FileRouteTypes {
     | '/fichar'
     | '/administracion/aprendizaje'
     | '/administracion/catalogo'
+    | '/administracion/clientes-transporte'
     | '/administracion/parametros'
     | '/administracion/series'
     | '/administracion/usuarios'
@@ -285,6 +298,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdministracionCatalogoRouteImport
       parentRoute: typeof AdministracionRouteRoute
     }
+    '/administracion/clientes-transporte': {
+      id: '/administracion/clientes-transporte'
+      path: '/clientes-transporte'
+      fullPath: '/administracion/clientes-transporte'
+      preLoaderRoute: typeof AdministracionClientesTransporteRouteImport
+      parentRoute: typeof AdministracionRouteRoute
+    }
     '/administracion/parametros': {
       id: '/administracion/parametros'
       path: '/parametros'
@@ -333,6 +353,7 @@ declare module '@tanstack/react-router' {
 interface AdministracionRouteRouteChildren {
   AdministracionAprendizajeRoute: typeof AdministracionAprendizajeRoute
   AdministracionCatalogoRoute: typeof AdministracionCatalogoRoute
+  AdministracionClientesTransporteRoute: typeof AdministracionClientesTransporteRoute
   AdministracionParametrosRoute: typeof AdministracionParametrosRoute
   AdministracionSeriesRoute: typeof AdministracionSeriesRoute
   AdministracionUsuariosRoute: typeof AdministracionUsuariosRoute
@@ -342,6 +363,7 @@ interface AdministracionRouteRouteChildren {
 const AdministracionRouteRouteChildren: AdministracionRouteRouteChildren = {
   AdministracionAprendizajeRoute: AdministracionAprendizajeRoute,
   AdministracionCatalogoRoute: AdministracionCatalogoRoute,
+  AdministracionClientesTransporteRoute: AdministracionClientesTransporteRoute,
   AdministracionParametrosRoute: AdministracionParametrosRoute,
   AdministracionSeriesRoute: AdministracionSeriesRoute,
   AdministracionUsuariosRoute: AdministracionUsuariosRoute,
