@@ -1,0 +1,10 @@
+---
+description: Reglas de modelo para subagentes (heredan el modelo principal)
+alwaysApply: true
+---
+# Subagentes: siempre heredan el modelo del agente principal.
+1. Todo Task/subagente omite `model`, o pasa solo `grok-4.7`.
+2. Prohibido usar revisores o jueces de otra familia de modelos, y arena/interrogate multimodelo.
+3. Verifica primero con tests, capturas o scripts de Playwright. Usa el subagente de navegador incorporado solo si es inevitable, y una sola vez.
+4. Graba video solo si ZiBlay lo pide. El agente principal revisa el video él mismo; nunca se lo pasa a mediaReview.
+5. Si un subagente incorporado fuerza otro modelo, dilo en el reporte final nombrando el modelo.
