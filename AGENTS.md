@@ -169,3 +169,7 @@ Para operar contra Firebase real (`VITE_USAR_EMULADORES=false`) hacen falta secr
 que no estan en el VM: `VITE_FIREBASE_API_KEY`/`VITE_FIREBASE_APP_ID` reales, ADC del
 Admin SDK (`gcloud auth application-default login` o `GOOGLE_APPLICATION_CREDENTIALS`)
 y `PROVEEDOR_TOKEN` (Secret Manager). Ver `.env.example` y `specs/001-mostrador-asistido/quickstart.md`.
+
+## Modelos de subagentes (obligatorio)
+
+Antes de lanzar cualquier subagente, lee y sigue `.cursor/rules/subagentes.mdc` y `.cursor/rules/pstack-models.mdc`. Los subagentes heredan el modelo principal (omite `model`). Nada de revisores de otra familia de modelos. Usa el navegador y el video solo si es imprescindible; corren en modelos fijos (Sonnet y Gemini) que se cobran aparte.
