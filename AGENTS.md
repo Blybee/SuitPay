@@ -1,6 +1,6 @@
 ## Modelos de subagentes (obligatorio)
 
-Antes de lanzar cualquier subagente, lee y sigue `.cursor/rules/subagentes.mdc` y `.cursor/rules/pstack-models.mdc`. Los subagentes heredan el modelo principal (omite `model`). Nada de revisores de otra familia de modelos. Usa el navegador y el video solo si es imprescindible; corren en modelos fijos (Sonnet y Gemini) que se cobran aparte.
+Antes de lanzar cualquier subagente, lee y sigue `.cursor/rules/subagentes.mdc` y `.cursor/rules/pstack-models.mdc`. Los subagentes heredan el modelo principal (omite `model`). Nada de revisores de otra familia de modelos. Para revisar UI usa primero el Playwright CLI (`playwright-cli`), luego `@playwright/test`, y el subagente de navegador solo si ninguno funciona. Usa el navegador y el video solo si es imprescindible; corren en modelos fijos (Sonnet y Gemini) que se cobran aparte.
 
 <!-- intent-skills:start -->
 # TanStack Intent - before editing files, run the matching guidance command.
@@ -101,6 +101,10 @@ tanstackIntent:
 <!-- intent-skills:end -->
 
 ## Cursor Cloud specific instructions
+
+### Playwright CLI (revisión de UI por agentes)
+El entorno instala el CLI oficial de Microsoft (`@playwright/cli`, binario `playwright-cli`) más Chromium. Si falta: `npm install -g @playwright/cli@latest && playwright-cli install-browser chromium`. Uso: `playwright-cli open http://localhost:<puerto>`, `playwright-cli snapshot`, `playwright-cli screenshot`, `playwright-cli click <ref>`, `playwright-cli close`. Los artefactos quedan en `.playwright-cli/` (no se versiona).
+
 
 SuitPay es una unica app (TanStack Start + React 19, Vite 8 + Nitro, Firebase).
 No es un monorepo. Comandos estandar en `package.json`; los detalles del negocio
