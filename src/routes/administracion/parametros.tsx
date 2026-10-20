@@ -8,7 +8,10 @@ import {
   guardarParametrosFn,
   leerParametrosFn,
 } from '../../features/parametros/parametros.funciones.ts'
-import type { Parametros } from '../../features/parametros/parametros.funciones.ts'
+import type {
+  ModelosVisibles,
+  Parametros,
+} from '../../features/parametros/parametros.funciones.ts'
 import { GuardaSesion } from '../../features/sesion/GuardaSesion.tsx'
 import { formatearImporte } from '../../domain/totales/calculo.ts'
 import { Boton, Campo, Etiqueta } from '../../ui/componentes/primitivas.tsx'
@@ -28,8 +31,11 @@ export const Route = createFileRoute('/administracion/parametros')({
 
 function PantallaDeParametros() {
   const [parametros, setParametros] = useState<Parametros | null>(null)
+  const [modelos, setModelos] = useState<ModelosVisibles | null>(null)
   const [umbralSoles, setUmbralSoles] = useState('700')
   const [formato, setFormato] = useState<'a4' | 'rollo'>('a4')
+  const [iaTexto, setIaTexto] = useState<'openrouter' | 'gemini'>('openrouter')
+  const [iaImagen, setIaImagen] = useState<'openrouter' | 'gemini'>('gemini')
   const [ocupado, setOcupado] = useState(false)
 
   useEffect(() => {
@@ -45,10 +51,13 @@ function PantallaDeParametros() {
         return
       }
       setParametros(respuesta.parametros)
+      setModelos(respuesta.modelos ?? null)
       setUmbralSoles(
         String(respuesta.parametros.umbralIdentificacionBoleta / 100),
       )
       setFormato(respuesta.parametros.formatoImpresionPorDefecto)
+      setIaTexto(respuesta.parametros.iaTexto)
+      setIaImagen(respuesta.parametros.iaImagen)
       setOcupado(false)
     })()
   }, [])
@@ -72,6 +81,8 @@ function PantallaDeParametros() {
           umbralIdentificacionBoleta: centimos,
           ventanaAnulacion: 'mismo_dia',
           formatoImpresionPorDefecto: formato,
+          iaTexto,
+          iaImagen,
         },
       })
       if (!respuesta.ok || respuesta.parametros === undefined) {
@@ -144,12 +155,94 @@ function PantallaDeParametros() {
             { valor: 'rollo', etiqueta: 'Rollo' },
           ]}
         />
-        <Boton type="submit" variante="principal" disabled={ocupado}>
+        <fieldset className="flex flex-col gap-4 border-t border-borde pt-4">
+          <legend className="text-cuerpo font-bold text-tinta">
+            Inteligencia artificial
+          </legend>
+          <p className="text-cuerpo text-desvaida">
+            Solo un administrador cambia estos interruptores. Audio, PDF y
+            Compras siguen en Gemini.
+          </p>
+          <Interruptor
+            id="ia-texto"
+            etiqueta="Tareas de solo texto"
+            activo={iaTexto === 'openrouter'}
+            proveedor={iaTexto === 'openrouter' ? 'OpenRouter' : 'Gemini'}
+            disabled={ocupado}
+            onCambiar={(activo) =>
+              setIaTexto(activo ? 'openrouter' : 'gemini')
+            }
+          />
+          <Interruptor
+            id="ia-imagen"
+            etiqueta="Tareas con imagen"
+            activo={iaImagen === 'openrouter'}
+            proveedor={iaImagen === 'openrouter' ? 'OpenRouter' : 'Gemini'}
+            disabled={ocupado}
+            onCambiar={(activo) =>
+              setIaImagen(activo ? 'openrouter' : 'gemini')
+            }
+          />
+          {modelos !== null && (
+            <ul className="flex flex-col gap-1 font-mono text-etiqueta text-desvaida">
+              <li>OpenRouter texto: {modelos.openrouterTexto}</li>
+              <li>OpenRouter imagen: {modelos.openrouterImagen}</li>
+              <li>Gemini principal: {modelos.geminiPrincipal}</li>
+              <li>Gemini respaldo: {modelos.geminiRespaldo}</li>
+            </ul>
+          )}
+        </fieldset>
+        <Boton type="submit" variante="principal" disabled={ocupado} aria-busy={ocupado}>
           Guardar
         </Boton>
       </form>
 
       <PanelDiagnosticoAsistencia />
+    </div>
+  )
+}
+
+function Interruptor({
+  id,
+  etiqueta,
+  activo,
+  proveedor,
+  disabled,
+  onCambiar,
+}: {
+  readonly id: string
+  readonly etiqueta: string
+  readonly activo: boolean
+  readonly proveedor: string
+  readonly disabled: boolean
+  readonly onCambiar: (activo: boolean) => void
+}) {
+  const etiquetaId = `${id}-etiqueta`
+  return (
+    <div className="flex min-h-11 items-center justify-between gap-4">
+      <div>
+        <p id={etiquetaId} className="text-cuerpo font-bold text-tinta">
+          {etiqueta}
+        </p>
+        <p className="font-mono text-etiqueta text-desvaida">{proveedor}</p>
+      </div>
+      <span className="relative inline-flex h-11 w-14 shrink-0 items-center">
+        <input
+          id={id}
+          type="checkbox"
+          role="switch"
+          aria-checked={activo}
+          aria-labelledby={etiquetaId}
+          checked={activo}
+          disabled={disabled}
+          onChange={(evento) => onCambiar(evento.target.checked)}
+          className="peer absolute inset-0 z-10 m-0 h-full w-full cursor-pointer appearance-none rounded-full border border-borde bg-mesa transition-[background-color] duration-rapida ease-salida checked:border-tinta checked:bg-tinta focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-tinta/20 disabled:cursor-not-allowed motion-reduce:transition-none"
+        />
+        <span
+          aria-hidden
+          className="pointer-events-none absolute left-1 size-6 rounded-full bg-papel shadow-sm transition-transform duration-rapida ease-salida peer-checked:translate-x-6 motion-reduce:transition-none"
+        />
+      </span>
     </div>
   )
 }

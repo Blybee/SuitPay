@@ -9,6 +9,18 @@ describe('esquemaDeParametros (T085)', () => {
       formatoImpresionPorDefecto: 'a4',
     })
     expect(parseado.umbralIdentificacionBoleta).toBe(70_000)
+    expect(parseado.iaTexto).toBe('openrouter')
+    expect(parseado.iaImagen).toBe('gemini')
+  })
+
+  it('rechaza un proveedor que no está en el interruptor', () => {
+    const resultado = esquemaDeParametros.safeParse({
+      umbralIdentificacionBoleta: 70_000,
+      ventanaAnulacion: 'mismo_dia',
+      formatoImpresionPorDefecto: 'a4',
+      iaTexto: 'local',
+    })
+    expect(resultado.success).toBe(false)
   })
 
   it('rechaza umbral no positivo', () => {

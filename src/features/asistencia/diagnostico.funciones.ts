@@ -7,6 +7,7 @@ import type { DiagnosticoDeAsistencia } from '../../server/asistencia/diagnostic
 export type {
   DiagnosticoDeAsistencia,
   SondaDeClave,
+  SondaDeOpenRouter,
 } from '../../server/asistencia/diagnostico.ts'
 
 export interface RespuestaDeDiagnostico {

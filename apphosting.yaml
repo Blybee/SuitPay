@@ -105,3 +105,19 @@ env:
   - variable: ASISTENCIA_CLAVE_SECUNDARIA
     secret: suitpay-asistencia-clave-secundaria
     availability: [RUNTIME]
+
+  # Texto por defecto. El nombre del secreto en Secret Manager hay que
+  # confirmarlo: se asume suitpay-openrouter-api-key.
+  - variable: OPENROUTER_API_KEY
+    secret: suitpay-openrouter-api-key
+    availability: [RUNTIME]
+
+  # :free, structured_outputs, y el extremo acepta data_collection=deny
+  # (openrouter.ai/api/v1/models, 2026-10-20). Nvidia :free queda fuera.
+  - variable: OPENROUTER_MODELO_TEXTO
+    value: dots-studio/dots-3-note-preview:free
+    availability: [RUNTIME]
+
+  - variable: OPENROUTER_MODELO_IMAGEN
+    value: dots-studio/dots-3-note-preview:free
+    availability: [RUNTIME]

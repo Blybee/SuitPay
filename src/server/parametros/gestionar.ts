@@ -11,6 +11,8 @@ const POR_DEFECTO: Parametros = {
   umbralIdentificacionBoleta: 70_000,
   ventanaAnulacion: 'mismo_dia',
   formatoImpresionPorDefecto: 'a4',
+  iaTexto: 'openrouter',
+  iaImagen: 'gemini',
 }
 
 function refParametros() {
@@ -33,6 +35,8 @@ export async function leerParametros(): Promise<Parametros> {
     formatoImpresionPorDefecto:
       datos['formatoImpresionPorDefecto'] ??
       POR_DEFECTO.formatoImpresionPorDefecto,
+    iaTexto: datos['iaTexto'] ?? POR_DEFECTO.iaTexto,
+    iaImagen: datos['iaImagen'] ?? POR_DEFECTO.iaImagen,
   })
   return parseado.success ? parseado.data : POR_DEFECTO
 }
