@@ -5,14 +5,15 @@ import {
 } from '../asistencia/cliente-modelo.ts'
 
 /**
- * Verificado el 2026-10-20 en /api/v1/models y con
- * provider.data_collection=deny: :free, structured_outputs, texto e imagen.
- * Los extremos gratuitos de Nvidia responden 404 con esa política.
+ * Elegidos el 2026-10-20 entre los :free de openrouter.ai/api/v1/models.
+ * Texto: el mayor con structured_outputs que devolvió JSON válido tres veces.
+ * El 550B es más grande, pero una de tres respuestas no cumplió el schema.
+ * Imagen: el de visión con structured_outputs que también lo devolvió.
  */
 export const MODELO_OPENROUTER_TEXTO_POR_DEFECTO =
-  'dots-studio/dots-3-note-preview:free'
+  'nvidia/nemotron-3-super-120b-a12b:free'
 export const MODELO_OPENROUTER_IMAGEN_POR_DEFECTO =
-  'dots-studio/dots-3-note-preview:free'
+  'nvidia/nemotron-3.5-super-vl:free'
 
 function saneada(valor: string | undefined): string | undefined {
   const limpio = valor?.trim()

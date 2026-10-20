@@ -58,7 +58,7 @@ Cotizar con texto pegado, la revisión de memoria, el lote y el diagnóstico de 
 - **FR-004**: Audio, PDF y Compras MUST llamar a Gemini con independencia de los interruptores.
 - **FR-005**: El texto enviado a OpenRouter MUST pasar por la anonimización de FR del principio IV v1.5.0. El guard de claves prohibidas de `payload.ts` MUST correr en ese cuerpo.
 - **FR-006**: 429, 402, 5xx, timeout y JSON inválido MUST provocar una llamada a Gemini y el `console.warn` indicado.
-- **FR-007**: La petición a OpenRouter MUST usar `response_format` JSON Schema y `provider.data_collection: deny`.
+- **FR-007**: La petición a OpenRouter MUST usar `response_format` JSON Schema. MUST NOT enviar `provider.data_collection`. El dueño aceptó el 2026-10-20 que el proveedor entrene con el texto ya anonimizado.
 
 ## Success Criteria *(mandatory)*
 
@@ -69,4 +69,4 @@ Cotizar con texto pegado, la revisión de memoria, el lote y el diagnóstico de 
 ## Assumptions
 
 - El secreto en Secret Manager se enlaza como `suitpay-openrouter-api-key` hasta que ZiBlay confirme el nombre.
-- Los ids `:free` por defecto son los que el 2026-10-20 anunciaban `structured_outputs` en `openrouter.ai/api/v1/models`.
+- El 2026-10-20 el texto por defecto es `nvidia/nemotron-3-super-120b-a12b:free` y la imagen `nvidia/nemotron-3.5-super-vl:free`. Tres llamadas reales de cada uno devolvieron JSON que cumple el schema. El 550B gratuito es más grande, pero no anuncia `structured_outputs` y una de tres respuestas no cumplió el schema.

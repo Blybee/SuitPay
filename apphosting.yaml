@@ -112,12 +112,11 @@ env:
     secret: suitpay-openrouter-api-key
     availability: [RUNTIME]
 
-  # :free, structured_outputs, y el extremo acepta data_collection=deny
-  # (openrouter.ai/api/v1/models, 2026-10-20). Nvidia :free queda fuera.
+  # :free más capaces con JSON de schema verificado el 2026-10-20.
   - variable: OPENROUTER_MODELO_TEXTO
-    value: dots-studio/dots-3-note-preview:free
+    value: nvidia/nemotron-3-super-120b-a12b:free
     availability: [RUNTIME]
 
   - variable: OPENROUTER_MODELO_IMAGEN
-    value: dots-studio/dots-3-note-preview:free
+    value: nvidia/nemotron-3.5-super-vl:free
     availability: [RUNTIME]

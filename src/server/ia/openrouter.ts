@@ -93,7 +93,6 @@ export function cuerpoDeOpenRouter(entrada: {
         schema: esquemaGeminiAJson(entrada.schema),
       },
     },
-    provider: { data_collection: 'deny' },
   }
 }
 

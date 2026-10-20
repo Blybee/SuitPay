@@ -8,7 +8,9 @@ interruptor de imagen para fotografía y pares con imagen. Audio, PDF y
 Compras de Catálogo siguen en Gemini. Antes de OpenRouter el servidor MUST
 anonimizar el texto. Si OpenRouter falla (429, 402, 5xx, timeout o JSON
 inválido) MUST llamar a Gemini y registrarlo sin el prompt. Aprobado por
-ZiBlay (dueño del negocio) el 2026-10-20.
+ZiBlay (dueño del negocio) el 2026-10-20. El mismo día ZiBlay aceptó que
+ese proveedor entrene con el texto ya anonimizado. La petición no pide
+data_collection deny.
 
 Principios modificados:
   IV.  Proveedor de texto configurable, anonimización previa y respaldo Gemini.
@@ -245,7 +247,9 @@ OpenRouter el servidor MUST anonimizar teléfonos (incluidos los de 9 dígitos y
 `Sr.`, `Sra.` o `cliente`. Si OpenRouter responde 429, 402 o 5xx, agota el
 tiempo o devuelve JSON que no cumple el schema, el servidor MUST llamar a
 Gemini y MUST registrar `console.warn` con el motivo y el modelo, sin el
-contenido del prompt. Aprobado por ZiBlay el 2026-10-20.
+contenido del prompt. ZiBlay aceptó el 2026-10-20 que el proveedor entrene
+con ese texto ya anonimizado. La petición MUST NOT incluir
+`provider.data_collection`. Aprobado por ZiBlay el 2026-10-20.
 
 ### V. El mostrador no se detiene
 

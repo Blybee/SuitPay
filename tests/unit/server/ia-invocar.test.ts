@@ -44,7 +44,10 @@ describe('invocarIa', () => {
   it('con los interruptores por defecto el texto sale a OpenRouter y la imagen a Gemini', async () => {
     process.env.OPENROUTER_API_KEY = 'clave-de-prueba'
     const urls: string[] = []
-    const fetchFn = vi.fn(async (url: string) => {
+    const modeloPrevio = process.env.OPENROUTER_MODELO_TEXTO
+    delete process.env.OPENROUTER_MODELO_TEXTO
+    const fetchFn = vi.fn(async (url: string, init?: RequestInit) => {
+      void init
       urls.push(String(url))
       if (String(url).includes('openrouter.ai')) {
         return respuestaOpenRouter({ ok: true })
@@ -80,6 +83,14 @@ describe('invocarIa', () => {
     expect(imagen).toEqual({ ok: true })
     expect(urls[0]).toContain('openrouter.ai')
     expect(urls[1]).toContain('generativelanguage.googleapis.com')
+    const cuerpo = JSON.parse(
+      String(fetchFn.mock.calls[0]?.[1]?.body),
+    ) as { model?: string; provider?: unknown }
+    expect(cuerpo.model).toBe('nvidia/nemotron-3-super-120b-a12b:free')
+    expect(cuerpo.provider).toBeUndefined()
+    expect(JSON.stringify(cuerpo)).not.toContain('data_collection')
+    if (modeloPrevio === undefined) delete process.env.OPENROUTER_MODELO_TEXTO
+    else process.env.OPENROUTER_MODELO_TEXTO = modeloPrevio
   })
 
   it('audio, PDF y compras llaman a Gemini aunque los interruptores estén en OpenRouter', async () => {

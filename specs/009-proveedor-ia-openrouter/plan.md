@@ -6,7 +6,7 @@
 
 ## Summary
 
-Un módulo `src/server/ia/` elige el proveedor según la modalidad y los interruptores de `config/parametros`. El texto por defecto va a OpenRouter (`chat/completions`, JSON Schema, `data_collection: deny`) ya anonimizado. Si esa llamada falla, sigue el cliente Gemini que ya existía. La imagen usa su propio interruptor. Audio, PDF y Compras no salen de Gemini.
+Un módulo `src/server/ia/` elige el proveedor según la modalidad y los interruptores de `config/parametros`. El texto por defecto va a OpenRouter (`chat/completions`, JSON Schema) ya anonimizado. ZiBlay aceptó el 2026-10-20 que ese proveedor entrene con el texto anonimizado, así que la petición no envía `data_collection`. Si esa llamada falla, sigue el cliente Gemini que ya existía. La imagen usa su propio interruptor. Audio, PDF y Compras no salen de Gemini.
 
 ## Technical Context
 
@@ -35,7 +35,7 @@ Puertas derivadas de `.specify/memory/constitution.md` v1.5.0.
 | I | Aprobación humana indelegable | No se emite ni se escribe un comprobante. Los interruptores los cambia un administrador. | pass |
 | II | Ninguna venta se documenta dos veces | No emite. | n/a |
 | III | Proveedor de emisión sustituible | No toca el módulo frontera de emisión. | n/a |
-| IV | Datos de clientes fuera de IA | Anonimización antes de OpenRouter, guard de `payload.ts`, audio/PDF/Compras en Gemini, respaldo registrado sin el prompt. | pass |
+| IV | Datos de clientes fuera de IA | Anonimización antes de OpenRouter. El dueño aceptó el 2026-10-20 que el proveedor entrene con ese texto. Guard de `payload.ts`, audio/PDF/Compras en Gemini, respaldo registrado sin el prompt. | pass |
 | V | El mostrador no se detiene | 429, 402, 5xx, timeout y JSON inválido caen a Gemini. Sin clave, también. | pass |
 | VI | Lo que no se mide no se declara mejorado | El plan no afirma que OpenRouter cotice mejor. `scripts/comparar-ia.ts` compara, no declara una mejora. | pass |
 | — | Restricciones del dominio | No hay efecto tributario. | pass |
