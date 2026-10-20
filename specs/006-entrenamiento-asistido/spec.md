@@ -8,7 +8,7 @@
 
 **Input**: Par de referencia (pedido del cliente vs cotización oro) en Administración → Aprendizaje; alias, etiquetas y priors de marca; unificar el prompt de Cotizar/foto/dictado; conservar `textoOriginal` al guardar cotización.
 
-**Governance**: constitución de SuitPay v1.3.0. Principios I, II y IV no negociables. Emparejado semántico de Cotizar se mantiene (Gemini + catálogo compacto). Fuse.js permanece en la búsqueda escrita (principio V). El prior de marca no nace de comprobantes emitidos.
+**Governance**: constitución de SuitPay v1.5.0. Principios I, II y IV no negociables. Emparejado semántico de Cotizar se mantiene (catálogo compacto; el texto usa el interruptor de Parámetros, OpenRouter por defecto, y la imagen el suyo, Gemini por defecto). Fuse.js permanece en la búsqueda escrita (principio V). El prior de marca no nace de comprobantes emitidos.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -60,7 +60,7 @@ Al guardar una cotización nacida de Cotizar o captura, el par usa el `textoOrig
 - Varias fotos del pedido son un mismo requerimiento, no pedidos distintos.
 - Código emparejado que no está en el catálogo publicado se trata como `no_en_catalogo` y no genera alias.
 - Asistencia simulada sin texto parseable: cobertura vacía, no escribe.
-- Gemini caído: toast de error; el mostrador no se toca (principio V).
+- Proveedor de texto y su respaldo Gemini caídos: toast de error; el mostrador no se toca (principio V).
 - Los medios del par no se persisten en Storage ni Firestore.
 
 ## Requirements *(mandatory)*

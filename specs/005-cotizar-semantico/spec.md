@@ -6,7 +6,7 @@
 
 **Status**: Draft
 
-**Input**: Emparejado semántico (catálogo compacto + Gemini), Cotizar multimodal, notas de instrucción por cliente, dos workspaces de Pedido, aprendizaje diferido con consolidación, TTL de lotes y monitor admin.
+**Input**: Emparejado semántico (catálogo compacto + el proveedor de Parámetros: texto en OpenRouter por defecto, imagen en Gemini por defecto; audio y PDF siguen en Gemini), Cotizar multimodal, notas de instrucción por cliente, dos workspaces de Pedido, aprendizaje diferido con consolidación, TTL de lotes y monitor admin.
 
 **Governance**: constitución de SuitPay v1.2.0. Principios I, II y IV no negociables. Búsqueda escrita local (principio V). El lote de aprendizaje no escribe `clientes/{id}`.
 
@@ -67,7 +67,7 @@ Al aprobar captura o guardar cotización se persisten pares. Al día siguiente (
 - Un solo medio (solo texto o solo archivo) es válido; ninguno no.
 - El `+` no anida un botón dentro del tab (HTML inválido).
 - Revisiones pendientes no caducan hasta procesarse.
-- Si Gemini o el caché fallan, el vendedor escribe (principio V).
+- Si el proveedor de texto, su respaldo Gemini o el caché fallan, el vendedor escribe (principio V).
 - Notas con dígitos de documento se anonimizan antes del modelo.
 
 ## Requirements *(mandatory)*

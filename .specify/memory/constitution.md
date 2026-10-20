@@ -1,6 +1,27 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.4.0 → 1.5.0
+Bump rationale: MINOR. El principio IV permite un proveedor externo
+configurable (OpenRouter, modelos :free) para tareas de solo texto, y el
+interruptor de imagen para fotografía y pares con imagen. Audio, PDF y
+Compras de Catálogo siguen en Gemini. Antes de OpenRouter el servidor MUST
+anonimizar el texto. Si OpenRouter falla (429, 402, 5xx, timeout o JSON
+inválido) MUST llamar a Gemini y registrarlo sin el prompt. Aprobado por
+ZiBlay (dueño del negocio) el 2026-10-20.
+
+Principios modificados:
+  IV.  Proveedor de texto configurable, anonimización previa y respaldo Gemini.
+
+Secciones añadidas: ninguna.
+Plantillas: sin cambio estructural. Spec `009`.
+
+TODO diferidos: ninguno.
+-->
+
+<!--
+SYNC IMPACT REPORT (histórico)
+==================
 Version change: 1.3.0 → 1.4.0
 Bump rationale: MINOR. Se amplía el principio IV: el PDF o imagen de una
 factura de proveedor en Catálogo → Compras MAY enviarse al modelo. MUST NOT
@@ -212,6 +233,20 @@ entrenamiento admin (v1.3.0) cierra el mismo hueco con pares históricos, sin PI
 El costo de compra en Catálogo (v1.4.0) es la misma familia: el medio viaja, no se archiva,
 y un humano confirma antes de escribir.
 
+**Proveedor configurable (v1.5.0).** Las tareas de solo texto MAY enviarse a un
+proveedor externo configurable (OpenRouter, modelos `:free`) cuando el
+administrador lo deja así en Parámetros. El valor por defecto del texto es
+OpenRouter y el de la imagen es Gemini. La fotografía del pedido y la imagen
+de un par de entrenamiento siguen ese interruptor de imagen. Audio, PDF y
+Compras de Catálogo MUST seguir en Gemini. Antes de enviar cualquier texto a
+OpenRouter el servidor MUST anonimizar teléfonos (incluidos los de 9 dígitos y
+`+51`), correos, DNI, RUC, direcciones (`Av.`, `Jr.`, `Calle`, `Psje.`, `Mz.`,
+`Lt.`), los nombres del índice `indices/clientes` y los nombres que siguen a
+`Sr.`, `Sra.` o `cliente`. Si OpenRouter responde 429, 402 o 5xx, agota el
+tiempo o devuelve JSON que no cumple el schema, el servidor MUST llamar a
+Gemini y MUST registrar `console.warn` con el motivo y el modelo, sin el
+contenido del prompt. Aprobado por ZiBlay el 2026-10-20.
+
 ### V. El mostrador no se detiene
 
 La caída de un servicio externo degrada capacidades; nunca bloquea una venta.
@@ -318,4 +353,4 @@ consideró y se descartó. La plantilla de plan reserva una tabla para ello.
 **Guía en tiempo de ejecución.** `.cursor/rules/specify-rules.mdc` es el archivo de contexto del
 agente de codificación y se mantiene mediante la extensión `agent-context`.
 
-**Version**: 1.4.0 | **Ratified**: 2026-07-28 | **Last Amended**: 2026-09-19
+**Version**: 1.5.0 | **Ratified**: 2026-07-28 | **Last Amended**: 2026-10-20
