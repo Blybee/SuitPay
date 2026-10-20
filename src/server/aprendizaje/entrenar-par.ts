@@ -13,10 +13,8 @@ import type { DeltaDeMarca } from '../../domain/aprendizaje/priores.ts'
 import { deltasDeMarcaDesdeCodigos } from '../../domain/aprendizaje/priores.ts'
 import { diaEnLima } from '../../domain/anulacion/ventana.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
-import {
-  MODELO_POR_DEFECTO,
-  invocarModeloConPartes,
-} from '../asistencia/cliente-modelo.ts'
+import { MODELO_POR_DEFECTO } from '../asistencia/cliente-modelo.ts'
+import { interruptoresVigentes, invocarIa } from '../ia/invocar.ts'
 import type { ParteGemini } from '../asistencia/cliente-modelo.ts'
 import { textoDeCandidatosParaPrompt } from '../asistencia/payload.ts'
 import { asistenciaSimuladaActiva } from '../asistencia/simulado.ts'
@@ -285,10 +283,12 @@ export async function proponerEntrenamiento(entrada: {
       for (const medio of mediosOro) partes.push(parteDeMedio(medio))
     }
     try {
-      const crudo = await invocarModeloConPartes({
+      const crudo = await invocarIa({
+        modalidad: 'texto',
         partes,
         schema: SCHEMA_ENTRENAMIENTO,
         timeoutMs: 90_000,
+        interruptores: await interruptoresVigentes(),
       })
       alineaciones = parsearAlineaciones(crudo, codigosValidos)
     } catch (error) {

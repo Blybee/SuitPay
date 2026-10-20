@@ -6,13 +6,13 @@
 
 ## Summary
 
-Botón Compras en Catálogo: dropzone efímero → Gemini (o simulado) + compacto `{ id, n, m }` → boceto humano → merge en `inventario/{codigo}`. El panel de cantidad muestra el costo. Sin página nueva, sin Storage, sin colección `compras`.
+Botón Compras en Catálogo: dropzone efímero → Gemini (o simulado; Compras no usa OpenRouter) + compacto `{ id, n, m }` → boceto humano → merge en `inventario/{codigo}`. El panel de cantidad muestra el costo. Sin página nueva, sin Storage, sin colección `compras`.
 
 ## Technical Context
 
 **Language/Version**: TypeScript, mismo stack que 001.
 
-**Primary Dependencies**: TanStack Start `createServerFn`, Gemini REST existente (`invocarModeloConPartes`), Zod, Firestore Admin SDK.
+**Primary Dependencies**: TanStack Start `createServerFn`, Gemini REST (`invocarIa` con modalidad `compras`, siempre Gemini), Zod, Firestore Admin SDK.
 
 **Storage**: Firestore `inventario/{codigo}` con campos opcionales. Medios solo en el body de la server function.
 

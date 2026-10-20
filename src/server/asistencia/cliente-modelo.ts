@@ -1,3 +1,4 @@
+import type { InterruptoresDeIa } from '../../domain/ia/proveedor.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
 import { SCHEMA_RESPUESTA_ASISTENCIA, promptDeAsistencia } from './prompts.ts'
 import type { MedioEnPayload } from './payload.ts'
@@ -29,6 +30,8 @@ export interface DependenciasDelClienteModelo {
   /** `null` desactiva el respaldo (pruebas). */
   readonly modeloRespaldo?: string | null
   readonly timeoutMs?: number
+  /** `null` omite la sonda de OpenRouter. Ausente: lee `OPENROUTER_API_KEY`. */
+  readonly claveOpenRouter?: string | null
 }
 
 export interface ParteGemini {
@@ -475,6 +478,8 @@ export async function invocarModelo(entrada: {
   readonly instrucciones?: readonly string[]
   readonly prioresJson?: string
   readonly deps?: DependenciasDelClienteModelo
+  readonly interruptores?: InterruptoresDeIa
+  readonly nombresDeClientes?: readonly string[]
 }): Promise<RespuestaDelModelo> {
   const deps = entrada.deps ?? {}
   const { primaria, secundaria } = leerClaves(deps)
@@ -501,6 +506,20 @@ export async function invocarModelo(entrada: {
     },
   ]
 
+  if (entrada.tipo === 'imagen') {
+    const { invocarIa } = await import('../ia/invocar.ts')
+    const json = await invocarIa({
+      modalidad: 'imagen',
+      partes,
+      schema: SCHEMA_RESPUESTA_ASISTENCIA,
+      deps,
+      timeoutMs: deps.timeoutMs,
+      interruptores: entrada.interruptores,
+      nombresDeClientes: entrada.nombresDeClientes,
+    })
+    return normalizarRespuestaDelModelo(json)
+  }
+
   const { json } = await intentarLlamadas({ partes, deps })
   return normalizarRespuestaDelModelo(json)
 }
@@ -509,7 +528,7 @@ export async function invocarModelo(entrada: {
  * generateContent con partes y schema propios (PDF FR-061).
  * Reutiliza claves y conmutación de cuota; no usa el prompt de audio/foto.
  */
-export async function invocarModeloConPartes(entrada: {
+export async function llamarGeminiConPartes(entrada: {
   readonly partes: readonly ParteGemini[]
   readonly schema: unknown
   readonly deps?: DependenciasDelClienteModelo
@@ -522,6 +541,15 @@ export async function invocarModeloConPartes(entrada: {
     timeoutMs: entrada.timeoutMs,
   })
   return json
+}
+
+export async function invocarModeloConPartes(entrada: {
+  readonly partes: readonly ParteGemini[]
+  readonly schema: unknown
+  readonly deps?: DependenciasDelClienteModelo
+  readonly timeoutMs?: number
+}): Promise<unknown> {
+  return llamarGeminiConPartes(entrada)
 }
 
 export function clavesDeAsistencia(deps: DependenciasDelClienteModelo = {}): {

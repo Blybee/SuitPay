@@ -3,10 +3,8 @@ import type { DiffDeProducto } from '../../domain/aprendizaje/memoria.ts'
 import { diffsDesdePares, memoriaParaPrompt } from '../../domain/aprendizaje/memoria.ts'
 import { deltasDeMarcaDesdeCodigos } from '../../domain/aprendizaje/priores.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
-import {
-  MODELO_POR_DEFECTO,
-  invocarModeloConPartes,
-} from '../asistencia/cliente-modelo.ts'
+import { MODELO_POR_DEFECTO } from '../asistencia/cliente-modelo.ts'
+import { interruptoresVigentes, invocarIa } from '../ia/invocar.ts'
 import {
   asistenciaSimuladaActiva,
 } from '../asistencia/simulado.ts'
@@ -101,10 +99,12 @@ Memoria vigente (JSON): ${JSON.stringify(memoria)}
 Pares nuevos textoOriginal → codigoAprobado: ${JSON.stringify(pares.map((p) => ({ t: p.textoOriginal, id: p.codigoAprobado })))}
 Refuerza, actualiza o quita. No dupliques sinónimos. Devuelve solo productos que cambian.`
     try {
-      const crudo = await invocarModeloConPartes({
+      const crudo = await invocarIa({
+        modalidad: 'texto',
         partes: [{ text: prompt }],
         schema: SCHEMA_CONSOLIDACION,
         timeoutMs: 90_000,
+        interruptores: await interruptoresVigentes(),
       })
       diffs = parsearDiffs(crudo)
     } catch (error) {

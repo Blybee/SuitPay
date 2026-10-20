@@ -195,6 +195,7 @@ export async function interpretarCaptura(
         candidatos: payload.candidatos,
       })
     } else {
+      const { interruptoresVigentes } = await import('../ia/invocar.ts')
       respuestaModelo = await invocarModelo({
         tipo: payload.tipo,
         medio: payload.medio,
@@ -202,6 +203,7 @@ export async function interpretarCaptura(
         instrucciones: peticion.instrucciones ?? [],
         prioresJson,
         deps: deps.depsModelo,
+        interruptores: await interruptoresVigentes(),
       })
     }
   } catch (error) {

@@ -11,6 +11,8 @@ const POR_DEFECTO: Parametros = {
   umbralIdentificacionBoleta: 70_000,
   ventanaAnulacion: 'mismo_dia',
   formatoImpresionPorDefecto: 'a4',
+  iaTexto: 'openrouter',
+  iaImagen: 'gemini',
 }
 
 function refParametros() {
@@ -20,10 +22,10 @@ function refParametros() {
     .doc(documento ?? 'parametros')
 }
 
-export async function leerParametros(): Promise<Parametros> {
-  const instantanea = await refParametros().get()
-  if (!instantanea.exists) return POR_DEFECTO
-  const datos = instantanea.data() ?? {}
+/** Rellena un documento viejo que todavía no tiene los interruptores. */
+export function completarParametros(
+  datos: Record<string, unknown>,
+): Parametros {
   const parseado = esquemaDeParametros.safeParse({
     umbralIdentificacionBoleta:
       datos['umbralIdentificacionBoleta'] ??
@@ -33,8 +35,16 @@ export async function leerParametros(): Promise<Parametros> {
     formatoImpresionPorDefecto:
       datos['formatoImpresionPorDefecto'] ??
       POR_DEFECTO.formatoImpresionPorDefecto,
+    iaTexto: datos['iaTexto'] ?? POR_DEFECTO.iaTexto,
+    iaImagen: datos['iaImagen'] ?? POR_DEFECTO.iaImagen,
   })
   return parseado.success ? parseado.data : POR_DEFECTO
+}
+
+export async function leerParametros(): Promise<Parametros> {
+  const instantanea = await refParametros().get()
+  if (!instantanea.exists) return POR_DEFECTO
+  return completarParametros(instantanea.data() ?? {})
 }
 
 export async function guardarParametros(

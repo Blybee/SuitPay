@@ -156,7 +156,44 @@ export async function sembrarSesionDeVendedor(pagina: Page): Promise<void> {
   )
 }
 
-/** Crea el vendedor del emulador y entra por la pantalla de acceso. */
+export const ADMIN_E2E = {
+  uid: 'admin-de-prueba',
+  correo: 'admin@ejemplo.pe',
+  clave: 'prueba-1234',
+} as const
+
+/** Crea un administrador en el emulador de Auth y entra por /acceso. */
+export async function entrarComoAdministradorE2E(pagina: Page): Promise<void> {
+  process.env['FIREBASE_AUTH_EMULATOR_HOST'] = AUTH_EMULADOR
+  const aplicacion = initializeApp(
+    { projectId: PROYECTO },
+    `e2e-admin-${randomUUID()}`,
+  )
+  try {
+    const auth = getAuth(aplicacion)
+    try {
+      await auth.getUser(ADMIN_E2E.uid)
+    } catch {
+      await auth.createUser({
+        uid: ADMIN_E2E.uid,
+        email: ADMIN_E2E.correo,
+        password: ADMIN_E2E.clave,
+      })
+    }
+    await auth.setCustomUserClaims(ADMIN_E2E.uid, {
+      rol: 'administrador',
+      activo: true,
+    })
+  } finally {
+    await deleteApp(aplicacion)
+  }
+  await pagina.goto('/acceso')
+  await pagina.getByLabel('Correo').fill(ADMIN_E2E.correo)
+  await pagina.getByLabel('Contraseña').fill(ADMIN_E2E.clave)
+  await pagina.getByRole('button', { name: 'Entrar' }).click()
+  await pagina.waitForURL(/\/administracion/, { timeout: 20_000 })
+}
+
 export async function entrarComoVendedorE2E(pagina: Page): Promise<void> {
   const apiKey = process.env['VITE_FIREBASE_API_KEY'] ?? 'demo-api-key'
   await credencialesDeVendedor(apiKey)

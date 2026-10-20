@@ -173,6 +173,14 @@ export function PanelDiagnosticoAsistencia() {
                   </li>
                 ))}
               </ul>
+              <p className="font-mono text-etiqueta text-desvaida">
+                OpenRouter ({diagnostico.openrouter.modelo}):{' '}
+                {diagnostico.openrouter.resultado === 'ausente'
+                  ? 'clave no configurada'
+                  : diagnostico.openrouter.resultado === 'ok'
+                    ? `respondió en ${diagnostico.openrouter.ms} ms`
+                    : `falló${diagnostico.openrouter.status === null ? '' : ` HTTP ${diagnostico.openrouter.status}`}`}
+              </p>
             </div>
           ) : null}
         </div>

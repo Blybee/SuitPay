@@ -5,7 +5,7 @@ import { extraerListaPdf } from './extraer-pdf.ts'
 import type { ResultadoDeListaPdf } from './extraer-pdf.ts'
 import { interpretarCaptura } from './interpretar.ts'
 import { SCHEMA_RESPUESTA_ASISTENCIA, promptDeAsistencia } from './prompts.ts'
-import { invocarModeloConPartes } from './cliente-modelo.ts'
+import { interruptoresVigentes, invocarIa } from '../ia/invocar.ts'
 import {
   asistenciaSimuladaActiva,
   interpretarSimulado,
@@ -95,9 +95,11 @@ export async function interpretarRequerimiento(entrada: {
       instrucciones,
       contexto.prioresJson,
     )
-    const crudo = await invocarModeloConPartes({
+    const crudo = await invocarIa({
+      modalidad: 'texto',
       partes: [{ text: prompt }],
       schema: SCHEMA_RESPUESTA_ASISTENCIA,
+      interruptores: await interruptoresVigentes(),
     })
     const { normalizarRespuestaDelModelo } = await import('./cliente-modelo.ts')
     itemsModelo = normalizarRespuestaDelModelo(crudo)

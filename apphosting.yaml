@@ -105,3 +105,17 @@ env:
   - variable: ASISTENCIA_CLAVE_SECUNDARIA
     secret: suitpay-asistencia-clave-secundaria
     availability: [RUNTIME]
+
+  # Mismo nombre en Secret Manager y en el entorno.
+  - variable: OPENROUTER_API_KEY
+    secret: OPENROUTER_API_KEY
+    availability: [RUNTIME]
+
+  # :free más capaces con JSON de schema verificado el 2026-10-20.
+  - variable: OPENROUTER_MODELO_TEXTO
+    value: nvidia/nemotron-3-super-120b-a12b:free
+    availability: [RUNTIME]
+
+  - variable: OPENROUTER_MODELO_IMAGEN
+    value: nvidia/nemotron-3.5-super-vl:free
+    availability: [RUNTIME]
