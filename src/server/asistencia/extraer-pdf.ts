@@ -5,10 +5,8 @@ import {
   borrarArchivoGemini,
   subirPdfAGemini,
 } from './archivo-gemini.ts'
-import {
-  clavesDeAsistencia,
-  invocarModeloConPartes,
-} from './cliente-modelo.ts'
+import { clavesDeAsistencia } from './cliente-modelo.ts'
+import { invocarIa } from '../ia/invocar.ts'
 import type {
   DependenciasDelClienteModelo,
   ParteGemini,
@@ -311,7 +309,8 @@ async function invocarPdf(entrada: {
         },
       },
     ]
-    return invocarModeloConPartes({
+    return invocarIa({
+      modalidad: 'pdf',
       partes,
       schema: SCHEMA_RESPUESTA_PDF,
       deps,
@@ -344,7 +343,8 @@ async function invocarPdf(entrada: {
           },
         },
       ]
-      return await invocarModeloConPartes({
+      return await invocarIa({
+        modalidad: 'pdf',
         partes,
         schema: SCHEMA_RESPUESTA_PDF,
         deps: { ...deps, clavePrimaria: clave, claveSecundaria: '' },
