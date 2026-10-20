@@ -50,22 +50,20 @@ export default defineConfig({
         ? { PROVEEDOR_SIMULADO: 'true' }
         : { PROVEEDOR_SIMULADO: 'false' }),
       ASISTENCIA_SIMULADA: process.env.ASISTENCIA_SIMULADA ?? 'true',
-      FIRESTORE_EMULATOR_HOST:
-        process.env.FIRESTORE_EMULATOR_HOST ?? '127.0.0.1:8080',
-      FIREBASE_AUTH_EMULATOR_HOST:
-        process.env.FIREBASE_AUTH_EMULATOR_HOST ?? '127.0.0.1:9099',
-      FIREBASE_STORAGE_EMULATOR_HOST:
-        process.env.FIREBASE_STORAGE_EMULATOR_HOST ?? '127.0.0.1:9199',
-      GOOGLE_CLOUD_PROJECT: process.env.GOOGLE_CLOUD_PROJECT ?? 'demo-suitpay',
-      // Fuerza cliente contra emuladores en e2e (no pisa .env.local si ya está
-      // en process.env del padre; aquí el webServer arranca hijo limpio).
+      FIRESTORE_EMULATOR_HOST: '127.0.0.1:8080',
+      FIREBASE_AUTH_EMULATOR_HOST: '127.0.0.1:9099',
+      FIREBASE_STORAGE_EMULATOR_HOST: '127.0.0.1:9199',
+      // El padre puede traer el proyecto de nube. El Admin SDK compararía el
+      // aud del token del emulador (demo-suitpay) con ese proyecto y
+      // verifyIdToken fallaría. El e2e siempre habla con la suite local.
+      GOOGLE_CLOUD_PROJECT: 'demo-suitpay',
+      GCLOUD_PROJECT: 'demo-suitpay',
       VITE_USAR_EMULADORES: 'true',
       VITE_FIREBASE_PROJECT_ID: 'demo-suitpay',
-      VITE_FIREBASE_API_KEY:
-        process.env.VITE_FIREBASE_API_KEY ?? 'demo-api-key',
+      VITE_FIREBASE_API_KEY: 'demo-api-key',
       VITE_FIREBASE_AUTH_DOMAIN: 'demo-suitpay.firebaseapp.com',
       VITE_FIREBASE_STORAGE_BUCKET: 'demo-suitpay.appspot.com',
-      VITE_FIREBASE_APP_ID: process.env.VITE_FIREBASE_APP_ID ?? 'demo-app-id',
+      VITE_FIREBASE_APP_ID: 'demo-app-id',
     },
   },
 })
