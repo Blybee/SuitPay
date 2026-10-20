@@ -106,10 +106,9 @@ env:
     secret: suitpay-asistencia-clave-secundaria
     availability: [RUNTIME]
 
-  # Texto por defecto. El nombre del secreto en Secret Manager hay que
-  # confirmarlo: se asume suitpay-openrouter-api-key.
+  # Mismo nombre en Secret Manager y en el entorno.
   - variable: OPENROUTER_API_KEY
-    secret: suitpay-openrouter-api-key
+    secret: OPENROUTER_API_KEY
     availability: [RUNTIME]
 
   # :free más capaces con JSON de schema verificado el 2026-10-20.

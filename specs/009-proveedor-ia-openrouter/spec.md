@@ -68,5 +68,5 @@ Cotizar con texto pegado, la revisión de memoria, el lote y el diagnóstico de 
 
 ## Assumptions
 
-- El secreto en Secret Manager se enlaza como `suitpay-openrouter-api-key` hasta que ZiBlay confirme el nombre.
+- El secreto en Secret Manager se llama `OPENROUTER_API_KEY`, el mismo nombre que la variable, con availability `RUNTIME`.
 - El 2026-10-20 el texto por defecto es `nvidia/nemotron-3-super-120b-a12b:free` y la imagen `nvidia/nemotron-3.5-super-vl:free`. Tres llamadas reales de cada uno devolvieron JSON que cumple el schema. El 550B gratuito es más grande, pero no anuncia `structured_outputs` y una de tres respuestas no cumplió el schema.
