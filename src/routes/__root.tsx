@@ -18,7 +18,7 @@ import {
 } from '../features/degradacion/estado.ts'
 import { usarPedido } from '../features/pedido/almacen.ts'
 import { usarSesion } from '../features/sesion/almacen.ts'
-import { elJefeDebeAbandonarLaRuta } from '../features/sesion/destino.ts'
+import { vistaDeCascaron } from '../features/sesion/cascaron.ts'
 import { ComprobandoSesion } from '../features/sesion/ComprobandoSesion.tsx'
 import { Toaster } from 'sileo'
 import { BandaDeImportacion } from '../features/padron/banda.tsx'
@@ -73,20 +73,28 @@ function Mostrador() {
   const degradacion = usarDegradacion(degradacionPrincipal)
   const restaurarPedido = usarPedido((estado) => estado.restaurar)
   const clienteDeConsultas = Route.useRouteContext().clienteDeConsultas
-  // `location` es la ruta en vuelo: al redirigir al jefe pasa a `/fichaje`
-  // antes de que el mostrador se desmonte, y el outlet sigue pintándolo.
-  // `resolvedLocation` es la ruta que de verdad está en pantalla.
-  const pathname = useRouterState({
+  // Destino: ruta en vuelo. Pantalla: la que ya resolvió. El jefe se
+  // decide con la pantalla para no pintar el mostrador mientras `/fichaje`
+  // todavía no montó. Lo público se decide con el destino: si no, `<Navigate>`
+  // a `/acceso` se reinicia porque la pantalla sigue en `/`.
+  const pathnameDestino = useRouterState({
+    select: (estado) => estado.location.pathname,
+  })
+  const pathnameEnPantalla = useRouterState({
     select: (estado) =>
       estado.resolvedLocation?.pathname ?? estado.location.pathname,
   })
-  const publica = pathname === '/acceso' || pathname === '/fichar'
   const cargandoSesion = usarSesion((s) => s.cargando)
   const uid = usarSesion((s) => s.uid)
   const rol = usarSesion((s) => s.rol)
   const sinSesion = !cargandoSesion && uid === null
-  const jefeFueraDeSuSitio =
-    !cargandoSesion && elJefeDebeAbandonarLaRuta(rol, pathname)
+  const vista = vistaDeCascaron({
+    pathnameDestino,
+    pathnameEnPantalla,
+    cargandoSesion,
+    sinSesion,
+    rol,
+  })
 
   useEffect(() => usarSesion.getState().vigilar(), [])
   useEffect(() => vigilarConectividad(), [])
@@ -99,7 +107,7 @@ function Mostrador() {
     <QueryClientProvider client={clienteDeConsultas}>
       <div
         className={
-          publica || sinSesion || cargandoSesion || jefeFueraDeSuSitio
+          vista !== 'mostrador'
             ? 'flex min-h-svh flex-col bg-mesa'
             : 'flex h-svh flex-col overflow-hidden bg-mesa'
         }
@@ -128,13 +136,13 @@ function Mostrador() {
           />
         </CapaDeToasts>
 
-        {publica ? (
+        {vista === 'publica' ? (
           <Outlet />
-        ) : cargandoSesion ? (
+        ) : vista === 'cargando' || vista === 'esperando-fichaje' ? (
           <ComprobandoSesion className="min-h-0 flex-1" />
-        ) : sinSesion ? (
-          <Navigate to="/acceso" />
-        ) : jefeFueraDeSuSitio ? (
+        ) : vista === 'ir-a-acceso' ? (
+          <Navigate to="/acceso" replace />
+        ) : vista === 'ir-a-fichaje' ? (
           <>
             <ComprobandoSesion className="min-h-0 flex-1" />
             <Navigate to="/fichaje" replace />

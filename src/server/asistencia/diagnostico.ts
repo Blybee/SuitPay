@@ -3,6 +3,8 @@ import {
   llamarConClave,
   modelosAIntentar,
 } from './cliente-modelo.ts'
+import { modelosVisibles } from '../ia/modelos.ts'
+import { llamarOpenRouter } from '../ia/openrouter.ts'
 import type {
   DependenciasDelClienteModelo,
   EtiquetaDeClave,
@@ -51,10 +53,19 @@ export interface SondaDeClave {
   readonly ms: number
 }
 
+export interface SondaDeOpenRouter {
+  readonly presente: boolean
+  readonly modelo: string
+  readonly resultado: 'ok' | 'ausente' | 'fallo'
+  readonly status: number | null
+  readonly ms: number
+}
+
 export interface DiagnosticoDeAsistencia {
   readonly simuladoActivo: boolean
   readonly modelos: readonly string[]
   readonly sondas: readonly SondaDeClave[]
+  readonly openrouter: SondaDeOpenRouter
   readonly ejecutadoEn: string
 }
 
@@ -131,10 +142,63 @@ export async function diagnosticarAsistencia(
     }
   }
 
+  const openrouter = await sondearOpenRouter(deps)
+
   return {
     simuladoActivo: asistenciaSimuladaActiva(),
     modelos,
     sondas,
+    openrouter,
     ejecutadoEn: ahora().toISOString(),
+  }
+}
+
+async function sondearOpenRouter(
+  deps: DependenciasDelClienteModelo,
+): Promise<SondaDeOpenRouter> {
+  const modelo = modelosVisibles().openrouterTexto
+  const clave =
+    deps.claveOpenRouter === null
+      ? undefined
+      : (deps.claveOpenRouter ?? process.env.OPENROUTER_API_KEY)?.trim()
+  if (clave === undefined || clave === '') {
+    return {
+      presente: false,
+      modelo,
+      resultado: 'ausente',
+      status: null,
+      ms: 0,
+    }
+  }
+  const inicio = Date.now()
+  const resultado = await llamarOpenRouter({
+    modelo,
+    partes: [{ text: PROMPT_SONDA }],
+    schema: SCHEMA_SONDA,
+    nombres: [],
+    clave,
+    fetchFn: deps.fetchFn ?? fetch,
+    timeoutMs: TIMEOUT_SONDA_MS,
+  })
+  const ms = Date.now() - inicio
+  if (resultado.ok) {
+    const ok =
+      resultado.json !== null &&
+      typeof resultado.json === 'object' &&
+      (resultado.json as { ok?: unknown }).ok === true
+    return {
+      presente: true,
+      modelo,
+      resultado: ok ? 'ok' : 'fallo',
+      status: 200,
+      ms,
+    }
+  }
+  return {
+    presente: true,
+    modelo,
+    resultado: 'fallo',
+    status: resultado.status ?? null,
+    ms,
   }
 }

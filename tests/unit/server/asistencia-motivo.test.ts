@@ -386,6 +386,7 @@ describe('diagnóstico de asistencia (Administración → Parámetros)', () => {
         claveSecundaria: 'clave-agotada',
         modelo: 'modelo-a',
         modeloRespaldo: null,
+        claveOpenRouter: null,
       },
       () => new Date('2026-09-07T12:00:00.000Z'),
     )
@@ -393,6 +394,10 @@ describe('diagnóstico de asistencia (Administración → Parámetros)', () => {
     expect(diagnostico.modelos).toEqual(['modelo-a'])
     expect(diagnostico.ejecutadoEn).toBe('2026-09-07T12:00:00.000Z')
     expect(diagnostico.sondas).toHaveLength(2)
+    expect(diagnostico.openrouter).toMatchObject({
+      presente: false,
+      resultado: 'ausente',
+    })
     expect(diagnostico.sondas[0]).toMatchObject({
       clave: 'primaria',
       presente: true,
@@ -420,6 +425,7 @@ describe('diagnóstico de asistencia (Administración → Parámetros)', () => {
       claveSecundaria: '',
       modelo: 'modelo-a',
       modeloRespaldo: null,
+      claveOpenRouter: null,
     })
     expect(fetchFn).toHaveBeenCalledTimes(1)
     expect(diagnostico.sondas[1]).toMatchObject({

@@ -173,6 +173,10 @@ export const esquemaDeParametros = z.object({
   umbralIdentificacionBoleta: importeEnCentimos.positive(),
   ventanaAnulacion: z.literal('mismo_dia'),
   formatoImpresionPorDefecto: z.enum(['a4', 'rollo']),
+  /** Tareas de solo texto. Omisión: OpenRouter. */
+  iaTexto: z.enum(['openrouter', 'gemini']).default('openrouter'),
+  /** Tareas con imagen. Omisión: Gemini. Audio, PDF y Compras no usan esto. */
+  iaImagen: z.enum(['openrouter', 'gemini']).default('gemini'),
 })
 
 export type Parametros = z.infer<typeof esquemaDeParametros>

@@ -6,7 +6,7 @@ import {
   tandasDeRevision,
 } from '../../domain/aprendizaje/memoria.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
-import { invocarModeloConPartes } from '../asistencia/cliente-modelo.ts'
+import { interruptoresVigentes, invocarIa } from '../ia/invocar.ts'
 import { asistenciaSimuladaActiva } from '../asistencia/simulado.ts'
 import {
   escribirMemoriaDeAprendizaje,
@@ -118,10 +118,12 @@ export async function proponerRevisionDeMemoria(): Promise<{
   const cambios: CambioDeRevision[] = []
   const mensajes: string[] = []
   for (const tanda of tandas) {
-    const crudo = await invocarModeloConPartes({
+    const crudo = await invocarIa({
+      modalidad: 'texto',
       partes: [{ text: promptDeRevision(tanda) }],
       schema: SCHEMA_REVISION,
       timeoutMs: 90_000,
+      interruptores: await interruptoresVigentes(),
     })
     cambios.push(...parsearCambiosDeRevision(crudo))
     const mensaje = mensajeDe(crudo)

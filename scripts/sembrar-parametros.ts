@@ -14,6 +14,8 @@ const parametros = await guardarParametros({
   umbralIdentificacionBoleta: 70_000,
   ventanaAnulacion: 'mismo_dia',
   formatoImpresionPorDefecto: 'a4',
+  iaTexto: 'openrouter',
+  iaImagen: 'gemini',
 })
 
 console.log(JSON.stringify(parametros, null, 2))

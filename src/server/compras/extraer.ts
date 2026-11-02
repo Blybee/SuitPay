@@ -8,10 +8,8 @@ import {
   TECHO_MEDIOS_COMPRAS_BYTES,
 } from '../../domain/compras/tipos.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
-import {
-  MODELO_POR_DEFECTO,
-  invocarModeloConPartes,
-} from '../asistencia/cliente-modelo.ts'
+import { MODELO_POR_DEFECTO } from '../asistencia/cliente-modelo.ts'
+import { invocarIa } from '../ia/invocar.ts'
 import type { ParteGemini } from '../asistencia/cliente-modelo.ts'
 import { asistenciaSimuladaActiva } from '../asistencia/simulado.ts'
 import { productosParaCompacto } from '../aprendizaje/catalogo-compacto.ts'
@@ -140,7 +138,8 @@ export async function extraerPreciosCompra(entrada: {
   const partes: ParteGemini[] = [{ text: prompt }]
   for (const medio of entrada.medios) partes.push(parteDeMedio(medio))
   try {
-    const crudo = await invocarModeloConPartes({
+    const crudo = await invocarIa({
+      modalidad: 'compras',
       partes,
       schema: SCHEMA_PRECIOS_COMPRA,
       timeoutMs: 90_000,
