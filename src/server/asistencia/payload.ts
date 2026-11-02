@@ -57,6 +57,9 @@ export function construirPayloadDeAsistencia(entrada: {
     ...(c.etiquetas !== undefined && c.etiquetas.length > 0
       ? { etiquetas: [...c.etiquetas] }
       : {}),
+    ...(c.cantidades !== undefined && Object.keys(c.cantidades).length > 0
+      ? { cantidades: c.cantidades }
+      : {}),
   }))
 
   return {
@@ -83,6 +86,9 @@ export function textoDeCandidatosParaPrompt(
       m: c.marca ?? '',
       a: c.aliases ?? [],
       e: c.etiquetas ?? [],
+      ...(c.cantidades !== undefined && Object.keys(c.cantidades).length > 0
+        ? { c: c.cantidades }
+        : {}),
     })),
   )
 }

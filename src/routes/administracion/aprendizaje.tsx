@@ -10,6 +10,7 @@ import {
   proponerRevisionMemoriaFn,
 } from '../../features/aprendizaje/aprendizaje.funciones.ts'
 import { EntrenarAprendizaje } from '../../features/aprendizaje/entrenar.tsx'
+import { textoDeFactor } from '../../domain/aprendizaje/cantidades.ts'
 import type { CambioDeRevision, DiffDeProducto } from '../../domain/aprendizaje/memoria.ts'
 import { TAMANO_PAGINA_MEMORIA } from '../../domain/aprendizaje/memoria.ts'
 import type { MapaDeMarcas } from '../../domain/aprendizaje/priores.ts'
@@ -36,6 +37,7 @@ function PantallaDeAprendizaje() {
       codigo: string
       aliases: readonly string[]
       etiquetas: readonly string[]
+      cantidades?: Readonly<Record<string, number>>
     }[]
   >([])
   const [marcas, setMarcas] = useState<MapaDeMarcas>({})
@@ -374,6 +376,15 @@ function PantallaDeAprendizaje() {
                   {entrada.etiquetas.length > 0 ? (
                     <p className="font-mono text-etiqueta text-desvaida">
                       {entrada.etiquetas.join(' · ')}
+                    </p>
+                  ) : null}
+                  {entrada.cantidades !== undefined &&
+                  Object.keys(entrada.cantidades).length > 0 ? (
+                    <p className="font-mono text-etiqueta text-desvaida">
+                      {Object.entries(entrada.cantidades)
+                        .sort(([a], [b]) => a.localeCompare(b))
+                        .map(([unidad, factor]) => textoDeFactor(unidad, factor))
+                        .join(' · ')}
                     </p>
                   ) : null}
                 </li>

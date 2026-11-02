@@ -3,9 +3,13 @@
  * Sin precio de venta, stock, costo de compra ni ficha de cliente.
  */
 
+import type { MapaDeCantidades } from './cantidades.ts'
+
 export interface EntradaDeMemoria {
   readonly aliases: readonly string[]
   readonly etiquetas: readonly string[]
+  /** Factores de empaque aprendidos. bolsa → 25 unidades base. */
+  readonly cantidades?: MapaDeCantidades
 }
 
 export interface ProductoParaCompacto {
@@ -22,6 +26,8 @@ export interface ItemCatalogoCompacto {
   readonly m: string
   readonly a: readonly string[]
   readonly e: readonly string[]
+  /** Factores de empaque. Se omite si el SKU no tiene. */
+  readonly c?: MapaDeCantidades
 }
 
 export function compactarCatalogo(
@@ -32,12 +38,16 @@ export function compactarCatalogo(
     .filter((p) => p.activo !== false)
     .map((p) => {
       const entrada = memoria[p.codigo]
+      const cantidades = entrada?.cantidades
+      const tieneFactores =
+        cantidades !== undefined && Object.keys(cantidades).length > 0
       return {
         id: p.codigo,
         n: p.descripcion,
         m: (p.marca ?? '').trim(),
         a: entrada?.aliases ?? [],
         e: entrada?.etiquetas ?? [],
+        ...(tieneFactores ? { c: cantidades } : {}),
       }
     })
 }

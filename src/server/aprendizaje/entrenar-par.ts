@@ -5,10 +5,13 @@ import type {
   EstadoDeAlineacion,
 } from '../../domain/aprendizaje/memoria.ts'
 import {
+  anotarFactores,
   coberturaDeAlineaciones,
   diffsDesdeAlineaciones,
   memoriaParaPrompt,
 } from '../../domain/aprendizaje/memoria.ts'
+import { evidenciaSimulada } from '../../domain/aprendizaje/cantidades.ts'
+import type { EvidenciaDeEmpaque } from '../../domain/aprendizaje/cantidades.ts'
 import type { DeltaDeMarca } from '../../domain/aprendizaje/priores.ts'
 import { deltasDeMarcaDesdeCodigos } from '../../domain/aprendizaje/priores.ts'
 import { diaEnLima } from '../../domain/anulacion/ventana.ts'
@@ -155,6 +158,7 @@ export function parsearAlineaciones(
       estado === 'emparejado' && typeof r.marca === 'string'
         ? anonimizarTexto(r.marca)
         : ''
+    const empaques = estado === 'emparejado' ? empaquesDe(r.empaques) : []
     salida.push({
       textoPedido,
       codigo,
@@ -162,9 +166,25 @@ export function parsearAlineaciones(
       estado,
       aliases: estado === 'emparejado' ? lista(r.aliases) : [],
       etiquetas: estado === 'emparejado' ? lista(r.etiquetas) : [],
+      ...(empaques.length > 0 ? { empaques } : {}),
     })
   }
   return salida
+}
+
+function empaquesDe(campo: unknown): EvidenciaDeEmpaque[] {
+  if (!Array.isArray(campo)) return []
+  const salida: EvidenciaDeEmpaque[] = []
+  for (const raw of campo) {
+    if (!raw || typeof raw !== 'object') continue
+    const fila = raw as Record<string, unknown>
+    const unidad = typeof fila.unidad === 'string' ? fila.unidad.trim() : ''
+    const bultos = typeof fila.bultos === 'number' ? fila.bultos : Number.NaN
+    const unidades = typeof fila.unidades === 'number' ? fila.unidades : Number.NaN
+    if (unidad === '' || !Number.isFinite(bultos) || !Number.isFinite(unidades)) continue
+    salida.push({ unidad, bultos, unidades })
+  }
+  return salida.slice(0, 8)
 }
 
 export function conNombreDeCatalogo(
@@ -221,6 +241,7 @@ function simularAlineaciones(
         etiquetas: [],
       }
     }
+    const empaque = evidenciaSimulada(textoPedidoRenglon, textoOro, codigo)
     return {
       textoPedido: textoPedidoRenglon,
       codigo,
@@ -228,6 +249,7 @@ function simularAlineaciones(
       estado: 'emparejado' as const,
       aliases: [textoPedidoRenglon],
       etiquetas: [],
+      ...(empaque !== null ? { empaques: [empaque] } : {}),
     }
   })
 }
@@ -252,11 +274,14 @@ export async function proponerEntrenamiento(entrada: {
   let modelo = 'simulado'
 
   if (asistenciaSimuladaActiva()) {
-    alineaciones = simularAlineaciones(
-      textoPedido,
-      textoOro,
-      codigosValidos,
-      contexto.porCodigo,
+    alineaciones = anotarFactores(
+      simularAlineaciones(
+        textoPedido,
+        textoOro,
+        codigosValidos,
+        contexto.porCodigo,
+      ),
+      memoria,
     )
   } else {
     modelo = process.env.ASISTENCIA_MODELO ?? MODELO_POR_DEFECTO
@@ -290,7 +315,10 @@ export async function proponerEntrenamiento(entrada: {
         schema: SCHEMA_ENTRENAMIENTO,
         timeoutMs: 90_000,
       })
-      alineaciones = parsearAlineaciones(crudo, codigosValidos)
+      alineaciones = anotarFactores(
+        parsearAlineaciones(crudo, codigosValidos),
+        memoria,
+      )
     } catch (error) {
       if (error instanceof ErrorDeSuitPay) throw error
       console.error('[SuitPay] entrenamiento: modelo falló', error)

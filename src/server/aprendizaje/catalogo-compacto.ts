@@ -24,6 +24,7 @@ export function compactoACandidatos(
     ...(item.m !== '' ? { marca: item.m } : {}),
     aliases: item.a,
     etiquetas: item.e,
+    ...(item.c !== undefined ? { cantidades: item.c } : {}),
   }))
 }
 

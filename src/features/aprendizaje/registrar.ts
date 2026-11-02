@@ -9,14 +9,12 @@ export function registrarParesEnSegundoPlano(entrada: {
     readonly codigoAprobado: string
     readonly descripcionAprobada: string
   }[]
-  readonly clienteId?: string | null
 }): void {
   if (entrada.pares.length === 0) return
   void registrarRevisionFn({
     data: {
       medio: entrada.medio,
       pares: [...entrada.pares],
-      clienteId: entrada.clienteId ?? undefined,
     },
   })
 }

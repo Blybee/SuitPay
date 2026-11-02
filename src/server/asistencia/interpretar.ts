@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto'
+import { Timestamp } from 'firebase-admin/firestore'
+import { aplicarFactorARenglon } from '../../domain/aprendizaje/cantidades.ts'
+import { VIDA_CAPTURA_MS } from '../../domain/aprendizaje/memoria.ts'
 import { bd, COLECCIONES } from '../firebase/admin.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
 import { invocarModelo } from './cliente-modelo.ts'
@@ -63,6 +66,13 @@ function mapearLinea(
   const porCodigo = new Map(candidatos.map((c) => [c.codigo, c]))
   const directo =
     item.codigo !== null ? (porCodigo.get(item.codigo) ?? null) : null
+  const cantidad = aplicarFactorARenglon({
+    cantidad: item.cantidad,
+    unidad: item.unidad,
+    bultos: item.bultos,
+    unidadEmpaque: item.unidadEmpaque,
+    cantidades: directo?.cantidades,
+  }).cantidad
 
   if (directo && item.confidence === 'high') {
     return {
@@ -72,13 +82,13 @@ function mapearLinea(
           codigo: directo.codigo,
           descripcion: directo.descripcion,
           unidad: directo.unidad,
-          cantidad: item.cantidad,
+          cantidad,
           grado: 'exacta',
         },
       ],
       seleccion: directo.codigo,
       estadoLinea: 'resuelta',
-      cantidad: item.cantidad,
+      cantidad,
     }
   }
 
@@ -102,7 +112,7 @@ function mapearLinea(
     codigo: p.c.codigo,
     descripcion: p.c.descripcion,
     unidad: p.c.unidad,
-    cantidad: item.cantidad,
+    cantidad,
     grado: p.hits >= 3 ? 'fuerte' : 'aproximada',
   }))
 
@@ -111,7 +121,7 @@ function mapearLinea(
       codigo: directo.codigo,
       descripcion: directo.descripcion,
       unidad: directo.unidad,
-      cantidad: item.cantidad,
+      cantidad,
       grado: 'aproximada',
     })
   }
@@ -122,7 +132,7 @@ function mapearLinea(
       candidatos: [],
       seleccion: null,
       estadoLinea: 'pendiente',
-      cantidad: item.cantidad,
+      cantidad,
     }
   }
 
@@ -132,7 +142,7 @@ function mapearLinea(
       candidatos: lista,
       seleccion: lista[0]!.codigo,
       estadoLinea: 'resuelta',
-      cantidad: item.cantidad,
+      cantidad,
     }
   }
 
@@ -141,7 +151,7 @@ function mapearLinea(
     candidatos: lista,
     seleccion: null,
     estadoLinea: 'ambigua',
-    cantidad: item.cantidad,
+    cantidad,
   }
 }
 
@@ -251,6 +261,7 @@ export async function interpretarCaptura(
           lineas: entrada.lineas,
           vendedorId: entrada.vendedorId,
           creadoEn: entrada.creadoEn,
+          caducaEn: Timestamp.fromMillis(ahora.getTime() + VIDA_CAPTURA_MS),
         })
     })
 

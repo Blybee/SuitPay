@@ -218,6 +218,7 @@ Audio: lifecycle 1 día. Fotografía: 7 días. Ver `storage.lifecycle.json` y `d
 | `estado` | cadena | `procesando`, `propuesta`, `aprobada`, `descartada`, `ilegible`. |
 | `lineas` | arreglo de objetos | Cada elemento: `textoOriginal`, `candidatos` como arreglo, `seleccion`, `estadoLinea` (`resuelta`, `ambigua`, `pendiente`). Es lo que alimenta la revisión contrastada de FR-042 y el marcado de FR-044. |
 | `vendedorId`, `creadoEn` | cadena, marca de tiempo | |
+| `caducaEn` | marca de tiempo | TTL de 7 días. Lo escribe el servidor. Sin la política de TTL en el proyecto el documento no se borra. |
 
 **Nunca contiene datos de cliente almacenados.** El texto original puede mencionar un nombre; la identificación se resuelve fuera del modelo.
 

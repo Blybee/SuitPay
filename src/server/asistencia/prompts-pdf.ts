@@ -18,6 +18,8 @@ export const SCHEMA_RESPUESTA_PDF = {
           codigo: { type: 'STRING' },
           cantidad: { type: 'NUMBER' },
           unidad: { type: 'STRING' },
+          bultos: { type: 'NUMBER' },
+          unidadEmpaque: { type: 'STRING' },
           confidence: { type: 'STRING', enum: ['high', 'low'] },
         },
         required: ['textoOriginal', 'cantidad'],
@@ -45,7 +47,7 @@ export function promptDeListaPdf(
   const bloqueCatalogo =
     catalogoJson !== undefined && catalogoJson.trim() !== ''
       ? `
-Catálogo compacto (id, n, m, a, e). Empareja cada renglón a un id si hay coincidencia semántica clara; si no, codigo="" y confidence="low".
+Catálogo compacto (id, n, m, a, e, y c si el SKU tiene factores de empaque). Empareja cada renglón a un id si hay coincidencia semántica clara; si no, codigo="" y confidence="low".
 ${catalogoJson}
 `
       : `
@@ -69,7 +71,8 @@ Reglas de mercadería del PDF:
 - Extrae SOLO renglones de producto (cantidad + descripción). Un renglón = un elemento de "items".
 - Ignora precios, descuentos, condiciones de pago, totales, membrete operativo, fechas de entrega e instrucciones logísticas.
 - "textoOriginal": el texto del renglón tal cual aparece, antes de normalizar. No reescribas medidas ahí.
-- "cantidad": unidades pedidas. Por defecto 1. NO confundas medida (1/2", 3/4) con cantidad.
+- "cantidad": el número dicho. Por defecto 1. NO lo multipliques por c ni por docena/ciento/millar. NO confundas medida (1/2", 3/4) con cantidad.
+- Si el renglón nombra bolsa, saco, caja, paquete, rollo, atado, fardo, docena, ciento o millar: "bultos" = cuántos empaques y "unidadEmpaque" = esa palabra. "cantidad" = ese mismo número. "25 unidades" no rellena bultos.
 - "unidad": la de despacho si se indica; si no, "NIU".
 ${bloqueCatalogo}
 ${bloqueNotas}

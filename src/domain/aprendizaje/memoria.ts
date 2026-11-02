@@ -1,4 +1,11 @@
 import type { EntradaDeMemoria } from './compacto.ts'
+import type { EvidenciaDeEmpaque, MapaDeCantidades } from './cantidades.ts'
+import {
+  factorDesdeEvidencia,
+  factoresVisibles,
+  fusionarCantidades,
+  mapasDeCantidadesIguales,
+} from './cantidades.ts'
 
 export type EstadoDeAlineacion =
   | 'emparejado'
@@ -12,6 +19,14 @@ export interface AlineacionDeEntrenamiento {
   readonly estado: EstadoDeAlineacion
   readonly aliases: readonly string[]
   readonly etiquetas: readonly string[]
+  /** Evidencia cruda del par. El servidor calcula el factor. */
+  readonly empaques?: readonly EvidenciaDeEmpaque[]
+  /** Para la revisión. No se confía al confirmar: se recalcula. */
+  readonly factores?: readonly {
+    readonly unidad: string
+    readonly factor: number
+    readonly anterior?: number
+  }[]
   /** Nombre del compacto. Solo para revisar el par; no se persiste. */
   readonly nombreCatalogo?: string
 }
@@ -28,9 +43,22 @@ export interface DiffDeProducto {
   readonly etiquetas: readonly string[]
   readonly agregados: readonly string[]
   readonly quitados: readonly string[]
+  /** Mapa ya fusionado. Si falta, se conservan las cantidades previas. */
+  readonly cantidades?: MapaDeCantidades
 }
 
 export type MapaDeMemoria = Record<string, EntradaDeMemoria>
+
+function entradaDe(
+  aliases: readonly string[],
+  etiquetas: readonly string[],
+  cantidades: MapaDeCantidades | undefined,
+): EntradaDeMemoria {
+  if (cantidades === undefined || Object.keys(cantidades).length === 0) {
+    return { aliases, etiquetas }
+  }
+  return { aliases, etiquetas, cantidades }
+}
 
 function unicos(valores: readonly string[]): string[] {
   const vistos = new Set<string>()
@@ -63,12 +91,16 @@ export function aplicarDiffDeMemoria(
       diff.etiquetas.length > 0
         ? unicos(diff.etiquetas)
         : unicos(previa.etiquetas.filter((e) => !diff.quitados.includes(e)))
-    siguiente[diff.codigo] = { aliases, etiquetas }
+    const cantidades =
+      diff.cantidades !== undefined ? diff.cantidades : previa.cantidades
+    siguiente[diff.codigo] = entradaDe(aliases, etiquetas, cantidades)
   }
   return siguiente
 }
 
 export const VIDA_LOTE_MS = 3 * 24 * 60 * 60 * 1000
+export const VIDA_CAPTURA_MS = 7 * 24 * 60 * 60 * 1000
+export const VIDA_REVISION_PENDIENTE_MS = 14 * 24 * 60 * 60 * 1000
 
 /**
  * Consolidación simulada: alias nuevos que aún no están en memoria.
@@ -130,11 +162,88 @@ export function diffsDesdeAlineaciones(
     const previas = etiquetasPorCodigo.get(codigo) ?? []
     etiquetasPorCodigo.set(codigo, [...previas, ...fila.etiquetas])
   }
-  return diffs.map((diff) => {
+  const conEtiquetas = diffs.map((diff) => {
     const extra = etiquetasPorCodigo.get(diff.codigo) ?? []
     if (extra.length === 0) return diff
     const etiquetas = unicos([...diff.etiquetas, ...extra])
     return { ...diff, etiquetas }
+  })
+  return conCantidadesEnDiffs(conEtiquetas, alineaciones, memoria)
+}
+
+function propuestasDeAlineaciones(
+  alineaciones: readonly AlineacionDeEntrenamiento[],
+): Map<string, { unidad: string; factor: number }[]> {
+  const mapa = new Map<string, { unidad: string; factor: number }[]>()
+  for (const fila of alineaciones) {
+    if (fila.estado !== 'emparejado' || fila.codigo.trim() === '') continue
+    for (const evidencia of fila.empaques ?? []) {
+      const factor = factorDesdeEvidencia(evidencia)
+      if (factor === null) continue
+      const codigo = fila.codigo.trim()
+      const lista = mapa.get(codigo) ?? []
+      lista.push(factor)
+      mapa.set(codigo, lista)
+    }
+  }
+  return mapa
+}
+
+function conCantidadesEnDiffs(
+  diffs: readonly DiffDeProducto[],
+  alineaciones: readonly AlineacionDeEntrenamiento[],
+  memoria: MapaDeMemoria,
+): DiffDeProducto[] {
+  const propuestas = propuestasDeAlineaciones(alineaciones)
+  const porCodigo = new Map(diffs.map((diff) => [diff.codigo, diff]))
+  for (const [codigo, lista] of propuestas) {
+    const previas = memoria[codigo]?.cantidades
+    const fusion = fusionarCantidades(previas, lista)
+    if (mapasDeCantidadesIguales(previas, fusion) || fusion === undefined) continue
+    const existente = porCodigo.get(codigo)
+    if (existente !== undefined) {
+      porCodigo.set(codigo, { ...existente, cantidades: fusion })
+      continue
+    }
+    porCodigo.set(codigo, {
+      codigo,
+      aliases: memoria[codigo]?.aliases ?? [],
+      etiquetas: memoria[codigo]?.etiquetas ?? [],
+      agregados: [],
+      quitados: [],
+      cantidades: fusion,
+    })
+  }
+  return [...porCodigo.values()]
+}
+
+/**
+ * Factores que la pantalla puede mostrar. Un conflicto entre renglones
+ * del mismo par no se enseña: tampoco se va a escribir.
+ */
+export function anotarFactores(
+  alineaciones: readonly AlineacionDeEntrenamiento[],
+  memoria: MapaDeMemoria,
+): AlineacionDeEntrenamiento[] {
+  const bloqueadas = new Set<string>()
+  for (const [codigo, lista] of propuestasDeAlineaciones(alineaciones)) {
+    const vistos = new Map<string, number>()
+    for (const propuesta of lista) {
+      const ya = vistos.get(propuesta.unidad)
+      if (ya !== undefined && ya !== propuesta.factor) {
+        bloqueadas.add(`${codigo}\0${propuesta.unidad}`)
+      } else {
+        vistos.set(propuesta.unidad, propuesta.factor)
+      }
+    }
+  }
+  return alineaciones.map((fila) => {
+    const factores = factoresVisibles(
+      fila.empaques ?? [],
+      memoria[fila.codigo]?.cantidades,
+    ).filter((factor) => !bloqueadas.has(`${fila.codigo}\0${factor.unidad}`))
+    if (factores.length === 0) return fila
+    return { ...fila, factores }
   })
 }
 
@@ -184,6 +293,9 @@ export function caracteresDelBloque(mapa: MapaDeMemoria): number {
   for (const entrada of Object.values(mapa)) {
     for (const alias of entrada.aliases) total += alias.length
     for (const etiqueta of entrada.etiquetas) total += etiqueta.length
+    for (const [unidad, factor] of Object.entries(entrada.cantidades ?? {})) {
+      total += unidad.length + String(factor).length
+    }
   }
   return total
 }
@@ -320,7 +432,7 @@ export function aplicarPropuestaDeRevision(
     const etiquetas = unicos(cambio.etiquetas).filter((etiqueta) =>
       cabeEnAlguno(etiqueta, previa.etiquetas),
     )
-    siguiente[cambio.codigo] = { aliases, etiquetas }
+    siguiente[cambio.codigo] = entradaDe(aliases, etiquetas, previa.cantidades)
   }
   return siguiente
 }
@@ -336,9 +448,14 @@ export function tandasDeRevision(
     const entrada = mapa[codigo]
     if (entrada === undefined) continue
     if (entrada.aliases.length === 0 && entrada.etiquetas.length === 0) continue
+    const pesoCantidades = Object.entries(entrada.cantidades ?? {}).reduce(
+      (suma, [unidad, factor]) => suma + unidad.length + String(factor).length,
+      0,
+    )
     const peso =
       entrada.aliases.reduce((suma, alias) => suma + alias.length, 0) +
-      entrada.etiquetas.reduce((suma, etiqueta) => suma + etiqueta.length, 0)
+      entrada.etiquetas.reduce((suma, etiqueta) => suma + etiqueta.length, 0) +
+      pesoCantidades
     if (
       caracteres > 0 &&
       caracteres + peso > TOPE_TANDA_REVISION_CARACTERES

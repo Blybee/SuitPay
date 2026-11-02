@@ -1,3 +1,4 @@
+import { aplicarFactorARenglon } from '../../domain/aprendizaje/cantidades.ts'
 import { anonimizarNotas } from '../../domain/aprendizaje/compacto.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
 import { COLECCIONES, bd } from '../firebase/admin.ts'
@@ -110,13 +111,26 @@ export async function interpretarRequerimiento(entrada: {
   return {
     capturaId,
     medioUrl: '',
-    items: itemsModelo.items.map((item) => ({
-      textoOriginal: item.textoOriginal,
-      cantidad: item.cantidad,
-      unidad: item.unidad,
-      codigo: item.codigo,
-      confidence: item.confidence,
-    })),
+    items: itemsModelo.items.map((item) => {
+      const candidato =
+        item.codigo !== null
+          ? candidatos.find((c) => c.codigo === item.codigo)
+          : undefined
+      const convertido = aplicarFactorARenglon({
+        cantidad: item.cantidad,
+        unidad: item.unidad,
+        bultos: item.bultos,
+        unidadEmpaque: item.unidadEmpaque,
+        cantidades: candidato?.cantidades,
+      })
+      return {
+        textoOriginal: item.textoOriginal,
+        cantidad: convertido.cantidad,
+        unidad: convertido.unidad,
+        codigo: item.codigo,
+        confidence: item.confidence,
+      }
+    }),
     cliente: null,
   }
 }

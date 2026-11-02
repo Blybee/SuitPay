@@ -14,6 +14,8 @@ export interface CandidatoDeAsistencia {
   readonly marca?: string
   readonly aliases?: readonly string[]
   readonly etiquetas?: readonly string[]
+  /** Factores de empaque del SKU. bolsa → 25. */
+  readonly cantidades?: Readonly<Record<string, number>>
 }
 
 export interface CandidatoDeLinea {
@@ -46,6 +48,9 @@ export interface ItemDelModelo {
   readonly cantidad: number
   readonly unidad: string
   readonly confidence: 'high' | 'low'
+  /** Cuántos empaques dijo el cliente. El servidor aplica el factor. */
+  readonly bultos?: number
+  readonly unidadEmpaque?: string
   /** Solo imagen: el renglón no se pudo leer. */
   readonly ilegible?: boolean
 }

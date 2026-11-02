@@ -1,6 +1,6 @@
 /**
  * Prompts y schema JSON del modelo de asistencia.
- * Compacto { id, n, m, a, e } — constitución IV v1.3.0.
+ * Compacto { id, n, m, a, e, c? } — constitución IV v1.3.0.
  */
 
 import { textoDeCandidatosParaPrompt } from './payload.ts'
@@ -19,6 +19,8 @@ export const SCHEMA_RESPUESTA_ASISTENCIA = {
           codigo: { type: 'STRING' },
           cantidad: { type: 'NUMBER' },
           unidad: { type: 'STRING' },
+          bultos: { type: 'NUMBER' },
+          unidadEmpaque: { type: 'STRING' },
           confidence: { type: 'STRING', enum: ['high', 'low'] },
           ilegible: { type: 'BOOLEAN' },
         },
@@ -44,23 +46,28 @@ export type TipoDePromptAsistencia = TipoDeCaptura | 'texto'
 export const REGLAS_EMPAREJADO = `
 Recibirás el catálogo compacto en JSON con campos:
   id (codigo), n (nombre), m (marca del SKU), a (alias coloquiales aprendidos),
-  e (etiquetas de intención: economico, liviano, …)
+  e (etiquetas de intención: economico, liviano, …),
+  c (factores de empaque de ESE sku, p. ej. {"bolsa":25}). c solo viene si hay factores.
 Debes usar SOLO esos productos. No inventes códigos.
 Empareja primero por a[], después por n. No exijas el nombre técnico.
 
 Estructura típica del pedido hablado/escrito: [cantidad] [producto] [medida] [marca].
-Ejemplos: "10 codo fg de media", "pegamento 1/16 pavco 5 unidades".
+Ejemplos: "10 codo fg de media", "pegamento 1/16 pavco 5 unidades", "1 bolsa unión 1/2".
 
 Reglas de extracción:
 - Separa CADA producto pedido en un elemento de "items". Extrae TODOS los renglones;
   si no hay match, deja codigo="" y confidence="low". No borres la línea en silencio.
 - "textoOriginal": lo oído/leído TAL CUAL, antes de normalizar. No reescribas medidas ahí.
-- "cantidad": solo numero + unidad de despacho (unidades, cajas, paquetes, rollos, docenas…).
-  Por defecto 1. NO confundas medida con cantidad:
+- "cantidad": el número dicho. Por defecto 1. NO lo multipliques por c ni por docena/ciento/millar:
+  el servidor convierte a unidades. NO confundas medida con cantidad:
   en "sumidero de 2 pulgadas 100 unidades", cantidad=100; la medida va en el producto.
+- Si el renglón nombra bolsa, saco, caja, paquete, rollo, atado, fardo, docena, ciento o millar:
+  "bultos" = cuántos empaques dijo (el 1 de "1 bolsa", el 2 de "2 docenas") y
+  "unidadEmpaque" = esa palabra. "cantidad" = ese mismo número de empaques.
+  "25 unidades" no es empaque: no rellenes bultos ni unidadEmpaque.
 - Medidas en gasfitería (úsalas solo para el match interno, no las copies a textoOriginal):
   media→1/2, tres cuartos→3/4, una→1, una y media→1 1/2, dos→2.
-- "unidad": la de despacho si se dice; si no, la del candidato o "NIU".
+- "unidad": la de despacho si se dice (bolsa, unidades…); si no, la del candidato o "NIU".
 - "codigo": codigo EXACTO del lote si hay UNA coincidencia clara; si no, "".
 - "confidence": "high" solo con match claro a un codigo del lote; "low" si hay duda o varias opciones.
 - Si el cliente NOMBRA marca, restringe a SKUs cuya m (o n/a) coincida. No "corrijas" a la comercial.

@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { ChevronDown, Loader2 } from 'lucide-react'
+import { textoDeFactor } from '../../domain/aprendizaje/cantidades.ts'
 import type { AlineacionDeEntrenamiento } from '../../domain/aprendizaje/memoria.ts'
 import type { DeltaDeMarca } from '../../domain/aprendizaje/priores.ts'
 import {
@@ -200,10 +201,22 @@ export function EntrenarAprendizaje({
     try {
       const respuesta = await confirmarEntrenamientoFn({
         data: {
-          alineaciones: elegidas.map(({ incluida: _incluida, ...fila }) => ({
-            ...fila,
+          alineaciones: elegidas.map((fila) => ({
+            textoPedido: fila.textoPedido,
+            codigo: fila.codigo,
+            marca: fila.marca,
+            estado: fila.estado,
             aliases: [...fila.aliases],
             etiquetas: [...fila.etiquetas],
+            ...(fila.empaques !== undefined && fila.empaques.length > 0
+              ? {
+                  empaques: fila.empaques.map((empaque) => ({
+                    unidad: empaque.unidad,
+                    bultos: empaque.bultos,
+                    unidades: empaque.unidades,
+                  })),
+                }
+              : {}),
           })),
           modelo,
           marcasPermitidas: marcas
@@ -446,6 +459,19 @@ export function EntrenarAprendizaje({
                         {fila.aliases.length > 0 ? (
                           <span className="mt-1 block font-mono text-etiqueta text-desvaida">
                             {fila.aliases.join(' · ')}
+                          </span>
+                        ) : null}
+                        {fila.factores !== undefined && fila.factores.length > 0 ? (
+                          <span className="mt-1 block font-mono text-etiqueta text-desvaida">
+                            {fila.factores
+                              .map((factor) =>
+                                textoDeFactor(
+                                  factor.unidad,
+                                  factor.factor,
+                                  factor.anterior,
+                                ),
+                              )
+                              .join(' · ')}
                           </span>
                         ) : null}
                       </span>

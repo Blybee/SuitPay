@@ -285,6 +285,8 @@ service cloud.firestore {
     // del cliente.
 
     match /capturas/{capturaId} {
+      // El Admin SDK escribe `caducaEn` a 7 días. La política de TTL
+      // del proyecto es la que borra; el campo solo no alcanza.
       allow read: if esAdministrador()
                   || (esVendedor() && resource.data.vendedorId == uid());
 
@@ -343,8 +345,9 @@ service cloud.firestore {
     // --- Aprendizaje de asistencia --------------------------------------
     //
     // Memoria viva y lotes: solo lectura admin/jefe. Toda escritura es
-    // Admin SDK (función de servidor). El TTL de Firestore cubre
-    // `lotesAprendizaje` (caducaEn +3 días), no `aprendizaje/memoria`.
+    // Admin SDK (función de servidor). `aprendizaje/memoria` no caduca.
+    // Con política de TTL habilitada: lotes y sesiones a 3 días;
+    // revisiones a 14 días mientras están pendientes y a 3 al procesarse.
 
     match /aprendizaje/{documento} {
       allow read: if esAdministrador() || esJefe();

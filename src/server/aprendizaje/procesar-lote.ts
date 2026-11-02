@@ -1,6 +1,10 @@
 import { diaEnLima } from '../../domain/anulacion/ventana.ts'
 import type { DiffDeProducto } from '../../domain/aprendizaje/memoria.ts'
-import { diffsDesdePares, memoriaParaPrompt } from '../../domain/aprendizaje/memoria.ts'
+import {
+  diffsDesdePares,
+  memoriaParaPrompt,
+  VIDA_REVISION_PENDIENTE_MS,
+} from '../../domain/aprendizaje/memoria.ts'
 import { deltasDeMarcaDesdeCodigos } from '../../domain/aprendizaje/priores.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
 import {
@@ -77,7 +81,10 @@ export async function procesarLoteAprendizaje(
 ): Promise<{ omitido: boolean; diaLima: string; pares: number }> {
   const hoy = diaEnLima(ahora)
   const diaLote = diaAnterior(hoy)
-  const pendientes = await listarRevisionesPendientes(diaLote)
+  const diaDesde = diaEnLima(
+    new Date(ahora.getTime() - VIDA_REVISION_PENDIENTE_MS),
+  )
+  const pendientes = await listarRevisionesPendientes(diaLote, diaDesde)
   if (pendientes.length === 0) {
     return { omitido: true, diaLima: diaLote, pares: 0 }
   }

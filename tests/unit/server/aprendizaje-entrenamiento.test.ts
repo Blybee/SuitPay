@@ -26,6 +26,15 @@ describe('prompt de Cotizar / emparejado', () => {
     ])
     expect(json).toContain('"m":"Pavco"')
     expect(json).not.toMatch(/precio/)
+    const conFactor = textoDeCandidatosParaPrompt([
+      {
+        codigo: 'C1',
+        descripcion: 'UNION 1/2',
+        unidad: 'NIU',
+        cantidades: { bolsa: 25 },
+      },
+    ])
+    expect(conFactor).toContain('"c":{"bolsa":25}')
     const prompt = promptDeAsistencia('texto', [
       {
         codigo: 'C1',
@@ -58,6 +67,28 @@ describe('parsearAlineaciones', () => {
     expect(filas[0]?.estado).toBe('no_en_catalogo')
     expect(filas[0]?.codigo).toBe('')
     expect(filas[0]?.aliases).toEqual([])
+    expect(filas[0]?.empaques).toBeUndefined()
+  })
+
+  it('conserva la evidencia de empaque solo si el renglón quedó emparejado', () => {
+    const filas = parsearAlineaciones(
+      {
+        alineaciones: [
+          {
+            textoPedido: '1 bolsa unión 1/2 pavco',
+            codigo: 'C1',
+            estado: 'emparejado',
+            aliases: ['unión 1/2'],
+            etiquetas: [],
+            empaques: [{ unidad: 'bolsa', bultos: 1, unidades: 25 }],
+          },
+        ],
+      },
+      new Set(['C1']),
+    )
+    expect(filas[0]?.empaques).toEqual([
+      { unidad: 'bolsa', bultos: 1, unidades: 25 },
+    ])
   })
 })
 
@@ -164,6 +195,8 @@ describe('prompt de entrenamiento', () => {
     expect(texto).toMatch(/varias fotos/)
     expect(texto).toMatch(/MISMO requerimiento/)
     expect(texto).toMatch(/PEDIDO \(3\)/)
+    expect(texto).toMatch(/empaques/)
+    expect(texto).toMatch(/bolsa/)
     expect(texto).not.toMatch(/primer archivo\/imagen/)
   })
 })

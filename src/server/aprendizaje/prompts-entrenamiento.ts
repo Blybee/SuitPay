@@ -20,8 +20,27 @@ export const SCHEMA_ENTRENAMIENTO = {
           },
           aliases: { type: 'ARRAY', items: { type: 'STRING' } },
           etiquetas: { type: 'ARRAY', items: { type: 'STRING' } },
+          empaques: {
+            type: 'ARRAY',
+            items: {
+              type: 'OBJECT',
+              properties: {
+                unidad: { type: 'STRING' },
+                bultos: { type: 'NUMBER' },
+                unidades: { type: 'NUMBER' },
+              },
+              required: ['unidad', 'bultos', 'unidades'],
+            },
+          },
         },
-        required: ['textoPedido', 'codigo', 'estado', 'aliases', 'etiquetas'],
+        required: [
+          'textoPedido',
+          'codigo',
+          'estado',
+          'aliases',
+          'etiquetas',
+          'empaques',
+        ],
       },
     },
   },
@@ -60,6 +79,7 @@ Reglas:
 - Solo "emparejado" genera aliases. Prohibido alias hacia un SKU que no está en la cotización.
 - Si el cliente no dijo marca y la cotización eligió una, rellena "marca" con esa. Eso alimenta el prior. Si el cliente nombró marca, respétala en "marca"; no la corrijas a la comercial.
 - etiquetas: economico, liviano, etc. solo si el pedido lo sugiere.
+- empaques: solo si el pedido nombra una unidad de empaque (bolsa, saco, caja, paquete, rollo, atado, fardo) y la cotización oro trae la cantidad en unidades de ESE MISMO renglón. unidad = esa palabra. bultos = cuántos empaques pidió (el 1 de "1 bolsa"). unidades = la cantidad del oro (25), no el precio. No incluyas docena, ciento ni millar. No uses medidas (1/2, 3/4) como bultos ni como unidades. Si no hay empaque, empaques=[].
 - Ignora membrete, RUC, DNI, razón social, teléfono, precios y totales. No los copies a ningún campo.
 - textoPedido: tal cual, sin PII.
 - El pedido puede llegar en varias fotos. Son el MISMO requerimiento: junta todos los renglones de todas las imágenes. No trates cada foto como un pedido distinto.
@@ -67,7 +87,7 @@ Reglas:
 Catálogo compacto (id, n, m, a, e):
 ${entrada.catalogoJson}
 
-Memoria vigente (alias/etiquetas por codigo):
+Memoria vigente (alias, etiquetas y factores de empaque por codigo):
 ${entrada.memoriaJson}
 
 Priores de marca vigentes (familia → marca:peso):

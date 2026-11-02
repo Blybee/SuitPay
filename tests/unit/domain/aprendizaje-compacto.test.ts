@@ -18,6 +18,21 @@ describe('compactarCatalogo', () => {
     ])
     expect(JSON.stringify(compacto)).not.toMatch(/precio/)
     expect(JSON.stringify(compacto)).not.toMatch(/stock/)
+    expect(compacto[0]).not.toHaveProperty('c')
+  })
+
+  it('incluye c solo cuando el SKU tiene factores', () => {
+    const compacto = compactarCatalogo(
+      [{ codigo: 'C1', descripcion: 'UNION 1/2', marca: 'Pavco' }],
+      {
+        C1: {
+          aliases: [],
+          etiquetas: [],
+          cantidades: { bolsa: 25 },
+        },
+      },
+    )
+    expect(compacto[0]?.c).toEqual({ bolsa: 25 })
   })
 })
 

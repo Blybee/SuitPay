@@ -51,6 +51,28 @@ describe('aplicarDiffDeMemoria', () => {
       etiquetas: ['economico'],
     })
   })
+
+  it('un diff de alias conserva las cantidades ya guardadas', () => {
+    const siguiente = aplicarDiffDeMemoria(
+      {
+        C1: {
+          aliases: ['viejo'],
+          etiquetas: [],
+          cantidades: { bolsa: 25, saco: 50 },
+        },
+      },
+      [
+        {
+          codigo: 'C1',
+          aliases: ['codo media'],
+          etiquetas: [],
+          agregados: ['codo media'],
+          quitados: ['viejo'],
+        },
+      ],
+    )
+    expect(siguiente.C1?.cantidades).toEqual({ bolsa: 25, saco: 50 })
+  })
 })
 
 describe('diffsDesdeAlineaciones', () => {
@@ -90,6 +112,71 @@ describe('diffsDesdeAlineaciones', () => {
       expect.arrayContaining(['codo de media', 'codo media']),
     )
   })
+
+  it('aprende bolsa = 25 y no pisa el resto del mapa', () => {
+    const diffs = diffsDesdeAlineaciones(
+      [
+        {
+          textoPedido: '1 bolsa unión 1/2 pavco',
+          codigo: 'C1',
+          marca: 'Pavco',
+          estado: 'emparejado',
+          aliases: ['unión 1/2'],
+          etiquetas: [],
+          empaques: [{ unidad: 'bolsa', bultos: 1, unidades: 25 }],
+        },
+      ],
+      { C1: { aliases: ['unión 1/2'], etiquetas: [], cantidades: { saco: 50 } } },
+    )
+    expect(diffs).toHaveLength(1)
+    expect(diffs[0]?.cantidades).toEqual({ saco: 50, bolsa: 25 })
+  })
+
+  it('dos factores distintos para la misma clave no se escriben', () => {
+    const diffs = diffsDesdeAlineaciones(
+      [
+        {
+          textoPedido: '1 bolsa',
+          codigo: 'C1',
+          marca: '',
+          estado: 'emparejado',
+          aliases: ['bolsa chica'],
+          etiquetas: [],
+          empaques: [{ unidad: 'bolsa', bultos: 1, unidades: 25 }],
+        },
+        {
+          textoPedido: '1 bolsa grande',
+          codigo: 'C1',
+          marca: '',
+          estado: 'emparejado',
+          aliases: ['bolsa grande'],
+          etiquetas: [],
+          empaques: [{ unidad: 'bolsas', bultos: 1, unidades: 50 }],
+        },
+      ],
+      { C1: { aliases: [], etiquetas: [], cantidades: { bolsa: 25 } } },
+    )
+    const deC1 = diffs.find((diff) => diff.codigo === 'C1')
+    expect(deC1?.cantidades).toBeUndefined()
+  })
+
+  it('una alineación omitida no escribe factor', () => {
+    const diffs = diffsDesdeAlineaciones(
+      [
+        {
+          textoPedido: '1 bolsa',
+          codigo: '',
+          marca: '',
+          estado: 'omitido',
+          aliases: [],
+          etiquetas: [],
+          empaques: [{ unidad: 'bolsa', bultos: 1, unidades: 25 }],
+        },
+      ],
+      {},
+    )
+    expect(diffs).toEqual([])
+  })
 })
 
 describe('presupuesto y paginación de memoria', () => {
@@ -118,6 +205,28 @@ describe('presupuesto y paginación de memoria', () => {
     expect(aplicarPropuestaDeRevision(mapa, cambios, true).C1).toEqual({
       aliases: ['codo media', 'codo 1/2'],
       etiquetas: [],
+    })
+  })
+
+  it('autorizar una revisión no borra las cantidades', () => {
+    const mapa = {
+      C1: {
+        aliases: ['codo media', 'Codo Media'],
+        etiquetas: [],
+        cantidades: { bolsa: 25 },
+      },
+    }
+    const cambios = [
+      {
+        codigo: 'C1',
+        aliases: ['codo media'],
+        etiquetas: [],
+        quitados: ['Codo Media'],
+        motivo: 'Repetido.',
+      },
+    ]
+    expect(aplicarPropuestaDeRevision(mapa, cambios, true).C1?.cantidades).toEqual({
+      bolsa: 25,
     })
   })
 

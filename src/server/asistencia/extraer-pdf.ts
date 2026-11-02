@@ -1,4 +1,7 @@
 import { randomUUID } from 'node:crypto'
+import { Timestamp } from 'firebase-admin/firestore'
+import { aplicarFactorARenglon } from '../../domain/aprendizaje/cantidades.ts'
+import { VIDA_CAPTURA_MS } from '../../domain/aprendizaje/memoria.ts'
 import { bd, COLECCIONES } from '../firebase/admin.ts'
 import { ErrorDeSuitPay } from '../errores.ts'
 import {
@@ -120,11 +123,16 @@ export function normalizarClientePdf(
   }
 }
 
-export function normalizarItemsPdf(valor: unknown): ItemDeListaPdf[] {
+interface ItemCrudoDePdf extends ItemDeListaPdf {
+  readonly bultos?: number
+  readonly unidadEmpaque?: string
+}
+
+export function normalizarItemsPdf(valor: unknown): ItemCrudoDePdf[] {
   if (!valor || typeof valor !== 'object') return []
   const r = valor as Record<string, unknown>
   const raw = Array.isArray(r.items) ? r.items : []
-  const items: ItemDeListaPdf[] = []
+  const items: ItemCrudoDePdf[] = []
   for (const cada of raw) {
     if (!cada || typeof cada !== 'object') continue
     const i = cada as Record<string, unknown>
@@ -144,9 +152,51 @@ export function normalizarItemsPdf(valor: unknown): ItemDeListaPdf[] {
         ? i.codigo.trim()
         : null
     const confidence = i.confidence === 'high' ? 'high' : 'low'
-    items.push({ textoOriginal: texto, cantidad, unidad, codigo, confidence })
+    const bultos =
+      typeof i.bultos === 'number' && Number.isInteger(i.bultos) && i.bultos > 0
+        ? i.bultos
+        : undefined
+    const unidadEmpaque =
+      typeof i.unidadEmpaque === 'string' && i.unidadEmpaque.trim() !== ''
+        ? i.unidadEmpaque.trim()
+        : undefined
+    items.push({
+      textoOriginal: texto,
+      cantidad,
+      unidad,
+      codigo,
+      confidence,
+      ...(bultos !== undefined ? { bultos } : {}),
+      ...(unidadEmpaque !== undefined ? { unidadEmpaque } : {}),
+    })
   }
   return items
+}
+
+function convertirItemsPdf(
+  items: readonly ItemCrudoDePdf[],
+  candidatos: readonly CandidatoDeAsistencia[],
+): ItemDeListaPdf[] {
+  const porCodigo = new Map(candidatos.map((c) => [c.codigo, c]))
+  return items.map((item) => {
+    const convertido = aplicarFactorARenglon({
+      cantidad: item.cantidad,
+      unidad: item.unidad,
+      bultos: item.bultos,
+      unidadEmpaque: item.unidadEmpaque,
+      cantidades:
+        item.codigo !== null && item.codigo !== undefined
+          ? porCodigo.get(item.codigo)?.cantidades
+          : undefined,
+    })
+    return {
+      textoOriginal: item.textoOriginal,
+      cantidad: convertido.cantidad,
+      unidad: convertido.unidad,
+      codigo: item.codigo,
+      confidence: item.confidence,
+    }
+  })
 }
 
 export async function extraerListaPdf(
@@ -179,11 +229,12 @@ export async function extraerListaPdf(
 
   let catalogoJson = ''
   let prioresJson = ''
+  let candidatos: readonly CandidatoDeAsistencia[] = []
   if (!usarSimulado) {
     try {
       const { textoDeCandidatosParaPrompt } = await import('./payload.ts')
       if (deps.leerCatalogo) {
-        const candidatos = await deps.leerCatalogo()
+        candidatos = await deps.leerCatalogo()
         if (candidatos.length > 0) {
           catalogoJson = textoDeCandidatosParaPrompt(candidatos)
         }
@@ -191,8 +242,9 @@ export async function extraerListaPdf(
         const contexto = await (
           await import('../aprendizaje/catalogo-compacto.ts')
         ).leerContextoDeAsistencia()
-        if (contexto.candidatos.length > 0) {
-          catalogoJson = textoDeCandidatosParaPrompt(contexto.candidatos)
+        candidatos = contexto.candidatos
+        if (candidatos.length > 0) {
+          catalogoJson = textoDeCandidatosParaPrompt(candidatos)
         }
         prioresJson = contexto.prioresJson
       }
@@ -230,7 +282,7 @@ export async function extraerListaPdf(
     throw new ErrorDeSuitPay('medio_ilegible')
   }
 
-  const items = normalizarItemsPdf(json)
+  const items = convertirItemsPdf(normalizarItemsPdf(json), candidatos)
   const itemsFinales =
     items.length > 0
       ? items
@@ -265,6 +317,7 @@ export async function extraerListaPdf(
           cliente: entrada.cliente,
           vendedorId: entrada.vendedorId,
           creadoEn: entrada.creadoEn,
+          caducaEn: Timestamp.fromMillis(ahora.getTime() + VIDA_CAPTURA_MS),
         })
     })
 

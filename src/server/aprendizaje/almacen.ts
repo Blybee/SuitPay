@@ -1,10 +1,12 @@
 import { Timestamp } from 'firebase-admin/firestore'
 import type { EntradaDeMemoria } from '../../domain/aprendizaje/compacto.ts'
+import { cantidadesDesdeDocumento } from '../../domain/aprendizaje/cantidades.ts'
 import type { DiffDeProducto, MapaDeMemoria } from '../../domain/aprendizaje/memoria.ts'
 import {
   aplicarDiffDeMemoria,
   medirMemoria,
   VIDA_LOTE_MS,
+  VIDA_REVISION_PENDIENTE_MS,
 } from '../../domain/aprendizaje/memoria.ts'
 import {
   aplicarDeltasDeMarca,
@@ -36,6 +38,7 @@ function mapaDesdeDocumento(datos: Record<string, unknown> | undefined): MapaDeM
   for (const [codigo, valor] of Object.entries(crudo as Record<string, unknown>)) {
     if (!valor || typeof valor !== 'object') continue
     const fila = valor as Record<string, unknown>
+    const cantidades = cantidadesDesdeDocumento(fila['cantidades'])
     mapa[codigo] = {
       aliases: Array.isArray(fila['aliases'])
         ? fila['aliases'].filter((a): a is string => typeof a === 'string')
@@ -43,6 +46,7 @@ function mapaDesdeDocumento(datos: Record<string, unknown> | undefined): MapaDeM
       etiquetas: Array.isArray(fila['etiquetas'])
         ? fila['etiquetas'].filter((e): e is string => typeof e === 'string')
         : [],
+      ...(cantidades !== undefined ? { cantidades } : {}),
     }
   }
   return mapa
@@ -108,27 +112,31 @@ export async function registrarRevision(entrada: {
   readonly medio: string
   readonly pares: readonly ParDeRevision[]
   readonly vendedorId: string
-  readonly clienteId?: string | null
 }): Promise<string> {
   const referencia = bd().collection(COLECCIONES.revisionesAprendizaje).doc()
+  const creadoEn = Timestamp.now()
   await referencia.set({
     diaLima: entrada.diaLima,
     medio: entrada.medio,
     pares: entrada.pares,
     vendedorId: entrada.vendedorId,
-    ...(entrada.clienteId ? { clienteId: entrada.clienteId } : {}),
     procesada: false,
-    creadoEn: Timestamp.now(),
+    creadoEn,
+    caducaEn: Timestamp.fromMillis(
+      creadoEn.toMillis() + VIDA_REVISION_PENDIENTE_MS,
+    ),
   })
   return referencia.id
 }
 
 export async function listarRevisionesPendientes(
   diaLimaHasta: string,
+  diaLimaDesde: string,
 ): Promise<readonly RevisionPendiente[]> {
   const snaps = await bd()
     .collection(COLECCIONES.revisionesAprendizaje)
     .where('procesada', '==', false)
+    .where('diaLima', '>=', diaLimaDesde)
     .where('diaLima', '<=', diaLimaHasta)
     .limit(200)
     .get()

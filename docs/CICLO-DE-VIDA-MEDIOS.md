@@ -41,26 +41,38 @@ gcloud firestore fields ttls update caducaEn \
   --enable-ttl
 ```
 
-El cliente también ignora documentos con `caducaEn` vencido (el TTL de Firestore puede tardar en borrar).
+El cliente también ignora documentos con `caducaEn` vencido. Escribir el campo no borra nada: hace falta la política de TTL del proyecto, y el borrado puede tardar hasta un día después del vencimiento.
+
+## Firestore: capturas
+
+`capturas/{id}` es la propuesta de foto, audio o PDF. Nadie la vuelve a leer: el pedido y la cotización ya guardan lo que sirvió. El PDF puede traer DNI o RUC. El archivo en Storage caduca por su lado (audio 1 día, foto 7). El documento lleva `caducaEn` a **7 días** desde la escritura.
+
+```bash
+gcloud firestore fields ttls update caducaEn --collection-group=capturas --enable-ttl
+```
 
 ## Firestore: lotes de aprendizaje
 
-Un documento por día civil Lima: `lotesAprendizaje/{AAAA-MM-DD}`, con campo `caducaEn` (3 días). El id de colección es `lotesAprendizaje` (no `lotes`) para que el TTL no cubra otros grupos homónimos. La memoria consolidada vive en `aprendizaje/memoria` y **no** caduca. Las revisiones pendientes (`revisionesAprendizaje`) no caducan hasta incluirse en un lote; entonces reciben `caducaEn` +3 días.
+Un documento por día civil Lima: `lotesAprendizaje/{AAAA-MM-DD}`, con campo `caducaEn` (3 días). El id de colección es `lotesAprendizaje` (no `lotes`) para que el TTL no cubra otros grupos homónimos. La memoria consolidada vive en `aprendizaje/memoria` y **no** caduca.
+
+`revisionesAprendizaje` es la cola del lote, no una pantalla. Al encolarse lleva `caducaEn` a **14 días**, para que una semana sin abrir la app no pierda el par. Al procesarse, el campo pasa a **+3 días**: lo aprendido ya está en la memoria. No guarda el número de documento del cliente. La consulta de pendientes acota `diaLima` a esa ventana de 14 días.
+
+`sesionesEntrenamiento/{id}` es la auditoría de un par confirmado (cobertura, uid, modelo). Lleva `caducaEn` a 3 días. No hay pantalla que la liste.
+
+El campo sin la política de TTL no borra el documento. Cada grupo de colección se habilita aparte:
 
 ```bash
-gcloud firestore fields ttls update caducaEn \
-  --collection-group=lotesAprendizaje \
-  --enable-ttl
+gcloud firestore fields ttls update caducaEn --collection-group=lotesAprendizaje --enable-ttl
+gcloud firestore fields ttls update caducaEn --collection-group=revisionesAprendizaje --enable-ttl
+gcloud firestore fields ttls update caducaEn --collection-group=sesionesEntrenamiento --enable-ttl
 ```
 
 El admin ignora lotes vencidos (el borrado de Firestore no es inmediato).
 
-Las sesiones de entrenamiento supervisado (`sesionesEntrenamiento/{id}`) llevan `caducaEn` a 3 días. No guardan archivos ni PII; solo cobertura, uid y modelo. La memoria en `aprendizaje/memoria` no caduca.
+Documentos viejos sin `caducaEn` no entran en la política. Una pasada:
 
 ```bash
-gcloud firestore fields ttls update caducaEn \
-    --collection-group=sesionesEntrenamiento \
-    --enable-ttl
+node scripts/caducar-trazas.mjs
 ```
 
 ## WhatsApp de la captura del vecino

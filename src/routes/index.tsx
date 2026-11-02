@@ -470,7 +470,6 @@ function Mostrador() {
     registrarParesEnSegundoPlano({
       medio: usarCaptura.getState().tipo ?? 'captura',
       pares: paresDesdeCaptura(lineas),
-      clienteId: usarPedido.getState().cliente?.numeroDocumento,
     })
     const propuesto = usarCaptura.getState().clientePropuesto
     if (propuesto !== null && usarPedido.getState().cliente === null) {
@@ -955,7 +954,6 @@ function Mostrador() {
       registrarParesEnSegundoPlano({
         medio: 'cotizar',
         pares: paresDesdePedido(pedido.lineas),
-        clienteId: pedido.cliente?.numeroDocumento,
       })
       const snapshot: Cotizacion = {
         id: resultado.cotizacionId,

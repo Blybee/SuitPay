@@ -37,7 +37,6 @@ const esquemaPar = z.object({
 const esquemaRegistrar = z.object({
   medio: z.string().trim().min(1).max(40),
   pares: z.array(esquemaPar).min(1).max(200),
-  clienteId: z.string().trim().max(20).optional(),
 })
 
 export const registrarRevisionFn = createServerFn({ method: 'POST' })
@@ -53,7 +52,6 @@ export const registrarRevisionFn = createServerFn({ method: 'POST' })
         medio: data.medio,
         pares: data.pares,
         vendedorId: identidad.uid,
-        clienteId: data.clienteId,
       })
       return { ok: true as const, id }
     } catch (error) {
@@ -112,6 +110,9 @@ export const leerMemoriaAprendizajeFn = createServerFn({ method: 'GET' })
           codigo,
           aliases: entrada.aliases,
           etiquetas: entrada.etiquetas,
+          ...(entrada.cantidades !== undefined
+            ? { cantidades: entrada.cantidades }
+            : {}),
         })),
         hayMas: pagina.hayMas,
         cursorSiguiente: pagina.cursorSiguiente,
@@ -221,6 +222,16 @@ const esquemaAlineacion = z.object({
   estado: z.enum(['emparejado', 'omitido', 'no_en_catalogo']),
   aliases: z.array(z.string().max(120)).max(20),
   etiquetas: z.array(z.string().max(40)).max(10),
+  empaques: z
+    .array(
+      z.object({
+        unidad: z.string().trim().min(1).max(40),
+        bultos: z.number().int().positive().max(100_000),
+        unidades: z.number().int().positive().max(10_000_000),
+      }),
+    )
+    .max(8)
+    .optional(),
 })
 
 export const confirmarEntrenamientoFn = createServerFn({ method: 'POST' })

@@ -248,12 +248,22 @@ function normalizarItem(raw: unknown): ItemDelModelo | null {
       ? r.unidad.trim()
       : 'NIU'
   const confidence = r.confidence === 'high' ? 'high' : 'low'
+  const bultos =
+    typeof r.bultos === 'number' && Number.isInteger(r.bultos) && r.bultos > 0
+      ? r.bultos
+      : undefined
+  const unidadEmpaque =
+    typeof r.unidadEmpaque === 'string' && r.unidadEmpaque.trim() !== ''
+      ? r.unidadEmpaque.trim()
+      : undefined
   return {
     textoOriginal: textoOriginal || '(renglón ilegible)',
     codigo,
     cantidad,
     unidad,
     confidence,
+    ...(bultos !== undefined ? { bultos } : {}),
+    ...(unidadEmpaque !== undefined ? { unidadEmpaque } : {}),
     ilegible: r.ilegible === true,
   }
 }
