@@ -1,13 +1,6 @@
 import { expect, test } from '@playwright/test'
 import type { Locator, Page } from '@playwright/test'
 
-/**
- * El listbox del buscador, en un teléfono de 390px.
- *
- * El DOM guarda el nombre entero aunque la fila lo pinte con «…». Por eso
- * esta prueba mide cajas y no se fía del textContent.
- */
-
 const NOMBRE = 'FIV- VALVULA CHECK SWING BRC. ROSCADA 1/2 PULGADA HEMBRA'
 const CODIGO = '410820'
 const UNIDAD = 'NIU'
@@ -96,7 +89,7 @@ test('el nombre largo de la sugerencia se lee entero y el precio queda arriba', 
   const solape = await larga.evaluate((fila, codigoVecino) => {
     const otra = Array.from(
       fila.parentElement?.querySelectorAll('[role="option"]') ?? [],
-    ).find((candidato) => candidato.textContent?.includes(codigoVecino))
+    ).find((candidato) => candidato.textContent.includes(codigoVecino))
     if (otra === undefined) return true
     const a = fila.getBoundingClientRect()
     const b = otra.getBoundingClientRect()
@@ -228,7 +221,7 @@ async function medirNombre(nombre: Locator): Promise<MedidaDelNombre> {
     const unaLinea =
       estilo.whiteSpace === 'nowrap' || estilo.whiteSpace === 'pre'
     return {
-      texto: el.textContent ?? '',
+      texto: el.textContent,
       lineas: altoLinea > 0 ? alto / altoLinea : 0,
       recorteHorizontal: el.scrollWidth > el.clientWidth + 1,
       recorteVertical: el.scrollHeight > el.clientHeight + 1,

@@ -798,6 +798,7 @@ function FilaSugerencia({
   activo,
   marcado,
   estilo,
+  medida,
   onAlternarSeleccion,
   onElegir,
   onResaltar,
@@ -807,6 +808,7 @@ function FilaSugerencia({
   readonly activo: boolean
   readonly marcado: boolean
   readonly estilo?: CSSProperties
+  readonly medida: (nodo: Element | null) => void
   readonly onAlternarSeleccion: (codigo: string) => void
   readonly onElegir: (indice: number) => void
   readonly onResaltar: (indice: number) => void
@@ -814,13 +816,15 @@ function FilaSugerencia({
   const codigo = coincidencia.elemento.codigo
   return (
     <div
+      ref={medida}
+      data-index={indice}
       id={`sugerencia-${indice}`}
       role="option"
       aria-selected={marcado || activo}
       style={estilo}
       onMouseEnter={() => onResaltar(indice)}
       className={[
-        'flex h-14 w-full items-center gap-2 overflow-hidden px-2',
+        'flex w-full items-start gap-2 px-2 py-2',
         activo ? 'bg-tinta text-papel' : 'text-tinta hover:bg-mesa',
       ].join(' ')}
     >
@@ -839,12 +843,12 @@ function FilaSugerencia({
         type="button"
         onClick={() => onElegir(indice)}
         className={[
-          'flex min-w-0 flex-1 items-baseline justify-between gap-3 px-2 text-left',
+          'flex min-w-0 flex-1 items-start justify-between gap-3 px-2 text-left',
           'focus-visible:outline-none',
         ].join(' ')}
       >
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-cuerpo uppercase">
+          <span className="block break-words text-pretty text-cuerpo uppercase">
             {coincidencia.elemento.descripcion}
           </span>
           <span
@@ -857,7 +861,7 @@ function FilaSugerencia({
             {coincidencia.grado === 'aproximada' && ' · aproximado'}
           </span>
         </span>
-        <span className="font-mono tabular-nums text-cuerpo font-bold">
+        <span className="shrink-0 font-mono tabular-nums text-cuerpo font-bold">
           {formatearImporte(coincidencia.elemento.precio)}
         </span>
       </button>
@@ -888,6 +892,10 @@ function Sugerencias({
     count: coincidencias.length,
     getScrollElement: () => scrollRef.current,
     estimateSize: () => ALTO_FILA_SUGERENCIA,
+    measureElement: (el) => {
+      const alto = el.getBoundingClientRect().height
+      return alto > 0 ? alto : ALTO_FILA_SUGERENCIA
+    },
     overscan: OVERSCAN_LISTBOX,
     initialRect: { width: 640, height: 384 },
     getItemKey: (indice) => coincidencias[indice]?.elemento.codigo ?? indice,
@@ -954,12 +962,12 @@ function Sugerencias({
                 indice={virtual.index}
                 activo={virtual.index === resaltado}
                 marcado={seleccionados.has(coincidencia.elemento.codigo)}
+                medida={virtualizador.measureElement}
                 estilo={{
                   position: 'absolute',
                   top: 0,
                   left: 0,
                   width: '100%',
-                  height: virtual.size,
                   transform: `translateY(${virtual.start}px)`,
                 }}
                 onAlternarSeleccion={onAlternarSeleccion}
