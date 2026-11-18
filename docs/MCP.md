@@ -32,7 +32,7 @@ En otra terminal:
 npx @modelcontextprotocol/inspector
 ```
 
-En el inspector elige el transporte Streamable HTTP y la URL `http://127.0.0.1:8787/mcp`. En el encabezado `Authorization` pon `Bearer` y un JWT firmado por `MCP_JWKS_URL`, con `iss` igual a `MCP_JWT_ISSUER`, `aud` igual a `MCP_RESOURCE_URL` y el uid de Firebase en `firebase_uid` (o en el claim de `MCP_UID_CLAIM`). Ese uid tiene que existir en `usuarios/{uid}` como administrador o jefe activo. Pulsa Connect y luego List Tools. La lista incluye `ping`. Llámala sin argumentos. La respuesta estructurada es `{ "pong": true }`. Sin token, la respuesta es 401.
+En el inspector elige el transporte Streamable HTTP y la URL `http://127.0.0.1:8787/mcp`. En el encabezado `Authorization` pon `Bearer` y un JWT firmado por `MCP_JWKS_URL`, con `iss` igual a `MCP_JWT_ISSUER`, `aud` igual a `MCP_RESOURCE_URL` y el uid de Firebase en `firebase_uid` (o en el claim de `MCP_UID_CLAIM`). Ese uid tiene que existir en `usuarios/{uid}` como administrador o jefe activo. Pulsa Connect y luego List Tools. La lista incluye `ping`, `buscar_productos` y `consultar_stock`. `ping` no lleva argumentos y responde `{ "pong": true }`. `buscar_productos` pide `termino` y un `limite` de 1 a 10. `consultar_stock` pide hasta diez `codigos` y devuelve cantidad y costo de compra en céntimos. Sin token, la respuesta es 401. Un vendedor recibe 403.
 
 La misma comprobación, sin abrir el inspector, añadiendo el mismo encabezado con `--header`:
 
