@@ -1,6 +1,12 @@
 import { serve } from '@hono/node-server'
+import { configuracionDesdeEntorno } from './acceso.ts'
 import { crearApp } from './app.ts'
-import { listaDeEntorno, puertoDeEntorno } from './entorno.ts'
+import {
+  listaDeEntorno,
+  milisegundosDeCache,
+  puertoDeEntorno,
+} from './entorno.ts'
+import { crearCargadorDeUsuarios } from '../server/mcp/usuarios.ts'
 
 const HOSTS_LOCALES = ['localhost', '127.0.0.1', '[::1]'] as const
 
@@ -21,6 +27,20 @@ if (enTodasLasInterfaces && hostsPermitidos.length === 0) {
   process.exit(1)
 }
 
+let acceso
+try {
+  const cacheMs = milisegundosDeCache(process.env['MCP_USUARIO_CACHE_MS'])
+  acceso = configuracionDesdeEntorno(
+    process.env,
+    crearCargadorDeUsuarios({ cacheMs }),
+  )
+} catch (error) {
+  console.error(
+    error instanceof Error ? error.message : 'Configuración MCP inválida',
+  )
+  process.exit(1)
+}
+
 const { app } = crearApp({
   host: hostDeEscucha,
   hostsPermitidos,
@@ -28,6 +48,7 @@ const { app } = crearApp({
     process.env['MCP_ALLOWED_ORIGINS'],
     HOSTS_LOCALES,
   ),
+  acceso,
 })
 
 const puerto = puertoDeEntorno(process.env['PORT'])
