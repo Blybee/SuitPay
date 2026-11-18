@@ -1,5 +1,5 @@
 const TIPOS_DE_VENTA = ['boleta', 'factura', 'nota_venta'] as const
-const ESTADOS_FUERA = new Set(['anulado', 'rechazado'])
+const ESTADOS_FUERA = new Set(['anulado', 'rechazado', 'indeterminado'])
 const TOPE = 5
 
 export type TipoDeVenta = (typeof TIPOS_DE_VENTA)[number]
@@ -52,24 +52,11 @@ export interface ResumenDePeriodo {
   readonly totalCentimos: number
   readonly cantidad: number
   readonly ticketPromedioCentimos: number
+  /** Boletas, facturas o notas de venta cuyo estado sigue en `indeterminado`. */
+  readonly ventasSinResolver: number
   readonly porTipo: readonly PuestoPorTipo[]
   readonly topVendedores: readonly PuestoDeVendedor[]
   readonly topClientes: readonly PuestoDeCliente[]
-  readonly topProductos: readonly PuestoDeProducto[]
-}
-
-/** Lo que puede salir hacia un modelo: sin documento ni razón social del cliente. */
-export interface ResumenParaElModelo {
-  readonly periodo: string
-  readonly totalCentimos: number
-  readonly cantidad: number
-  readonly ticketPromedioCentimos: number
-  readonly porTipo: readonly PuestoPorTipo[]
-  readonly topVendedores: readonly PuestoDeVendedor[]
-  readonly topClientes: readonly {
-    readonly totalCentimos: number
-    readonly cantidad: number
-  }[]
   readonly topProductos: readonly PuestoDeProducto[]
 }
 
@@ -91,6 +78,10 @@ function sumaVenta(fila: FilaDeVenta): boolean {
   )
 }
 
+function ventaSinResolver(fila: FilaDeVenta): boolean {
+  return esTipoDeVenta(fila.tipoDocumento) && fila.estado === 'indeterminado'
+}
+
 function ordenar(mapa: Map<string, Acumulado>): [string, Acumulado][] {
   return [...mapa.entries()]
     .sort(
@@ -106,6 +97,7 @@ export function resumirPeriodo(
 ): ResumenDePeriodo {
   let totalCentimos = 0
   let cantidad = 0
+  let ventasSinResolver = 0
   const porTipo = new Map<TipoDeVenta, Acumulado>(
     TIPOS_DE_VENTA.map((tipo) => [
       tipo,
@@ -117,6 +109,7 @@ export function resumirPeriodo(
   const productos = new Map<string, Acumulado>()
 
   for (const fila of filas) {
+    if (ventaSinResolver(fila)) ventasSinResolver += 1
     if (!sumaVenta(fila)) continue
     totalCentimos += fila.total
     cantidad += 1
@@ -142,6 +135,7 @@ export function resumirPeriodo(
     cantidad,
     ticketPromedioCentimos:
       cantidad === 0 ? 0 : Math.round(totalCentimos / cantidad),
+    ventasSinResolver,
     porTipo: TIPOS_DE_VENTA.map((tipo) => {
       const puesto = porTipo.get(tipo)
       return {
@@ -167,24 +161,6 @@ export function resumirPeriodo(
       totalCentimos: puesto.total,
       cantidad: puesto.cantidad,
     })),
-  }
-}
-
-export function resumenSinIdentidadDeCliente(
-  resumen: ResumenDePeriodo,
-): ResumenParaElModelo {
-  return {
-    periodo: resumen.periodo,
-    totalCentimos: resumen.totalCentimos,
-    cantidad: resumen.cantidad,
-    ticketPromedioCentimos: resumen.ticketPromedioCentimos,
-    porTipo: resumen.porTipo,
-    topVendedores: resumen.topVendedores,
-    topClientes: resumen.topClientes.map((puesto) => ({
-      totalCentimos: puesto.totalCentimos,
-      cantidad: puesto.cantidad,
-    })),
-    topProductos: resumen.topProductos,
   }
 }
 

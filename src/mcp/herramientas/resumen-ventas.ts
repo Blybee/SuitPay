@@ -1,6 +1,5 @@
 import type { McpServer } from '@modelcontextprotocol/server'
 import { z } from 'zod'
-import { resumenSinIdentidadDeCliente } from '../../domain/comprobantes/resumen-periodo.ts'
 import { resumenDeVentas } from '../../server/ventas/resumen-periodo.ts'
 
 const puesto = z
@@ -34,6 +33,12 @@ const esquemaDeSalida = z
       .number()
       .int()
       .describe('totalCentimos dividido entre cantidad, redondeado.'),
+    ventasSinResolver: z
+      .number()
+      .int()
+      .describe(
+        'Boletas, facturas o notas de venta aún en estado indeterminado. Si es mayor que cero, el mes no se guarda.',
+      ),
     porTipo: z
       .array(
         puesto
@@ -55,9 +60,18 @@ const esquemaDeSalida = z
       )
       .describe('Hasta cinco vendedores, de mayor a menor total.'),
     topClientes: z
-      .array(puesto)
+      .array(
+        puesto
+          .extend({
+            numeroDocumento: z
+              .string()
+              .describe('RUC, DNI o la clave eventual.'),
+            denominacion: z.string().describe('Razón social o nombre.'),
+          })
+          .strict(),
+      )
       .describe(
-        'Hasta cinco puestos de cliente, solo montos. Sin documento ni razón social.',
+        'Hasta cinco clientes, de mayor a menor total. Incluye documento y razón social. Sin dirección, teléfono ni correo.',
       ),
     topProductos: z
       .array(
@@ -78,18 +92,27 @@ export function registrarResumenDeVentas(servidor: McpServer): void {
     {
       title: 'Resumen de ventas',
       description:
-        'Resume un mes de ventas en America/Lima. Incluye boleta, factura y nota de venta. Excluye anulados, rechazados e internos de contingencia. Los montos ya incluyen IGV y están en céntimos. No devuelve documento ni razón social del cliente.',
+        'Resume un mes de ventas en America/Lima. Incluye boleta, factura y nota de venta. Excluye anulados, rechazados, indeterminados e internos de contingencia. Los montos ya incluyen IGV y están en céntimos. El top de clientes incluye documento y razón social.',
       inputSchema: esquemaDeResumenDeVentas,
       outputSchema: esquemaDeSalida,
       annotations: { readOnlyHint: true },
     },
     async ({ periodo }) => {
-      const resumen = resumenSinIdentidadDeCliente(
-        await resumenDeVentas({ periodo }),
-      )
+      const resumen = await resumenDeVentas({ periodo })
+      const salida = {
+        periodo: resumen.periodo,
+        totalCentimos: resumen.totalCentimos,
+        cantidad: resumen.cantidad,
+        ticketPromedioCentimos: resumen.ticketPromedioCentimos,
+        ventasSinResolver: resumen.ventasSinResolver,
+        porTipo: resumen.porTipo,
+        topVendedores: resumen.topVendedores,
+        topClientes: resumen.topClientes,
+        topProductos: resumen.topProductos,
+      }
       return {
-        content: [{ type: 'text', text: JSON.stringify(resumen) }],
-        structuredContent: resumen,
+        content: [{ type: 'text', text: JSON.stringify(salida) }],
+        structuredContent: salida,
       }
     },
   )

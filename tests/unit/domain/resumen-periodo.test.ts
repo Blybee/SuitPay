@@ -4,10 +4,7 @@ import {
   mesEnLima,
   periodoEstaCerrado,
 } from '../../../src/domain/comprobantes/periodo-lima.ts'
-import {
-  resumenSinIdentidadDeCliente,
-  resumirPeriodo,
-} from '../../../src/domain/comprobantes/resumen-periodo.ts'
+import { resumirPeriodo } from '../../../src/domain/comprobantes/resumen-periodo.ts'
 import type { FilaDeVenta } from '../../../src/domain/comprobantes/resumen-periodo.ts'
 import { esquemaDeResumenDeVentas } from '../../../src/mcp/herramientas/resumen-ventas.ts'
 
@@ -36,15 +33,19 @@ describe('resumen de un periodo', () => {
     expect(resumen.ticketPromedioCentimos).toBe(101)
   })
 
-  it('suma nota de venta e indeterminado y deja fuera anulado, rechazado, interno, guía y anulación', () => {
+  it('deja fuera el indeterminado, el anulado, el rechazado, el interno, la guía y la anulación', () => {
     const resumen = resumirPeriodo(
       [
         fila({ tipoDocumento: 'nota_venta', total: 100 }),
         fila({ estado: 'indeterminado', total: 50 }),
         fila({ estado: 'anulado', total: 400 }),
         fila({ estado: 'rechazado', total: 1600 }),
-        fila({ tipoDocumento: 'interno_contingencia', total: 800 }),
-        fila({ tipoDocumento: 'guia', total: 3200 }),
+        fila({
+          tipoDocumento: 'interno_contingencia',
+          estado: 'indeterminado',
+          total: 800,
+        }),
+        fila({ tipoDocumento: 'guia', estado: 'indeterminado', total: 3200 }),
         fila({
           estado: 'aceptado',
           total: 70,
@@ -53,16 +54,17 @@ describe('resumen de un periodo', () => {
       ],
       '2020-11',
     )
-    expect(resumen.totalCentimos).toBe(150)
-    expect(resumen.cantidad).toBe(2)
+    expect(resumen.totalCentimos).toBe(100)
+    expect(resumen.cantidad).toBe(1)
+    expect(resumen.ventasSinResolver).toBe(1)
     expect(resumen.porTipo).toEqual([
-      { tipo: 'boleta', totalCentimos: 50, cantidad: 1 },
+      { tipo: 'boleta', totalCentimos: 0, cantidad: 0 },
       { tipo: 'factura', totalCentimos: 0, cantidad: 0 },
       { tipo: 'nota_venta', totalCentimos: 100, cantidad: 1 },
     ])
   })
 
-  it('quita documento y razón social antes de salir hacia un modelo', () => {
+  it('conserva documento y razón social en el top de clientes', () => {
     const resumen = resumirPeriodo(
       [
         fila({
@@ -78,10 +80,6 @@ describe('resumen de un periodo', () => {
       totalCentimos: 200,
       cantidad: 1,
     })
-    const publico = JSON.stringify(resumenSinIdentidadDeCliente(resumen))
-    expect(publico).not.toContain('20100000001')
-    expect(publico).not.toContain('ACME')
-    expect(publico).toContain('200')
   })
 })
 

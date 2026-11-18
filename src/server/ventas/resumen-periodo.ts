@@ -39,7 +39,10 @@ export async function resumenDeVentas(opciones: {
     await filasDelMes(base, opciones.periodo),
     opciones.periodo,
   )
-  if (!periodoEstaCerrado(opciones.periodo, ahora)) {
+  if (
+    !periodoEstaCerrado(opciones.periodo, ahora) ||
+    resumen.ventasSinResolver > 0
+  ) {
     return { ...resumen, materializadoEn: null }
   }
 

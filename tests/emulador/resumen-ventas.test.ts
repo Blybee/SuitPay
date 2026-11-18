@@ -137,6 +137,8 @@ describeConEmulador.sequential('resumen de ventas contra Firestore', () => {
       'resumen-guia',
       'resumen-siguiente',
       'resumen-curso',
+      'resumen-oct-ok',
+      'resumen-oct-indet',
     ]
     await Promise.all(
       ids.map((id) =>
@@ -144,6 +146,7 @@ describeConEmulador.sequential('resumen de ventas contra Firestore', () => {
       ),
     )
     await base.collection(COLECCIONES.resumenesVentas).doc('2020-11').delete()
+    await base.collection(COLECCIONES.resumenesVentas).doc('2020-10').delete()
     await base.collection(COLECCIONES.resumenesVentas).doc('2026-11').delete()
   })
 
@@ -192,7 +195,71 @@ describeConEmulador.sequential('resumen de ventas contra Firestore', () => {
     expect(lecturas.comprobantes).toBe(lecturasAntes)
   })
 
-  it('la tool devuelve el total guardado y no el documento del cliente', async () => {
+  it('no congela un mes cerrado mientras quede una venta indeterminada', async () => {
+    const octubre = new Date('2020-10-15T17:00:00.000Z')
+    await poner(
+      base,
+      'resumen-oct-ok',
+      venta('factura', 'aceptado', 100, 'vend-a', octubre, null, []),
+    )
+    await poner(
+      base,
+      'resumen-oct-indet',
+      venta('boleta', 'indeterminado', 50, 'vend-a', octubre, null, []),
+    )
+
+    const primero = await resumenDeVentas({
+      periodo: '2020-10',
+      ahora: AHORA,
+      base,
+    })
+    expect(primero.totalCentimos).toBe(100)
+    expect(primero.ventasSinResolver).toBe(1)
+    expect(primero.materializadoEn).toBeNull()
+    expect(
+      (
+        await base.collection(COLECCIONES.resumenesVentas).doc('2020-10').get()
+      ).exists,
+    ).toBe(false)
+
+    await base
+      .collection(COLECCIONES.comprobantes)
+      .doc('resumen-oct-ok')
+      .update({ total: 80 })
+    const segundo = await resumenDeVentas({
+      periodo: '2020-10',
+      ahora: AHORA,
+      base,
+    })
+    expect(segundo.totalCentimos).toBe(80)
+    expect(segundo.materializadoEn).toBeNull()
+
+    await base
+      .collection(COLECCIONES.comprobantes)
+      .doc('resumen-oct-indet')
+      .update({ estado: 'aceptado' })
+    const tercero = await resumenDeVentas({
+      periodo: '2020-10',
+      ahora: AHORA,
+      base,
+    })
+    expect(tercero.totalCentimos).toBe(130)
+    expect(tercero.ventasSinResolver).toBe(0)
+    expect(tercero.materializadoEn).toBe(AHORA.toISOString())
+
+    await base
+      .collection(COLECCIONES.comprobantes)
+      .doc('resumen-oct-ok')
+      .update({ total: 1 })
+    const cuarto = await resumenDeVentas({
+      periodo: '2020-10',
+      ahora: AHORA,
+      base,
+    })
+    expect(cuarto.totalCentimos).toBe(130)
+  })
+
+  it('la tool devuelve el total guardado y el documento del cliente', async () => {
     const creado = crearApp({
       host: '127.0.0.1',
       hostsPermitidos: ['127.0.0.1'],
@@ -225,8 +292,8 @@ describeConEmulador.sequential('resumen de ventas contra Firestore', () => {
         totalCentimos: 300,
         cantidad: 2,
       })
-      expect(texto).not.toContain('20100000001')
-      expect(texto).not.toContain('ACME')
+      expect(texto).toContain('20100000001')
+      expect(texto).toContain('ACME')
       expect(texto).toContain('vend-b')
     } finally {
       await cliente.close()
