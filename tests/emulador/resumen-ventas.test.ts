@@ -295,6 +295,11 @@ describeConEmulador.sequential('resumen de ventas contra Firestore', () => {
       expect(texto).toContain('20100000001')
       expect(texto).toContain('ACME')
       expect(texto).toContain('vend-b')
+      const recurso = await cliente.readResource({ uri: 'suitpay://ventas/2020-11' })
+      const textoRecurso = JSON.stringify(recurso)
+      expect(textoRecurso).toContain('300')
+      expect(textoRecurso).toContain('ACME')
+      expect(textoRecurso).not.toContain('telefono')
     } finally {
       await cliente.close()
       await creado.handler.close()

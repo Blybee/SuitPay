@@ -3,6 +3,7 @@ import { createMcpHandler, McpServer } from '@modelcontextprotocol/server'
 import type { Context, Hono } from 'hono'
 import { z } from 'zod'
 import { registrarResumenDeVentas } from './herramientas/resumen-ventas.ts'
+import { registrarRecursoDeVentas } from './recursos.ts'
 
 export const NOMBRE_DEL_SERVIDOR = 'suitpay-mcp'
 export const VERSION_DEL_SERVIDOR = '0.1.0'
@@ -37,6 +38,7 @@ export function crearServidorMcp(): McpServer {
   )
 
   registrarResumenDeVentas(servidor)
+  registrarRecursoDeVentas(servidor)
 
   return servidor
 }
