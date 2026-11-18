@@ -119,6 +119,7 @@ export const COLECCIONES = {
   clientes: 'clientes',
   indices: 'indices',
   comprobantes: 'comprobantes',
+  resumenesVentas: 'resumenes_ventas',
   series: 'series',
   cotizaciones: 'cotizaciones',
   capturas: 'capturas',

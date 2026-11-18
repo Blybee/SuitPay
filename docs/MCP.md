@@ -22,7 +22,7 @@ En otra terminal:
 npx @modelcontextprotocol/inspector
 ```
 
-En el inspector elige el transporte Streamable HTTP y la URL `http://127.0.0.1:8787/mcp`. Pulsa Connect y luego List Tools. La lista incluye `ping`. Llámala sin argumentos. La respuesta estructurada es `{ "pong": true }`.
+En el inspector elige el transporte Streamable HTTP y la URL `http://127.0.0.1:8787/mcp`. Pulsa Connect y luego List Tools. La lista incluye `ping` y `resumen_ventas`. `ping` no lleva argumentos y responde `{ "pong": true }`. `resumen_ventas` pide `periodo` como `AAAA-MM` (mes civil de Lima). Los montos van en céntimos e incluyen IGV. La respuesta no trae documento ni razón social del cliente.
 
 La misma comprobación, sin abrir el inspector:
 
