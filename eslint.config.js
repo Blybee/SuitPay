@@ -37,7 +37,10 @@ const config = [
     // hay que respetar al escribir en esa carpeta: **un archivo de `routes/api/`
     // no puede exportar un `component`**. Si lo hiciera, pasaría a construirse
     // para el cliente y arrastraría el Admin SDK con él.
-    ignores: ['src/server/**', 'src/routes/api/**'],
+    // `src/mcp/` es el proceso de Cloud Run, no el paquete del navegador.
+    // Puede llamar a `src/server/`. No puede importar `firebase-admin` directo:
+    // esa prohibición está en `suitpay/mcp-sin-admin-sdk`.
+    ignores: ['src/server/**', 'src/routes/api/**', 'src/mcp/**'],
     rules: {
       '@typescript-eslint/no-restricted-imports': [
         'error',
@@ -70,6 +73,32 @@ const config = [
     files: PUERTA_DE_SERVIDOR,
     rules: {
       '@typescript-eslint/no-restricted-imports': 'off',
+    },
+  },
+
+  {
+    name: 'suitpay/mcp-sin-admin-sdk',
+    files: ['src/mcp/**/*.ts'],
+    rules: {
+      '@typescript-eslint/no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            {
+              name: 'firebase-admin',
+              message:
+                'El Admin SDK solo vive en src/server/. El proceso MCP lo usa a través de esa carpeta.',
+            },
+          ],
+          patterns: [
+            {
+              group: ['firebase-admin', 'firebase-admin/**'],
+              message:
+                'El Admin SDK solo vive en src/server/. El proceso MCP lo usa a través de esa carpeta.',
+            },
+          ],
+        },
+      ],
     },
   },
 
