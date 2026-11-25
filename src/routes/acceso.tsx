@@ -1,6 +1,17 @@
-import { createFileRoute, Navigate, useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import type { FormEvent } from 'react'
+import { completarConexionAuthKitFn } from '../features/acceso/conexion.funciones.ts'
+import {
+  decidirTrasEntrar,
+  leerBusquedaDeAcceso,
+  mensajeDeConexion,
+} from '../features/acceso/conexion.ts'
+import type {
+  BusquedaDeAcceso,
+  ResultadoDeConexion,
+  RutaDeRol,
+} from '../features/acceso/conexion.ts'
 import { usarSesion } from '../features/sesion/almacen.ts'
 import { destinoDeRol } from '../features/sesion/destino.ts'
 import { MarcaSuitPay } from '../ui/componentes/MarcaSuitPay.tsx'
@@ -11,14 +22,61 @@ import { Boton, Campo, Etiqueta } from '../ui/componentes/primitivas.tsx'
  *
  * La sesión larga (T073) evita pedir credenciales cada mañana; esta pantalla
  * cubre la primera entrada y cuando la sesión ya no es válida.
+ *
+ * Con `external_auth_id` (AuthKit Standalone Connect) el login de Firebase
+ * sigue igual y, si ya hay sesión, se salta. El servidor verifica el ID token
+ * y solo entonces completa contra WorkOS.
  */
 
 export const Route = createFileRoute('/acceso')({
-  component: PantallaDeAcceso,
+  validateSearch: (search: Record<string, unknown>): {
+    external_auth_id?: string
+    idInvalido?: boolean
+  } => {
+    const leido = leerBusquedaDeAcceso(search)
+    const salida: { external_auth_id?: string; idInvalido?: boolean } = {}
+    if (leido.externalAuthId !== null) salida.external_auth_id = leido.externalAuthId
+    if (leido.idInvalido) salida.idInvalido = true
+    return salida
+  },
+  component: RutaDeAcceso,
 })
 
-function PantallaDeAcceso() {
+function RutaDeAcceso() {
+  const search = Route.useSearch()
+  const busqueda = {
+    externalAuthId: search.external_auth_id ?? null,
+    idInvalido: search.idInvalido === true,
+  }
   const navigate = useNavigate()
+  const irA = useCallback(
+    (ruta: RutaDeRol) => navigate({ to: ruta, replace: true }),
+    [navigate],
+  )
+  return <PantallaDeAcceso busqueda={busqueda} irA={irA} />
+}
+
+async function completarPorOmision(
+  externalAuthId: string,
+): Promise<ResultadoDeConexion> {
+  return completarConexionAuthKitFn({ data: { externalAuthId } })
+}
+
+function asignarPorOmision(url: string): void {
+  window.location.assign(url)
+}
+
+export function PantallaDeAcceso({
+  busqueda,
+  irA,
+  completar = completarPorOmision,
+  asignar = asignarPorOmision,
+}: {
+  readonly busqueda: BusquedaDeAcceso
+  readonly irA: (ruta: RutaDeRol) => Promise<void> | void
+  readonly completar?: (externalAuthId: string) => Promise<ResultadoDeConexion>
+  readonly asignar?: (url: string) => void
+}) {
   const cargando = usarSesion((s) => s.cargando)
   const uid = usarSesion((s) => s.uid)
   const rol = usarSesion((s) => s.rol)
@@ -26,27 +84,56 @@ function PantallaDeAcceso() {
 
   const [correo, setCorreo] = useState('')
   const [contrasena, setContrasena] = useState('')
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(
+    busqueda.idInvalido ? mensajeDeConexion('id-invalido') : null,
+  )
   const [ocupado, setOcupado] = useState(false)
+  const pedido = useRef(false)
 
-  if (!cargando && uid !== null) {
-    return <Navigate to={destinoDeRol(rol)} replace />
-  }
+  const paso = decidirTrasEntrar({
+    externalAuthId: busqueda.externalAuthId,
+    idInvalido: busqueda.idInvalido,
+    rol,
+  })
+  const ruta =
+    paso.tipo === 'destino' ? paso.ruta : null
+
+  useLayoutEffect(() => {
+    if (cargando || uid === null || ruta === null) return
+    void irA(ruta)
+  }, [cargando, uid, ruta, irA])
+
+  useEffect(() => {
+    if (cargando || uid === null || paso.tipo !== 'completar') return
+    if (busqueda.externalAuthId === null || pedido.current) return
+    pedido.current = true
+    const id = busqueda.externalAuthId
+    setOcupado(true)
+    void completar(id).then((resultado) => {
+      if (resultado.ok) {
+        asignar(resultado.redirectUri)
+        return
+      }
+      pedido.current = false
+      setOcupado(false)
+      setError(mensajeDeConexion(resultado.motivo))
+    })
+  }, [cargando, uid, paso.tipo, busqueda.externalAuthId, completar, asignar])
 
   async function enviar(evento: FormEvent): Promise<void> {
     evento.preventDefault()
-    setError(null)
+    setError(busqueda.idInvalido ? mensajeDeConexion('id-invalido') : null)
     setOcupado(true)
     try {
       await entrar(correo.trim(), contrasena)
-      const estado = usarSesion.getState()
-      await navigate({ to: destinoDeRol(estado.rol), replace: true })
+      setOcupado(false)
     } catch {
       setError('Correo o contraseña incorrectos. Inténtalo de nuevo.')
-    } finally {
       setOcupado(false)
     }
   }
+
+  const conectando = paso.tipo === 'completar' && uid !== null && error === null
 
   return (
     <div className="flex min-h-svh flex-col items-center justify-center bg-mesa px-4">
@@ -58,50 +145,70 @@ function PantallaDeAcceso() {
           Entrar a SuitPay
         </h1>
         <p className="mt-2 text-center text-cuerpo text-desvaida">
-          Usa tu correo y contraseña del local.
+          {conectando
+            ? 'Conectando…'
+            : 'Usa tu correo y contraseña del local.'}
         </p>
 
-        <form className="mt-8 flex flex-col gap-4" onSubmit={enviar}>
-          <div>
-            <Etiqueta htmlFor="correo">Correo</Etiqueta>
-            <Campo
-              id="correo"
-              type="email"
-              autoComplete="username"
-              required
-              value={correo}
-              onChange={(e) => setCorreo(e.target.value)}
-              disabled={ocupado || cargando}
-            />
-          </div>
-          <div>
-            <Etiqueta htmlFor="contrasena">Contraseña</Etiqueta>
-            <Campo
-              id="contrasena"
-              type="password"
-              autoComplete="current-password"
-              required
-              value={contrasena}
-              onChange={(e) => setContrasena(e.target.value)}
-              disabled={ocupado || cargando}
-            />
-          </div>
+        {conectando ? (
+          <p className="mt-8 text-center text-cuerpo text-desvaida" aria-busy="true">
+            Comprobando tu usuario.
+          </p>
+        ) : (
+          <form className="mt-8 flex flex-col gap-4" onSubmit={enviar}>
+            <div>
+              <Etiqueta htmlFor="correo">Correo</Etiqueta>
+              <Campo
+                id="correo"
+                type="email"
+                autoComplete="username"
+                required
+                value={correo}
+                onChange={(e) => setCorreo(e.target.value)}
+                disabled={ocupado || cargando}
+              />
+            </div>
+            <div>
+              <Etiqueta htmlFor="contrasena">Contraseña</Etiqueta>
+              <Campo
+                id="contrasena"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={contrasena}
+                onChange={(e) => setContrasena(e.target.value)}
+                disabled={ocupado || cargando}
+              />
+            </div>
 
-          {error !== null && (
-            <p className="text-cuerpo font-bold text-aviso" role="alert">
-              {error}
-            </p>
-          )}
+            {error !== null && (
+              <p className="text-cuerpo font-bold text-aviso" role="alert">
+                {error}
+              </p>
+            )}
 
-          <Boton
-            type="submit"
-            variante="principal"
-            disabled={ocupado || cargando}
-            className="mt-2 w-full"
-          >
-            {ocupado ? 'Entrando…' : 'Entrar'}
-          </Boton>
-        </form>
+            <Boton
+              type="submit"
+              variante="principal"
+              disabled={ocupado || cargando}
+              className="mt-2 w-full"
+            >
+              {ocupado ? 'Entrando…' : 'Entrar'}
+            </Boton>
+            {uid !== null && error !== null && (
+              <Boton
+                type="button"
+                variante="secundario"
+                className="w-full"
+                onClick={() => {
+                  void irA(destinoDeRol(rol))
+                }}
+              >
+                Seguir a SuitPay
+              </Boton>
+            )}
+          </form>
+        )}
       </div>
     </div>
   )

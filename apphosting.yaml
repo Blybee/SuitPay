@@ -111,6 +111,13 @@ env:
     secret: OPENROUTER_API_KEY
     availability: [RUNTIME]
 
+  # Completa AuthKit Standalone Connect. El valor está en Secret Manager
+  # con el nombre suitpay-mcp-workos-api-key. No va en el repositorio ni en
+  # el bundle: solo RUNTIME.
+  - variable: WORKOS_API_KEY
+    secret: suitpay-mcp-workos-api-key
+    availability: [RUNTIME]
+
   # :free más capaces con JSON de schema verificado el 2026-10-20.
   - variable: OPENROUTER_MODELO_TEXTO
     value: nvidia/nemotron-3-super-120b-a12b:free
