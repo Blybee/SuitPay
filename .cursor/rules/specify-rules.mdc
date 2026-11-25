@@ -27,8 +27,9 @@ Cuatro consecuencias que se violan con facilidad si no se tienen presentes:
   reintentar sin haber determinado antes si la emision ocurrio.
 - **El proveedor de emision solo se conoce dentro de su modulo frontera.** Su
   nombre no debe aparecer en ninguna otra parte del repositorio.
-- **Ningun dato de clientes sale hacia servicios de IA.** Solo productos y el
-  contenido que produce el vendedor.
+- **Ningun dato de clientes sale hacia los LLM de la app.** Solo productos y el
+  contenido que produce el vendedor. El servidor MCP puede devolver RUC, DNI y
+  razon social, y solo a un administrador o jefe con cuenta activa.
 
 Toda tarea que emita, anule o modifique un documento con efecto tributario
 requiere pruebas que cubran el reintento, la respuesta ausente y el fallo del

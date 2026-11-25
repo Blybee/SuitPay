@@ -1,6 +1,26 @@
 <!--
 SYNC IMPACT REPORT
 ==================
+Version change: 1.5.0 → 1.6.0
+Bump rationale: MINOR. El principio IV abre una excepción de canal: el
+servidor MCP de SuitPay MAY devolver RUC, DNI y razón social, y solo a un
+usuario ya autenticado como administrador o jefe con cuenta activa. Dirección,
+teléfono, correo e historial siguen fuera. La anonimización hacia Gemini y
+OpenRouter no cambia. Aprobado por ZiBlay el 2026-11-18.
+
+Principios modificados:
+  IV.  Excepción del servidor MCP para RUC, DNI y razón social ante
+       administrador o jefe activos.
+
+Secciones añadidas: ninguna.
+Plantillas: sin cambio estructural.
+
+TODO diferidos: ninguno.
+-->
+
+<!--
+SYNC IMPACT REPORT (histórico)
+==================
 Version change: 1.4.0 → 1.5.0
 Bump rationale: MINOR. El principio IV permite un proveedor externo
 configurable (OpenRouter, modelos :free) para tareas de solo texto, y el
@@ -222,9 +242,6 @@ El modelo MAY devolver un número de documento y una denominación; la etiqueta 
 vendedor MUST resolverse dentro del sistema. El modelo no es la fuente de verdad del cliente.
 No se escribe `clientes/{id}` a partir de la respuesta del modelo.
 
-- Razón social, RUC, DNI, dirección, teléfono, correo e historial de compras de un cliente MUST
-  NOT enviarse a ningún servicio de inteligencia automática, salvo el contenido propio del
-  medio de Cotizar en la función citada.
 - Cuando una fotografía o un dictado contenga datos de cliente, la resolución de la identidad
   del cliente MUST ocurrir dentro del sistema, no delegarse al modelo.
 
@@ -250,6 +267,20 @@ Gemini y MUST registrar `console.warn` con el motivo y el modelo, sin el
 contenido del prompt. ZiBlay aceptó el 2026-10-20 que el proveedor entrene
 con ese texto ya anonimizado. La petición MUST NOT incluir
 `provider.data_collection`. Aprobado por ZiBlay el 2026-10-20.
+
+**Servidor MCP (v1.6.0).** El servidor MCP de SuitPay MAY devolver RUC, DNI y
+razón social de un cliente en la respuesta de una herramienta. Solo puede
+hacerlo cuando la llamada ya está autenticada como `administrador` o `jefe`
+con la cuenta activa. MUST NOT devolver por ese canal dirección, teléfono,
+correo ni el historial de compras. La anonimización hacia Gemini y OpenRouter,
+el catálogo compacto y la prohibición de enviar la colección `clientes` a esos
+proveedores no cambian. El modelo de asistencia sigue sin ser la fuente de
+verdad del cliente, y una respuesta de asistencia MUST NOT escribir
+`clientes/{id}`. Aprobado por ZiBlay el 2026-11-18.
+
+- Razón social, RUC, DNI, dirección, teléfono, correo e historial de compras de un cliente MUST
+  NOT enviarse a los servicios de asistencia de la aplicación, salvo el contenido propio del
+  medio de Cotizar. El servidor MCP no es ese canal: se rige por la excepción v1.6.0.
 
 ### V. El mostrador no se detiene
 
@@ -357,4 +388,4 @@ consideró y se descartó. La plantilla de plan reserva una tabla para ello.
 **Guía en tiempo de ejecución.** `.cursor/rules/specify-rules.mdc` es el archivo de contexto del
 agente de codificación y se mantiene mediante la extensión `agent-context`.
 
-**Version**: 1.5.0 | **Ratified**: 2026-07-28 | **Last Amended**: 2026-10-20
+**Version**: 1.6.0 | **Ratified**: 2026-07-28 | **Last Amended**: 2026-11-18
