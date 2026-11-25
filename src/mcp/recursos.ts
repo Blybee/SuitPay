@@ -6,6 +6,7 @@ import {
   obtenerComprobante,
 } from '../server/mcp/consultas.ts'
 import { bd, COLECCIONES } from '../server/firebase/admin.ts'
+import { resumenDeVentas } from '../server/ventas/resumen-periodo.ts'
 
 export function registrarRecursos(servidor: McpServer): void {
   servidor.registerResource(
@@ -57,6 +58,33 @@ export function registrarRecursos(servidor: McpServer): void {
       mimeType: 'application/json',
     },
     async (uri) => contenido(uri.href, await cotizacionesPendientes({})),
+  )
+
+  servidor.registerResource(
+    'resumen-ventas',
+    new ResourceTemplate('suitpay://ventas/{periodo}', { list: undefined }),
+    {
+      title: 'Resumen de ventas',
+      description:
+        'Resumen de un mes AAAA-MM. Incluye documento y razón social. No incluye teléfono ni dirección.',
+      mimeType: 'application/json',
+    },
+    async (uri, variables) => {
+      const resumen = await resumenDeVentas({
+        periodo: variable(variables, 'periodo'),
+      })
+      return contenido(uri.href, {
+        periodo: resumen.periodo,
+        totalCentimos: resumen.totalCentimos,
+        cantidad: resumen.cantidad,
+        ticketPromedioCentimos: resumen.ticketPromedioCentimos,
+        ventasSinResolver: resumen.ventasSinResolver,
+        porTipo: resumen.porTipo,
+        topVendedores: resumen.topVendedores,
+        topClientes: resumen.topClientes,
+        topProductos: resumen.topProductos,
+      })
+    },
   )
 }
 

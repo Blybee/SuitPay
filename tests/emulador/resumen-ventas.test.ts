@@ -57,6 +57,7 @@ describeConEmulador.sequential('resumen de ventas contra Firestore', () => {
           {
             numeroDocumento: '20100000001',
             denominacion: 'ACME',
+            telefono: '999111222',
           },
           [{ codigo: 'P1', descripcion: 'Nota', importe: 100 }],
         ),
@@ -295,6 +296,16 @@ describeConEmulador.sequential('resumen de ventas contra Firestore', () => {
       expect(texto).toContain('20100000001')
       expect(texto).toContain('ACME')
       expect(texto).toContain('vend-b')
+      expect(texto).not.toContain('999111222')
+      const recurso = await cliente.readResource({ uri: 'suitpay://ventas/2020-11' })
+      const crudo = recurso.contents
+        .map((parte) => ('text' in parte ? parte.text : ''))
+        .join('')
+      const json = JSON.parse(crudo) as { totalCentimos: number }
+      expect(json.totalCentimos).toBe(300)
+      expect(crudo).toContain('ACME')
+      expect(crudo).toContain('20100000001')
+      expect(crudo).not.toContain('999111222')
     } finally {
       await cliente.close()
       await creado.handler.close()
@@ -323,7 +334,11 @@ function venta(
   total: number,
   vendedorId: string,
   emitidoEn: Date,
-  cliente: { numeroDocumento: string; denominacion: string } | null,
+  cliente: {
+    numeroDocumento: string
+    denominacion: string
+    telefono?: string
+  } | null,
   lineas: { codigo: string; descripcion: string; importe: number }[],
 ) {
   return {
