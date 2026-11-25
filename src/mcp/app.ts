@@ -5,6 +5,7 @@ import { z } from 'zod'
 import { prepararAcceso, publicarMetadatos } from './acceso.ts'
 import type { ConfiguracionDeAcceso } from './acceso.ts'
 import { registrarCatalogo } from './herramientas/catalogo.ts'
+import { registrarEscritura } from './herramientas/escritura.ts'
 import { registrarConsultas } from './herramientas/consultas.ts'
 import { registrarPrompts } from './prompts.ts'
 import { registrarRecursos } from './recursos.ts'
@@ -29,6 +30,7 @@ export function crearServidorMcp(): McpServer {
   registrarConsultas(servidor)
   registrarRecursos(servidor)
   registrarPrompts(servidor)
+  registrarEscritura(servidor)
 
   servidor.registerTool(
     'ping',
