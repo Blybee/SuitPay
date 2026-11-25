@@ -81,7 +81,13 @@ describe('escritura MCP', () => {
     const delVendedor = await llamar(creado, vendedor, cuerpo)
     const delAdmin = await llamar(creado, sinAlcance, cuerpo)
     expect(delVendedor.status).toBe(403)
+    expect(delVendedor.headers.get('www-authenticate') ?? '').not.toContain(
+      'suitpay.escribir',
+    )
     expect(delAdmin.status).toBe(403)
+    const desafio = delAdmin.headers.get('www-authenticate') ?? ''
+    expect(desafio).toContain('insufficient_scope')
+    expect(desafio).toContain('scope="suitpay.escribir"')
     expect(await delAdmin.text()).not.toContain('"yaExistia"')
     await creado.handler.close()
   })

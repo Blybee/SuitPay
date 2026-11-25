@@ -20,7 +20,7 @@ El proceso escucha en `http://127.0.0.1:8787/mcp`. `PORT` cambia el puerto. Con 
 
 `MCP_UID_CLAIM` dice en qué claim viaja el uid de Firebase. Si no la defines, el servidor lee `firebase_uid`. Ese nombre es un supuesto: WorkOS tiene que copiar ahí el uid, porque `sub` de AuthKit no es el uid de Firebase. `MCP_USUARIO_CACHE_MS` es la caché de la ficha en Firestore. El valor por omisión es 60000.
 
-Tras validar firma, emisor, audiencia y expiración, el servidor lee `usuarios/{uid}` y admite solo `administrador` o `jefe` con `activo: true`. Un `vendedor`, una cuenta inactiva o un uid ausente reciben 403. Un token inválido recibe 401 y `WWW-Authenticate` con `resource_metadata` apuntando a `/.well-known/oauth-protected-resource`. La escritura futura exige el alcance `suitpay.escribir`. `ping` no lo exige.
+Tras validar firma, emisor, audiencia y expiración, el servidor lee `usuarios/{uid}` y admite solo `administrador` o `jefe` con `activo: true`. Un `vendedor`, una cuenta inactiva o un uid ausente reciben 403 sin pedir un scope. Un token inválido recibe 401 y `WWW-Authenticate` con `resource_metadata` apuntando a `/.well-known/oauth-protected-resource`, sin parámetro `scope`. Ese documento no trae `scopes_supported`: un cliente registrado por DCR no puede pedir `suitpay.escribir` a AuthKit. Las tools de escritura siguen exigiendo ese alcance dentro del token ya emitido. Si falta, la llamada responde 403 `insufficient_scope` y el desafío sí nombra `suitpay.escribir`. `ping` no lo exige.
 
 `MCP_ALLOWED_ORIGINS` lista los hostnames de `Origin` que se aceptan. Si el encabezado no viene, la petición pasa. Un `Origin` de otro hostname responde `403`.
 
