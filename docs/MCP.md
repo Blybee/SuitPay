@@ -40,6 +40,22 @@ La misma comprobación, sin abrir el inspector, añadiendo el mismo encabezado c
 npx @modelcontextprotocol/inspector --cli http://127.0.0.1:8787/mcp --method tools/list --header "Authorization: Bearer <token>"
 ```
 
+## Staging
+
+Valores públicos del entorno Staging de AuthKit. `MCP_RESOURCE_URL` queda pendiente hasta tener la URL de Cloud Run: es la audiencia del JWT y tiene que ser la URL pública de `/mcp`.
+
+| Variable | Valor en Staging |
+| --- | --- |
+| `MCP_JWT_ISSUER` | `https://elegant-palm-42-staging.authkit.app` |
+| `MCP_JWKS_URL` | `https://elegant-palm-42-staging.authkit.app/oauth2/jwks` |
+| `MCP_UID_CLAIM` | `firebase_uid` (la plantilla del JWT es `{ "firebase_uid": {{ user.external_id }} }`) |
+| `MCP_RESOURCE_URL` | pendiente |
+| `MCP_USUARIO_CACHE_MS` | `60000` si no se define |
+
+El cliente OAuth de Staging es `client_01M88485GR24XTE3KYH67KHEYD`. El Login URI es la ruta `/acceso` del host de App Hosting de Staging. AuthKit llega ahí con `external_auth_id`. El permiso de escritura es `suitpay.escribir`.
+
+`/acceso` solo llama a `https://api.workos.com/authkit/oauth2/complete` cuando la query trae `external_auth_id`. La clave va en `WORKOS_API_KEY`, resuelta en App Hosting desde el secret `suitpay-mcp-workos-api-key`. El valor no se escribe en el repositorio.
+
 ## Cloud Run
 
 La imagen se construye con `Dockerfile.mcp`. El servicio previsto es `suitpay-mcp` en `us-central1`, con mínimo 0 y máximo 2 instancias. Este cambio no lo despliega. En el runtime hay que definir `MCP_ALLOWED_HOSTS` con el hostname público del servicio. La cuenta de servicio usa ADC. No hace falta una llave JSON.
