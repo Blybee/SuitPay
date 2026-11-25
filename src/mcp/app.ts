@@ -6,6 +6,7 @@ import { prepararAcceso, publicarMetadatos } from './acceso.ts'
 import type { ConfiguracionDeAcceso } from './acceso.ts'
 import { registrarCatalogo } from './herramientas/catalogo.ts'
 import { registrarConsultas } from './herramientas/consultas.ts'
+import { registrarPrompts } from './prompts.ts'
 import { registrarRecursos } from './recursos.ts'
 
 export const NOMBRE_DEL_SERVIDOR = 'suitpay-mcp'
@@ -27,6 +28,7 @@ export function crearServidorMcp(): McpServer {
   registrarCatalogo(servidor)
   registrarConsultas(servidor)
   registrarRecursos(servidor)
+  registrarPrompts(servidor)
 
   servidor.registerTool(
     'ping',
