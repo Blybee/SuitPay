@@ -26,7 +26,6 @@ export interface ConfiguracionDeAcceso {
 export interface MetadatosDelRecurso {
   readonly resource: string
   readonly authorization_servers: readonly string[]
-  readonly scopes_supported: readonly string[]
   readonly bearer_methods_supported: readonly ['header']
 }
 
@@ -40,7 +39,6 @@ export function metadatosDelRecurso(
   return {
     resource: sinBarraFinal(acceso.recurso.href),
     authorization_servers: [acceso.emisor],
-    scopes_supported: [ALCANCE_ESCRITURA],
     bearer_methods_supported: ['header'],
   }
 }

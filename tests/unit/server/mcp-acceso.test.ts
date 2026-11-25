@@ -109,7 +109,13 @@ describe('acceso MCP', () => {
     await cerrarJwks()
   })
 
-  it('publica el documento de recurso protegido con el alcance de escritura', async () => {
+  it('no anuncia scopes que AuthKit rechazaría en el documento de recurso', async () => {
+    const aceptadosPorAuthKit = new Set([
+      'openid',
+      'email',
+      'profile',
+      'offline_access',
+    ])
     const { app } = appCon(cargarNadie)
     const respuesta = await app.fetch(
       new Request(new URL('/.well-known/oauth-protected-resource', recurso), {
@@ -120,13 +126,16 @@ describe('acceso MCP', () => {
     const cuerpo = (await respuesta.json()) as {
       resource: string
       authorization_servers: string[]
-      scopes_supported: string[]
+      scopes_supported?: string[]
       bearer_methods_supported: string[]
     }
+    const anunciados = cuerpo.scopes_supported ?? []
     expect(cuerpo.resource).toBe(recurso.href)
     expect(cuerpo.authorization_servers).toEqual([emisor])
-    expect(cuerpo.scopes_supported).toContain('suitpay.escribir')
     expect(cuerpo.bearer_methods_supported).toEqual(['header'])
+    expect(anunciados.filter((scope) => !aceptadosPorAuthKit.has(scope))).toEqual([])
+    expect(anunciados).not.toContain('suitpay.escribir')
+    expect(JSON.stringify(cuerpo)).not.toContain('suitpay.escribir')
   })
 
   it('responde 401 con WWW-Authenticate si no hay token', async () => {
@@ -138,6 +147,8 @@ describe('acceso MCP', () => {
     expect(desafio).toContain(
       `resource_metadata="${new URL('/.well-known/oauth-protected-resource', recurso).href}"`,
     )
+    expect(desafio).not.toContain('suitpay.escribir')
+    expect(desafio).not.toContain('scope=')
   })
 
   it('rechaza audiencia, emisor o expiración incorrectos con 401', async () => {
