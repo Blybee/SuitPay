@@ -2,6 +2,8 @@ import { createMcpHonoApp } from '@modelcontextprotocol/hono'
 import { createMcpHandler, McpServer } from '@modelcontextprotocol/server'
 import type { Context, Hono } from 'hono'
 import { z } from 'zod'
+import { prepararAcceso, publicarMetadatos } from './acceso.ts'
+import type { ConfiguracionDeAcceso } from './acceso.ts'
 
 export const NOMBRE_DEL_SERVIDOR = 'suitpay-mcp'
 export const VERSION_DEL_SERVIDOR = '0.1.0'
@@ -45,6 +47,8 @@ export interface OpcionesDeLaApp {
   readonly hostsPermitidos?: readonly string[]
   /** Hostnames admitidos en Origin. Sin puerto. Un Origin ausente pasa. */
   readonly origenesPermitidos?: readonly string[]
+  /** Ausente: /mcp no exige token. Lo usa el esqueleto y sus pruebas. */
+  readonly acceso?: ConfiguracionDeAcceso
 }
 
 export interface AppMcp {
@@ -64,9 +68,18 @@ export function crearApp(opciones: OpcionesDeLaApp = {}): AppMcp {
       : {}),
   })
 
-  app.all('/mcp', (c: Context) =>
-    handler.fetch(c.req.raw, { parsedBody: c.get('parsedBody') }),
-  )
+  const acceso =
+    opciones.acceso !== undefined ? prepararAcceso(opciones.acceso) : undefined
+  if (opciones.acceso !== undefined) publicarMetadatos(app, opciones.acceso)
+
+  app.all('/mcp', async (c: Context) => {
+    const authInfo = acceso ? await acceso.autenticar(c.req.raw) : undefined
+    if (authInfo instanceof Response) return authInfo
+    return handler.fetch(c.req.raw, {
+      parsedBody: c.get('parsedBody'),
+      ...(authInfo !== undefined ? { authInfo } : {}),
+    })
+  })
 
   return { app, handler }
 }
